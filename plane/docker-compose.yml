@@ -1,0 +1,355 @@
+# TITAN 容器平台 — Plane 專案管理系統
+# 任務: T12 — Plane 基礎部署
+# 使用共享的 PostgreSQL、Redis 與 MinIO 服務
+# 參考官方 makeplane/plane docker-compose 結構
+
+version: '3.8'
+
+# ═══════════════════════════════════════════════════════════
+# 服務定義
+# ═══════════════════════════════════════════════════════════
+
+services:
+
+  # ── Plane 前端 Web ─────────────────────────────────────────
+  plane-web:
+    image: makeplane/plane-frontend:stable
+    container_name: titan-plane-web
+    restart: unless-stopped
+    command: node server.js web
+    environment:
+      # 後端 API 位址
+      NEXT_PUBLIC_API_URL: http://plane-api:8000
+      NEXT_PUBLIC_LIVE_URL: http://plane-live:3000
+      # 時區
+      NEXT_PUBLIC_TIMEZONE: Asia/Taipei
+      # 網站 URL
+      NEXT_PUBLIC_SITE_URL: ${PLANE_SITE_URL:-http://localhost:8080}
+    ports:
+      - "${PLANE_WEB_PORT:-8080}:3000"
+    networks:
+      - titan-network
+    depends_on:
+      plane-api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Plane 管理後臺 ─────────────────────────────────────────
+  plane-admin:
+    image: makeplane/plane-frontend:stable
+    container_name: titan-plane-admin
+    restart: unless-stopped
+    command: node server.js admin
+    environment:
+      NEXT_PUBLIC_API_URL: http://plane-api:8000
+      NEXT_PUBLIC_LIVE_URL: http://plane-live:3000
+      NEXT_PUBLIC_SITE_URL: ${PLANE_SITE_URL:-http://localhost:8080}
+    ports:
+      - "${PLANE_ADMIN_PORT:-8081}:3000"
+    networks:
+      - titan-network
+    depends_on:
+      plane-api:
+        condition: service_started
+      plane-web:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Plane Space (Mobile API) ───────────────────────────────
+  plane-space:
+    image: makeplane/plane-space:stable
+    container_name: titan-plane-space
+    restart: unless-stopped
+    command: node server.js space
+    environment:
+      NEXT_PUBLIC_API_URL: http://plane-api:8000
+      NEXT_PUBLIC_SITE_URL: ${PLANE_SITE_URL:-http://localhost:8080}
+    ports:
+      - "${PLANE_SPACE_PORT:-8082}:3000"
+    networks:
+      - titan-network
+    depends_on:
+      plane-api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Plane API Server ────────────────────────────────────────
+  plane-api:
+    image: makeplane/plane-backend:stable
+    container_name: titan-plane-api
+    restart: unless-stopped
+    command: ./bin/docker-entrypoint-api.sh
+    environment:
+      # PostgreSQL 連線（使用共享資料庫，獨立 Schema）
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-titan}
+      DB_USER: ${POSTGRES_USER:-titan}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      # Plane 專用 Schema
+      DB_SCHEMA: plane
+      # Redis 連線（使用共享 Redis）
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      # RabbitMQ 連線（Plane 獨立的 MQ）
+      RABBITMQ_HOST: plane-mq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-plane}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme_plane_mq}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/plane}
+      # MinIO / S3 儲存
+      AWS_REGION: ${MINIO_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+      AWS_S3_BUCKET_NAME: ${PLANE_S3_BUCKET:-plane-uploads}
+      AWS_S3_UPLOAD_BUCKET_URL: http://minio:9000
+      AWS_S3_FORCE_PATH_STYLE: "true"
+      # 認證設定
+      SECRET_KEY: ${PLANE_SECRET_KEY:?PLANE_SECRET_KEY is required}
+      # 服務 URL
+      SITE_URL: ${PLANE_SITE_URL:-http://localhost:8080}
+      # 其他設定
+      WEB_URL: ${PLANE_SITE_URL:-http://localhost:8080}
+      ENABLE_GITHUB_SYNC: "false"
+      ENABLE_GITLAB_SYNC: "false"
+      ENABLE_SLACK_SYNC: "false"
+    volumes:
+      - plane-uploads:/app/public/uploads
+    networks:
+      - titan-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/api/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ── Plane Worker (背景任務) ────────────────────────────────
+  plane-worker:
+    image: makeplane/plane-backend:stable
+    container_name: titan-plane-worker
+    restart: unless-stopped
+    command: ./bin/docker-entrypoint-worker.sh
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-titan}
+      DB_USER: ${POSTGRES_USER:-titan}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_SCHEMA: plane
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      RABBITMQ_HOST: plane-mq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-plane}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme_plane_mq}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/plane}
+      SECRET_KEY: ${PLANE_SECRET_KEY:?PLANE_SECRET_KEY is required}
+    volumes:
+      - plane-uploads:/app/public/uploads
+    networks:
+      - titan-network
+    depends_on:
+      plane-api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f worker || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Plane Beat Worker (排程任務) ────────────────────────────
+  plane-beat:
+    image: makeplane/plane-backend:stable
+    container_name: titan-plane-beat
+    restart: unless-stopped
+    command: ./bin/docker-entrypoint-beat.sh
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-titan}
+      DB_USER: ${POSTGRES_USER:-titan}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_SCHEMA: plane
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      RABBITMQ_HOST: plane-mq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-plane}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme_plane_mq}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/plane}
+      SECRET_KEY: ${PLANE_SECRET_KEY:?PLANE_SECRET_KEY is required}
+    networks:
+      - titan-network
+    depends_on:
+      plane-api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f beat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Plane Migrator (初始 migration) ────────────────────────
+  # 只在首次部署時執行，完成後自動停止
+  plane-migrator:
+    image: makeplane/plane-backend:stable
+    container_name: titan-plane-migrator
+    restart: "no"
+    command: ./bin/docker-entrypoint-migrator.sh
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-titan}
+      DB_USER: ${POSTGRES_USER:-titan}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DB_SCHEMA: plane
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      RABBITMQ_HOST: plane-mq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-plane}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-changeme_plane_mq}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/plane}
+      SECRET_KEY: ${PLANE_SECRET_KEY:?PLANE_SECRET_KEY is required}
+    networks:
+      - titan-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      plane-mq:
+        condition: service_started
+
+  # ── Plane Realtime (Live) ──────────────────────────────────
+  plane-live:
+    image: makeplane/plane-live:stable
+    container_name: titan-plane-live
+    restart: unless-stopped
+    command: node dist/server.js
+    environment:
+      # 後端 API
+      API_URL: http://plane-api:8000
+      # Redis 用於 Realtime
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "${PLANE_LIVE_PORT:-3002}:3000"
+    networks:
+      - titan-network
+    depends_on:
+      plane-api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ── Plane Nginx Proxy ──────────────────────────────────────
+  plane-proxy:
+    image: nginx:alpine
+    container_name: titan-plane-proxy
+    restart: unless-stopped
+    volumes:
+      - ./config/plane/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "${PLANE_PROXY_PORT:-8083}:80"
+    networks:
+      - titan-network
+    depends_on:
+      - plane-web
+      - plane-admin
+      - plane-api
+      - plane-space
+    healthcheck:
+      test: ["CMD-SHELL", "nginx -t"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Plane RabbitMQ（獨立訊息佇列）──────────────────────────
+  plane-mq:
+    image: rabbitmq:3.13.6-management-alpine
+    container_name: titan-plane-mq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-plane}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-changeme_plane_mq}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/plane}
+    volumes:
+      - plane-mq-data:/var/lib/rabbitmq
+    ports:
+      - "${PLANE_MQ_PORT:-5673}:5672"
+      - "${PLANE_MQ_MGMT_PORT:-15673}:15672"
+    networks:
+      - titan-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# ═══════════════════════════════════════════════════════════
+# 具名 Volume（持久化資料）
+# ═══════════════════════════════════════════════════════════
+volumes:
+  plane-uploads:
+    name: titan-plane-uploads
+  plane-mq-data:
+    name: titan-plane-mq-data
+
+# ═══════════════════════════════════════════════════════════
+# 網路設定（繼承共享網路）
+# ═══════════════════════════════════════════════════════════
+networks:
+  titan-network:
+    name: titan-network
+    external: true
