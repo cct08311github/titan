@@ -1,6 +1,7 @@
 # TITAN 容器平台 — 生產就緒版本
 # 任務: T06 — OS 基線與 Harden 設定
 # 任務: T07 — Container Platform Setup / T09 — 資料庫與儲存規劃
+# 任務: T08 — Nginx Reverse Proxy and TLS
 # 所有映像版本均固定，適用於隔離網路（air-gapped）部署
 # 若需更新版本，請同步更新 .env.example 中的備註
 
@@ -202,6 +203,7 @@ services:
 
   # ── 統一儀表板：Homepage ─────────────────────────────────
   # 集中呈現所有 TITAN 服務連結與狀態
+  # T08：移除直接對外端口，改由 Nginx 反向代理提供存取（https://titan.bank.local/）
   homepage:
     image: gethomepage/homepage:v0.9.13
     container_name: titan-homepage
@@ -209,16 +211,15 @@ services:
     environment:
       PUID: ${HOMEPAGE_PUID:-1000}
       PGID: ${HOMEPAGE_PGID:-1000}
-      HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS:-localhost}
+      HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS:-titan.bank.local,titan.local,localhost}
     volumes:
       - ./config/homepage:/app/config      # 服務設定檔
       - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker 狀態讀取（唯讀）
-    # 安全強化：保留外部端口供外部存取
-    ports:
-      - "${HOMEPAGE_PORT:-3000}:3000"
+    # 安全強化：移除直接對外端口，僅允許 Nginx 透過內部網路存取
+    # ports:
+    #   - "${HOMEPAGE_PORT:-3000}:3000"
     networks:
       - titan-internal
-      - titan-external
     depends_on:
       - outline
       - minio
@@ -241,6 +242,7 @@ services:
   # ── 監控儀表板：Uptime Kuma ──────────────────────────────
   # 服務可用性監控與狀態頁面
   # 版本固定：louislam/uptime-kuma:1.23.13
+  # T08：移除直接對外端口，改由 Nginx 反向代理提供存取（https://titan.bank.local/uptime/）
   uptime-kuma:
     image: louislam/uptime-kuma:1.23.13
     container_name: titan-uptime-kuma
@@ -248,10 +250,11 @@ services:
     volumes:
       - uptime-kuma-data:/app/data
       - /var/run/docker.sock:/var/run/docker.sock:ro  # 監控 Docker 容器狀態（唯讀）
-    ports:
-      - "${UPTIME_KUMA_PORT:-3002}:3001"
+    # 安全強化：移除直接對外端口，僅允許 Nginx 透過內部網路存取
+    # ports:
+    #   - "${UPTIME_KUMA_PORT:-3002}:3001"
     networks:
-      - titan-network
+      - titan-internal
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/entry-page || exit 1"]
       interval: 30s
@@ -285,6 +288,57 @@ services:
   #
   # 存取入口：http://<SERVER_IP>:${PLANE_PORT:-8082}
 
+  # ── 反向代理：Nginx ───────────────────────────────────────
+  # 統一對外入口：HTTP(80) 重導向至 HTTPS(443)，TLS 終止於此
+  # 版本固定：nginx:1.25-alpine（隔離網路相容）
+  # 路由對應：
+  #   /          → Homepage     (titan-homepage:3000)
+  #   /outline/  → Outline      (titan-outline:3000)
+  #   /plane/    → Plane        (plane-proxy:80，待部署)
+  #   /minio/    → MinIO 控制台  (titan-minio:9001)
+  #   /uptime/   → Uptime Kuma  (titan-uptime-kuma:3001)
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: titan-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      # Nginx 主設定檔（唯讀掛載）
+      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # TLS 憑證目錄（唯讀掛載，MVP 自簽 / 正式環境替換為 CA 憑證）
+      - ./config/nginx/certs:/etc/nginx/certs:ro
+      # 存取日誌持久化
+      - nginx-logs:/var/log/nginx
+    networks:
+      - titan-internal
+      - titan-external
+    depends_on:
+      homepage:
+        condition: service_healthy
+      outline:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      uptime-kuma:
+        condition: service_healthy
+    # 安全強化：Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+        reservations:
+          cpus: '0.1'
+          memory: 32M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 # ═══════════════════════════════════════════════════════════
 # 具名 Volume（持久化資料）
 # ═══════════════════════════════════════════════════════════
@@ -299,17 +353,20 @@ volumes:
     name: titan-outline-data
   uptime-kuma-data:
     name: titan-uptime-kuma-data
+  # T08 新增：Nginx 存取日誌持久化
+  nginx-logs:
+    name: titan-nginx-logs
 
 # ═══════════════════════════════════════════════════════════
 # 網路設定：強化隔離
 # ═══════════════════════════════════════════════════════════
 networks:
-  # 內部網路：僅允許服務間通訊，不對外開放
+  # 內部網路：服務間通訊（所有後端服務加入此網路）
   titan-internal:
     name: titan-internal
     driver: bridge
-    internal: false  #允許 DNS 解析
-  # 外部網路：允許對外服務（Homepage）
+    internal: false  # 允許 DNS 解析（需對外下載套件時使用）
+  # 外部網路：Nginx 透過此網路對外開放（T08：Nginx 取代 Homepage 直接對外）
   titan-external:
     name: titan-external
     driver: bridge

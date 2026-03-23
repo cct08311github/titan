@@ -9,3 +9,12 @@
 # Homepage 自動產生的快取檔案
 config/homepage/logs/
 config/homepage/cache/
+
+# T08：Nginx TLS 憑證（含私鑰，絕對不可提交）
+# MVP 自簽憑證請執行 scripts/generate-ssl-cert.sh 在本機產生
+config/nginx/certs/*.crt
+config/nginx/certs/*.key
+config/nginx/certs/*.pem
+config/nginx/certs/*.csr
+# 保留 .gitkeep 讓目錄被 git 追蹤
+!config/nginx/certs/.gitkeep
