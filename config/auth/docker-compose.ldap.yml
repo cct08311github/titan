@@ -1,0 +1,49 @@
+# LDAP 測試伺服器配置
+# 使用 OpenLDAP 進行本地測試 (銀行 AD 不可用時)
+
+version: '3.8'
+
+services:
+  openldap:
+    image: osix/openldap:latest
+    container_name: titan-openldap
+    restart: unless-stopped
+    environment:
+      LDAP_ORGANIZATION: TITAN Bank
+      LDAP_DOMAIN: bank.local
+      LDAP_ADMIN_PASSWORD: ${LDAP_ADMIN_PASSWORD:-admin123}
+      LDAP_CONFIG_PASSWORD: ${LDAP_CONFIG_PASSWORD:-config123}
+    volumes:
+      - ./data:/var/lib/ldap
+      - ./config:/etc/ldap/slapd.d
+      - ./seed:/docker-entrypoint-initdb.d
+    ports:
+      - "389:389"
+      - "636:636"
+    command: [--loglevel, debug]
+    networks:
+      - titan-internal
+    healthcheck:
+      test: ["CMD", "ldapwhoami", "-x", "-H", "ldap://localhost", "-D", "cn=admin,dc=bank,dc=local", "-w", "admin123"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  phpldapadmin:
+    image: osix/phpldapadmin:latest
+    container_name: titan-phpldapadmin
+    restart: unless-stopped
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: openldap
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8081:80"
+    networks:
+      - titan-internal
+    depends_on:
+      - openldap
+
+networks:
+  titan-internal:
+    name: titan-internal
+    external: true

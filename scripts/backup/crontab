@@ -1,0 +1,32 @@
+# TITAN 備份排程配置
+# 任務: T19 — 備份與還原機制
+# ═══════════════════════════════════════════════════════════
+#
+# 排程說明：
+# - PostgreSQL: 每日 02:00 執行（低流量時段）
+# - MinIO:     每日 02:30 執行
+# - Config:    每日 03:00 執行
+# - 全量備份:  每日 03:30 執行（週日執行完整備份）
+#
+# 安裝方式：
+#   cp scripts/backup/crontab /etc/cron.d/titan-backup
+#   systemctl reload cron
+#
+# 檢查方式：
+#   crontab -l | grep titan
+#
+# 日誌位置：
+#   /var/log/titan/backup_*.log
+#
+
+# PostgreSQL 備份 - 每日 02:00
+0 2 * * * root /opt/titan/scripts/backup/backup-postgres.sh >> /var/log/titan/backup-postgres.log 2>&1
+
+# MinIO 備份 - 每日 02:30
+30 2 * * * root /opt/titan/scripts/backup/backup-minio.sh >> /var/log/titan/backup-minio.log 2>&1
+
+# Config 備份 - 每日 03:00
+0 3 * * * root /opt/titan/scripts/backup/backup-config.sh >> /var/log/titan/backup-config.log 2>&1
+
+# 全量備份 - 每日 03:30
+30 3 * * * root /opt/titan/scripts/backup/backup-all.sh >> /var/log/titan/backup-all.log 2>&1

@@ -1,0 +1,49 @@
+pg_database:
+  query: |
+    SELECT datname,
+           numbackends,
+           xact_commit,
+           xact_rollback,
+           blks_read,
+           blks_hit,
+           tup_returned,
+           tup_fetched,
+           tup_inserted,
+           tup_updated,
+           tup_deleted
+    FROM pg_stat_database
+    WHERE datname = current_database();
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Database name"
+    - numbackends:
+        usage: "GAUGE"
+        description: "Number of active connections"
+    - xact_commit:
+        usage: "COUNTER"
+        description: "Transactions committed"
+    - xact_rollback:
+        usage: "COUNTER"
+        description: "Transactions rolled back"
+    - blks_read:
+        usage: "COUNTER"
+        description: "Disk blocks read"
+    - blks_hit:
+        usage: "COUNTER"
+        description: "Buffer hits"
+    - tup_returned:
+        usage: "COUNTER"
+        description: "Rows returned"
+    - tup_fetched:
+        usage: "COUNTER"
+        description: "Rows fetched"
+    - tup_inserted:
+        usage: "COUNTER"
+        description: "Rows inserted"
+    - tup_updated:
+        usage: "COUNTER"
+        description: "Rows updated"
+    - tup_deleted:
+        usage: "COUNTER"
+        description: "Rows deleted"

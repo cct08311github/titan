@@ -1,0 +1,65 @@
+# Keycloak Docker Compose 配置
+# 用於 TITAN 系統的 LDAP/AD 整合身份提供者
+
+version: '3.8'
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: titan-keycloak
+    restart: unless-stopped
+    environment:
+      # Keycloak 配置
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me-in-production}
+      
+      # PostgreSQL 資料庫
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-change-me-in-production}
+      
+      # HTTP 配置
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_PROXY: edge
+      
+      # 啟用 Proxy
+      KC_PROXY_ADDRESS_FORWARDING: "true"
+    volumes:
+      - keycloak_data:/data
+      - ./certs:/certs
+    ports:
+      - "8080:8080"
+    networks:
+      - titan-internal
+    depends_on:
+      - keycloak-db
+    command: start --optimized
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: titan-keycloak-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-change-me-in-production}
+    volumes:
+      - keycloak-db-data:/var/lib/postgresql/data
+    networks:
+      - titan-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  titan-internal:
+    name: titan-internal
+    external: true
+
+volumes:
+  keycloak_data:
+  keycloak-db-data:

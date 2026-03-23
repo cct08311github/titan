@@ -1,0 +1,65 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "CPU 使用率",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "refId": "A"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false, "fields": ""}, "orientation": "auto", "textMode": "auto", "colorMode": "value"},
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 85}]}}}
+    },
+    {
+      "type": "stat",
+      "title": "RAM 使用率",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [{"expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100", "refId": "A"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false, "fields": ""}, "orientation": "auto", "textMode": "auto", "colorMode": "value"},
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 85}]}}}
+    },
+    {
+      "type": "stat",
+      "title": "磁碟使用率",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{"expr": "max((1 - (node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"})) * 100)", "refId": "A"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false, "fields": ""}, "orientation": "auto", "textMode": "auto", "colorMode": "value"},
+      "fieldConfig": {"defaults": {"unit": "percent", "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 70}, {"color": "red", "value": 80}]}}}
+    },
+    {
+      "type": "stat",
+      "title": "監控目標存活數",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "targets": [{"expr": "sum(up)", "refId": "A"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"], "values": false, "fields": ""}, "orientation": "auto", "textMode": "auto", "colorMode": "value"}
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU 使用率趨勢",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{"expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "legendFormat": "CPU", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent"}}
+    },
+    {
+      "type": "timeseries",
+      "title": "記憶體使用率趨勢",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{"expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100", "legendFormat": "RAM", "refId": "A"}],
+      "fieldConfig": {"defaults": {"unit": "percent"}}
+    }
+  ],
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["titan", "monitoring"],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"},
+  "timezone": "browser",
+  "title": "TITAN 監控總覽",
+  "version": 1,
+  "weekStart": ""
+}
