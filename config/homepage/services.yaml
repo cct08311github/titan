@@ -58,3 +58,22 @@
         description: 快取與任務佇列（Redis 7）
         server: titan-docker
         container: titan-redis
+
+# ── 工時管理 ───────────────────────────────────────────────
+- 工時管理:
+    - Kimai:
+        icon: kimai.png
+        href: "{{HOMEPAGE_VAR_KIMAI_URL}}"
+        description: 工時追蹤與工時報表系統
+        server: titan-docker
+        container: titan-kimai
+        widget:
+          type: customapi
+          url: "{{HOMEPAGE_VAR_KIMAI_URL}}/api/version"
+          method: GET
+          headers:
+            Authorization: "Bearer {{HOMEPAGE_VAR_KIMAI_API_TOKEN}}"
+          mappings:
+            - field: version
+              label: 版本
+              format: text
