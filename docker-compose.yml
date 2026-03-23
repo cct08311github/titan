@@ -1,96 +1,55 @@
+# TITAN Docker Compose — DRAFT
+# ⚠️ 此配置為初始草稿，需在 T07/T09 任務中驗證和修正
+# Plane 官方部署方式需參考 https://docs.plane.so/self-hosting
+# 正式版將在 Phase C 開發時產出
+
 version: '3.8'
 
 services:
-  # 統一入口 Dashboard
-  homepage:
-    image: gethomepage/homepage:latest
-    container_name: it-portal
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./homepage:/app/config
-    restart: unless-stopped
-
-  # 任務管理
-  plane:
-    image: plane/plane-backend:latest
-    container_name: plane
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:password@db:5432/plane
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  # 知識庫
-  outline:
-    image: outline/outline:latest
-    container_name: outline
-    ports:
-      - "3001:3000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:password@db2:5432/outline
-      - SECRET_KEY=your-secret-key-change-me
-    depends_on:
-      - db2
-    restart: unless-stopped
-
-  # Git 伺服器
-  gitea:
-    image: gitea/gitea:latest
-    container_name: gitea
-    ports:
-      - "3002:3000"
-    volumes:
-      - ./gitea-data:/data
-    environment:
-      - USER_UID=1000
-      - USER_GID=1000
-    restart: unless-stopped
-
-  # 即時溝通
-  mattermost:
-    image: mattermost/mattermost-team-edition:latest
-    container_name: mattermost
-    ports:
-      - "3003:8065"
-    volumes:
-      - ./mattermost-data:/var/lib/mattermost
-    environment:
-      - MM_SERVICESETTINGS_SITEURL=http://server-ip:3003
-    restart: unless-stopped
-
-  # PostgreSQL (Plane 用)
-  db:
+  # ── 資料層 ──
+  postgres:
     image: postgres:15-alpine
-    container_name: plane-db
+    container_name: titan-postgres
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     environment:
-      - POSTGRES_PASSWORD=plane_password_change_me
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: titan
+    ports:
+      - "5432:5432"
     restart: unless-stopped
 
-  # PostgreSQL (Outline 用)
-  db2:
-    image: postgres:15-alpine
-    container_name: outline-db
-    volumes:
-      - ./postgres-outline:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=outline_password_change_me
-    restart: unless-stopped
-
-  # Redis
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: titan-redis
     volumes:
-      - ./redis-data:/data
+      - redis-data:/data
+    ports:
+      - "6379:6379"
     restart: unless-stopped
+
+  # ── 應用層（Phase C 時啟用）──
+  # homepage:
+  #   image: gethomepage/homepage:v0.9
+  #   container_name: titan-homepage
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./config/homepage:/app/config
+  #   restart: unless-stopped
+
+  # outline:
+  #   image: outlinewiki/outline:0.80
+  #   container_name: titan-outline
+  #   depends_on:
+  #     - postgres
+  #     - redis
+  #   restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
 
 networks:
   default:
-    name: it-internal-network
+    name: titan-network
