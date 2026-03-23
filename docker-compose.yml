@@ -174,18 +174,31 @@ services:
       retries: 3
       start_period: 30s
 
-  # ── 專案管理：Plane（佔位符）────────────────────────────
-  # ⚠️  Plane 需要多容器架構（前端、後端、Worker、Beat、Proxy）
-  # ⚠️  實際部署設定請參閱任務 T12
-  # ⚠️  以下為佔位符，T12 完成前請勿啟用
+  # ── 專案管理：Plane ──────────────────────────────────────
+  # ⚠️  Plane 採用獨立 docker-compose 部署，請參閱下列文件：
+  #     - 部署指南：docs/plane-setup.md
+  #     - 環境變數：config/plane/.env.example
+  #     - 快速啟動：config/plane/README.md
   #
-  # plane-frontend:
-  #   image: makeplane/plane-frontend:stable
-  #   ...（待 T12 實作）
+  # Plane 架構包含以下容器（透過獨立 compose 管理）：
+  #   plane-proxy   — Nginx 反向代理（對外入口，:8082）
+  #   plane-web     — Next.js 前端（makeplane/plane-frontend）
+  #   plane-api     — Django REST API（makeplane/plane-backend）
+  #   plane-worker  — Celery 非同步 Worker（makeplane/plane-backend）
+  #   plane-beat    — Celery Beat 排程（makeplane/plane-backend）
+  #   plane-migrator— 資料庫 Migration（初始化時執行）
   #
-  # plane-backend:
-  #   image: makeplane/plane-backend:stable
-  #   ...（待 T12 實作）
+  # 整合 TITAN 基礎設施：
+  #   - 資料庫：使用 titan-postgres（需建立 plane_db）
+  #   - 快取：使用 titan-redis（DB 1，避免與 Outline 的 DB 0 衝突）
+  #   - 物件儲存：使用 titan-minio（bucket: plane-uploads）
+  #   - 網路：加入 titan-network（external: true）
+  #
+  # 啟動方式：
+  #   docker compose -f /opt/titan/plane-docker-compose.yml \
+  #     --env-file config/plane/.env up -d
+  #
+  # 存取入口：http://<SERVER_IP>:${PLANE_PORT:-8082}
 
 # ═══════════════════════════════════════════════════════════
 # 具名 Volume（持久化資料）
