@@ -1,0 +1,349 @@
+{
+  "_comment": "Keycloak Realm 設定範本 — TITAN 平台 Phase 2 SSO 整合",
+  "_version": "1.0",
+  "_updated": "2026-03-23",
+  "_note": "請在匯入前替換所有 <PLACEHOLDER> 值，勿將此檔案含敏感資料提交至 Git",
+
+  "realm": "titan",
+  "displayName": "TITAN 銀行 IT 平台",
+  "displayNameHtml": "<strong>TITAN</strong> 銀行 IT 平台",
+  "enabled": true,
+  "sslRequired": "all",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and passwordHistory(5) and forceExpiredPasswordChange(90)",
+
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 28800,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "offlineSessionIdleTimeout": 2592000,
+
+  "roles": {
+    "realm": [
+      {
+        "name": "titan-admin",
+        "description": "TITAN 平台管理員 — 全部服務完整權限",
+        "composite": false
+      },
+      {
+        "name": "titan-manager",
+        "description": "TITAN 專案/文件管理者 — 可建立管理 Collection 與 Project",
+        "composite": false
+      },
+      {
+        "name": "titan-engineer",
+        "description": "TITAN 工程師 — 一般讀寫作業",
+        "composite": false
+      },
+      {
+        "name": "titan-readonly",
+        "description": "TITAN 唯讀觀察者 — 僅可瀏覽",
+        "composite": false
+      }
+    ]
+  },
+
+  "groups": [
+    {
+      "name": "IT-TITAN-Admin",
+      "realmRoles": ["titan-admin"]
+    },
+    {
+      "name": "IT-TITAN-Manager",
+      "realmRoles": ["titan-manager"]
+    },
+    {
+      "name": "IT-Developers",
+      "realmRoles": ["titan-engineer"]
+    },
+    {
+      "name": "IT-All",
+      "realmRoles": ["titan-readonly"]
+    }
+  ],
+
+  "clients": [
+    {
+      "clientId": "outline",
+      "name": "Outline 知識庫",
+      "description": "TITAN 知識庫服務（Outline）",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "<OUTLINE_OIDC_CLIENT_SECRET>",
+      "redirectUris": [
+        "https://<OUTLINE_DOMAIN>/auth/oidc.callback"
+      ],
+      "webOrigins": [
+        "https://<OUTLINE_DOMAIN>"
+      ],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "https://<OUTLINE_DOMAIN>"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "plane",
+      "name": "Plane 專案管理",
+      "description": "TITAN 專案管理服務（Plane）",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "<PLANE_OIDC_CLIENT_SECRET>",
+      "redirectUris": [
+        "https://<PLANE_DOMAIN>/auth/oidc/callback/"
+      ],
+      "webOrigins": [
+        "https://<PLANE_DOMAIN>"
+      ],
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "https://<PLANE_DOMAIN>"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "full name",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-full-name-mapper",
+          "config": {
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+
+  "components": {
+    "org.keycloak.storage.UserStorageProvider": [
+      {
+        "name": "bank-ad",
+        "providerId": "ldap",
+        "config": {
+          "enabled": ["true"],
+          "priority": ["0"],
+          "editMode": ["READ_ONLY"],
+          "syncRegistrations": ["false"],
+          "vendor": ["ad"],
+          "usernameLDAPAttribute": ["sAMAccountName"],
+          "rdnLDAPAttribute": ["cn"],
+          "uuidLDAPAttribute": ["objectGUID"],
+          "userObjectClasses": ["person", "organizationalPerson", "user"],
+          "connectionUrl": ["ldaps://<AD_HOST>:636"],
+          "usersDn": ["OU=Users,DC=bank,DC=com"],
+          "authType": ["simple"],
+          "bindDn": ["CN=keycloak-svc,OU=ServiceAccounts,DC=bank,DC=com"],
+          "bindCredential": ["<AD_SERVICE_ACCOUNT_PASSWORD>"],
+          "searchScope": ["2"],
+          "useTruststoreSpi": ["ldapsOnly"],
+          "connectionPooling": ["true"],
+          "pagination": ["true"],
+          "fullSyncPeriod": ["86400"],
+          "changedSyncPeriod": ["3600"],
+          "importEnabled": ["true"],
+          "batchSizeForSync": ["1000"]
+        },
+        "mappers": [
+          {
+            "name": "username",
+            "providerId": "user-attribute-ldap-mapper",
+            "config": {
+              "ldap.attribute": ["sAMAccountName"],
+              "user.model.attribute": ["username"],
+              "always.read.value.from.ldap": ["false"],
+              "is.mandatory.in.ldap": ["true"]
+            }
+          },
+          {
+            "name": "email",
+            "providerId": "user-attribute-ldap-mapper",
+            "config": {
+              "ldap.attribute": ["mail"],
+              "user.model.attribute": ["email"],
+              "always.read.value.from.ldap": ["false"],
+              "is.mandatory.in.ldap": ["false"]
+            }
+          },
+          {
+            "name": "first name",
+            "providerId": "user-attribute-ldap-mapper",
+            "config": {
+              "ldap.attribute": ["givenName"],
+              "user.model.attribute": ["firstName"],
+              "always.read.value.from.ldap": ["true"],
+              "is.mandatory.in.ldap": ["false"]
+            }
+          },
+          {
+            "name": "last name",
+            "providerId": "user-attribute-ldap-mapper",
+            "config": {
+              "ldap.attribute": ["sn"],
+              "user.model.attribute": ["lastName"],
+              "always.read.value.from.ldap": ["true"],
+              "is.mandatory.in.ldap": ["false"]
+            }
+          },
+          {
+            "name": "groups",
+            "providerId": "group-ldap-mapper",
+            "config": {
+              "mode": ["READ_ONLY"],
+              "membership.attribute.type": ["DN"],
+              "user.roles.retrieve.strategy": ["LOAD_GROUPS_BY_MEMBER_ATTRIBUTE"],
+              "group.name.ldap.attribute": ["cn"],
+              "membership.ldap.attribute": ["member"],
+              "preserve.group.inheritance": ["true"],
+              "groups.dn": ["OU=Groups,DC=bank,DC=com"],
+              "mapped.group.attributes": [""],
+              "drop.non.existing.groups.during.sync": ["false"],
+              "group.object.classes": ["group"],
+              "groups.path": ["/"]
+            }
+          }
+        ]
+      }
+    ]
+  },
+
+  "eventsEnabled": true,
+  "eventsExpiration": 7776000,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "LOGOUT_ERROR",
+    "REGISTER",
+    "REGISTER_ERROR",
+    "UPDATE_PASSWORD",
+    "UPDATE_PASSWORD_ERROR",
+    "RESET_PASSWORD",
+    "RESET_PASSWORD_ERROR",
+    "CLIENT_LOGIN",
+    "CLIENT_LOGIN_ERROR",
+    "CODE_TO_TOKEN",
+    "CODE_TO_TOKEN_ERROR",
+    "REFRESH_TOKEN",
+    "REFRESH_TOKEN_ERROR",
+    "TOKEN_EXCHANGE",
+    "INTROSPECT_TOKEN",
+    "FEDERATED_IDENTITY_LINK",
+    "REMOVE_FEDERATED_IDENTITY"
+  ],
+
+  "smtpServer": {
+    "_comment": "Phase 1 需要 SMTP 以發送邀請信，請填入銀行內部 SMTP relay 資訊",
+    "host": "<SMTP_HOST>",
+    "port": "587",
+    "from": "titan-noreply@bank.com",
+    "fromDisplayName": "TITAN 平台",
+    "starttls": "true",
+    "auth": "true",
+    "user": "<SMTP_USER>",
+    "password": "<SMTP_PASSWORD>"
+  },
+
+  "loginTheme": "keycloak",
+  "accountTheme": "keycloak",
+  "adminTheme": "keycloak",
+  "emailTheme": "keycloak",
+
+  "internationalizationEnabled": true,
+  "supportedLocales": ["zh-TW", "en"],
+  "defaultLocale": "zh-TW"
+}

@@ -1,0 +1,233 @@
+# TITAN 平台 RBAC 角色定義
+# 文件版本：v1.0
+# 更新日期：2026-03-23
+# 說明：定義 TITAN 平台（Outline + Plane）的角色與權限矩陣
+#       Phase 1 由管理員手動指派；Phase 2 由 Keycloak 群組對映自動指派
+
+---
+roles:
+
+  # ─────────────────────────────────────────────────────
+  # admin：平台管理員（全部權限）
+  # 適用：TITAN 維運人員，建議不超過 2 人
+  # ─────────────────────────────────────────────────────
+  - name: admin
+    display_name: 平台管理員
+    description: 擁有 TITAN 所有服務的完整管理權限，包括系統設定、帳號管理及稽核日誌查閱。
+    ad_group: IT-TITAN-Admin         # Phase 2：對應 AD 群組
+    keycloak_role: titan-admin        # Phase 2：Keycloak Realm Role
+
+    permissions:
+      outline:
+        collections:
+          - create
+          - read
+          - update
+          - delete
+          - manage_permissions
+        documents:
+          - create
+          - read
+          - update
+          - delete
+          - publish
+          - archive
+          - export
+        members:
+          - invite
+          - remove
+          - change_role
+        settings:
+          - manage_workspace
+          - manage_integrations
+          - view_audit_log
+
+      plane:
+        projects:
+          - create
+          - read
+          - update
+          - delete
+          - archive
+        issues:
+          - create
+          - read
+          - update
+          - delete
+          - assign
+          - change_status
+        cycles:
+          - create
+          - read
+          - update
+          - delete
+        modules:
+          - create
+          - read
+          - update
+          - delete
+        members:
+          - invite
+          - remove
+          - change_role
+        settings:
+          - manage_workspace
+          - manage_integrations
+          - view_activity_log
+
+  # ─────────────────────────────────────────────────────
+  # manager：專案/文件管理者
+  # 適用：部門主管、Tech Lead、Scrum Master
+  # ─────────────────────────────────────────────────────
+  - name: manager
+    display_name: 專案管理者
+    description: 可建立與管理 Collection / Project，負責任務指派與進度追蹤。無法變更系統層級設定。
+    ad_group: IT-TITAN-Manager
+    keycloak_role: titan-manager
+
+    permissions:
+      outline:
+        collections:
+          - create
+          - read
+          - update
+          - delete               # 僅自己建立的 Collection
+        documents:
+          - create
+          - read
+          - update
+          - delete               # 僅自己建立的文件
+          - publish
+          - export
+        members:
+          # manager 無法管理 workspace 層級成員，僅能邀請至自己的 Collection
+        settings: []             # 無系統設定權限
+
+      plane:
+        projects:
+          - create
+          - read
+          - update
+          - archive
+        issues:
+          - create
+          - read
+          - update
+          - delete               # 僅自己建立的 Issue
+          - assign
+          - change_status
+        cycles:
+          - create
+          - read
+          - update
+          - delete
+        modules:
+          - create
+          - read
+          - update
+          - delete
+        members:
+          - invite               # 僅 Project 層級
+          - remove               # 僅 Project 層級
+        settings: []             # 無 workspace 設定權限
+
+  # ─────────────────────────────────────────────────────
+  # engineer：工程師（一般成員）
+  # 適用：開發工程師、SA、DBA、測試人員
+  # ─────────────────────────────────────────────────────
+  - name: engineer
+    display_name: 工程師
+    description: 可在既有 Collection/Project 中建立與編輯文件/Issue，為日常作業主要角色。
+    ad_group: IT-Developers
+    keycloak_role: titan-engineer
+
+    permissions:
+      outline:
+        collections:
+          - read
+        documents:
+          - create
+          - read
+          - update
+          - delete               # 僅自己建立的文件
+          - export
+        members: []
+        settings: []
+
+      plane:
+        projects:
+          - read
+        issues:
+          - create
+          - read
+          - update
+          - delete               # 僅自己建立的 Issue
+          - change_status        # 僅自己負責的 Issue
+        cycles:
+          - read
+        modules:
+          - read
+        members: []
+        settings: []
+
+  # ─────────────────────────────────────────────────────
+  # readonly：唯讀觀察者
+  # 適用：稽核人員、資安稽核、其他部門觀察者
+  # ─────────────────────────────────────────────────────
+  - name: readonly
+    display_name: 唯讀觀察者
+    description: 僅可瀏覽 TITAN 各服務內容，不可建立、修改或刪除任何資料。
+    ad_group: IT-All
+    keycloak_role: titan-readonly
+
+    permissions:
+      outline:
+        collections:
+          - read
+        documents:
+          - read
+          - export
+        members: []
+        settings: []
+
+      plane:
+        projects:
+          - read
+        issues:
+          - read
+        cycles:
+          - read
+        modules:
+          - read
+        members: []
+        settings: []
+
+# ─────────────────────────────────────────────────────
+# 角色對映摘要（供快速參考）
+# ─────────────────────────────────────────────────────
+role_mapping:
+  # Phase 1：本地帳號指派（手動）
+  phase1:
+    outline_roles:
+      admin:    admin
+      manager:  member        # Outline 沒有 manager 角色，用 member + Collection owner 實現
+      engineer: member
+      readonly: viewer
+    plane_roles:
+      admin:    owner
+      manager:  admin         # Plane Project-level admin
+      engineer: member
+      readonly: viewer
+
+  # Phase 2：Keycloak 群組對映（自動）
+  phase2:
+    keycloak_to_outline:
+      titan-admin:    admin
+      titan-manager:  member
+      titan-engineer: member
+      titan-readonly: viewer
+    keycloak_to_plane:
+      titan-admin:    owner
+      titan-manager:  admin
+      titan-engineer: member
+      titan-readonly: viewer
