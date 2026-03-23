@@ -1,9 +1,14 @@
 # TITAN 容器平台 — 生產就緒版本
+# 任務: T06 — OS 基線與 Harden 設定
 # 任務: T07 — Container Platform Setup / T09 — 資料庫與儲存規劃
 # 所有映像版本均固定，適用於隔離網路（air-gapped）部署
 # 若需更新版本，請同步更新 .env.example 中的備註
 
 version: '3.8'
+
+# ═══════════════════════════════════════════════════════════
+# 安全強化：預設不使用 root 使用者執行容器
+# ═══════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════
 # 服務定義
@@ -17,6 +22,8 @@ services:
     image: postgres:16-alpine
     container_name: titan-postgres
     restart: unless-stopped
+    # 安全強化：使用最小權限的 postgres 使用者
+    user: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-titan}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
@@ -24,10 +31,20 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init:/docker-entrypoint-initdb.d:ro
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    # 安全強化：移除外部端口，僅允許內部網路訪問
+    # ports:
+    #   - "${POSTGRES_PORT:-5432}:5432"
     networks:
-      - titan-network
+      - titan-internal
+    # 安全強化：Resource limits（銀行業資安要求）
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-titan} -d ${POSTGRES_DB:-titan}"]
       interval: 10s
@@ -41,13 +58,25 @@ services:
     image: redis:7-alpine
     container_name: titan-redis
     restart: unless-stopped
-    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command: redis-server --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    # 安全強化：使用 redis 使用者執行
+    user: redis
     volumes:
       - redis-data:/data
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
+    # 安全強化：移除外部端口，僅允許內部網路訪問
+    # ports:
+    #   - "${REDIS_PORT:-6379}:6379"
     networks:
-      - titan-network
+      - titan-internal
+    # 安全強化：Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -63,16 +92,28 @@ services:
     container_name: titan-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
+    # 安全強化：使用 minio 使用者執行
+    user: minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
     volumes:
       - minio-data:/data
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"       # S3 API 端點
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"   # Web 管理介面
+    # 安全強化：移除外部端口，僅允許內部網路訪問（外部存取透過 Nginx Proxy）
+    # ports:
+    #   - "${MINIO_API_PORT:-9000}:9000"
+    #   - "${MINIO_CONSOLE_PORT:-9001}:9001"
     networks:
-      - titan-network
+      - titan-internal
+    # 安全強化：Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 30s
@@ -86,6 +127,8 @@ services:
     image: outlinewiki/outline:0.80.2
     container_name: titan-outline
     restart: unless-stopped
+    # 安全強化：使用 non-root 使用者執行
+    user: outline
     environment:
       # 應用程式設定
       SECRET_KEY: ${OUTLINE_SECRET_KEY:?OUTLINE_SECRET_KEY is required}
@@ -129,10 +172,11 @@ services:
       FORCE_HTTPS: "false"
     volumes:
       - outline-data:/var/lib/outline/data
-    ports:
-      - "${OUTLINE_PORT:-3001}:3000"
+    # 安全強化：移除外部端口，僅允許內部網路訪問
+    # ports:
+    #   - "${OUTLINE_PORT:-3001}:3000"
     networks:
-      - titan-network
+      - titan-internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -140,6 +184,15 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # 安全強化：Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/_health || exit 1"]
       interval: 30s
@@ -160,13 +213,24 @@ services:
     volumes:
       - ./config/homepage:/app/config      # 服務設定檔
       - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker 狀態讀取（唯讀）
+    # 安全強化：保留外部端口供外部存取
     ports:
       - "${HOMEPAGE_PORT:-3000}:3000"
     networks:
-      - titan-network
+      - titan-internal
+      - titan-external
     depends_on:
       - outline
       - minio
+    # 安全強化：Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
       interval: 30s
@@ -214,9 +278,15 @@ volumes:
     name: titan-outline-data
 
 # ═══════════════════════════════════════════════════════════
-# 網路設定
+# 網路設定：強化隔離
 # ═══════════════════════════════════════════════════════════
 networks:
-  titan-network:
-    name: titan-network
+  # 內部網路：僅允許服務間通訊，不對外開放
+  titan-internal:
+    name: titan-internal
+    driver: bridge
+    internal: false  #允許 DNS 解析
+  # 外部網路：允許對外服務（Homepage）
+  titan-external:
+    name: titan-external
     driver: bridge
