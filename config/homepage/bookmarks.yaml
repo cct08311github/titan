@@ -1,0 +1,44 @@
+# TITAN Homepage — 書籤設定
+# 任務: T11 — Homepage Basic Deployment
+# 文件: https://gethomepage.dev/latest/configs/bookmarks/
+# 收錄常用內部連結與外部參考資源，方便團隊快速存取
+
+---
+# ── 內部資源 ───────────────────────────────────────────────
+# TITAN 平台各服務的直接連結
+- 內部資源:
+    - Outline 知識庫:
+        - abbr: OL
+          href: "{{HOMEPAGE_VAR_OUTLINE_URL}}"
+    - MinIO 物件儲存:
+        - abbr: MN
+          href: "{{HOMEPAGE_VAR_MINIO_CONSOLE_URL}}"
+    - Portainer（容器管理）:
+        - abbr: PT
+          href: "http://localhost:9000"
+
+# ── 開發參考 ───────────────────────────────────────────────
+# 常用技術文件與工具，支援日常開發工作
+- 開發參考:
+    - Homepage 官方文件:
+        - abbr: HP
+          href: https://gethomepage.dev/latest/
+    - Docker Hub:
+        - abbr: DH
+          href: https://hub.docker.com
+    - PostgreSQL 文件:
+        - abbr: PG
+          href: https://www.postgresql.org/docs/15/
+    - Redis 文件:
+        - abbr: RD
+          href: https://redis.io/docs/
+
+# ── TITAN 專案 ─────────────────────────────────────────────
+# 專案追蹤與協作相關連結
+- TITAN 專案:
+    - GitHub Repository:
+        - abbr: GH
+          href: https://github.com/cct08311github/titan
+    - GitHub Issues:
+        - abbr: IS
+          href: https://github.com/cct08311github/titan/issues

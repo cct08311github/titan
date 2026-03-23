@@ -1,0 +1,29 @@
+# TITAN Homepage — 全域設定
+# 任務: T11 — Homepage Basic Deployment
+# 文件: https://gethomepage.dev/latest/configs/settings/
+# 修改後需重啟 Homepage 容器才能生效
+
+---
+# 入口網站標題
+title: "TITAN — 團隊整合作業平台"
+
+# 深色主題，配合銀行 IT 團隊正式環境風格
+theme: dark
+
+# Slate 色系：低飽和度藍灰，適合長時間使用
+color: slate
+
+# 介面語言：繁體中文
+language: zh-TW
+
+# 頁面 Header 設定
+headerStyle: clean
+
+# 服務狀態顯示方式（dot = 小圓點）
+statusStyle: dot
+
+# 啟用記憶體與 CPU 使用率顯示
+useEqualHeights: true
+
+# 日誌層級（info / debug / warn / error）
+logLevel: info

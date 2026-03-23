@@ -1,0 +1,36 @@
+# TITAN Homepage — 頁面 Widget 設定
+# 任務: T11 — Homepage Basic Deployment
+# 文件: https://gethomepage.dev/latest/configs/widgets/
+# Widget 顯示於頁面頂部，提供快速資訊與搜尋功能
+
+---
+# ── 搜尋 Widget ────────────────────────────────────────────
+# 提供全域搜尋功能，預設使用 DuckDuckGo（隱私優先）
+- search:
+    provider: duckduckgo
+    target: _blank
+    focus: false
+    showSearchSuggestions: true
+
+# ── 日期時間 Widget ────────────────────────────────────────
+# 顯示台北時區的即時日期與時間
+- datetime:
+    text_size: xl
+    format:
+      # 顯示格式：西元年 / 月 / 日（星期幾）HH:MM
+      dateStyle: short
+      timeStyle: short
+      hourCycle: h23
+    locale: zh-TW
+    timezone: Asia/Taipei
+
+# ── 系統資源 Widget ────────────────────────────────────────
+# 顯示主機 CPU / 記憶體使用率（需 Homepage 有權限讀取 /proc）
+- resources:
+    cpu: true
+    memory: true
+    disk:
+      - /
+    cacheInterval: 10
+    expanded: false
+    label: 主機資源
