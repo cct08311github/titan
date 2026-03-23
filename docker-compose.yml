@@ -1,5 +1,5 @@
 # TITAN 容器平台 — 生產就緒版本
-# 任務: T07 — Container Platform Setup
+# 任務: T07 — Container Platform Setup / T09 — 資料庫與儲存規劃
 # 所有映像版本均固定，適用於隔離網路（air-gapped）部署
 # 若需更新版本，請同步更新 .env.example 中的備註
 
@@ -10,10 +10,11 @@ version: '3.8'
 # ═══════════════════════════════════════════════════════════
 services:
 
-  # ── 資料層：PostgreSQL 15 ────────────────────────────────
+  # ── 資料層：PostgreSQL 16 ────────────────────────────────
   # 共用資料庫，供 Outline 及未來服務使用
+  # 版本固定：postgres:16-alpine（隔離網路相容）
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16-alpine
     container_name: titan-postgres
     restart: unless-stopped
     environment:
@@ -22,6 +23,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-titan}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init:/docker-entrypoint-initdb.d:ro
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     networks:
