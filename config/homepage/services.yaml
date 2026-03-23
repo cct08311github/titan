@@ -1,0 +1,62 @@
+# TITAN Homepage — 服務清單設定
+# 任務: T07 — Container Platform Setup
+# 文件: https://gethomepage.dev/latest/configs/services/
+# 修改後需重啟 Homepage 容器才能生效
+
+---
+# ── 知識管理 ───────────────────────────────────────────────
+- 知識管理:
+    - Outline:
+        icon: outline.png
+        href: "{{HOMEPAGE_VAR_OUTLINE_URL}}"
+        description: 團隊知識庫與文件協作
+        server: titan-docker
+        container: titan-outline
+        widget:
+          type: customapi
+          url: "{{HOMEPAGE_VAR_OUTLINE_URL}}/_health"
+          method: GET
+          mappings:
+            - field: status
+              label: 狀態
+              format: text
+
+# ── 開發工具 ───────────────────────────────────────────────
+- 開發工具:
+    - MinIO Console:
+        icon: minio.png
+        href: "{{HOMEPAGE_VAR_MINIO_CONSOLE_URL}}"
+        description: S3 相容物件儲存管理介面
+        server: titan-docker
+        container: titan-minio
+        widget:
+          type: minio
+          url: "{{HOMEPAGE_VAR_MINIO_CONSOLE_URL}}"
+          username: "{{HOMEPAGE_VAR_MINIO_ROOT_USER}}"
+          password: "{{HOMEPAGE_VAR_MINIO_ROOT_PASSWORD}}"
+
+# ── 基礎設施 ───────────────────────────────────────────────
+- 基礎設施:
+    - PostgreSQL:
+        icon: postgresql.png
+        href: "#"
+        description: 共用關聯式資料庫（PostgreSQL 15）
+        server: titan-docker
+        container: titan-postgres
+
+    - Redis:
+        icon: redis.png
+        href: "#"
+        description: 快取與任務佇列（Redis 7）
+        server: titan-docker
+        container: titan-redis
+
+# ── 專案管理（待啟用）──────────────────────────────────────
+# ⚠️  Plane 將於 T12 任務完成後啟用
+# - 專案管理:
+#     - Plane:
+#         icon: plane.png
+#         href: "{{HOMEPAGE_VAR_PLANE_URL}}"
+#         description: 敏捷專案管理平台（T12 實作）
+#         server: titan-docker
+#         container: titan-plane-frontend

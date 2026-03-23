@@ -1,0 +1,11 @@
+# 環境變數（含敏感資訊，絕對不可提交）
+.env
+.env.local
+.env.*.local
+
+# macOS 系統檔案
+.DS_Store
+
+# Homepage 自動產生的快取檔案
+config/homepage/logs/
+config/homepage/cache/
