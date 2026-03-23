@@ -1,0 +1,38 @@
+# TITAN Nginx 反向代理服務
+# 任務: T08 - Nginx 反向代理與 TLS
+
+version: '3.8'
+
+services:
+  # ═══════════════════════════════════════════════════════════
+  # Nginx 反向代理（含 TLS）
+  # ═══════════════════════════════════════════════════════════
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: titan-nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - titan-network
+    depends_on:
+      - homepage
+      - outline
+      - minio
+    healthcheck:
+      test: ["CMD", "wget -qO- http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# ═══════════════════════════════════════════════════════════
+# 網路配置（加入現有 titan-network）
+# ═══════════════════════════════════════════════════════════
+networks:
+  titan-network:
+    external: true
