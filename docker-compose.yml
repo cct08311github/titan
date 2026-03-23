@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  # 統一入口 Dashboard
+  homepage:
+    image: gethomepage/homepage:latest
+    container_name: it-portal
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./homepage:/app/config
+    restart: unless-stopped
+
+  # 任務管理
+  plane:
+    image: plane/plane-backend:latest
+    container_name: plane
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/plane
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  # 知識庫
+  outline:
+    image: outline/outline:latest
+    container_name: outline
+    ports:
+      - "3001:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db2:5432/outline
+      - SECRET_KEY=your-secret-key-change-me
+    depends_on:
+      - db2
+    restart: unless-stopped
+
+  # Git 伺服器
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    ports:
+      - "3002:3000"
+    volumes:
+      - ./gitea-data:/data
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: unless-stopped
+
+  # 即時溝通
+  mattermost:
+    image: mattermost/mattermost-team-edition:latest
+    container_name: mattermost
+    ports:
+      - "3003:8065"
+    volumes:
+      - ./mattermost-data:/var/lib/mattermost
+    environment:
+      - MM_SERVICESETTINGS_SITEURL=http://server-ip:3003
+    restart: unless-stopped
+
+  # PostgreSQL (Plane 用)
+  db:
+    image: postgres:15-alpine
+    container_name: plane-db
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=plane_password_change_me
+    restart: unless-stopped
+
+  # PostgreSQL (Outline 用)
+  db2:
+    image: postgres:15-alpine
+    container_name: outline-db
+    volumes:
+      - ./postgres-outline:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=outline_password_change_me
+    restart: unless-stopped
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    volumes:
+      - ./redis-data:/data
+    restart: unless-stopped
+
+networks:
+  default:
+    name: it-internal-network
