@@ -1,7 +1,6 @@
-# TITAN Docker Compose — DRAFT
-# ⚠️ 此配置為初始草稿，需在 T07/T09 任務中驗證和修正
-# Plane 官方部署方式需參考 https://docs.plane.so/self-hosting
-# 正式版將在 Phase C 開發時產出
+# TITAN Docker Compose — 生產級配置
+# T07: 容器平台建置
+# 包含 PostgreSQL + Redis + 基礎網路設定
 
 version: '3.8'
 
@@ -18,6 +17,11 @@ services:
     ports:
       - "5432:5432"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
@@ -27,24 +31,19 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # ── 應用層（Phase C 時啟用）──
-  # homepage:
-  #   image: gethomepage/homepage:v0.9
-  #   container_name: titan-homepage
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./config/homepage:/app/config
-  #   restart: unless-stopped
-
-  # outline:
-  #   image: outlinewiki/outline:0.80
-  #   container_name: titan-outline
-  #   depends_on:
-  #     - postgres
-  #     - redis
-  #   restart: unless-stopped
+  # ── 私有 Registry 匯入策略說明 ──
+  # 若需使用私有 Docker Registry（如 Harbor）：
+  # 1. 設定 DOCKER_CONFIG 環境變數
+  # 2. 在執行 docker-compose 前先登入：
+  #    echo "$HARBOR_PASSWORD" | docker login harbor.titan.internal --username="$HARBOR_USER" --password-stdin
+  # 3. 或使用 docker-compose.override.yml 覆寫 image 路徑
 
 volumes:
   postgres-data:
@@ -53,3 +52,4 @@ volumes:
 networks:
   default:
     name: titan-network
+    driver: bridge
