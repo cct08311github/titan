@@ -1,0 +1,10 @@
+# TITAN Homepage — Docker 整合設定
+# 任務: T07 — Container Platform Setup
+# 文件: https://gethomepage.dev/latest/widgets/services/docker/
+# 透過 Docker socket 讀取容器狀態（唯讀掛載）
+
+---
+# 本機 Docker 主機設定
+# docker.sock 以唯讀方式掛載至 Homepage 容器
+titan-docker:
+  socket: /var/run/docker.sock
