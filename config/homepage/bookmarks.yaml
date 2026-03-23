@@ -7,12 +7,12 @@
 # ── TITAN 服務 ───────────────────────────────────────────────
 - TITAN 服務:
     - Outline 知識庫:
-        href: "http://localhost:3001"
+        href: "{{HOMEPAGE_VAR_OUTLINE_URL}}"
         icon: outline.png
         description: 團隊知識庫與文件協作平台
 
     - MinIO Console:
-        href: "http://localhost:9001"
+        href: "{{HOMEPAGE_VAR_MINIO_CONSOLE_URL}}"
         icon: minio.png
         description: S3 相容物件儲存管理介面
 
@@ -20,6 +20,11 @@
         href: "http://localhost:3000"
         icon: homepage.png
         description: TITAN 統一儀表板
+
+    - Portainer:
+        href: "http://localhost:9000"
+        icon: portainer.png
+        description: 容器管理介面
 
 # ── 常用工具 ───────────────────────────────────────────────
 - 常用工具:
@@ -33,6 +38,11 @@
         icon: homepage.png
         description: Homepage 官方文檔
 
+    - Docker Hub:
+        href: "https://hub.docker.com"
+        icon: docker.png
+        description: Docker 映像仓库
+
 # ── 開發資源 ───────────────────────────────────────────────
 - 開發資源:
     - GitHub:
@@ -40,7 +50,24 @@
         icon: github.png
         description: GitHub 程式碼托管
 
-    - Docker Hub:
-        href: "https://hub.docker.com"
-        icon: docker.png
-        description: Docker 映像仓库
+    - PostgreSQL Docs:
+        href: "https://www.postgresql.org/docs/15/"
+        icon: postgresql.png
+        description: PostgreSQL 官方文檔
+
+    - Redis Docs:
+        href: "https://redis.io/docs/"
+        icon: redis.png
+        description: Redis 官方文檔
+
+# ── TITAN 專案 ─────────────────────────────────────────────
+- TITAN 專案:
+    - GitHub Repository:
+        href: "https://github.com/cct08311github/titan"
+        icon: github.png
+        description: TITAN 專案程式碼
+
+    - GitHub Issues:
+        href: "https://github.com/cct08311github/titan/issues"
+        icon: github.png
+        description: TITAN 工作項目追蹤

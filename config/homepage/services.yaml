@@ -1,9 +1,17 @@
 # TITAN Homepage — 服務清單設定
-# 任務: T07 — Container Platform Setup
+# 任務: T11 — Homepage Basic Deployment
 # 文件: https://gethomepage.dev/latest/configs/services/
 # 修改後需重啟 Homepage 容器才能生效
 
 ---
+# ── 專案管理 ───────────────────────────────────────────────
+# ⚠️  Plane 將於 T12 任務完成後啟用，目前為佔位設定
+- 專案管理:
+    - Plane:
+        icon: plane.png
+        href: "#"
+        description: 敏捷專案管理平台（T12 實作中，敬請期待）
+
 # ── 知識管理 ───────────────────────────────────────────────
 - 知識管理:
     - Outline:
@@ -50,13 +58,3 @@
         description: 快取與任務佇列（Redis 7）
         server: titan-docker
         container: titan-redis
-
-# ── 專案管理（待啟用）──────────────────────────────────────
-# ⚠️  Plane 將於 T12 任務完成後啟用
-# - 專案管理:
-#     - Plane:
-#         icon: plane.png
-#         href: "{{HOMEPAGE_VAR_PLANE_URL}}"
-#         description: 敏捷專案管理平台（T12 實作）
-#         server: titan-docker
-#         container: titan-plane-frontend
