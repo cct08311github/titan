@@ -1,0 +1,537 @@
+# TITAN 稽核政策設定
+# 版本：1.0 | 更新：2026-03-23
+# 說明：定義稽核事件類型、保留期限及告警觸發條件
+
+---
+version: "1.0"
+description: "TITAN 銀行 IT 平台稽核政策"
+effective_date: "2026-03-23"
+review_cycle: "quarterly"
+
+# =============================================================================
+# 稽核事件類型
+# =============================================================================
+audit_events:
+
+  # ---------------------------------------------------------------------------
+  # 身份驗證事件
+  # ---------------------------------------------------------------------------
+  authentication:
+    enabled: true
+    events:
+      - name: "AUTH_LOGIN_SUCCESS"
+        description: "使用者成功登入"
+        severity: "INFO"
+        capture: true
+        fields:
+          - user_id
+          - source_ip
+          - user_agent
+          - auth_method
+          - session_id
+
+      - name: "AUTH_LOGIN_FAILURE"
+        description: "使用者登入失敗"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - user_id
+          - source_ip
+          - user_agent
+          - failure_reason
+          - attempt_count
+
+      - name: "AUTH_LOGOUT"
+        description: "使用者登出（主動或 session 逾時）"
+        severity: "INFO"
+        capture: true
+        fields:
+          - user_id
+          - session_id
+          - logout_type
+
+      - name: "AUTH_MFA_SUCCESS"
+        description: "多因素驗證成功"
+        severity: "INFO"
+        capture: true
+        fields:
+          - user_id
+          - mfa_method
+          - source_ip
+
+      - name: "AUTH_MFA_FAILURE"
+        description: "多因素驗證失敗"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - user_id
+          - mfa_method
+          - source_ip
+          - failure_reason
+
+      - name: "AUTH_PASSWORD_CHANGE"
+        description: "使用者密碼變更"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - user_id
+          - changed_by
+          - source_ip
+
+      - name: "AUTH_TOKEN_ISSUED"
+        description: "API Token 發行"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - user_id
+          - token_name
+          - expiry_date
+          - scopes
+
+      - name: "AUTH_TOKEN_REVOKED"
+        description: "API Token 撤銷"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - user_id
+          - token_name
+          - revoked_by
+
+  # ---------------------------------------------------------------------------
+  # 資料存取事件
+  # ---------------------------------------------------------------------------
+  data_access:
+    enabled: true
+    events:
+      - name: "DATA_READ_SENSITIVE"
+        description: "敏感資料讀取"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - user_id
+          - resource_type
+          - resource_id
+          - service
+
+      - name: "DATA_CREATE"
+        description: "資料建立"
+        severity: "LOW"
+        capture: true
+        fields:
+          - user_id
+          - resource_type
+          - resource_id
+          - service
+
+      - name: "DATA_UPDATE"
+        description: "資料修改"
+        severity: "LOW"
+        capture: true
+        fields:
+          - user_id
+          - resource_type
+          - resource_id
+          - service
+          - change_summary
+
+      - name: "DATA_DELETE"
+        description: "資料刪除"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - user_id
+          - resource_type
+          - resource_id
+          - service
+          - deleted_at
+
+      - name: "DATA_EXPORT"
+        description: "資料匯出"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - user_id
+          - resource_type
+          - resource_count
+          - export_format
+          - destination
+
+      - name: "STORAGE_ACCESS"
+        description: "物件儲存（MinIO）存取"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - user_id
+          - bucket_name
+          - object_key
+          - operation
+          - source_ip
+
+  # ---------------------------------------------------------------------------
+  # 設定變更事件
+  # ---------------------------------------------------------------------------
+  configuration_changes:
+    enabled: true
+    events:
+      - name: "CONFIG_SYSTEM_CHANGE"
+        description: "系統設定變更"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - changed_by
+          - component
+          - config_key
+          - old_value_hash
+          - new_value_hash
+          - change_ticket
+
+      - name: "CONFIG_RBAC_CHANGE"
+        description: "RBAC 角色或權限變更"
+        severity: "CRITICAL"
+        capture: true
+        fields:
+          - changed_by
+          - target_user
+          - old_role
+          - new_role
+          - approver
+
+      - name: "CONFIG_NETWORK_CHANGE"
+        description: "網路設定變更（防火牆、nginx）"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - changed_by
+          - component
+          - change_description
+          - change_ticket
+
+      - name: "CONFIG_CERT_UPDATE"
+        description: "TLS 憑證更新"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - changed_by
+          - domain
+          - old_expiry
+          - new_expiry
+          - issuer
+
+      - name: "CONFIG_ENV_CHANGE"
+        description: "環境變數設定變更"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - changed_by
+          - env_key_name
+          - service
+          - change_ticket
+        note: "僅記錄鍵名，不記錄值"
+
+  # ---------------------------------------------------------------------------
+  # 管理員操作事件
+  # ---------------------------------------------------------------------------
+  admin_operations:
+    enabled: true
+    events:
+      - name: "ADMIN_ACCOUNT_CREATE"
+        description: "使用者帳號建立"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - created_by
+          - target_user
+          - assigned_role
+          - department
+
+      - name: "ADMIN_ACCOUNT_DISABLE"
+        description: "使用者帳號停用"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - disabled_by
+          - target_user
+          - reason
+          - effective_at
+
+      - name: "ADMIN_ACCOUNT_DELETE"
+        description: "使用者帳號刪除"
+        severity: "HIGH"
+        capture: true
+        fields:
+          - deleted_by
+          - target_user
+          - reason
+          - data_retention_decision
+
+      - name: "ADMIN_PRIVILEGE_ESCALATION"
+        description: "權限提升操作"
+        severity: "CRITICAL"
+        capture: true
+        fields:
+          - granted_by
+          - target_user
+          - privilege_type
+          - duration
+          - approver
+          - justification
+
+      - name: "ADMIN_BREAK_GLASS"
+        description: "緊急存取帳號啟用"
+        severity: "CRITICAL"
+        capture: true
+        fields:
+          - activated_by
+          - incident_ticket
+          - accessed_resources
+          - activation_time
+          - deactivation_time
+
+      - name: "ADMIN_MAINTENANCE_START"
+        description: "系統維護視窗開始"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - initiated_by
+          - maintenance_ticket
+          - affected_services
+          - expected_duration
+
+      - name: "ADMIN_MAINTENANCE_END"
+        description: "系統維護視窗結束"
+        severity: "MEDIUM"
+        capture: true
+        fields:
+          - completed_by
+          - maintenance_ticket
+          - actual_duration
+          - changes_summary
+
+# =============================================================================
+# 保留期限政策
+# =============================================================================
+retention_policy:
+
+  default:
+    online_days: 90
+    cold_storage_days: 2555  # 7 年
+
+  by_event_category:
+    authentication:
+      online_days: 90
+      cold_storage_days: 2555  # 7 年（金管會規範）
+      compliance_basis: "金管會資安規範 / 個資法"
+
+    data_access:
+      online_days: 90
+      cold_storage_days: 2555  # 7 年
+      compliance_basis: "個資法"
+
+    configuration_changes:
+      online_days: 180
+      cold_storage_days: -1   # -1 表示永久保留
+      compliance_basis: "內部稽核需求"
+
+    admin_operations:
+      online_days: 180
+      cold_storage_days: -1   # 永久保留
+      compliance_basis: "金管會規範 / 內部稽核"
+
+    system_events:
+      online_days: 30
+      cold_storage_days: 365
+      compliance_basis: "運維需求"
+
+  storage:
+    primary_location: "/var/log/titan/audit"
+    cold_storage_location: "s3://titan-audit-archive"
+    encryption: "AES-256"
+    integrity_check: "SHA-256"
+    immutable: true
+    access_control: "admin_only"
+
+# =============================================================================
+# 告警觸發條件
+# =============================================================================
+alert_rules:
+
+  # 失敗登入暴力破解偵測
+  - name: "BRUTE_FORCE_DETECTION"
+    description: "單一 IP 連續登入失敗告警"
+    event_type: "AUTH_LOGIN_FAILURE"
+    condition:
+      threshold: 5
+      window_minutes: 10
+      group_by: "source_ip"
+    severity: "HIGH"
+    action:
+      - notify_channel: "security-alerts"
+      - auto_block_ip: false   # 需人工確認後手動封鎖
+      - create_incident: true
+
+  # 帳號連續失敗（可能帳號攻擊）
+  - name: "ACCOUNT_LOCKOUT_RISK"
+    description: "單一帳號連續登入失敗"
+    event_type: "AUTH_LOGIN_FAILURE"
+    condition:
+      threshold: 3
+      window_minutes: 5
+      group_by: "user_id"
+    severity: "MEDIUM"
+    action:
+      - notify_channel: "security-alerts"
+      - notify_user: true
+
+  # 權限提升告警
+  - name: "PRIVILEGE_ESCALATION_ALERT"
+    description: "偵測到權限提升操作"
+    event_type: "ADMIN_PRIVILEGE_ESCALATION"
+    condition:
+      any: true   # 任何一筆即觸發
+    severity: "CRITICAL"
+    action:
+      - notify_channel: "security-critical"
+      - notify_manager: true
+      - require_acknowledgment: true
+
+  # RBAC 變更告警
+  - name: "RBAC_CHANGE_ALERT"
+    description: "偵測到角色或權限變更"
+    event_type: "CONFIG_RBAC_CHANGE"
+    condition:
+      any: true
+    severity: "HIGH"
+    action:
+      - notify_channel: "security-alerts"
+      - notify_manager: true
+
+  # 緊急存取告警
+  - name: "BREAK_GLASS_ALERT"
+    description: "緊急帳號被啟用"
+    event_type: "ADMIN_BREAK_GLASS"
+    condition:
+      any: true
+    severity: "CRITICAL"
+    action:
+      - notify_channel: "security-critical"
+      - notify_all_admins: true
+      - require_acknowledgment: true
+
+  # 大量資料匯出告警
+  - name: "BULK_DATA_EXPORT_ALERT"
+    description: "大量資料匯出行為偵測"
+    event_type: "DATA_EXPORT"
+    condition:
+      threshold: 100
+      window_minutes: 60
+      group_by: "user_id"
+      field: "resource_count"
+    severity: "HIGH"
+    action:
+      - notify_channel: "security-alerts"
+      - notify_manager: true
+
+  # 非工作時間存取告警
+  - name: "OFF_HOURS_ADMIN_ACCESS"
+    description: "非工作時間的管理員操作"
+    event_types:
+      - "ADMIN_ACCOUNT_CREATE"
+      - "ADMIN_ACCOUNT_DELETE"
+      - "CONFIG_RBAC_CHANGE"
+      - "CONFIG_SYSTEM_CHANGE"
+    condition:
+      time_outside:
+        timezone: "Asia/Taipei"
+        work_hours_start: "08:00"
+        work_hours_end: "20:00"
+        weekdays_only: false
+    severity: "MEDIUM"
+    action:
+      - notify_channel: "security-alerts"
+
+  # 憑證即將到期告警
+  - name: "CERTIFICATE_EXPIRY_WARNING"
+    description: "TLS 憑證即將到期"
+    condition:
+      certificate_days_remaining_lte: 30
+    severity: "HIGH"
+    action:
+      - notify_channel: "ops-alerts"
+      - notify_engineer: true
+
+  # 憑證緊急到期告警
+  - name: "CERTIFICATE_EXPIRY_CRITICAL"
+    description: "TLS 憑證即將到期（緊急）"
+    condition:
+      certificate_days_remaining_lte: 7
+    severity: "CRITICAL"
+    action:
+      - notify_channel: "security-critical"
+      - notify_all_admins: true
+
+  # 備份失敗告警
+  - name: "BACKUP_FAILURE_ALERT"
+    description: "備份作業失敗"
+    condition:
+      backup_not_completed_within_hours: 25
+    severity: "HIGH"
+    action:
+      - notify_channel: "ops-alerts"
+      - notify_engineer: true
+
+# =============================================================================
+# 通知頻道設定
+# =============================================================================
+notification_channels:
+
+  - name: "security-critical"
+    description: "CRITICAL 等級安全事件"
+    channels:
+      - type: "slack"
+        webhook_env: "SLACK_SECURITY_CRITICAL_WEBHOOK"
+      - type: "email"
+        recipients_env: "SECURITY_CRITICAL_EMAILS"
+      - type: "pagerduty"
+        integration_env: "PAGERDUTY_SECURITY_KEY"
+
+  - name: "security-alerts"
+    description: "HIGH 等級安全告警"
+    channels:
+      - type: "slack"
+        webhook_env: "SLACK_SECURITY_ALERTS_WEBHOOK"
+      - type: "email"
+        recipients_env: "SECURITY_ALERTS_EMAILS"
+
+  - name: "ops-alerts"
+    description: "運維告警（備份、憑證等）"
+    channels:
+      - type: "slack"
+        webhook_env: "SLACK_OPS_ALERTS_WEBHOOK"
+      - type: "email"
+        recipients_env: "OPS_ALERTS_EMAILS"
+
+# =============================================================================
+# 合規報告排程
+# =============================================================================
+compliance_reports:
+
+  daily_summary:
+    enabled: true
+    schedule: "0 7 * * *"  # 每日 07:00 Asia/Taipei
+    timezone: "Asia/Taipei"
+    report_type: "daily_audit_summary"
+    recipients_env: "DAILY_REPORT_EMAILS"
+
+  weekly_review:
+    enabled: true
+    schedule: "0 8 * * 1"  # 每週一 08:00
+    timezone: "Asia/Taipei"
+    report_type: "weekly_security_review"
+    recipients_env: "WEEKLY_REPORT_EMAILS"
+
+  monthly_compliance:
+    enabled: true
+    schedule: "0 9 28 * *"  # 每月 28 日 09:00
+    timezone: "Asia/Taipei"
+    report_type: "monthly_compliance_report"
+    recipients_env: "MONTHLY_REPORT_EMAILS"
