@@ -1,0 +1,300 @@
+/*
+ * TITAN Homepage 深色主題自訂樣式
+ * Task: T14 — Homepage 視覺與導覽設定
+ * 適用版本: Homepage v0.9.x+
+ *
+ * 使用方式：
+ *   在 config/homepage/settings.yaml 中加入：
+ *     customCSS: /config/custom.css
+ *   並將此檔案掛載至 Homepage 容器的 /config/custom.css
+ */
+
+/* ========================================================
+   1. 全域基底顏色 — 深色主題（符合銀行 IT 低光環境）
+   ======================================================== */
+
+:root {
+  --titan-bg-primary:     #0f1117;   /* 主背景 */
+  --titan-bg-secondary:   #1a1d27;   /* 卡片背景 */
+  --titan-bg-hover:       #252836;   /* 懸停背景 */
+  --titan-border:         #2e3347;   /* 邊框 */
+  --titan-accent:         #4a6cf7;   /* 主要強調色（藍） */
+  --titan-accent-hover:   #6b8afb;   /* 強調色懸停 */
+  --titan-success:        #22c55e;   /* 服務正常（綠） */
+  --titan-warning:        #f59e0b;   /* 服務降級（黃） */
+  --titan-danger:         #ef4444;   /* 服務異常（紅） */
+  --titan-text-primary:   #e2e8f0;   /* 主要文字 */
+  --titan-text-secondary: #94a3b8;   /* 次要文字 */
+  --titan-text-muted:     #64748b;   /* 弱化文字 */
+}
+
+/* ========================================================
+   2. 主背景與整體佈局
+   ======================================================== */
+
+body,
+#page-wrapper {
+  background-color: var(--titan-bg-primary) !important;
+  color: var(--titan-text-primary) !important;
+  font-family: 'Inter', 'Noto Sans TC', system-ui, sans-serif;
+}
+
+/* 頁面最大寬度限制（適合 16:9 大螢幕） */
+#page-wrapper > div {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* ========================================================
+   3. 標題列（Header）
+   ======================================================== */
+
+header,
+#header {
+  background: linear-gradient(135deg, #0f1117 0%, #1a1d27 100%) !important;
+  border-bottom: 1px solid var(--titan-border) !important;
+  padding: 1rem 2rem !important;
+}
+
+/* 站台名稱標題 */
+header h1,
+#site-title {
+  font-size: 1.5rem !important;
+  font-weight: 700 !important;
+  color: var(--titan-accent) !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+}
+
+/* 副標題 / 描述 */
+header p,
+#site-description {
+  color: var(--titan-text-secondary) !important;
+  font-size: 0.85rem !important;
+}
+
+/* ========================================================
+   4. 搜尋列
+   ======================================================== */
+
+#search-wrapper,
+.search-bar {
+  background-color: var(--titan-bg-secondary) !important;
+  border: 1px solid var(--titan-border) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.2s ease !important;
+}
+
+#search-wrapper:focus-within,
+.search-bar:focus-within {
+  border-color: var(--titan-accent) !important;
+  box-shadow: 0 0 0 3px rgba(74, 108, 247, 0.15) !important;
+}
+
+#search-wrapper input,
+.search-bar input {
+  color: var(--titan-text-primary) !important;
+  background: transparent !important;
+}
+
+/* ========================================================
+   5. 分組標題（Service Groups）
+   ======================================================== */
+
+.service-group h2,
+.group-header {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: var(--titan-text-muted) !important;
+  border-bottom: 1px solid var(--titan-border) !important;
+  padding-bottom: 0.5rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+/* ========================================================
+   6. 服務卡片（Service Cards）
+   ======================================================== */
+
+.service-card,
+.service {
+  background-color: var(--titan-bg-secondary) !important;
+  border: 1px solid var(--titan-border) !important;
+  border-radius: 10px !important;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease !important;
+  overflow: hidden !important;
+}
+
+.service-card:hover,
+.service:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+  border-color: var(--titan-accent) !important;
+  background-color: var(--titan-bg-hover) !important;
+}
+
+/* 服務名稱 */
+.service-card .service-name,
+.service span.name {
+  color: var(--titan-text-primary) !important;
+  font-weight: 500 !important;
+  font-size: 0.95rem !important;
+}
+
+/* 服務描述 */
+.service-card .service-description,
+.service span.description {
+  color: var(--titan-text-secondary) !important;
+  font-size: 0.8rem !important;
+}
+
+/* ========================================================
+   7. 服務狀態指示燈
+   ======================================================== */
+
+/* 正常 */
+.status-ok,
+.status-good,
+[class*="status"][class*="ok"] {
+  color: var(--titan-success) !important;
+}
+
+/* 降級 / 回應慢 */
+.status-warning,
+[class*="status"][class*="warn"] {
+  color: var(--titan-warning) !important;
+}
+
+/* 錯誤 / 離線 */
+.status-error,
+.status-bad,
+[class*="status"][class*="err"] {
+  color: var(--titan-danger) !important;
+}
+
+/* 狀態圓點動態閃爍（僅用於離線狀態提醒） */
+.status-error::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--titan-danger);
+  margin-right: 6px;
+  animation: pulse-danger 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-danger {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+/* ========================================================
+   8. 資訊小工具（Widgets）
+   ======================================================== */
+
+.widget,
+.info-widget {
+  background-color: var(--titan-bg-secondary) !important;
+  border: 1px solid var(--titan-border) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  color: var(--titan-text-primary) !important;
+}
+
+.widget-label,
+.widget .label {
+  color: var(--titan-text-muted) !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+
+.widget-value,
+.widget .value {
+  color: var(--titan-accent) !important;
+  font-weight: 600 !important;
+  font-size: 1.1rem !important;
+}
+
+/* ========================================================
+   9. 書籤（Bookmarks）
+   ======================================================== */
+
+.bookmark-group h2 {
+  color: var(--titan-text-muted) !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+.bookmark-item,
+.bookmark a {
+  color: var(--titan-text-secondary) !important;
+  text-decoration: none !important;
+  transition: color 0.15s ease !important;
+}
+
+.bookmark-item:hover,
+.bookmark a:hover {
+  color: var(--titan-accent-hover) !important;
+}
+
+/* ========================================================
+   10. 捲軸樣式（Scrollbar）
+   ======================================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--titan-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--titan-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--titan-text-muted);
+}
+
+/* ========================================================
+   11. 響應式調整（小螢幕）
+   ======================================================== */
+
+@media (max-width: 768px) {
+  header h1,
+  #site-title {
+    font-size: 1.1rem !important;
+  }
+
+  .service-card,
+  .service {
+    border-radius: 6px !important;
+  }
+}
+
+/* ========================================================
+   12. 列印模式（隱藏裝飾性元素）
+   ======================================================== */
+
+@media print {
+  :root {
+    --titan-bg-primary:   #ffffff;
+    --titan-bg-secondary: #f8fafc;
+    --titan-text-primary: #0f172a;
+    --titan-accent:       #1e40af;
+  }
+
+  .status-error::before {
+    animation: none;
+  }
+}

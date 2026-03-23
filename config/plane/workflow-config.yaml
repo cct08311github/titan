@@ -1,0 +1,299 @@
+# TITAN Plane 工作流程設定檔
+# Task: T15 — Plane 工作流程建置
+# 適用版本: Plane v0.23.x+
+# 最後更新: 2026-03-23
+#
+# 使用方式:
+#   本檔案為 Plane Workspace 的建議設定，請依照
+#   docs/plane-workflow.md 中「第 8 節：設定步驟」
+#   透過 Plane 管理介面手動套用各項設定。
+
+---
+
+workspace:
+  name: TITAN
+  description: 銀行資訊部 IT 管理平台
+  invite_only: true
+  external_sharing: false
+  anonymous_access: false
+  sso:
+    enabled: true
+    provider: keycloak
+    client_id: "plane"
+    discovery_url: "http://keycloak.titan.internal/realms/titan/.well-known/openid-configuration"
+
+# ============================================================
+# 任務狀態（States）
+# 順序: Backlog → Todo → In Progress → Review → Done
+# 附加: On Hold（可中斷）、Cancelled（終止）
+# ============================================================
+
+states:
+  - name: Backlog
+    color: "#64748b"
+    type: backlog
+    default: true
+    sequence: 1
+    description: 已記錄但尚未排入 Sprint，等待 Grooming
+
+  - name: Todo
+    color: "#3b82f6"
+    type: unstarted
+    default: false
+    sequence: 2
+    description: 已排入 Sprint，待執行者認領
+
+  - name: In Progress
+    color: "#f59e0b"
+    type: started
+    default: false
+    sequence: 3
+    description: 執行者正在進行中
+
+  - name: Review
+    color: "#8b5cf6"
+    type: started
+    default: false
+    sequence: 4
+    description: 開發完成，待 Code Review 或測試驗收
+
+  - name: Done
+    color: "#22c55e"
+    type: completed
+    default: false
+    sequence: 5
+    description: 符合 Definition of Done，完全完成
+
+  - name: On Hold
+    color: "#94a3b8"
+    type: unstarted
+    default: false
+    sequence: 6
+    description: 暫停（等待外部相依或資源）
+
+  - name: Cancelled
+    color: "#ef4444"
+    type: cancelled
+    default: false
+    sequence: 7
+    description: 取消執行，需填寫取消原因
+
+# ============================================================
+# 標籤（Labels）
+# 分類: type / priority / component / sprint
+# ============================================================
+
+labels:
+
+  # --- 類型標籤 ---
+  - name: "type:feature"
+    color: "#4a6cf7"
+    description: 新功能開發
+
+  - name: "type:bug"
+    color: "#ef4444"
+    description: 錯誤修復
+
+  - name: "type:chore"
+    color: "#94a3b8"
+    description: 維護、重構、非功能性工作
+
+  - name: "type:docs"
+    color: "#22c55e"
+    description: 文件撰寫或更新
+
+  - name: "type:security"
+    color: "#f59e0b"
+    description: 資安相關任務（高機密性）
+
+  - name: "type:infra"
+    color: "#8b5cf6"
+    description: 基礎設施變更（Docker、網路、DNS）
+
+  # --- 優先類標籤（補充 Plane 內建優先順序） ---
+  - name: "p0:critical"
+    color: "#dc2626"
+    description: 緊急事故，服務中斷，需立即處理
+
+  - name: "p1:high"
+    color: "#f97316"
+    description: 高優先，本 Sprint 內完成
+
+  - name: "p2:medium"
+    color: "#eab308"
+    description: 中優先，本季內完成
+
+  - name: "p3:low"
+    color: "#84cc16"
+    description: 低優先，可延後至下季
+
+  # --- 元件標籤 ---
+  - name: "comp:plane"
+    color: "#6366f1"
+    description: Plane 任務管理系統
+
+  - name: "comp:outline"
+    color: "#0ea5e9"
+    description: Outline 知識庫
+
+  - name: "comp:gitea"
+    color: "#84cc16"
+    description: Gitea 版本控制
+
+  - name: "comp:harbor"
+    color: "#22c55e"
+    description: Harbor 映像倉庫
+
+  - name: "comp:keycloak"
+    color: "#f59e0b"
+    description: Keycloak 身份驗證
+
+  - name: "comp:monitoring"
+    color: "#ef4444"
+    description: Grafana / Prometheus 監控告警
+
+  - name: "comp:db"
+    color: "#8b5cf6"
+    description: PostgreSQL / Redis 資料庫層
+
+  - name: "comp:infra"
+    color: "#94a3b8"
+    description: 基礎設施（網路、DNS、Docker）
+
+  # --- Sprint 標籤 ---
+  - name: "sprint:current"
+    color: "#4a6cf7"
+    description: 本期 Sprint 排入
+
+  - name: "sprint:next"
+    color: "#94a3b8"
+    description: 下期 Sprint 候選
+
+  - name: "blocked"
+    color: "#dc2626"
+    description: 被外部因素阻擋，需說明阻礙原因
+
+  - name: "needs-review"
+    color: "#8b5cf6"
+    description: 需要特定人員審查或決策
+
+# ============================================================
+# 優先順序（Priorities）— Plane 內建，定義 SLA
+# ============================================================
+
+priorities:
+  - name: Urgent
+    description: 4 小時內處理，適用於 P0 事故
+    color: "#dc2626"
+
+  - name: High
+    description: 1 個工作日內處理，本 Sprint 優先
+    color: "#f97316"
+
+  - name: Medium
+    description: 1 週內處理，正常 Sprint 排程
+    color: "#eab308"
+
+  - name: Low
+    description: 1 個月內處理，Backlog Grooming 評估
+    color: "#84cc16"
+
+  - name: None
+    description: 未定義優先順序，僅用於待評估 Backlog
+    color: "#94a3b8"
+
+# ============================================================
+# Issue 範本（Templates）
+# 對應 templates/plane/ 目錄下的 Markdown 檔案
+# ============================================================
+
+templates:
+  - name: 功能需求
+    file: templates/plane/feature-request.md
+    description: 新功能或改善需求的標準格式
+
+  - name: 錯誤回報
+    file: templates/plane/bug-report.md
+    description: 問題回報與重現步驟記錄
+
+  - name: 變更請求
+    file: templates/plane/change-request.md
+    description: IT 變更管理（Change Management）標準格式
+
+# ============================================================
+# 預設 Sprint（Cycle）設定
+# ============================================================
+
+cycle_defaults:
+  duration_weeks: 2
+  start_day: monday
+  auto_close_issues: false   # Done 狀態的 Issue 不自動歸檔，需 PM 手動確認
+
+# ============================================================
+# 模組（Modules）— 建議預建
+# ============================================================
+
+modules:
+  - name: 基礎架構建置
+    description: TITAN 平台基礎服務安裝與設定
+    status: in_progress
+
+  - name: 身份驗證整合
+    description: Keycloak LDAP / OIDC 整合作業
+    status: in_progress
+
+  - name: 監控告警
+    description: Grafana / Prometheus 監控系統設定
+    status: backlog
+
+  - name: 知識庫建置
+    description: Outline 空間與範本設計
+    status: in_progress
+
+  - name: 安全稽核
+    description: 資安稽核、滲透測試與漏洞修補
+    status: backlog
+
+# ============================================================
+# Webhook 設定（可選）
+# 整合 Grafana 告警時自動建立 P0 Issue
+# ============================================================
+
+webhooks:
+  - name: Grafana 告警自動建立 Issue
+    url: "http://plane.titan.internal/api/v1/webhooks/ingest/"
+    enabled: false   # 待 Grafana 整合完成後啟用
+    events:
+      - issue.created
+      - issue.state_changed
+    description: >
+      當 Grafana 觸發 Critical 告警時，自動在 Plane 建立
+      P0 Issue 並指派給 On-Call 工程師
+
+# ============================================================
+# 成員角色設定（初始建議）
+# ============================================================
+
+member_roles:
+  - role: Admin
+    description: IT 主管、DevOps 負責人
+    permissions:
+      - workspace_manage
+      - project_create
+      - project_delete
+      - member_manage
+
+  - role: Member
+    description: PM、開發工程師
+    permissions:
+      - issue_create
+      - issue_update
+      - issue_delete_own
+      - cycle_manage
+      - module_manage
+
+  - role: Viewer
+    description: 新加入成員預設角色
+    permissions:
+      - issue_read
+      - issue_comment
