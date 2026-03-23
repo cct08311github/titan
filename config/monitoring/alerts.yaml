@@ -1,0 +1,342 @@
+# =============================================================================
+# TITAN 監控告警規則設定
+# 任務：T18 — Logging and Monitoring Setup
+# 說明：定義告警規則、閾值與通知目標
+# =============================================================================
+
+---
+# ─── 全域設定 ───────────────────────────────────────────────────────────────
+global:
+  # 告警評估間隔（秒）
+  evaluation_interval: 300      # 5 分鐘
+  # 告警冷卻期（秒），同一告警在此期間內不重複通知
+  alert_cooldown: 900           # 15 分鐘
+  # 告警摘要發送時間（每日）
+  daily_summary_time: "09:00"
+  # 服務啟動緩衝期（秒），啟動後此期間內的告警自動抑制
+  startup_grace_period: 300     # 5 分鐘
+
+# ─── 通知目標 ──────────────────────────────────────────────────────────────
+notification_targets:
+  # Email 通知（需設定 SMTP 或 sendmail）
+  email:
+    enabled: false
+    recipients:
+      - "ops@example.com"
+      - "admin@example.com"
+    # 最低觸發等級（info / warning / critical）
+    min_severity: "warning"
+
+  # Slack Webhook 通知
+  slack:
+    enabled: false
+    webhook_url: "${SLACK_WEBHOOK_URL}"
+    channel: "#titan-alerts"
+    min_severity: "warning"
+
+  # Telegram Bot 通知
+  telegram:
+    enabled: false
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+    min_severity: "critical"
+
+  # 本機告警檔案（始終啟用）
+  local_file:
+    enabled: true
+    alert_dir: "/var/log/titan/alerts"
+    min_severity: "warning"
+
+# ─── 告警規則 ──────────────────────────────────────────────────────────────
+alert_rules:
+
+  # ── 系統資源告警 ──────────────────────────────────────────────────────────
+  - name: "high_cpu_warning"
+    display_name: "CPU 使用率偏高"
+    category: "system"
+    severity: "warning"
+    condition:
+      metric: "cpu_usage_percent"
+      operator: ">="
+      threshold: 75
+    # 持續時間門檻（秒）：指標持續超標才觸發
+    duration: 300
+    message: "CPU 使用率超過 75%，請確認是否有異常程序"
+    runbook: "docs/runbooks/high-cpu.md"
+
+  - name: "high_cpu_critical"
+    display_name: "CPU 使用率嚴重過高"
+    category: "system"
+    severity: "critical"
+    condition:
+      metric: "cpu_usage_percent"
+      operator: ">="
+      threshold: 90
+    duration: 300
+    message: "CPU 使用率超過 90%，系統可能已過載"
+    runbook: "docs/runbooks/high-cpu.md"
+
+  - name: "high_memory_warning"
+    display_name: "記憶體使用率偏高"
+    category: "system"
+    severity: "warning"
+    condition:
+      metric: "memory_usage_percent"
+      operator: ">="
+      threshold: 80
+    duration: 180
+    message: "記憶體使用率超過 80%"
+    runbook: "docs/runbooks/high-memory.md"
+
+  - name: "high_memory_critical"
+    display_name: "記憶體使用率嚴重過高"
+    category: "system"
+    severity: "critical"
+    condition:
+      metric: "memory_usage_percent"
+      operator: ">="
+      threshold: 95
+    duration: 60
+    message: "記憶體使用率超過 95%，可能發生 OOM"
+    runbook: "docs/runbooks/high-memory.md"
+
+  - name: "disk_warning"
+    display_name: "磁碟空間不足（警告）"
+    category: "system"
+    severity: "warning"
+    condition:
+      metric: "disk_usage_percent"
+      target: "/"
+      operator: ">="
+      threshold: 75
+    duration: 0
+    message: "根目錄磁碟使用率超過 75%"
+    runbook: "docs/runbooks/disk-full.md"
+
+  - name: "disk_critical"
+    display_name: "磁碟空間嚴重不足"
+    category: "system"
+    severity: "critical"
+    condition:
+      metric: "disk_usage_percent"
+      target: "/"
+      operator: ">="
+      threshold: 90
+    duration: 0
+    message: "根目錄磁碟使用率超過 90%，請立即清理空間"
+    runbook: "docs/runbooks/disk-full.md"
+
+  # ── 服務停機告警 ──────────────────────────────────────────────────────────
+  - name: "service_down_homepage"
+    display_name: "Homepage 服務中斷"
+    category: "http"
+    severity: "warning"
+    condition:
+      metric: "http_status_code"
+      target: "http://localhost:3000"
+      operator: "!="
+      threshold: 200
+    duration: 60
+    message: "Homepage 服務無回應或回傳非 200 狀態碼"
+    runbook: "docs/runbooks/service-down.md"
+
+  - name: "service_down_outline"
+    display_name: "Outline 知識庫服務中斷"
+    category: "http"
+    severity: "critical"
+    condition:
+      metric: "http_status_code"
+      target: "http://localhost:3001/_health"
+      operator: "!="
+      threshold: 200
+    duration: 60
+    message: "Outline 知識庫服務無回應，請立即檢查"
+    runbook: "docs/runbooks/service-down.md"
+
+  - name: "service_down_minio"
+    display_name: "MinIO 物件儲存服務中斷"
+    category: "http"
+    severity: "critical"
+    condition:
+      metric: "http_status_code"
+      target: "http://localhost:9000/minio/health/live"
+      operator: "!="
+      threshold: 200
+    duration: 60
+    message: "MinIO 物件儲存服務無回應，Outline 附件功能將受影響"
+    runbook: "docs/runbooks/service-down.md"
+
+  - name: "service_down_plane"
+    display_name: "Plane 專案管理服務中斷"
+    category: "http"
+    severity: "warning"
+    condition:
+      metric: "http_status_code"
+      target: "http://localhost:8082"
+      operator: "!="
+      threshold: 200
+    duration: 60
+    message: "Plane 專案管理服務無回應"
+    runbook: "docs/runbooks/service-down.md"
+
+  - name: "service_down_uptime_kuma"
+    display_name: "Uptime Kuma 監控服務中斷"
+    category: "http"
+    severity: "warning"
+    condition:
+      metric: "http_status_code"
+      target: "http://localhost:3002"
+      operator: "!="
+      threshold: 200
+    duration: 60
+    message: "Uptime Kuma 監控服務無回應（監控本身需要被監控）"
+    runbook: "docs/runbooks/service-down.md"
+
+  # ── Docker 容器告警 ───────────────────────────────────────────────────────
+  - name: "container_down_postgres"
+    display_name: "PostgreSQL 容器停止"
+    category: "container"
+    severity: "critical"
+    condition:
+      metric: "container_status"
+      target: "titan-postgres"
+      operator: "!="
+      threshold: "running"
+    duration: 0
+    message: "titan-postgres 容器已停止，所有依賴資料庫的服務將無法運作"
+    runbook: "docs/runbooks/container-down.md"
+
+  - name: "container_down_redis"
+    display_name: "Redis 容器停止"
+    category: "container"
+    severity: "critical"
+    condition:
+      metric: "container_status"
+      target: "titan-redis"
+      operator: "!="
+      threshold: "running"
+    duration: 0
+    message: "titan-redis 容器已停止，Outline 快取與任務佇列將失效"
+    runbook: "docs/runbooks/container-down.md"
+
+  - name: "container_unhealthy"
+    display_name: "容器健康檢查失敗"
+    category: "container"
+    severity: "warning"
+    condition:
+      metric: "container_health"
+      target: "*"
+      operator: "=="
+      threshold: "unhealthy"
+    duration: 120
+    message: "一個或多個容器的健康檢查失敗"
+    runbook: "docs/runbooks/container-unhealthy.md"
+
+  # ── PostgreSQL 資料庫告警 ─────────────────────────────────────────────────
+  - name: "postgres_high_connections_warning"
+    display_name: "PostgreSQL 連線數偏高"
+    category: "database"
+    severity: "warning"
+    condition:
+      metric: "postgres_connection_usage_percent"
+      operator: ">="
+      threshold: 70
+    duration: 300
+    message: "PostgreSQL 連線數使用率超過 70%"
+    runbook: "docs/runbooks/postgres-connections.md"
+
+  - name: "postgres_high_connections_critical"
+    display_name: "PostgreSQL 連線數嚴重過高"
+    category: "database"
+    severity: "critical"
+    condition:
+      metric: "postgres_connection_usage_percent"
+      operator: ">="
+      threshold: 90
+    duration: 60
+    message: "PostgreSQL 連線數使用率超過 90%，新連線可能被拒絕"
+    runbook: "docs/runbooks/postgres-connections.md"
+
+  - name: "postgres_slow_query"
+    display_name: "PostgreSQL 長時間查詢"
+    category: "database"
+    severity: "warning"
+    condition:
+      metric: "postgres_longest_query_seconds"
+      operator: ">="
+      threshold: 30
+    duration: 0
+    message: "偵測到執行超過 30 秒的查詢"
+    runbook: "docs/runbooks/postgres-slow-query.md"
+
+  # ── Redis 快取告警 ────────────────────────────────────────────────────────
+  - name: "redis_high_memory_warning"
+    display_name: "Redis 記憶體使用率偏高"
+    category: "cache"
+    severity: "warning"
+    condition:
+      metric: "redis_memory_usage_percent"
+      operator: ">="
+      threshold: 75
+    duration: 300
+    message: "Redis 記憶體使用率超過 75%，可能開始驅逐 key"
+    runbook: "docs/runbooks/redis-memory.md"
+
+  - name: "redis_high_memory_critical"
+    display_name: "Redis 記憶體嚴重不足"
+    category: "cache"
+    severity: "critical"
+    condition:
+      metric: "redis_memory_usage_percent"
+      operator: ">="
+      threshold: 90
+    duration: 60
+    message: "Redis 記憶體使用率超過 90%，正在積極驅逐 key"
+    runbook: "docs/runbooks/redis-memory.md"
+
+  - name: "redis_key_eviction"
+    display_name: "Redis 鍵值被驅逐"
+    category: "cache"
+    severity: "warning"
+    condition:
+      metric: "redis_evicted_keys_per_minute"
+      operator: ">"
+      threshold: 0
+    duration: 0
+    message: "偵測到 Redis 鍵值被驅逐，記憶體可能不足"
+    runbook: "docs/runbooks/redis-memory.md"
+
+# ─── 維護視窗設定 ─────────────────────────────────────────────────────────
+maintenance_windows:
+  # 每週日凌晨 2-4 點的計劃維護
+  - name: "weekly_maintenance"
+    schedule: "0 2 * * 0"     # Cron 格式
+    duration_minutes: 120
+    suppress_severities:
+      - "warning"
+      - "critical"
+    description: "每週定期系統維護"
+
+# ─── 告警分組設定 ─────────────────────────────────────────────────────────
+alert_grouping:
+  # 5 分鐘內的相同類別告警合併為一條通知
+  group_interval: 300
+  # 同一告警最多重複通知次數（0 = 不限制）
+  max_repeat: 5
+  # 重複通知間隔（秒）
+  repeat_interval: 3600         # 1 小時
+
+# ─── 健康評分標準 ─────────────────────────────────────────────────────────
+health_score:
+  # 各類別權重（總和應為 100）
+  weights:
+    system: 20
+    http: 30
+    container: 25
+    database: 15
+    cache: 10
+  # 評分門檻
+  thresholds:
+    healthy: 90       # ≥ 90 = 全部健康
+    degraded: 70      # 70-89 = 部分降級
+    critical: 0       # < 70 = 嚴重異常

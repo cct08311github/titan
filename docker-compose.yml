@@ -238,6 +238,27 @@ services:
       retries: 3
       start_period: 30s
 
+  # ── 監控儀表板：Uptime Kuma ──────────────────────────────
+  # 服務可用性監控與狀態頁面
+  # 版本固定：louislam/uptime-kuma:1.23.13
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23.13
+    container_name: titan-uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - uptime-kuma-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # 監控 Docker 容器狀態（唯讀）
+    ports:
+      - "${UPTIME_KUMA_PORT:-3002}:3001"
+    networks:
+      - titan-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/entry-page || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   # ── 專案管理：Plane ──────────────────────────────────────
   # ⚠️  Plane 採用獨立 docker-compose 部署，請參閱下列文件：
   #     - 部署指南：docs/plane-setup.md
@@ -276,6 +297,8 @@ volumes:
     name: titan-minio-data
   outline-data:
     name: titan-outline-data
+  uptime-kuma-data:
+    name: titan-uptime-kuma-data
 
 # ═══════════════════════════════════════════════════════════
 # 網路設定：強化隔離
