@@ -1,0 +1,37 @@
+# TITAN 自動備份排程
+# 任務：T19 — Backup and Restore Mechanism
+# ════════════════════════════════════════════════════════════════════════════
+# 安裝方式（以 root 或具備 docker 執行權限的使用者）：
+#
+#   sudo crontab -l | cat - /opt/titan/config/cron/backup-cron | sudo crontab -
+#
+# 或直接編輯：
+#   sudo crontab -e
+#
+# 確認已安裝：
+#   sudo crontab -l
+# ════════════════════════════════════════════════════════════════════════════
+#
+# 環境變數設定（cron 環境與 shell 不同，建議明確指定）
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+BACKUP_ROOT=/opt/titan/backups
+
+# ── 每日備份：凌晨 2:00 ─────────────────────────────────────────────────────
+# 格式：分 時 日 月 週  指令
+# 備份日誌同時寫入 backup.log（由腳本內部處理）
+0 2 * * * root /opt/titan/scripts/backup.sh >> /opt/titan/backups/backup.log 2>&1
+
+# ── 備份健康通知（選用）：每日 2:30 確認備份是否成功 ────────────────────────
+# 若上一次備份失敗（距今超過 25 小時無新備份），發送告警
+# 取消註解並填入實際告警指令（如 mail、curl Webhook 等）
+# 30 2 * * * root /opt/titan/scripts/backup-notify.sh 2>/dev/null
+
+# ════════════════════════════════════════════════════════════════════════════
+# 說明：
+#   - 每日凌晨 2:00 自動執行完整備份
+#   - 保留策略：每日 7 份 + 每週 4 份（由 backup.sh 自動清理）
+#   - 備份位置：/opt/titan/backups/daily/YYYYMMDD_HHMMSS/
+#   - 週備份：/opt/titan/backups/weekly/YYYY_WNN（每週日自動建立）
+#   - 日誌：/opt/titan/backups/backup.log
+# ════════════════════════════════════════════════════════════════════════════
