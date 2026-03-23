@@ -1,0 +1,46 @@
+# TITAN Homepage — 常用書籤設定
+# 任務: T11 — Homepage 基礎站台部署
+# 文件: https://gethomepage.dev/latest/configs/bookmarks/
+# 修改後需重啟 Homepage 容器才能生效
+
+---
+# ── TITAN 服務 ───────────────────────────────────────────────
+- TITAN 服務:
+    - Outline 知識庫:
+        href: "http://localhost:3001"
+        icon: outline.png
+        description: 團隊知識庫與文件協作平台
+
+    - MinIO Console:
+        href: "http://localhost:9001"
+        icon: minio.png
+        description: S3 相容物件儲存管理介面
+
+    - Homepage 儀表板:
+        href: "http://localhost:3000"
+        icon: homepage.png
+        description: TITAN 統一儀表板
+
+# ── 常用工具 ───────────────────────────────────────────────
+- 常用工具:
+    - Docker Docs:
+        href: "https://docs.docker.com/"
+        icon: docker.png
+        description: Docker 官方文檔
+
+    - Homepage Docs:
+        href: "https://gethomepage.dev/"
+        icon: homepage.png
+        description: Homepage 官方文檔
+
+# ── 開發資源 ───────────────────────────────────────────────
+- 開發資源:
+    - GitHub:
+        href: "https://github.com"
+        icon: github.png
+        description: GitHub 程式碼托管
+
+    - Docker Hub:
+        href: "https://hub.docker.com"
+        icon: docker.png
+        description: Docker 映像仓库
