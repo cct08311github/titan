@@ -1,44 +1,73 @@
-# TITAN Homepage — 書籤設定
-# 任務: T11 — Homepage Basic Deployment
+# TITAN Homepage — 常用書籤設定
+# 任務: T11 — Homepage 基礎站台部署
 # 文件: https://gethomepage.dev/latest/configs/bookmarks/
-# 收錄常用內部連結與外部參考資源，方便團隊快速存取
+# 修改後需重啟 Homepage 容器才能生效
 
 ---
-# ── 內部資源 ───────────────────────────────────────────────
-# TITAN 平台各服務的直接連結
-- 內部資源:
+# ── TITAN 服務 ───────────────────────────────────────────────
+- TITAN 服務:
     - Outline 知識庫:
-        - abbr: OL
-          href: "{{HOMEPAGE_VAR_OUTLINE_URL}}"
-    - MinIO 物件儲存:
-        - abbr: MN
-          href: "{{HOMEPAGE_VAR_MINIO_CONSOLE_URL}}"
-    - Portainer（容器管理）:
-        - abbr: PT
-          href: "http://localhost:9000"
+        href: "{{HOMEPAGE_VAR_OUTLINE_URL}}"
+        icon: outline.png
+        description: 團隊知識庫與文件協作平台
 
-# ── 開發參考 ───────────────────────────────────────────────
-# 常用技術文件與工具，支援日常開發工作
-- 開發參考:
-    - Homepage 官方文件:
-        - abbr: HP
-          href: https://gethomepage.dev/latest/
+    - MinIO Console:
+        href: "{{HOMEPAGE_VAR_MINIO_CONSOLE_URL}}"
+        icon: minio.png
+        description: S3 相容物件儲存管理介面
+
+    - Homepage 儀表板:
+        href: "http://localhost:3000"
+        icon: homepage.png
+        description: TITAN 統一儀表板
+
+    - Portainer:
+        href: "http://localhost:9000"
+        icon: portainer.png
+        description: 容器管理介面
+
+# ── 常用工具 ───────────────────────────────────────────────
+- 常用工具:
+    - Docker Docs:
+        href: "https://docs.docker.com/"
+        icon: docker.png
+        description: Docker 官方文檔
+
+    - Homepage Docs:
+        href: "https://gethomepage.dev/"
+        icon: homepage.png
+        description: Homepage 官方文檔
+
     - Docker Hub:
-        - abbr: DH
-          href: https://hub.docker.com
-    - PostgreSQL 文件:
-        - abbr: PG
-          href: https://www.postgresql.org/docs/15/
-    - Redis 文件:
-        - abbr: RD
-          href: https://redis.io/docs/
+        href: "https://hub.docker.com"
+        icon: docker.png
+        description: Docker 映像仓库
+
+# ── 開發資源 ───────────────────────────────────────────────
+- 開發資源:
+    - GitHub:
+        href: "https://github.com"
+        icon: github.png
+        description: GitHub 程式碼托管
+
+    - PostgreSQL Docs:
+        href: "https://www.postgresql.org/docs/15/"
+        icon: postgresql.png
+        description: PostgreSQL 官方文檔
+
+    - Redis Docs:
+        href: "https://redis.io/docs/"
+        icon: redis.png
+        description: Redis 官方文檔
 
 # ── TITAN 專案 ─────────────────────────────────────────────
-# 專案追蹤與協作相關連結
 - TITAN 專案:
     - GitHub Repository:
-        - abbr: GH
-          href: https://github.com/cct08311github/titan
+        href: "https://github.com/cct08311github/titan"
+        icon: github.png
+        description: TITAN 專案程式碼
+
     - GitHub Issues:
-        - abbr: IS
-          href: https://github.com/cct08311github/titan/issues
+        href: "https://github.com/cct08311github/titan/issues"
+        icon: github.png
+        description: TITAN 工作項目追蹤
