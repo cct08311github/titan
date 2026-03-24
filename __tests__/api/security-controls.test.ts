@@ -1,0 +1,295 @@
+/**
+ * @jest-environment node
+ *
+ * TDD tests for Issue #153 — Security controls wiring
+ *
+ * Covers:
+ *   1. withRateLimit   — rate limiter called per userId; skips /api/auth/*
+ *   2. withAuditLog    — AuditService.log called after successful mutations; skipped on GET / errors
+ *   3. withSessionTimeout — rejects idle sessions > 30 min; allows active sessions
+ *   4. withJwtBlacklist   — rejects blacklisted Bearer tokens and suspended user keys
+ *   5. suspendUser        — adds user:${id} to JwtBlacklist
+ */
+
+// ── Module mocks (must be declared before imports) ───────────────────────────
+
+const mockCheckRateLimit = jest.fn();
+const mockGetApiRateLimiter = jest.fn();
+jest.mock("@/lib/rate-limiter", () => ({
+  ...jest.requireActual("@/lib/rate-limiter"),
+  checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
+}));
+
+const mockAuditLog = jest.fn();
+jest.mock("@/services/audit-service", () => ({
+  AuditService: jest.fn().mockImplementation(() => ({
+    log: (...args: unknown[]) => mockAuditLog(...args),
+  })),
+}));
+
+jest.mock("@/lib/prisma", () => ({
+  prisma: {},
+}));
+
+const mockGetServerSession = jest.fn();
+jest.mock("next-auth", () => ({
+  getServerSession: (...args: unknown[]) => mockGetServerSession(...args),
+}));
+
+// ── Imports (after mocks) ────────────────────────────────────────────────────
+
+import { NextRequest, NextResponse } from "next/server";
+import {
+  withRateLimit,
+  withAuditLog,
+  withSessionTimeout,
+  withJwtBlacklist,
+  setApiRateLimiter,
+} from "@/lib/security-middleware";
+import { JwtBlacklist } from "@/lib/jwt-blacklist";
+import { UserService } from "@/services/user-service";
+import { createMockPrisma } from "@/lib/test-utils";
+import { RateLimitError } from "@/lib/rate-limiter";
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function makeReq(
+  method: string,
+  path: string,
+  extraHeaders: Record<string, string> = {}
+): NextRequest {
+  const url = `http://localhost${path}`;
+  return new NextRequest(url, {
+    method,
+    headers: { "content-type": "application/json", ...extraHeaders },
+  });
+}
+
+function okHandler(): ReturnType<typeof withRateLimit> {
+  return jest.fn().mockResolvedValue(
+    NextResponse.json({ ok: true }, { status: 200 })
+  ) as ReturnType<typeof withRateLimit>;
+}
+
+function createdHandler(): ReturnType<typeof withRateLimit> {
+  return jest.fn().mockResolvedValue(
+    NextResponse.json({ ok: true }, { status: 201 })
+  ) as ReturnType<typeof withRateLimit>;
+}
+
+function errorHandler(): ReturnType<typeof withRateLimit> {
+  return jest.fn().mockResolvedValue(
+    NextResponse.json({ ok: false }, { status: 500 })
+  ) as ReturnType<typeof withRateLimit>;
+}
+
+// ── Setup / Teardown ─────────────────────────────────────────────────────────
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  JwtBlacklist.clear();
+  setApiRateLimiter(null); // reset singleton between tests
+});
+
+// ── 1. withRateLimit ─────────────────────────────────────────────────────────
+
+describe("withRateLimit", () => {
+  test("calls checkRateLimit with userId extracted from session", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-42" } });
+
+    // Inject a mock limiter whose consume always succeeds
+    const fakeLimiter = { consume: jest.fn().mockResolvedValue(undefined) };
+    setApiRateLimiter(fakeLimiter as never);
+
+    // Spy on the real checkRateLimit via the mock
+    mockCheckRateLimit.mockResolvedValue(undefined);
+
+    const wrapped = withRateLimit(okHandler());
+    await wrapped(makeReq("GET", "/api/tasks"));
+
+    expect(mockCheckRateLimit).toHaveBeenCalledWith(
+      expect.anything(),
+      "user-42"
+    );
+  });
+
+  test("skips rate limit check for /api/auth/* paths", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-42" } });
+
+    const wrapped = withRateLimit(okHandler());
+    await wrapped(makeReq("POST", "/api/auth/signin"));
+
+    expect(mockCheckRateLimit).not.toHaveBeenCalled();
+  });
+
+  test("propagates RateLimitError (429) when limit exceeded", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-99" } });
+    mockCheckRateLimit.mockRejectedValue(new RateLimitError("too many requests", 60));
+
+    const wrapped = withRateLimit(okHandler());
+    await expect(wrapped(makeReq("GET", "/api/tasks"))).rejects.toThrow(RateLimitError);
+  });
+});
+
+// ── 2. withAuditLog ──────────────────────────────────────────────────────────
+
+describe("withAuditLog", () => {
+  test("logs POST mutations with correct action, resourceType, and userId", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+    mockAuditLog.mockResolvedValue({ id: "audit-1" });
+
+    const wrapped = withAuditLog(createdHandler());
+    const res = await wrapped(makeReq("POST", "/api/tasks"));
+
+    expect(res.status).toBe(201);
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-1",
+        action: "POST_TASKS",
+        resourceType: "tasks",
+      })
+    );
+  });
+
+  test("logs DELETE with resourceId extracted from URL path", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-2" } });
+    mockAuditLog.mockResolvedValue({ id: "audit-2" });
+
+    const wrapped = withAuditLog(okHandler());
+    await wrapped(makeReq("DELETE", "/api/tasks/task-abc"));
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "DELETE_TASKS",
+        resourceType: "tasks",
+        resourceId: "task-abc",
+        userId: "user-2",
+      })
+    );
+  });
+
+  test("does NOT log audit entry for GET requests", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+
+    const wrapped = withAuditLog(okHandler());
+    const res = await wrapped(makeReq("GET", "/api/tasks"));
+
+    expect(res.status).toBe(200);
+    expect(mockAuditLog).not.toHaveBeenCalled();
+  });
+
+  test("does NOT log audit entry when handler returns an error response", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-1" } });
+
+    const wrapped = withAuditLog(errorHandler());
+    await wrapped(makeReq("POST", "/api/tasks"));
+
+    expect(mockAuditLog).not.toHaveBeenCalled();
+  });
+});
+
+// ── 3. withSessionTimeout ────────────────────────────────────────────────────
+
+describe("withSessionTimeout", () => {
+  test("allows request when session last-activity is within 30 minutes", async () => {
+    const recentActivity = Date.now() - 5 * 60 * 1000; // 5 minutes ago
+
+    const wrapped = withSessionTimeout(okHandler());
+    const res = await wrapped(
+      makeReq("GET", "/api/tasks", {
+        "x-session-last-activity": String(recentActivity),
+      })
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  test("rejects with 401 when session has been idle for more than 30 minutes", async () => {
+    const staleActivity = Date.now() - 31 * 60 * 1000; // 31 minutes ago
+
+    const wrapped = withSessionTimeout(okHandler());
+    const res = await wrapped(
+      makeReq("GET", "/api/tasks", {
+        "x-session-last-activity": String(staleActivity),
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toMatch(/UnauthorizedError/);
+  });
+
+  test("allows request when no X-Session-Last-Activity header is present", async () => {
+    // When no header is present the middleware defers to the inner handler
+    const wrapped = withSessionTimeout(okHandler());
+    const res = await wrapped(makeReq("GET", "/api/tasks"));
+
+    expect(res.status).toBe(200);
+  });
+});
+
+// ── 4. withJwtBlacklist ──────────────────────────────────────────────────────
+
+describe("withJwtBlacklist", () => {
+  test("allows request when Bearer token is not blacklisted", async () => {
+    const wrapped = withJwtBlacklist(okHandler());
+    const res = await wrapped(
+      makeReq("GET", "/api/tasks", {
+        authorization: "Bearer valid.token.here",
+      })
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  test("rejects with 401 when Bearer token is in the blacklist", async () => {
+    JwtBlacklist.add("revoked.jwt.token");
+
+    const wrapped = withJwtBlacklist(okHandler());
+    const res = await wrapped(
+      makeReq("GET", "/api/tasks", {
+        authorization: "Bearer revoked.jwt.token",
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toMatch(/UnauthorizedError/);
+  });
+
+  test("rejects with 401 when user:${id} key is in the blacklist (suspended user)", async () => {
+    JwtBlacklist.add("user:suspended-user-id");
+
+    const wrapped = withJwtBlacklist(okHandler());
+    const res = await wrapped(
+      makeReq("GET", "/api/tasks", {
+        "x-user-id": "suspended-user-id",
+      })
+    );
+
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toMatch(/UnauthorizedError/);
+  });
+});
+
+// ── 5. suspendUser adds user to JwtBlacklist ─────────────────────────────────
+
+describe("UserService.suspendUser — JWT blacklist integration", () => {
+  test("adds user:${id} to JwtBlacklist after suspending a user", async () => {
+    const mockPrisma = createMockPrisma();
+    (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: "user-suspend-1",
+      isActive: true,
+    });
+    (mockPrisma.user.update as jest.Mock).mockResolvedValue({
+      id: "user-suspend-1",
+      isActive: false,
+    });
+
+    const service = new UserService(mockPrisma as never);
+    await service.suspendUser("user-suspend-1");
+
+    expect(JwtBlacklist.has("user:user-suspend-1")).toBe(true);
+  });
+});

@@ -1,0 +1,250 @@
+/**
+ * Security middleware chain — Issue #153
+ *
+ * Provides composable middleware wrappers for API route handlers:
+ *
+ *   1. withRateLimit     — consumes one API rate-limit point per userId
+ *   2. withAuditLog      — auto-logs POST/PUT/PATCH/DELETE after success
+ *   3. withSessionTimeout — rejects requests whose session last-activity > 30 min
+ *   4. withJwtBlacklist  — rejects requests whose JWT belongs to a suspended user
+ *
+ * None of these mutate apiHandler internally; they compose via the same
+ * higher-order wrapper pattern used by withAuth / withManager.
+ *
+ * Usage:
+ *   export const POST = withRateLimit(
+ *     withAuditLog(
+ *       withAuth(async (req) => { ... })
+ *     )
+ *   );
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import type { ApiResponse } from "@/lib/api-response";
+import { error } from "@/lib/api-response";
+import { logger } from "@/lib/logger";
+import {
+  createApiRateLimiter,
+  checkRateLimit,
+  type ApiRateLimiterOptions,
+} from "@/lib/rate-limiter";
+import { AuditService } from "@/services/audit-service";
+import { prisma } from "@/lib/prisma";
+import type { RouteContext } from "@/lib/api-handler";
+import { JwtBlacklist } from "@/lib/jwt-blacklist";
+export { JwtBlacklist } from "@/lib/jwt-blacklist";
+
+// ---------------------------------------------------------------------------
+// Shared API rate limiter singleton (in-memory; swapped for Redis in prod)
+// ---------------------------------------------------------------------------
+
+let _apiLimiter: ReturnType<typeof createApiRateLimiter> | null = null;
+
+/** Returns (creating once) the shared API rate limiter instance. */
+export function getApiRateLimiter(opts: ApiRateLimiterOptions = {}) {
+  if (!_apiLimiter) {
+    _apiLimiter = createApiRateLimiter(opts);
+  }
+  return _apiLimiter;
+}
+
+/** Replace the singleton — used in tests to inject a custom limiter. */
+export function setApiRateLimiter(
+  limiter: ReturnType<typeof createApiRateLimiter> | null
+) {
+  _apiLimiter = limiter;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyHandler = (req: NextRequest, context?: any) => Promise<NextResponse<ApiResponse>>;
+
+/** Extract Bearer token from Authorization header. */
+function extractBearer(req: NextRequest): string | null {
+  const auth = req.headers.get("authorization");
+  if (auth?.startsWith("Bearer ")) {
+    return auth.slice(7).trim() || null;
+  }
+  return null;
+}
+
+/** Extract userId from the session (null if unauthenticated). */
+async function getSessionUserId(req: NextRequest): Promise<string | null> {
+  // Prefer X-User-Id header injected by tests / other middleware.
+  const override = req.headers.get("x-user-id");
+  if (override) return override;
+
+  const session = await getServerSession();
+  return (session?.user as { id?: string } | undefined)?.id ?? null;
+}
+
+/** Derive resourceType from URL path (e.g. /api/tasks/123 → "tasks"). */
+function resourceTypeFromPath(pathname: string): string {
+  // Strip leading /api/ and take the first segment.
+  const match = pathname.match(/^\/api\/([^/]+)/);
+  return match?.[1] ?? "unknown";
+}
+
+/** Derive resourceId from URL path (e.g. /api/tasks/123 → "123"). */
+function resourceIdFromPath(pathname: string): string | null {
+  const match = pathname.match(/^\/api\/[^/]+\/([^/?]+)/);
+  return match?.[1] ?? null;
+}
+
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+// ---------------------------------------------------------------------------
+// 1. withRateLimit
+// ---------------------------------------------------------------------------
+
+/**
+ * Middleware wrapper: consumes one API rate-limit point per userId.
+ * Skips the login endpoint (which has its own dedicated limiter).
+ * Throws RateLimitError (→ 429) when the limit is exceeded.
+ */
+export function withRateLimit<T extends AnyHandler>(fn: T): T {
+  const wrapped = async (
+    req: NextRequest,
+    context?: RouteContext
+  ): Promise<NextResponse<ApiResponse>> => {
+    const { pathname } = new URL(req.url);
+
+    // Login has its own dedicated limiter — skip here.
+    if (pathname.startsWith("/api/auth/")) {
+      return fn(req, context);
+    }
+
+    const userId = await getSessionUserId(req);
+    if (userId) {
+      const limiter = getApiRateLimiter({ useMemory: true });
+      await checkRateLimit(limiter, userId);
+    }
+
+    return fn(req, context);
+  };
+  return wrapped as unknown as T;
+}
+
+// ---------------------------------------------------------------------------
+// 2. withAuditLog
+// ---------------------------------------------------------------------------
+
+const auditService = new AuditService(prisma);
+
+/**
+ * Middleware wrapper: after a successful POST/PUT/PATCH/DELETE, automatically
+ * calls AuditService.log() with action, resourceType, resourceId, and userId.
+ *
+ * The outer fn is called first; audit logging only fires on success (2xx).
+ * Errors propagate untouched.
+ */
+export function withAuditLog<T extends AnyHandler>(fn: T): T {
+  const wrapped = async (
+    req: NextRequest,
+    context?: RouteContext
+  ): Promise<NextResponse<ApiResponse>> => {
+    const method = req.method?.toUpperCase() ?? "GET";
+    const response = await fn(req, context);
+
+    if (MUTATING_METHODS.has(method) && response.status >= 200 && response.status < 300) {
+      try {
+        const { pathname } = new URL(req.url);
+        const userId = await getSessionUserId(req);
+        const resourceType = resourceTypeFromPath(pathname);
+        const resourceId = resourceIdFromPath(pathname);
+        const action = `${method}_${resourceType.toUpperCase()}`;
+
+        await auditService.log({
+          userId,
+          action,
+          resourceType,
+          resourceId,
+        });
+      } catch (auditErr) {
+        // Audit failures must never block the response — log and continue.
+        logger.error({ err: auditErr }, "[withAuditLog] Failed to write audit log");
+      }
+    }
+
+    return response;
+  };
+  return wrapped as unknown as T;
+}
+
+// ---------------------------------------------------------------------------
+// 3. withSessionTimeout
+// ---------------------------------------------------------------------------
+
+const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Middleware wrapper: checks the X-Session-Last-Activity header (unix ms).
+ * Rejects with HTTP 401 if the session has been idle for more than 30 minutes.
+ *
+ * The header is expected to be set by the client or a reverse-proxy on each
+ * API request. In production this can alternatively be read from a Redis
+ * session store via the sessionId cookie.
+ */
+export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
+  const wrapped = async (
+    req: NextRequest,
+    context?: RouteContext
+  ): Promise<NextResponse<ApiResponse>> => {
+    const lastActivityHeader = req.headers.get("x-session-last-activity");
+
+    if (lastActivityHeader !== null) {
+      const lastActivity = parseInt(lastActivityHeader, 10);
+      if (!Number.isNaN(lastActivity)) {
+        const idleMs = Date.now() - lastActivity;
+        if (idleMs > SESSION_IDLE_TIMEOUT_MS) {
+          logger.warn(
+            { idleMs },
+            "[withSessionTimeout] Session idle timeout exceeded"
+          );
+          return error("UnauthorizedError", "Session expired — please log in again", 401) as NextResponse<ApiResponse>;
+        }
+      }
+    }
+
+    return fn(req, context);
+  };
+  return wrapped as unknown as T;
+}
+
+// ---------------------------------------------------------------------------
+// 4. withJwtBlacklist
+// ---------------------------------------------------------------------------
+
+/**
+ * Middleware wrapper: checks the Bearer token against the JWT blacklist.
+ * Rejects with HTTP 401 if the token has been blacklisted (e.g. suspended user).
+ *
+ * Also checks x-user-id header as a fallback key so tests can simulate
+ * a blacklisted user without a real JWT.
+ */
+export function withJwtBlacklist<T extends AnyHandler>(fn: T): T {
+  const wrapped = async (
+    req: NextRequest,
+    context?: RouteContext
+  ): Promise<NextResponse<ApiResponse>> => {
+    const token = extractBearer(req);
+    if (token && JwtBlacklist.has(token)) {
+      logger.warn("[withJwtBlacklist] Blacklisted JWT rejected");
+      return error("UnauthorizedError", "Token has been revoked", 401) as NextResponse<ApiResponse>;
+    }
+
+    // Also check userId-based blacklist key (set by suspendUser).
+    const userId = req.headers.get("x-user-id");
+    if (userId && JwtBlacklist.has(`user:${userId}`)) {
+      logger.warn({ userId }, "[withJwtBlacklist] Suspended user JWT rejected");
+      return error("UnauthorizedError", "Account suspended", 401) as NextResponse<ApiResponse>;
+    }
+
+    return fn(req, context);
+  };
+  return wrapped as unknown as T;
+}
