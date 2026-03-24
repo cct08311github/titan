@@ -20,15 +20,17 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String   // bcrypt hash
-  role      Role     @default(ENGINEER)
-  avatar    String?  // base64 or filename
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  name                String
+  email               String   @unique
+  password            String   // bcrypt hash
+  role                Role     @default(ENGINEER)
+  avatar              String?  // base64 or filename
+  isActive            Boolean  @default(true)
+  mustChangePassword  Boolean  @default(true)   // Issue #182: 首次登入強制變更
+  passwordChangedAt   DateTime @default(now())  // Issue #182: 密碼到期追蹤（90天）
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   // 關聯
   createdPlans             AnnualPlan[]      @relation("PlanCreator")

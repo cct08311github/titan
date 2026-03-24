@@ -19,6 +19,8 @@ async function main() {
       name: "系統管理員",
       password: adminPassword,
       role: Role.MANAGER,
+      mustChangePassword: false, // seed accounts don't require change
+      passwordChangedAt: new Date(),
     },
   });
 

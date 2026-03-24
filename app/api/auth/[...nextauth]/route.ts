@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { AccountLockService } from "@/lib/account-lock";
 import { logger } from "@/lib/logger";
+import { isPasswordExpired } from "@/lib/password-expiry";
 
 /**
  * Singletons — created once at module load.
@@ -97,11 +98,16 @@ const handler = NextAuth({
         await accountLockService.resetFailures(lockKey);
         logger.info({ userId: user.id, ip }, "[auth] Successful login");
 
+        // Issue #182: check if password change is required
+        const needsPasswordChange =
+          user.mustChangePassword || isPasswordExpired(user.passwordChangedAt);
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
+          mustChangePassword: needsPasswordChange,
         };
       },
     }),
@@ -115,6 +121,7 @@ const handler = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = (user as { id: string; role: string }).role;
+        token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
       }
       return token;
     },
@@ -122,6 +129,7 @@ const handler = NextAuth({
       if (token) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.mustChangePassword = token.mustChangePassword as boolean;
       }
       return session;
     },

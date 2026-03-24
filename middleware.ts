@@ -25,6 +25,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
+  // Skip the change-password page itself to avoid redirect loops
+  if (pathname === "/change-password") {
+    return NextResponse.next();
+  }
+
   // Perform Edge JWT check
   const jwtResult = await checkEdgeJwt(req);
   if (jwtResult !== null) {
