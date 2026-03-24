@@ -63,6 +63,15 @@ scrape_configs:
         labels:
           type: 'storage'
 
+  # ── TITAN App 監控（Issue #195）──────────────────────────
+  - job_name: 'titan-app'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['titan-app:3000']
+        labels:
+          type: 'application'
+          app: 'titan'
+
   # ── Outline 服務監控 ────────────────────────────────────
   - job_name: 'outline'
     static_configs:
