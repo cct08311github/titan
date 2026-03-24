@@ -1,7 +1,7 @@
 /**
- * Next.js Edge Middleware — Auth Defense in Depth + CSP Nonce (Issue #129, #190)
+ * Next.js Edge Middleware — Auth + CSP Nonce + Correlation ID (Issue #129, #190, #199)
  *
- * Layer 1 (this file, Edge runtime): lightweight JWT verification + CSP nonce injection.
+ * Layer 1 (this file, Edge runtime): JWT verification + CSP nonce + request ID injection.
  *   - Applies to all /api/* routes except /api/auth/*
  *   - Uses NEXTAUTH_SECRET to verify the JWT signature and expiry
  *   - Blocks unauthenticated, expired, or tampered tokens with HTTP 401
@@ -43,6 +43,9 @@ function buildCspWithNonce(nonce: string): string {
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = new URL(req.url);
 
+  // Request Correlation ID (Issue #199) — reuse upstream or generate UUID v4
+  const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
+
   // 生成每請求唯一 nonce（base64 編碼，Edge runtime 支援 crypto.getRandomValues）
   const nonceBytes = new Uint8Array(16);
   crypto.getRandomValues(nonceBytes);
@@ -53,6 +56,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     const res = NextResponse.next();
     res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
     res.headers.set("x-nonce", nonce);
+    res.headers.set("x-request-id", requestId);
     return res;
   }
 
@@ -61,6 +65,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     const res = NextResponse.next();
     res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
     res.headers.set("x-nonce", nonce);
+    res.headers.set("x-request-id", requestId);
     return res;
   }
 
@@ -71,19 +76,24 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     if (!pathname.startsWith("/api/")) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
+      const redirectRes = NextResponse.redirect(loginUrl);
+      redirectRes.headers.set("x-request-id", requestId);
+      return redirectRes;
     }
+    jwtResult.headers.set("x-request-id", requestId);
     return jwtResult; // 401 response for API routes — blocked at Edge before hitting Node.js
   }
 
-  // 所有通過驗證的請求：注入 nonce-based CSP 與 x-nonce header
-  // Server Components 可透過 headers() 讀取 'x-nonce' 並傳給 inline script 元素
+  // 所有通過驗證的請求：注入 nonce-based CSP、x-nonce、x-request-id
+  // Route handlers 可透過 headers() 讀取 'x-request-id' 做跨層追蹤
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-request-id", requestId);
 
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
   res.headers.set("x-nonce", nonce);
+  res.headers.set("x-request-id", requestId);
   return res;
 }
 
