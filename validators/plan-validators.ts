@@ -36,7 +36,13 @@ export const updateGoalSchema = z.object({
   progressPct: z.number().min(0).max(100).optional(),
 });
 
+export const copyTemplateSchema = z.object({
+  sourcePlanId: z.string().min(1),
+  targetYear: z.number().int().min(2000).max(2100),
+});
+
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 export type CreateGoalInput = z.infer<typeof createGoalSchema>;
 export type UpdateGoalInput = z.infer<typeof updateGoalSchema>;
+export type CopyTemplateInput = z.infer<typeof copyTemplateSchema>;
