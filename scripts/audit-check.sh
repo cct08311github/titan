@@ -261,7 +261,7 @@ check_backup_status() {
 
   # 檢查最近 24 小時是否有備份檔案產生
   local recent_backups
-  recent_backups=$(find "$BACKUP_DIR" -type f -newer <(date -d '24 hours ago' 2>/dev/null || date -v -24H 2>/dev/null || echo "/etc/passwd") 2>/dev/null | wc -l || echo "0")
+  recent_backups=$(find "$BACKUP_DIR" -type f -mmin -1440 2>/dev/null | wc -l || echo "0")
 
   if [[ "$recent_backups" -gt 0 ]]; then
     log_pass "過去 24 小時內發現 ${recent_backups} 個備份檔案"

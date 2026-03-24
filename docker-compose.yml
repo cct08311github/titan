@@ -78,7 +78,7 @@ services:
           cpus: '0.25'
           memory: 128M
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$REDIS_PASSWORD\" ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -251,7 +251,7 @@ services:
     ports:
       - "${UPTIME_KUMA_PORT:-3002}:3001"
     networks:
-      - titan-network
+      - titan-internal
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/entry-page || exit 1"]
       interval: 30s
@@ -277,7 +277,7 @@ services:
   #   - 資料庫：使用 titan-postgres（需建立 plane_db）
   #   - 快取：使用 titan-redis（DB 1，避免與 Outline 的 DB 0 衝突）
   #   - 物件儲存：使用 titan-minio（bucket: plane-uploads）
-  #   - 網路：加入 titan-network（external: true）
+  #   - 網路：加入 titan-internal（必要時由獨立 compose 掛載 external network）
   #
   # 啟動方式：
   #   docker compose -f /opt/titan/plane-docker-compose.yml \
@@ -308,7 +308,7 @@ networks:
   titan-internal:
     name: titan-internal
     driver: bridge
-    internal: false  #允許 DNS 解析
+    internal: true
   # 外部網路：允許對外服務（Homepage）
   titan-external:
     name: titan-external
