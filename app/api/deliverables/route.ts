@@ -1,16 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, ValidationError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
+import { ValidationError } from "@/services/errors";
 import { success } from "@/lib/api-response";
 import { DeliverableService } from "@/services/deliverable-service";
 import { listDeliverablesSchema, createDeliverableSchema } from "@/validators/deliverable-validators";
+import { withAuth, withManager } from "@/lib/auth-middleware";
 
-export const GET = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
+export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const query = listDeliverablesSchema.safeParse({
     taskId: searchParams.get("taskId") ?? undefined,
@@ -30,10 +26,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
   return success(deliverables);
 });
 
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
+export const POST = withManager(async (req: NextRequest) => {
   const body = await req.json();
   const parsed = createDeliverableSchema.safeParse(body);
 

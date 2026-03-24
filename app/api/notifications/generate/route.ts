@@ -1,10 +1,8 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
 import { NotificationService } from "@/services/notification-service";
+import { withManager } from "@/lib/auth-middleware";
 
 /**
  * POST /api/notifications/generate
@@ -15,11 +13,9 @@ import { NotificationService } from "@/services/notification-service";
  * already exists for the same user.
  *
  * Intended for use by a cron job or manual invocation.
+ * Requires MANAGER role.
  */
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
+export const POST = withManager(async (_req: NextRequest) => {
   const svc = new NotificationService(prisma);
   const result = await svc.generateAll();
 
