@@ -313,8 +313,8 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}
-      REDIS_URL: redis://:${REDIS_PASSWORD}@titan-redis:6379
+      DATABASE_URL: postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-titan}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NEXTAUTH_URL: ${TITAN_URL:-https://titan.bank.local/titan}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       NODE_ENV: production
