@@ -37,6 +37,7 @@ export class NotificationService {
 
   /**
    * Builds notification payloads for tasks due within DAYS_AHEAD days.
+   * Only notifies active (non-suspended) users.
    */
   async buildDueSoonTaskNotifications(
     now: Date,
@@ -58,10 +59,26 @@ export class NotificationService {
       },
     });
 
+    // Collect all candidate user IDs and filter to active users only
+    const candidateIds = new Set(
+      tasks
+        .flatMap((t) => [t.primaryAssigneeId, t.backupAssigneeId])
+        .filter(Boolean) as string[]
+    );
+    const activeUsers =
+      candidateIds.size > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: [...candidateIds] }, isActive: true },
+            select: { id: true },
+          })
+        : [];
+    const activeUserIds = new Set(activeUsers.map((u) => u.id));
+
     const result: NotificationInput[] = [];
     for (const task of tasks) {
       const userIds = [task.primaryAssigneeId, task.backupAssigneeId].filter(
-        (id): id is string => id !== null && id !== undefined
+        (id): id is string =>
+          id !== null && id !== undefined && activeUserIds.has(id)
       );
       const dueLabel = task.dueDate
         ? new Date(task.dueDate).toLocaleDateString("zh-TW")
@@ -87,7 +104,7 @@ export class NotificationService {
 
   /**
    * Builds notification payloads for milestones due within DAYS_AHEAD days.
-   * Notifies all users in the system.
+   * Notifies all active (non-suspended) users in the system.
    */
   async buildDueSoonMilestoneNotifications(
     now: Date,
@@ -103,7 +120,10 @@ export class NotificationService {
         },
         select: { id: true, title: true, plannedEnd: true },
       }),
-      this.prisma.user.findMany({ select: { id: true } }),
+      this.prisma.user.findMany({
+        where: { isActive: true },
+        select: { id: true },
+      }),
     ]);
 
     const result: NotificationInput[] = [];
@@ -129,6 +149,7 @@ export class NotificationService {
 
   /**
    * Builds notification payloads for overdue tasks (past due date, not done).
+   * Only notifies active (non-suspended) users.
    */
   async buildOverdueTaskNotifications(
     now: Date,
@@ -148,10 +169,26 @@ export class NotificationService {
       },
     });
 
+    // Collect all candidate user IDs and filter to active users only
+    const candidateIds = new Set(
+      tasks
+        .flatMap((t) => [t.primaryAssigneeId, t.backupAssigneeId])
+        .filter(Boolean) as string[]
+    );
+    const activeUsers =
+      candidateIds.size > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: [...candidateIds] }, isActive: true },
+            select: { id: true },
+          })
+        : [];
+    const activeUserIds = new Set(activeUsers.map((u) => u.id));
+
     const result: NotificationInput[] = [];
     for (const task of tasks) {
       const userIds = [task.primaryAssigneeId, task.backupAssigneeId].filter(
-        (id): id is string => id !== null && id !== undefined
+        (id): id is string =>
+          id !== null && id !== undefined && activeUserIds.has(id)
       );
       const dueLabel = task.dueDate
         ? new Date(task.dueDate).toLocaleDateString("zh-TW")
@@ -197,7 +234,9 @@ export class NotificationService {
 
     let created = 0;
     if (toCreate.length > 0) {
-      const result = await this.prisma.notification.createMany({ data: toCreate });
+      const result = await this.prisma.notification.createMany({
+        data: toCreate,
+      });
       created = result.count;
     }
 
