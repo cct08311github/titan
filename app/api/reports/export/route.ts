@@ -215,7 +215,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     result.rows as Record<string, unknown>[],
     result.columns,
   );
-  return new NextResponse(buffer, {
+  return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

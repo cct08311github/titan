@@ -8,12 +8,12 @@ import { DeliverableService } from "@/services/deliverable-service";
 
 export const GET = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const service = new DeliverableService(prisma);
   const deliverable = await service.getDeliverable(id);
   return success(deliverable);
@@ -21,12 +21,12 @@ export const GET = apiHandler(async (
 
 export const PATCH = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const body = await req.json();
 
   const deliverable = await prisma.deliverable.update({
@@ -45,12 +45,12 @@ export const PATCH = apiHandler(async (
 
 export const DELETE = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   await prisma.deliverable.delete({ where: { id } });
   return success({ success: true });
 });

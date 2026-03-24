@@ -10,12 +10,12 @@ import { withManager } from "@/lib/auth-middleware";
 
 export const GET = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const goal = await prisma.monthlyGoal.findUnique({
     where: { id },
     include: {
@@ -39,12 +39,12 @@ export const GET = apiHandler(async (
 
 export const PUT = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const { title, description, status, progressPct } = validateBody(updateGoalSchema, raw);
 
@@ -67,9 +67,9 @@ export const PUT = apiHandler(async (
 
 export const DELETE = withManager(async (
   _req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const existing = await prisma.monthlyGoal.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("目標不存在");
 

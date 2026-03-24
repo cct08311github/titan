@@ -10,9 +10,7 @@ import type { ApiResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { requestLogger } from "@/lib/request-logger";
 
-type RouteHandler<TParams = undefined> = TParams extends undefined
-  ? (req: NextRequest) => Promise<NextResponse<ApiResponse>>
-  : (req: NextRequest, context: { params: Promise<TParams> }) => Promise<NextResponse<ApiResponse>>;
+export type RouteContext = { params: Promise<Record<string, string>> };
 
 /**
  * Wraps a Next.js route handler with unified error handling.
@@ -20,23 +18,24 @@ type RouteHandler<TParams = undefined> = TParams extends undefined
  * Maps custom error types to HTTP status codes and returns a consistent
  * JSON shape: { ok, data?, error?, message? }
  *
- * Usage (simple):
+ * Usage (simple, non-dynamic route):
  *   export const GET = apiHandler(async (req) => {
  *     return success(data);
  *   });
  *
- * Usage (with dynamic params):
- *   export const GET = apiHandler(async (req, { params }) => {
- *     const { id } = await params;
+ * Usage (with dynamic params, Next.js 15 — context is required, not optional):
+ *   export const GET = apiHandler(async (req, context) => {
+ *     const { id } = await context.params;
  *     return success(data);
  *   });
  */
-export function apiHandler(
-  fn: (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => Promise<NextResponse<ApiResponse>>
-): (req: NextRequest, context?: { params: Promise<Record<string, string>> }) => Promise<NextResponse<ApiResponse>> {
-  return async (
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<ApiResponse>>>(
+  fn: T
+): T {
+  const wrapped = async (
     req: NextRequest,
-    context?: { params: Promise<Record<string, string>> }
+    context?: RouteContext
   ): Promise<NextResponse<ApiResponse>> => {
     return requestLogger(req, async () => {
       try {
@@ -60,4 +59,5 @@ export function apiHandler(
       }
     }) as Promise<NextResponse<ApiResponse>>;
   };
+  return wrapped as unknown as T;
 }
