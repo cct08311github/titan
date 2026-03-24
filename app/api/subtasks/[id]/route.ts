@@ -1,7 +1,9 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ValidationError } from "@/services/errors";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
+import { updateSubTaskSchema } from "@/validators/subtask-validators";
 
 export const PATCH = withAuth(async (
   req: NextRequest,
@@ -9,14 +11,24 @@ export const PATCH = withAuth(async (
 ) => {
   const { id } = await context.params;
   const body = await req.json();
+  const parsed = updateSubTaskSchema.safeParse(body);
+
+  if (!parsed.success) {
+    throw new ValidationError(
+      parsed.error.issues.map((i) => i.message).join("; "),
+    );
+  }
+
+  const { done, title, assigneeId, dueDate, order } = parsed.data;
 
   const subtask = await prisma.subTask.update({
     where: { id },
     data: {
-      ...(body.done !== undefined && { done: body.done }),
-      ...(body.title !== undefined && { title: body.title }),
-      ...(body.assigneeId !== undefined && { assigneeId: body.assigneeId || null }),
-      ...(body.dueDate !== undefined && { dueDate: body.dueDate ? new Date(body.dueDate) : null }),
+      ...(done !== undefined && { done }),
+      ...(title !== undefined && { title }),
+      ...(assigneeId !== undefined && { assigneeId: assigneeId ?? null }),
+      ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
+      ...(order !== undefined && { order }),
     },
   });
 
