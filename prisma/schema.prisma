@@ -49,8 +49,22 @@ model User {
   grantedByPermissions     Permission[]      @relation("PermissionGranter")
   deliverableAcceptances   Deliverable[]     @relation("DeliverableAcceptor")
   createdKPIs              KPI[]             @relation("KPICreator")
+  passwordHistory          PasswordHistory[]
 
   @@map("users")
+}
+
+/// Stores hashed passwords to prevent reuse of recent N passwords (Issue #201).
+model PasswordHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  hash      String   // bcrypt hash of the previous password
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("password_history")
 }
 
 model Permission {
