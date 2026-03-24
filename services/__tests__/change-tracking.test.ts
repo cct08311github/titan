@@ -301,4 +301,285 @@ describe("ChangeTrackingService", () => {
       expect(result).toBe(1);
     });
   });
+
+  describe("detectAndRecordAll", () => {
+    test("records both delay and scope change in one transaction", async () => {
+      const oldDate = new Date("2026-04-01");
+      const newDate = new Date("2026-04-15");
+      const delayRecord = {
+        id: "change-delay",
+        taskId: "task-1",
+        changeType: "DELAY",
+        changedAt: new Date(),
+      };
+      const scopeRecord = {
+        id: "change-scope",
+        taskId: "task-1",
+        changeType: "SCOPE_CHANGE",
+        changedAt: new Date(),
+      };
+      (prisma.taskChange.create as jest.Mock)
+        .mockResolvedValueOnce(delayRecord)
+        .mockResolvedValueOnce(scopeRecord);
+
+      const result = await service.detectAndRecordAll(
+        {
+          taskId: "task-1",
+          oldDueDate: oldDate,
+          newDueDate: newDate,
+          changedBy: "user-1",
+        },
+        {
+          taskId: "task-1",
+          oldTitle: "Build login page",
+          newTitle: "Build authentication system with OAuth",
+          oldDescription: "Same description",
+          newDescription: "Same description",
+          changedBy: "user-1",
+        }
+      );
+
+      expect(prisma.taskChange.create).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(2);
+    });
+
+    test("records only delay when no scope change", async () => {
+      const oldDate = new Date("2026-04-01");
+      const newDate = new Date("2026-04-15");
+      const delayRecord = {
+        id: "change-delay",
+        taskId: "task-1",
+        changeType: "DELAY",
+        changedAt: new Date(),
+      };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValueOnce(delayRecord);
+
+      const result = await service.detectAndRecordAll(
+        {
+          taskId: "task-1",
+          oldDueDate: oldDate,
+          newDueDate: newDate,
+          changedBy: "user-1",
+        },
+        {
+          taskId: "task-1",
+          oldTitle: "Same Title",
+          newTitle: "Same Title",
+          oldDescription: "Same description",
+          newDescription: "Same description",
+          changedBy: "user-1",
+        }
+      );
+
+      expect(prisma.taskChange.create).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(1);
+    });
+
+    test("records only scope change when no delay", async () => {
+      const sameDate = new Date("2026-04-01");
+      const scopeRecord = {
+        id: "change-scope",
+        taskId: "task-1",
+        changeType: "SCOPE_CHANGE",
+        changedAt: new Date(),
+      };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValueOnce(scopeRecord);
+
+      const result = await service.detectAndRecordAll(
+        {
+          taskId: "task-1",
+          oldDueDate: sameDate,
+          newDueDate: sameDate,
+          changedBy: "user-1",
+        },
+        {
+          taskId: "task-1",
+          oldTitle: "Build login page",
+          newTitle: "Build authentication system with OAuth",
+          oldDescription: "Same description",
+          newDescription: "Same description",
+          changedBy: "user-1",
+        }
+      );
+
+      expect(prisma.taskChange.create).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(1);
+    });
+
+    test("returns empty array when no changes detected", async () => {
+      const sameDate = new Date("2026-04-01");
+
+      const result = await service.detectAndRecordAll(
+        {
+          taskId: "task-1",
+          oldDueDate: sameDate,
+          newDueDate: sameDate,
+          changedBy: "user-1",
+        },
+        {
+          taskId: "task-1",
+          oldTitle: "Same Title",
+          newTitle: "Same Title",
+          oldDescription: "Same description",
+          newDescription: "Same description",
+          changedBy: "user-1",
+        }
+      );
+
+      expect(prisma.taskChange.create).not.toHaveBeenCalled();
+      expect(result).toHaveLength(0);
+    });
+
+    test("handles null delayInput gracefully", async () => {
+      const scopeRecord = {
+        id: "change-scope",
+        taskId: "task-1",
+        changeType: "SCOPE_CHANGE",
+        changedAt: new Date(),
+      };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValueOnce(scopeRecord);
+
+      const result = await service.detectAndRecordAll(null, {
+        taskId: "task-1",
+        oldTitle: "Build login page",
+        newTitle: "Build authentication system with OAuth",
+        oldDescription: "Same description",
+        newDescription: "Same description",
+        changedBy: "user-1",
+      });
+
+      expect(result).toHaveLength(1);
+    });
+
+    test("handles null scopeInput gracefully", async () => {
+      const oldDate = new Date("2026-04-01");
+      const newDate = new Date("2026-04-15");
+      const delayRecord = {
+        id: "change-delay",
+        taskId: "task-1",
+        changeType: "DELAY",
+        changedAt: new Date(),
+      };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValueOnce(delayRecord);
+
+      const result = await service.detectAndRecordAll(
+        {
+          taskId: "task-1",
+          oldDueDate: oldDate,
+          newDueDate: newDate,
+          changedBy: "user-1",
+        },
+        null
+      );
+
+      expect(result).toHaveLength(1);
+    });
+
+    test("handles both null inputs — no records created", async () => {
+      const result = await service.detectAndRecordAll(null, null);
+
+      expect(prisma.taskChange.create).not.toHaveBeenCalled();
+      expect(result).toHaveLength(0);
+    });
+
+    test("records scope change when description changes (not title)", async () => {
+      const scopeRecord = {
+        id: "change-scope",
+        taskId: "task-1",
+        changeType: "SCOPE_CHANGE",
+        changedAt: new Date(),
+      };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValueOnce(scopeRecord);
+
+      const result = await service.detectAndRecordAll(null, {
+        taskId: "task-1",
+        oldTitle: "Same Title",
+        newTitle: "Same Title",
+        oldDescription: "Old description",
+        newDescription: "New description changed",
+        changedBy: "user-1",
+      });
+
+      expect(prisma.taskChange.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            changeType: "SCOPE_CHANGE",
+            oldValue: "Old description",
+            newValue: "New description changed",
+          }),
+        })
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    test("uses custom reason when provided", async () => {
+      const oldDate = new Date("2026-04-01");
+      const newDate = new Date("2026-04-15");
+      const delayRecord = { id: "change-delay", taskId: "task-1", changeType: "DELAY" };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValueOnce(delayRecord);
+
+      await service.detectAndRecordAll(
+        {
+          taskId: "task-1",
+          oldDueDate: oldDate,
+          newDueDate: newDate,
+          changedBy: "user-1",
+          reason: "Client requested extension",
+        },
+        null
+      );
+
+      expect(prisma.taskChange.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ reason: "Client requested extension" }),
+        })
+      );
+    });
+  });
+
+  describe("detectDelay - additional edge cases", () => {
+    test("returns null when oldDueDate is null", async () => {
+      const result = await service.detectDelay({
+        taskId: "task-1",
+        oldDueDate: null,
+        newDueDate: new Date("2026-04-15"),
+        changedBy: "user-1",
+      });
+
+      expect(prisma.taskChange.create).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    test("returns null when newDueDate is null", async () => {
+      const result = await service.detectDelay({
+        taskId: "task-1",
+        oldDueDate: new Date("2026-04-01"),
+        newDueDate: null,
+        changedBy: "user-1",
+      });
+
+      expect(prisma.taskChange.create).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    test("uses default reason when not provided", async () => {
+      const oldDate = new Date("2026-04-01");
+      const newDate = new Date("2026-04-15");
+      const mockChange = { id: "change-1", taskId: "task-1", changeType: "DELAY" };
+      (prisma.taskChange.create as jest.Mock).mockResolvedValue(mockChange);
+
+      await service.detectDelay({
+        taskId: "task-1",
+        oldDueDate: oldDate,
+        newDueDate: newDate,
+        changedBy: "user-1",
+      });
+
+      expect(prisma.taskChange.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ reason: "Due date extended" }),
+        })
+      );
+    });
+  });
 });
