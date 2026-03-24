@@ -1,16 +1,19 @@
-import * as XLSX from "xlsx";
-import { ImportService, ParsedRow, RowValidationError } from "../import-service";
+import ExcelJS from "exceljs";
+import { ImportService, ParsedRow } from "../import-service";
 import { createMockPrisma } from "../../lib/test-utils";
 
 /**
- * Helper: build an in-memory .xlsx buffer with the given rows.
+ * Helper: build an in-memory .xlsx buffer with the given rows using exceljs.
  * The first element of `rows` is treated as the header row.
  */
-function buildXlsxBuffer(rows: (string | number | undefined)[][]): Buffer {
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(wb, ws, "Tasks");
-  return Buffer.from(XLSX.write(wb, { type: "buffer", bookType: "xlsx" }));
+async function buildXlsxBuffer(rows: (string | number | undefined)[][]): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook();
+  const worksheet = workbook.addWorksheet("Tasks");
+  for (const row of rows) {
+    worksheet.addRow(row);
+  }
+  const arrayBuffer = await workbook.xlsx.writeBuffer();
+  return Buffer.from(arrayBuffer);
 }
 
 const HEADER = [
@@ -36,14 +39,14 @@ describe("ImportService", () => {
   // ------------------------------------------------------------------ parseExcel
 
   describe("parseExcel", () => {
-    test("parseExcel extracts rows correctly", () => {
-      const buf = buildXlsxBuffer([
+    test("parseExcel extracts rows correctly", async () => {
+      const buf = await buildXlsxBuffer([
         HEADER,
         ["Task A", "Desc A", "alice@example.com", "TODO", "P1", "PLANNED", "2026-04-01", 3],
         ["Task B", "", "bob@example.com", "IN_PROGRESS", "P2", "ADDED", "", 0],
       ]);
 
-      const rows = service.parseExcel(buf);
+      const rows = await service.parseExcel(buf);
 
       expect(rows).toHaveLength(2);
       expect(rows[0]).toMatchObject({
@@ -59,9 +62,9 @@ describe("ImportService", () => {
       expect(rows[1].title).toBe("Task B");
     });
 
-    test("parseExcel rejects invalid file format", () => {
+    test("parseExcel rejects invalid file format", async () => {
       const notXlsx = Buffer.from("this is not an xlsx file");
-      expect(() => service.parseExcel(notXlsx)).toThrow();
+      await expect(service.parseExcel(notXlsx)).rejects.toThrow();
     });
   });
 
@@ -125,7 +128,7 @@ describe("ImportService", () => {
       (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: "user-1" });
       (prisma.task.create as jest.Mock).mockResolvedValue({ id: "task-1" });
 
-      const result = await service.importTasks(validRows, "creator-1");
+      await service.importTasks(validRows, "creator-1");
 
       expect(prisma.task.create).toHaveBeenCalledTimes(validRows.length);
     });

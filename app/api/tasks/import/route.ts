@@ -48,7 +48,7 @@ export const POST = withManager(async (req: NextRequest) => {
 
   let rows;
   try {
-    rows = importService.parseExcel(buffer);
+    rows = await importService.parseExcel(buffer);
   } catch (err) {
     return error(
       "ParseError",

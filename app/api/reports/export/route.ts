@@ -211,7 +211,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   }
 
   // Default: xlsx
-  const buffer = exportService.generateExcel(
+  const buffer = await exportService.generateExcel(
     result.rows as Record<string, unknown>[],
     result.columns,
   );
