@@ -1,10 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Download, RefreshCw, BarChart3 } from "lucide-react";
+import { Download, RefreshCw, BarChart3, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { safeFixed, safePct } from "@/lib/safe-number";
+
+function PrintButton() {
+  return (
+    <button
+      onClick={() => window.print()}
+      data-print-hide
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-md hover:bg-accent transition-colors"
+    >
+      <Printer className="h-3.5 w-3.5" />
+      列印 PDF
+    </button>
+  );
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
