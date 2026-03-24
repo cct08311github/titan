@@ -57,16 +57,36 @@ export async function POST(req: NextRequest) {
     return error("ValidationError", "目前密碼不正確", 400);
   }
 
-  // Update password
-  const newHash = await hash(newPassword, 10);
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      password: newHash,
-      passwordChangedAt: new Date(),
-      mustChangePassword: false,
-    },
+  // Check password history — reject if new password matches any of the last 5 (Issue #201)
+  const PASSWORD_HISTORY_LIMIT = 5;
+  const recentHashes = await prisma.passwordHistory.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: PASSWORD_HISTORY_LIMIT,
+    select: { hash: true },
   });
+
+  for (const entry of recentHashes) {
+    if (await compare(newPassword, entry.hash)) {
+      return error("ValidationError", `新密碼不得與最近 ${PASSWORD_HISTORY_LIMIT} 組密碼相同`, 400);
+    }
+  }
+
+  // Update password and save old hash to history
+  const newHash = await hash(newPassword, 10);
+  await prisma.$transaction([
+    prisma.passwordHistory.create({
+      data: { userId, hash: user.password },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: newHash,
+        passwordChangedAt: new Date(),
+        mustChangePassword: false,
+      },
+    }),
+  ]);
 
   // Audit log
   await auditService.log({
