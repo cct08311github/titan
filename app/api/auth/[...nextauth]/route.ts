@@ -8,6 +8,7 @@ import { logger } from "@/lib/logger";
 import { isPasswordExpired } from "@/lib/password-expiry";
 import { getRedisClient } from "@/lib/redis";
 import { AuditService } from "@/services/audit-service";
+import { registerSession } from "@/lib/session-limiter";
 
 /**
  * Singletons — created once at module load.
@@ -160,6 +161,10 @@ const handler = NextAuth({
         token.id = user.id;
         token.role = (user as { id: string; role: string }).role;
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
+        // Issue #184: generate session ID and register (invalidates previous session)
+        const sessionId = crypto.randomUUID();
+        token.sessionId = sessionId;
+        registerSession(user.id!, sessionId).catch(() => {});
       }
       return token;
     },
