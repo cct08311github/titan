@@ -53,6 +53,30 @@ describe("DocumentService", () => {
     expect(result).toEqual(updated);
   });
 
+  test("updateDocument skips version snapshot when only title changes", async () => {
+    const existing = { id: "doc-1", version: 1, content: "same content" };
+    const updated = { id: "doc-1", version: 1, title: "New Title", content: "same content" };
+    (prisma.document.findUnique as jest.Mock).mockResolvedValue(existing);
+    (prisma.document.update as jest.Mock).mockResolvedValue(updated);
+
+    const result = await service.updateDocument("doc-1", { title: "New Title", updatedBy: "u1" });
+
+    expect(prisma.documentVersion.create).not.toHaveBeenCalled();
+    expect(result).toEqual(updated);
+  });
+
+  test("updateDocument skips version snapshot when content is identical", async () => {
+    const existing = { id: "doc-1", version: 1, content: "same content" };
+    const updated = { id: "doc-1", version: 1, content: "same content" };
+    (prisma.document.findUnique as jest.Mock).mockResolvedValue(existing);
+    (prisma.document.update as jest.Mock).mockResolvedValue(updated);
+
+    const result = await service.updateDocument("doc-1", { content: "same content", updatedBy: "u1" });
+
+    expect(prisma.documentVersion.create).not.toHaveBeenCalled();
+    expect(result).toEqual(updated);
+  });
+
   test("deleteDocument removes document", async () => {
     (prisma.document.findUnique as jest.Mock).mockResolvedValue({ id: "doc-1" });
     (prisma.document.delete as jest.Mock).mockResolvedValue({ id: "doc-1" });
