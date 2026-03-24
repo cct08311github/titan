@@ -101,6 +101,11 @@ for arg in "$@"; do
       echo "  2  嚴重異常 (Critical)"
       exit 0
       ;;
+    *)
+      echo "錯誤：未知參數 '$arg'" >&2
+      echo "用法：$0 [--json] [--quiet] [--help]" >&2
+      exit 1
+      ;;
   esac
 done
 

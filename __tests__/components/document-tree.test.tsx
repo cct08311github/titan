@@ -58,7 +58,7 @@ describe("DocumentTree", () => {
   it("highlights selected document", () => {
     render(<DocumentTree docs={DOCS} selectedId="doc-1" onSelect={jest.fn()} onNewDoc={jest.fn()} onDelete={jest.fn()} />);
     const selected = screen.getByText("Root Document").closest("div");
-    expect(selected?.className).toContain("bg-zinc-700");
+    expect(selected?.className).toContain("bg-accent");
   });
 
   it("renders empty tree gracefully with empty state message", () => {
