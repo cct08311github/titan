@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
 # check-security-middleware.sh — CI scanner for missing security middleware
-# Issue #167: enforce withAuditLog and withRateLimit on all mutating route handlers
+# Issue #167, #169: enforce all 4 security wrappers on mutating route handlers
 #
 # Scans all app/api/**/route.ts files and exits 1 if any exported
-# POST/PUT/PATCH/DELETE handler is not wrapped by BOTH withAuditLog AND withRateLimit.
+# POST/PUT/PATCH/DELETE handler is not wrapped by the required security middleware.
 #
 # Usage: bash scripts/check-security-middleware.sh [route-dir]
 #        Returns exit 0 if all routes are covered, exit 1 if gaps found.
 
 set -euo pipefail
 
-ROUTE_DIR="${1:-app/api}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+ROUTE_DIR="${1:-${PROJECT_ROOT}/app/api}"
 ERRORS=0
+
+# Required security middleware for all mutating handlers
+REQUIRED_MIDDLEWARE=("withAuditLog" "withRateLimit" "withSessionTimeout" "withJwtBlacklist")
 
 # Colour codes (suppressed when not a TTY)
 if [ -t 1 ]; then
@@ -23,51 +29,41 @@ else
   RED='' GREEN='' YELLOW='' NC=''
 fi
 
-echo "Scanning ${ROUTE_DIR} for handlers missing withAuditLog or withRateLimit..."
-echo ""
+printf "Scanning %s for handlers missing required security middleware...\n\n" "${ROUTE_DIR}"
 
 while IFS= read -r -d '' file; do
-  relative="${file#./}"
+  relative="${file#"${PROJECT_ROOT}"/}"
 
   # Check if the file exports any mutating HTTP handler
-  if ! grep -qE '^export const (POST|PUT|PATCH|DELETE)' "$file"; then
+  if ! grep -qE 'export\s+(const|function|async\s+function)\s+(POST|PUT|PATCH|DELETE)' "$file"; then
     continue
   fi
 
-  file_has_audit=$(grep -c 'withAuditLog' "$file" || true)
-  file_has_rate=$(grep -c 'withRateLimit' "$file" || true)
-
   file_error=0
 
-  if [ "$file_has_audit" -eq 0 ]; then
-    echo -e "${RED}FAIL${NC} ${relative} — missing withAuditLog"
-    grep -nE '^export const (POST|PUT|PATCH|DELETE)' "$file" \
-      | while IFS= read -r match; do
-          echo "  ${YELLOW}→${NC} ${match}"
-        done
-    file_error=1
-  fi
-
-  if [ "$file_has_rate" -eq 0 ]; then
-    echo -e "${RED}FAIL${NC} ${relative} — missing withRateLimit"
-    grep -nE '^export const (POST|PUT|PATCH|DELETE)' "$file" \
-      | while IFS= read -r match; do
-          echo "  ${YELLOW}→${NC} ${match}"
-        done
-    file_error=1
-  fi
+  for mw in "${REQUIRED_MIDDLEWARE[@]}"; do
+    count=$(grep -c "${mw}" "$file" || true)
+    if [ "$count" -eq 0 ]; then
+      printf "${RED}FAIL${NC} %s — missing %s\n" "${relative}" "${mw}"
+      grep -nE 'export\s+(const|function|async\s+function)\s+(POST|PUT|PATCH|DELETE)' "$file" \
+        | while IFS= read -r match; do
+            printf "  ${YELLOW}→${NC} %s\n" "${match}"
+          done
+      file_error=1
+    fi
+  done
 
   if [ "$file_error" -eq 1 ]; then
-    echo ""
+    printf "\n"
     ERRORS=$((ERRORS + 1))
   fi
 done < <(find "${ROUTE_DIR}" -name "route.ts" -print0)
 
 if [ "$ERRORS" -gt 0 ]; then
-  echo -e "${RED}Security middleware check FAILED: ${ERRORS} route file(s) are missing required wrappers.${NC}"
-  echo "Every POST/PUT/PATCH/DELETE handler must use withAuditLog and withRateLimit."
+  printf "${RED}Security middleware check FAILED: %d route file(s) are missing required wrappers.${NC}\n" "${ERRORS}"
+  printf "Every POST/PUT/PATCH/DELETE handler must use: %s\n" "${REQUIRED_MIDDLEWARE[*]}"
   exit 1
 else
-  echo -e "${GREEN}Security middleware check PASSED: all mutating route handlers are properly wrapped.${NC}"
+  printf "${GREEN}Security middleware check PASSED: all mutating route handlers are properly wrapped.${NC}\n"
   exit 0
 fi

@@ -180,14 +180,37 @@ export function withAuditLog<T extends AnyHandler>(fn: T): T {
 // ---------------------------------------------------------------------------
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Server-side last-activity store keyed by userId (unix ms timestamp).
  *
  * Process-local Map — acceptable for single-instance bank deployment.
+ * For multi-instance production, migrate to Redis.
  * Exported so tests can inspect or reset it.
  */
 export const sessionLastActivity = new Map<string, number>();
+
+/**
+ * Throttled cleanup: removes entries that have been idle longer than
+ * 2x the timeout window. Runs at most once per CLEANUP_INTERVAL_MS.
+ */
+let _lastCleanup = Date.now();
+export function _cleanupStaleEntries(now: number): void {
+  if (now - _lastCleanup < CLEANUP_INTERVAL_MS) return;
+  _lastCleanup = now;
+  const staleThreshold = SESSION_IDLE_TIMEOUT_MS * 2;
+  for (const [uid, ts] of sessionLastActivity) {
+    if (now - ts > staleThreshold) {
+      sessionLastActivity.delete(uid);
+    }
+  }
+}
+
+/** Reset cleanup timer — used in tests. */
+export function _resetCleanupTimer(): void {
+  _lastCleanup = 0;
+}
 
 /**
  * Middleware wrapper: tracks last activity per userId on the server side.
@@ -212,6 +235,8 @@ export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
       if (lastActivity !== undefined) {
         const idleMs = now - lastActivity;
         if (idleMs > SESSION_IDLE_TIMEOUT_MS) {
+          // Remove stale entry to prevent unbounded Map growth
+          sessionLastActivity.delete(userId);
           logger.warn(
             { idleMs, userId },
             "[withSessionTimeout] Session idle timeout exceeded"
@@ -222,6 +247,9 @@ export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
 
       // Update last-activity timestamp on every valid request.
       sessionLastActivity.set(userId, now);
+
+      // Periodically sweep stale entries to prevent memory leak
+      _cleanupStaleEntries(now);
     }
 
     return fn(req, context);
@@ -237,8 +265,9 @@ export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
  * Middleware wrapper: checks the Bearer token against the JWT blacklist.
  * Rejects with HTTP 401 if the token has been blacklisted (e.g. suspended user).
  *
- * Also checks x-user-id header as a fallback key so tests can simulate
- * a blacklisted user without a real JWT.
+ * Also checks userId-based blacklist key (set by suspendUser) by resolving
+ * the userId from the server-side session — never trusts client headers
+ * in production to prevent bypass.
  */
 export function withJwtBlacklist<T extends AnyHandler>(fn: T): T {
   const wrapped = async (
@@ -251,8 +280,9 @@ export function withJwtBlacklist<T extends AnyHandler>(fn: T): T {
       return error("UnauthorizedError", "Token has been revoked", 401) as NextResponse<ApiResponse>;
     }
 
-    // Also check userId-based blacklist key (set by suspendUser).
-    const userId = req.headers.get("x-user-id");
+    // Check userId-based blacklist key (set by suspendUser).
+    // Resolve userId from session to prevent header-spoofing bypass.
+    const userId = await getSessionUserId(req);
     if (userId && JwtBlacklist.has(`user:${userId}`)) {
       logger.warn({ userId }, "[withJwtBlacklist] Suspended user JWT rejected");
       return error("UnauthorizedError", "Account suspended", 401) as NextResponse<ApiResponse>;
