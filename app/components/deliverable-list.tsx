@@ -148,6 +148,7 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
             className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           <select
+            aria-label="交付物類型"
             value={newType}
             onChange={(e) => setNewType(e.target.value as DeliverableType)}
             className="bg-background border border-border text-foreground text-xs rounded px-1.5 py-1 focus:outline-none"

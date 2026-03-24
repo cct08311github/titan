@@ -8,14 +8,12 @@ import { MANAGER_STATE_FILE } from './helpers/auth';
  * Known existing violations (to be fixed as separate issues):
  * - scrollable-region-focusable: kanban/scroll areas in Dashboard
  * - color-contrast: dark theme muted text in Login page
- * - select-name: Kanban filter <select> missing accessible name label
  *
  * Tests FAIL only on newly introduced violations not in the known list.
  */
 const KNOWN_VIOLATIONS = new Set([
   'scrollable-region-focusable',
   'color-contrast',
-  'select-name',
 ]);
 
 /** Run axe scan and assert no NEW violations beyond the known list. */
