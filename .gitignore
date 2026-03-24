@@ -32,6 +32,9 @@ config/nginx/certs/*.csr
 # 保留 .gitkeep 讓目錄被 git 追蹤
 !config/nginx/certs/.gitkeep
 
+# Load test results（每次執行產生，不追蹤）
+tests/load/results/
+
 # Playwright
 e2e/.auth/
 test-results/
