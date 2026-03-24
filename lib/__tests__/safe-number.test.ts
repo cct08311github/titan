@@ -80,6 +80,19 @@ describe("safeLocaleString", () => {
     expect(safeLocaleString(NaN)).toBe("0");
   });
 
+  test("parses numeric string (consistent with safeFixed)", () => {
+    const result = safeLocaleString("1234567.89");
+    expect(result).toContain("1,234,567");
+  });
+
+  test("returns fallback for non-numeric string", () => {
+    expect(safeLocaleString("hello")).toBe("0");
+  });
+
+  test("returns fallback for whitespace-only string", () => {
+    expect(safeLocaleString("  ")).toBe("0");
+  });
+
   test("uses custom fallback", () => {
     expect(safeLocaleString(null, "zh-TW", undefined, "—")).toBe("—");
   });
@@ -140,6 +153,15 @@ describe("safePct", () => {
     expect(safePct(null)).toBe("0");
     expect(safePct(undefined)).toBe("0");
     expect(safePct(NaN)).toBe("0");
+  });
+
+  test("parses numeric string (consistent with safeFixed)", () => {
+    expect(safePct("75.5", 1)).toBe("75.5");
+    expect(safePct("150", 0)).toBe("100"); // clamped
+  });
+
+  test("returns fallback for non-numeric string", () => {
+    expect(safePct("hello")).toBe("0");
   });
 
   test("uses custom fallback", () => {
