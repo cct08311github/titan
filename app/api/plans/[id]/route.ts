@@ -38,6 +38,18 @@ export const GET = withAuth(async (
   return success(plan);
 });
 
+export const DELETE = withManager(async (
+  _req: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const { id } = await context!.params;
+  const existing = await prisma.annualPlan.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError("計畫不存在");
+
+  await prisma.annualPlan.delete({ where: { id } });
+  return success({ deleted: true });
+});
+
 export const PUT = withManager(async (
   req: NextRequest,
   context?: { params: Promise<Record<string, string>> }

@@ -38,6 +38,19 @@ export const GET = withAuth(async (
   return success(kpi);
 });
 
+export const DELETE = withManager(async (
+  _req: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const { id } = await context!.params;
+  const existing = await prisma.kPI.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError("找不到 KPI");
+
+  await prisma.kPITaskLink.deleteMany({ where: { kpiId: id } });
+  await prisma.kPI.delete({ where: { id } });
+  return success({ deleted: true });
+});
+
 export const PUT = withManager(async (
   req: NextRequest,
   context?: { params: Promise<Record<string, string>> }
