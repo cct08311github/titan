@@ -1,104 +1,86 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
-import { ValidationError } from "@/services/errors";
+import { UnauthorizedError, NotFoundError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateDocumentSchema } from "@/validators/document-validators";
+import { apiHandler } from "@/lib/api-handler";
+import { success } from "@/lib/api-response";
 
-export async function GET(
+export const GET = apiHandler(async (
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession();
-    if (!session) {
-      return NextResponse.json({ error: "未授權" }, { status: 401 });
-    }
-    const { id } = await params;
-    const doc = await prisma.document.findUnique({
-      where: { id },
-      include: {
-        creator: { select: { id: true, name: true } },
-        updater: { select: { id: true, name: true } },
-        children: {
-          select: { id: true, title: true, slug: true },
-          orderBy: { title: "asc" },
-        },
-      },
-    });
-    if (!doc) return NextResponse.json({ error: "文件不存在" }, { status: 404 });
-    return NextResponse.json(doc);
-  } catch (error) {
-    console.error("GET /api/documents/[id] error:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
-  }
-}
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const session = await getServerSession();
+  if (!session) throw new UnauthorizedError();
 
-export async function PUT(
+  const { id } = await context!.params;
+  const doc = await prisma.document.findUnique({
+    where: { id },
+    include: {
+      creator: { select: { id: true, name: true } },
+      updater: { select: { id: true, name: true } },
+      children: {
+        select: { id: true, title: true, slug: true },
+        orderBy: { title: "asc" },
+      },
+    },
+  });
+
+  if (!doc) throw new NotFoundError("文件不存在");
+  return success(doc);
+});
+
+export const PUT = apiHandler(async (
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "未授權" }, { status: 401 });
-    }
-    const { id } = await params;
-    const raw = await req.json();
-    const { title, content, parentId } = validateBody(updateDocumentSchema, raw);
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
 
-    const existing = await prisma.document.findUnique({ where: { id } });
-    if (!existing) return NextResponse.json({ error: "文件不存在" }, { status: 404 });
+  const { id } = await context!.params;
+  const raw = await req.json();
+  const { title, content, parentId } = validateBody(updateDocumentSchema, raw);
 
-    const newVersion = existing.version + 1;
+  const existing = await prisma.document.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError("文件不存在");
 
-    await prisma.documentVersion.create({
-      data: {
-        documentId: id,
-        content: existing.content,
-        version: existing.version,
-        createdBy: session.user.id,
-      },
-    });
+  const newVersion = existing.version + 1;
 
-    const updates: Record<string, unknown> = { updatedBy: session.user.id, version: newVersion };
-    if (title !== undefined) updates.title = title;
-    if (content !== undefined) updates.content = content;
-    if (parentId !== undefined) updates.parentId = parentId || null;
+  await prisma.documentVersion.create({
+    data: {
+      documentId: id,
+      content: existing.content,
+      version: existing.version,
+      createdBy: session.user.id,
+    },
+  });
 
-    const doc = await prisma.document.update({
-      where: { id },
-      data: updates,
-      include: {
-        creator: { select: { id: true, name: true } },
-        updater: { select: { id: true, name: true } },
-      },
-    });
+  const updates: Record<string, unknown> = { updatedBy: session.user.id, version: newVersion };
+  if (title !== undefined) updates.title = title;
+  if (content !== undefined) updates.content = content;
+  if (parentId !== undefined) updates.parentId = parentId || null;
 
-    return NextResponse.json(doc);
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-    console.error("PUT /api/documents/[id] error:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
-  }
-}
+  const doc = await prisma.document.update({
+    where: { id },
+    data: updates,
+    include: {
+      creator: { select: { id: true, name: true } },
+      updater: { select: { id: true, name: true } },
+    },
+  });
 
-export async function DELETE(
+  return success(doc);
+});
+
+export const DELETE = apiHandler(async (
   _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "未授權" }, { status: 401 });
-    }
-    const { id } = await params;
-    await prisma.document.delete({ where: { id } });
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("DELETE /api/documents/[id] error:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
-  }
-}
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
+
+  const { id } = await context!.params;
+  await prisma.document.delete({ where: { id } });
+  return success({ success: true });
+});
