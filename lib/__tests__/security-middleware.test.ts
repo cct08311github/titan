@@ -50,6 +50,8 @@ import { NextRequest } from "next/server";
 import {
   withSessionTimeout,
   sessionLastActivity,
+  _cleanupStaleEntries,
+  _resetCleanupTimer,
 } from "@/lib/security-middleware";
 import { getCachedSession, clearCachedSession } from "@/lib/session-cache";
 
@@ -73,6 +75,7 @@ const noopHandler = jest.fn().mockResolvedValue({ status: 200 });
 describe("withSessionTimeout — server-side tracking", () => {
   beforeEach(() => {
     sessionLastActivity.clear();
+    _resetCleanupTimer();
     mockGetServerSession.mockReset();
     noopHandler.mockClear();
   });
@@ -140,6 +143,71 @@ describe("withSessionTimeout — server-side tracking", () => {
     // Timestamp must have been updated to now
     const updatedTs = sessionLastActivity.get(userId)!;
     expect(updatedTs).toBeGreaterThan(fiveMinAgo);
+  });
+
+  test("exactly 30 minutes idle is allowed (uses strict > comparison)", async () => {
+    const userId = "user-boundary-test";
+    mockGetServerSession.mockResolvedValue({ user: { id: userId } });
+
+    // Set last activity to exactly 30 minutes ago
+    const exactly30min = Date.now() - 30 * 60 * 1000;
+    sessionLastActivity.set(userId, exactly30min);
+
+    const req = makeFakeRequest("http://localhost/api/test");
+    const handler = withSessionTimeout(noopHandler);
+    const response = await handler(req);
+
+    // Exactly 30 min is NOT > 30 min, so it should pass
+    expect(response.status).toBe(200);
+    expect(noopHandler).toHaveBeenCalled();
+  });
+
+  test("timeout deletes entry from Map to prevent unbounded growth", async () => {
+    const userId = "user-cleanup-test";
+    mockGetServerSession.mockResolvedValue({ user: { id: userId } });
+
+    // Pre-set stale timestamp
+    sessionLastActivity.set(userId, Date.now() - 31 * 60 * 1000);
+    expect(sessionLastActivity.has(userId)).toBe(true);
+
+    const req = makeFakeRequest("http://localhost/api/test");
+    const handler = withSessionTimeout(noopHandler);
+    await handler(req);
+
+    // Entry should be deleted after timeout rejection
+    expect(sessionLastActivity.has(userId)).toBe(false);
+  });
+
+  test("periodic cleanup removes entries older than 2x timeout", () => {
+    const now = Date.now();
+
+    // Add entries with varying ages
+    sessionLastActivity.set("recent-user", now - 10 * 60 * 1000); // 10 min ago
+    sessionLastActivity.set("stale-user", now - 90 * 60 * 1000); // 90 min ago (> 2x30min)
+    sessionLastActivity.set("very-stale", now - 120 * 60 * 1000); // 120 min ago
+
+    _resetCleanupTimer(); // ensure cleanup runs
+    _cleanupStaleEntries(now);
+
+    expect(sessionLastActivity.has("recent-user")).toBe(true);
+    expect(sessionLastActivity.has("stale-user")).toBe(false);
+    expect(sessionLastActivity.has("very-stale")).toBe(false);
+  });
+
+  test("cleanup is throttled — does not run on every call", () => {
+    const now = Date.now();
+
+    sessionLastActivity.set("stale", now - 90 * 60 * 1000);
+
+    // First call runs cleanup
+    _resetCleanupTimer();
+    _cleanupStaleEntries(now);
+    expect(sessionLastActivity.has("stale")).toBe(false);
+
+    // Re-add and call again immediately — should NOT clean up (throttled)
+    sessionLastActivity.set("stale", now - 90 * 60 * 1000);
+    _cleanupStaleEntries(now + 1000); // only 1 second later
+    expect(sessionLastActivity.has("stale")).toBe(true); // still there — throttled
   });
 });
 

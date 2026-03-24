@@ -321,3 +321,52 @@ describe("UserService.suspendUser — JWT blacklist integration", () => {
     expect(JwtBlacklist.has("user:user-suspend-1")).toBe(true);
   });
 });
+
+// ── 6. unsuspendUser removes user from JwtBlacklist (regression for #164) ──
+
+describe("UserService.unsuspendUser — JWT blacklist removal", () => {
+  test("removes user:${id} from JwtBlacklist after unsuspending", async () => {
+    const mockPrisma = createMockPrisma();
+    (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+      id: "user-unsuspend-1",
+      isActive: false,
+    });
+    (mockPrisma.user.update as jest.Mock).mockResolvedValue({
+      id: "user-unsuspend-1",
+      isActive: true,
+    });
+
+    // Simulate prior suspension
+    JwtBlacklist.add("user:user-unsuspend-1");
+    expect(JwtBlacklist.has("user:user-unsuspend-1")).toBe(true);
+
+    const service = new UserService(mockPrisma as never);
+    await service.unsuspendUser("user-unsuspend-1");
+
+    // Blacklist entry must be removed
+    expect(JwtBlacklist.has("user:user-unsuspend-1")).toBe(false);
+  });
+
+  test("unsuspended user is no longer blocked by withJwtBlacklist", async () => {
+    // First: suspend user (add to blacklist)
+    JwtBlacklist.add("user:user-e2e-unsuspend");
+
+    // Verify blocked
+    mockGetServerSession.mockResolvedValue({ user: { id: "user-e2e-unsuspend" } });
+    const blockedHandler = withJwtBlacklist(okHandler());
+    const blockedRes = await blockedHandler(
+      makeReq("GET", "/api/tasks", { "x-user-id": "user-e2e-unsuspend" })
+    );
+    expect(blockedRes.status).toBe(401);
+
+    // Now unsuspend: remove from blacklist
+    JwtBlacklist.remove("user:user-e2e-unsuspend");
+
+    // Verify allowed
+    const allowedHandler = withJwtBlacklist(okHandler());
+    const allowedRes = await allowedHandler(
+      makeReq("GET", "/api/tasks", { "x-user-id": "user-e2e-unsuspend" })
+    );
+    expect(allowedRes.status).toBe(200);
+  });
+});
