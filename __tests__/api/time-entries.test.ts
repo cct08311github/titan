@@ -6,7 +6,7 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockTimeEntry = { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockTimeEntry = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
 
 jest.mock("@/lib/prisma", () => ({ prisma: { timeEntry: mockTimeEntry } }));
 
@@ -37,8 +37,8 @@ describe("GET /api/time-entries", () => {
     const { GET } = await import("@/app/api/time-entries/route");
     const res = await GET(createMockRequest("/api/time-entries"));
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data[0].id).toBe("entry-1");
+    const body = await res.json();
+    expect(body.data[0].id).toBe("entry-1");
   });
 
   it("returns 401 when no session", async () => {
@@ -113,6 +113,7 @@ describe("PUT/DELETE /api/time-entries/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(SESSION);
+    mockTimeEntry.findUnique.mockResolvedValue(MOCK_ENTRY);
     mockTimeEntry.update.mockResolvedValue({ ...MOCK_ENTRY, hours: 6 });
     mockTimeEntry.delete.mockResolvedValue(MOCK_ENTRY);
   });
@@ -143,8 +144,8 @@ describe("PUT/DELETE /api/time-entries/[id]", () => {
       { params: Promise.resolve({ id: "entry-1" }) }
     );
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.success).toBe(true);
+    const body = await res.json();
+    expect(body.data.success).toBe(true);
   });
 
   it("DELETE returns 401 when no session", async () => {

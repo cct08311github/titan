@@ -53,6 +53,8 @@ export const updateTaskSchema = z.object({
   tags: z.array(z.string()).optional(),
   addedReason: z.string().optional(),
   addedSource: z.string().optional(),
+  changedBy: z.string().optional(),
+  changeReason: z.string().optional(),
 });
 
 export const updateTaskStatusSchema = z.object({

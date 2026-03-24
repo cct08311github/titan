@@ -79,7 +79,8 @@ describe("Kanban Page", () => {
       render(<KanbanPage />);
     });
     await waitFor(() => {
-      expect(screen.getByText("待辦清單")).toBeInTheDocument();
+      // When tasks are empty with no filters, the page shows an empty state
+      expect(screen.getByText("尚無任務")).toBeInTheDocument();
     });
   });
 

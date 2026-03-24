@@ -14,6 +14,7 @@ const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
 
 const SESSION = { user: { id: "u1", name: "Test", email: "t@e.com", role: "MEMBER" }, expires: "2099" };
+const MANAGER_SESSION = { user: { id: "u1", name: "Test", email: "t@e.com", role: "MANAGER" }, expires: "2099" };
 
 const MOCK_GOAL = {
   id: "goal-1",
@@ -36,8 +37,8 @@ describe("GET /api/goals", () => {
     const { GET } = await import("@/app/api/goals/route");
     const res = await GET(createMockRequest("/api/goals"));
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data[0].id).toBe("goal-1");
+    const body = await res.json();
+    expect(body.data[0].id).toBe("goal-1");
   });
 
   it("returns 401 when no session", async () => {
@@ -74,7 +75,7 @@ describe("GET /api/goals", () => {
 describe("POST /api/goals", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetServerSession.mockResolvedValue(SESSION);
+    mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
     mockMonthlyGoal.create.mockResolvedValue(MOCK_GOAL);
   });
 
