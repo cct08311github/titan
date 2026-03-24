@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { updatePlanSchema } from "@/validators/plan-validators";
 
 export async function GET(
   req: NextRequest,
@@ -50,8 +53,8 @@ export async function PUT(
     if (!session?.user?.id) return NextResponse.json({ error: "未授權" }, { status: 401 });
 
     const { id } = await params;
-    const body = await req.json();
-    const { title, description, implementationPlan, progressPct } = body;
+    const raw = await req.json();
+    const { title, description, implementationPlan, progressPct } = validateBody(updatePlanSchema, raw);
 
     const plan = await prisma.annualPlan.update({
       where: { id },
@@ -66,6 +69,9 @@ export async function PUT(
 
     return NextResponse.json(plan);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("PUT /api/plans/[id] error:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
   }

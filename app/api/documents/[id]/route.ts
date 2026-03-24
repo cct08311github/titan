@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { updateDocumentSchema } from "@/validators/document-validators";
 
 export async function GET(
   _req: NextRequest,
@@ -41,15 +44,14 @@ export async function PUT(
       return NextResponse.json({ error: "未授權" }, { status: 401 });
     }
     const { id } = await params;
-    const body = await req.json();
-    const { title, content, parentId } = body;
+    const raw = await req.json();
+    const { title, content, parentId } = validateBody(updateDocumentSchema, raw);
 
     const existing = await prisma.document.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "文件不存在" }, { status: 404 });
 
     const newVersion = existing.version + 1;
 
-    // Save version snapshot before update
     await prisma.documentVersion.create({
       data: {
         documentId: id,
@@ -75,6 +77,9 @@ export async function PUT(
 
     return NextResponse.json(doc);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("PUT /api/documents/[id] error:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
   }

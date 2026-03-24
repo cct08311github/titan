@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { createGoalSchema } from "@/validators/plan-validators";
 
 export async function GET(req: NextRequest) {
   try {
@@ -36,17 +39,13 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession();
     if (!session?.user?.id) return NextResponse.json({ error: "未授權" }, { status: 401 });
 
-    const body = await req.json();
-    const { annualPlanId, month, title, description } = body;
-
-    if (!annualPlanId || !month || !title) {
-      return NextResponse.json({ error: "計畫ID、月份和標題為必填" }, { status: 400 });
-    }
+    const raw = await req.json();
+    const { annualPlanId, month, title, description } = validateBody(createGoalSchema, raw);
 
     const goal = await prisma.monthlyGoal.create({
       data: {
         annualPlanId,
-        month: parseInt(month),
+        month,
         title,
         description: description || null,
       },
@@ -58,6 +57,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(goal, { status: 201 });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("POST /api/goals error:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
   }

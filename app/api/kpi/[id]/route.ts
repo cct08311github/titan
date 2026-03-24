@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { updateKpiSchema } from "@/validators/kpi-validators";
 
 export async function GET(
   req: NextRequest,
@@ -58,18 +61,18 @@ export async function PUT(
       return NextResponse.json({ error: "權限不足" }, { status: 403 });
     }
 
-    const body = await req.json();
+    const raw = await req.json();
     const { title, description, target, actual, weight, status, autoCalc } =
-      body;
+      validateBody(updateKpiSchema, raw);
 
     const kpi = await prisma.kPI.update({
       where: { id: params.id },
       data: {
         ...(title != null && { title }),
         ...(description != null && { description }),
-        ...(target != null && { target: parseFloat(target) }),
-        ...(actual != null && { actual: parseFloat(actual) }),
-        ...(weight != null && { weight: parseFloat(weight) }),
+        ...(target != null && { target }),
+        ...(actual != null && { actual }),
+        ...(weight != null && { weight }),
         ...(status != null && { status }),
         ...(autoCalc != null && { autoCalc }),
       },
@@ -77,6 +80,9 @@ export async function PUT(
 
     return NextResponse.json(kpi);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("PUT /api/kpi/[id] error:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
   }
