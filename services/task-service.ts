@@ -1,6 +1,7 @@
 import { PrismaClient, TaskStatus, Priority, TaskCategory } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
 import { ChangeTrackingService } from "./change-tracking-service";
+import { AuditService } from "./audit-service";
 
 export interface ListTasksFilter {
   assignee?: string;
@@ -50,9 +51,11 @@ export interface UpdateTaskInput {
 
 export class TaskService {
   private readonly changeTracker: ChangeTrackingService;
+  private readonly auditor: AuditService;
 
   constructor(private readonly prisma: PrismaClient) {
     this.changeTracker = new ChangeTrackingService(prisma);
+    this.auditor = new AuditService(prisma);
   }
 
   async listTasks(filter: ListTasksFilter) {
@@ -240,7 +243,19 @@ export class TaskService {
     return task;
   }
 
-  async deleteTask(id: string) {
-    return this.prisma.task.delete({ where: { id } });
+  async deleteTask(id: string, deletedBy?: string, ipAddress?: string) {
+    const task = await this.prisma.task.findUnique({ where: { id }, select: { id: true, title: true } });
+    const result = await this.prisma.task.delete({ where: { id } });
+
+    await this.auditor.log({
+      userId: deletedBy ?? null,
+      action: "DELETE_TASK",
+      resourceType: "Task",
+      resourceId: id,
+      detail: task ? `Deleted task: ${task.title}` : `Deleted task: ${id}`,
+      ipAddress: ipAddress ?? null,
+    });
+
+    return result;
   }
 }
