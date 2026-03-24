@@ -1,18 +1,11 @@
 import { NextRequest } from "next/server";
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/validate";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 import { ChangeTrackingService } from "@/services/change-tracking-service";
 import { requireAuth } from "@/lib/rbac";
-
-const createTaskChangeSchema = z.object({
-  changeType: z.enum(["DELAY", "SCOPE_CHANGE"]),
-  reason: z.string().min(1),
-  oldValue: z.string().optional(),
-  newValue: z.string().optional(),
-});
+import { createTaskChangeSchema } from "@/validators/task-change-validators";
 
 const changeTracker = new ChangeTrackingService(prisma);
 
