@@ -259,6 +259,42 @@ services:
       retries: 3
       start_period: 60s
 
+  # ── TITAN Next.js App（Issue #185）────────────────────────
+  # IT 團隊工作管理系統主應用
+  titan-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: titan-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@titan-redis:6379
+      NEXTAUTH_URL: ${TITAN_URL:-https://titan.bank.local/titan}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      NODE_ENV: production
+    # 安全強化：移除外部端口，僅透過 Nginx 反向代理存取
+    # ports:
+    #   - "3000:3000"
+    networks:
+      - titan-internal
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1024M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/auth/csrf || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
   # ── 專案管理：Plane ──────────────────────────────────────
   # ⚠️  Plane 採用獨立 docker-compose 部署，請參閱下列文件：
   #     - 部署指南：docs/plane-setup.md
