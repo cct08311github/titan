@@ -75,4 +75,13 @@ describe("KPI Page", () => {
     });
     expect(document.body).toBeDefined();
   });
+
+  it("renders without crash on empty KPI list", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
+    const { default: KpiPage } = await import("@/app/(app)/kpi/page");
+    await act(async () => {
+      render(<KpiPage />);
+    });
+    expect(document.body).toBeDefined();
+  });
 });

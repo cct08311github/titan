@@ -88,4 +88,15 @@ describe("Gantt Page", () => {
     });
     expect(document.body).toBeDefined();
   });
+
+  it("renders without crash on partial plan data (empty milestones/goals)", async () => {
+    // Defensive: annualPlan with empty arrays (no tasks, no milestones)
+    const partial = { year: 2024, annualPlan: { id: "p1", title: "Plan", year: 2024, milestones: [], monthlyGoals: [] } };
+    mockFetch.mockResolvedValue({ ok: true, json: async () => partial } as Response);
+    const { default: GanttPage } = await import("@/app/(app)/gantt/page");
+    await act(async () => {
+      render(<GanttPage />);
+    });
+    expect(document.body).toBeDefined();
+  });
 });

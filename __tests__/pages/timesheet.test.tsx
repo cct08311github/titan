@@ -79,4 +79,13 @@ describe("Timesheet Page", () => {
     });
     expect(document.body).toBeDefined();
   });
+
+  it("renders without crash when entries and users are empty arrays", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    expect(document.body).toBeDefined();
+  });
 });

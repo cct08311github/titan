@@ -31,3 +31,8 @@ config/nginx/certs/*.pem
 config/nginx/certs/*.csr
 # 保留 .gitkeep 讓目錄被 git 追蹤
 !config/nginx/certs/.gitkeep
+
+# Playwright
+e2e/.auth/
+test-results/
+playwright-report/

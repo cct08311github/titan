@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { TimeEntryCell, type TimeEntry } from "./time-entry-cell";
+import { safeFixed } from "@/lib/safe-number";
 
 export type TaskRow = {
   taskId: string | null;
@@ -102,7 +103,7 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
               })}
               <td className="px-3 py-2 text-center">
                 <span className={cn("text-xs font-medium tabular-nums", rowTotals[rowIdx] > 0 ? "text-zinc-300" : "text-zinc-700")}>
-                  {rowTotals[rowIdx] > 0 ? rowTotals[rowIdx].toFixed(1) : "—"}
+                  {rowTotals[rowIdx] > 0 ? safeFixed(rowTotals[rowIdx], 1) : "—"}
                 </span>
               </td>
             </tr>
@@ -117,12 +118,12 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
             {dailyTotals.map((total, i) => (
               <td key={i} className="px-2 py-2.5 text-center">
                 <span className={cn("text-xs font-semibold tabular-nums", total > 8 ? "text-amber-400" : total > 0 ? "text-emerald-400" : "text-zinc-600")}>
-                  {total > 0 ? total.toFixed(1) : "—"}
+                  {total > 0 ? safeFixed(total, 1) : "—"}
                 </span>
               </td>
             ))}
             <td className="px-3 py-2.5 text-center">
-              <span className="text-xs font-bold text-zinc-200 tabular-nums">{grandTotal.toFixed(1)}</span>
+              <span className="text-xs font-bold text-zinc-200 tabular-nums">{safeFixed(grandTotal, 1)}</span>
             </td>
           </tr>
         </tfoot>
