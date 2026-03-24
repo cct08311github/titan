@@ -1,8 +1,14 @@
 global:
   resolve_timeout: 5m
+  # Email SMTP — configure in .env: SMTP_HOST, SMTP_FROM, ALERT_EMAIL_TO
+  smtp_smarthost: '${SMTP_HOST:?需設定 SMTP_HOST}:${SMTP_PORT:-587}'
+  smtp_from: '${SMTP_FROM:-titan-alerts@titan.local}'
+  smtp_auth_username: '${SMTP_USER:-}'
+  smtp_auth_password: '${SMTP_PASSWORD:-}'
+  smtp_require_tls: false
 
 route:
-  receiver: default-log
+  receiver: default-email
   group_by: ['alertname', 'job', 'instance']
   group_wait: 30s
   group_interval: 5m
@@ -10,16 +16,38 @@ route:
   routes:
     - matchers:
         - severity = "critical"
-      receiver: critical-webhook
+      receiver: critical-email
+      repeat_interval: 30m
       continue: true
     - matchers:
         - severity = "warning"
-      receiver: warning-webhook
+      receiver: warning-email
+      repeat_interval: 4h
       continue: true
 
 receivers:
-  - name: default-log
+  - name: default-email
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:?需設定 ALERT_EMAIL_TO}'
+        send_resolved: true
+        headers:
+          Subject: '[TITAN] {{ .Status | toUpper }} - {{ .GroupLabels.alertname }}'
 
+  - name: critical-email
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:?需設定 ALERT_EMAIL_TO}'
+        send_resolved: true
+        headers:
+          Subject: '[TITAN 緊急] {{ .GroupLabels.alertname }} - {{ .GroupLabels.instance }}'
+
+  - name: warning-email
+    email_configs:
+      - to: '${ALERT_EMAIL_TO:?需設定 ALERT_EMAIL_TO}'
+        send_resolved: true
+        headers:
+          Subject: '[TITAN 警告] {{ .GroupLabels.alertname }}'
+
+  # Webhook backup (optional — configure if webhook receiver available)
   - name: critical-webhook
     webhook_configs:
       - url: 'http://host.docker.internal:8088/webhooks/alerts/critical'

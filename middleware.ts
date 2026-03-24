@@ -6,7 +6,7 @@
  *   - Uses NEXTAUTH_SECRET to verify the JWT signature and expiry
  *   - Blocks unauthenticated, expired, or tampered tokens with HTTP 401
  *   - Logs every blocked request via the structured logger
- *   - 生成每請求唯一 nonce，寫入 Content-Security-Policy 與 x-nonce header
+ *   - 生成每請求唯一 nonce，寫入 Content-Security-Policy 與 x-csp-nonce header
  *
  * Layer 2 (route handlers, Node.js runtime): full DB session check.
  *   - withAuth / withManager wrappers are kept on ALL route handlers (not removed)
@@ -15,7 +15,7 @@
  * Neither layer alone is sufficient — both must pass for a request to succeed.
  *
  * CSP Nonce 使用方式（Issue #190）：
- *   - Server Components 可透過 headers() 讀取 'x-nonce'
+ *   - Server Components 可透過 headers() 讀取 'x-csp-nonce'
  *   - 將 nonce 傳給 <Script nonce={nonce}> 或自訂 inline script 元素
  *   - next.config.ts 的靜態 CSP 作為未進入此 middleware 路由的 fallback
  */
@@ -55,7 +55,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (pathname.startsWith("/api/auth/")) {
     const res = NextResponse.next();
     res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
-    res.headers.set("x-nonce", nonce);
+    res.headers.set("x-csp-nonce", nonce);
     res.headers.set("x-request-id", requestId);
     return res;
   }
@@ -64,7 +64,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (pathname === "/change-password") {
     const res = NextResponse.next();
     res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
-    res.headers.set("x-nonce", nonce);
+    res.headers.set("x-csp-nonce", nonce);
     res.headers.set("x-request-id", requestId);
     return res;
   }
@@ -84,15 +84,15 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return jwtResult; // 401 response for API routes — blocked at Edge before hitting Node.js
   }
 
-  // 所有通過驗證的請求：注入 nonce-based CSP、x-nonce、x-request-id
+  // 所有通過驗證的請求：注入 nonce-based CSP、x-csp-nonce、x-request-id
   // Route handlers 可透過 headers() 讀取 'x-request-id' 做跨層追蹤
   const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("x-csp-nonce", nonce);
   requestHeaders.set("x-request-id", requestId);
 
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
-  res.headers.set("x-nonce", nonce);
+  res.headers.set("x-csp-nonce", nonce);
   res.headers.set("x-request-id", requestId);
   return res;
 }
