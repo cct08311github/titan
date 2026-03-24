@@ -1,0 +1,135 @@
+# TITAN 平台 — Kimai 工時追蹤整合擴充設定
+# Issue: #64 — Kimai Time Tracking Deep Integration
+# 此檔案覆寫 docker-compose.yml 的預設設定，新增 Kimai + MySQL 服務
+# 使用方式：docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# 架構說明：
+#   Kimai 使用獨立的 MySQL 8.0（與 TITAN 的 PostgreSQL 16 分開）
+#   所有服務加入 titan-internal 網路，透過 Nginx /kimai/ 路徑對外服務
+#
+# 版本固定原則（air-gapped 部署相容）：
+#   kimai: kimai/kimai2:apache-2.21.0（Apache variant，支援 URL rewrite）
+#   mysql: mysql:8.0.36（與 Kimai 2.x 官方相容版本）
+
+version: '3.8'
+
+services:
+
+  # ── Kimai 工時追蹤 MySQL 資料庫 ──────────────────────────
+  # 獨立 MySQL 8.0，供 Kimai 專用（不與 TITAN PostgreSQL 混用）
+  # 資料持久化至 kimai-mysql-data volume
+  kimai-mysql:
+    image: mysql:8.0.36
+    container_name: titan-kimai-mysql
+    restart: unless-stopped
+    # 安全強化：使用 mysql 使用者執行
+    user: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${KIMAI_MYSQL_ROOT_PASSWORD:?KIMAI_MYSQL_ROOT_PASSWORD is required}
+      MYSQL_DATABASE: ${KIMAI_DB_NAME:-kimai}
+      MYSQL_USER: ${KIMAI_DB_USER:-kimai}
+      MYSQL_PASSWORD: ${KIMAI_DB_PASSWORD:?KIMAI_DB_PASSWORD is required}
+      # 時區設定（與 Kimai 一致）
+      TZ: ${KIMAI_TIMEZONE:-Asia/Taipei}
+    volumes:
+      - kimai-mysql-data:/var/lib/mysql
+    # 安全強化：不對外開放端口，僅供 Kimai 容器內部存取
+    # ports:
+    #   - "3306:3306"
+    networks:
+      - titan-internal
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+08:00
+      - --max-allowed-packet=128M
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "${KIMAI_DB_USER:-kimai}", "-p${KIMAI_DB_PASSWORD}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ── Kimai 工時追蹤應用 ────────────────────────────────────
+  # 版本固定：kimai/kimai2:apache-2.21.0
+  # Apache variant：內建 mod_rewrite，支援 URL 前綴（/kimai/）
+  # 文件：https://www.kimai.org/documentation/docker.html
+  kimai:
+    image: kimai/kimai2:apache-2.21.0
+    container_name: titan-kimai
+    restart: unless-stopped
+    environment:
+      # ── 資料庫連線 ────────────────────────────────────────
+      DATABASE_URL: "mysql://${KIMAI_DB_USER:-kimai}:${KIMAI_DB_PASSWORD}@kimai-mysql:3306/${KIMAI_DB_NAME:-kimai}?charset=utf8mb4&serverVersion=8.0.36"
+      # ── 應用程式設定 ──────────────────────────────────────
+      APP_ENV: production
+      APP_SECRET: ${KIMAI_APP_SECRET:?KIMAI_APP_SECRET is required}
+      KIMAI_LANGUAGE: zh_TW
+      # ── 時區（與銀行 IT 環境一致）──────────────────────────
+      KIMAI_TIMEZONE: ${KIMAI_TIMEZONE:-Asia/Taipei}
+      # ── 超級管理員帳號（初次部署時建立）──────────────────
+      ADMINMAIL: ${KIMAI_ADMIN_EMAIL:?KIMAI_ADMIN_EMAIL is required}
+      ADMINPASS: ${KIMAI_ADMIN_PASSWORD:?KIMAI_ADMIN_PASSWORD is required}
+      # ── 信任 Nginx 反向代理 ────────────────────────────────
+      TRUSTED_PROXIES: "nginx,172.16.0.0/12,10.0.0.0/8"
+      TRUSTED_HOSTS: "${KIMAI_TRUSTED_HOSTS:-titan.bank.local,titan.local,localhost}"
+      # ── LDAP 整合（選用，設定見 config/kimai/.env.example）─
+      KIMAI_LDAP_ACTIVE: ${KIMAI_LDAP_ACTIVE:-false}
+      # ── URL 前綴（Nginx 反向代理路徑）─────────────────────
+      # 注意：Kimai Apache variant 需搭配 /kimai/ Nginx location 使用
+    volumes:
+      - kimai-var-data:/opt/kimai/var
+      - kimai-public-data:/opt/kimai/public/uploads
+    # 安全強化：不對外開放端口，僅透過 Nginx 反向代理存取
+    # ports:
+    #   - "8001:8001"
+    networks:
+      - titan-internal
+    depends_on:
+      kimai-mysql:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8001/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+  # ── Nginx：新增 Kimai upstream（覆寫）────────────────────
+  # 讓 Nginx 容器的依賴包含 Kimai（確保啟動順序正確）
+  nginx:
+    depends_on:
+      kimai:
+        condition: service_healthy
+
+# ── 持久化 Volume ────────────────────────────────────────
+volumes:
+  kimai-mysql-data:
+    name: titan-kimai-mysql-data
+  kimai-var-data:
+    name: titan-kimai-var-data
+  kimai-public-data:
+    name: titan-kimai-public-data
+
+# ── 網路（沿用主 compose 定義，無需重複宣告）────────────────
+networks:
+  titan-internal:
+    external: true
+    name: titan-internal

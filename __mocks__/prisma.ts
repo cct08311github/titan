@@ -1,0 +1,42 @@
+import { jest } from "@jest/globals";
+
+const createMockModel = () => ({
+  findMany: jest.fn(),
+  findUnique: jest.fn(),
+  findFirst: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+  upsert: jest.fn(),
+  count: jest.fn(),
+  aggregate: jest.fn(),
+  deleteMany: jest.fn(),
+  updateMany: jest.fn(),
+  createMany: jest.fn(),
+});
+
+export const mockPrisma = {
+  task: createMockModel(),
+  annualPlan: createMockModel(),
+  monthlyGoal: createMockModel(),
+  kPI: createMockModel(),
+  document: createMockModel(),
+  documentVersion: createMockModel(),
+  timeEntry: createMockModel(),
+  user: createMockModel(),
+  taskActivity: createMockModel(),
+  taskChange: createMockModel(),
+  kPITaskLink: createMockModel(),
+  milestone: createMockModel(),
+  subTask: createMockModel(),
+  taskComment: createMockModel(),
+  permission: createMockModel(),
+  notification: createMockModel(),
+  deliverable: createMockModel(),
+  auditLog: createMockModel(),
+  $transaction: jest.fn(),
+  $connect: jest.fn(),
+  $disconnect: jest.fn(),
+};
+
+export type MockPrismaClient = typeof mockPrisma;

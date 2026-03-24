@@ -1,0 +1,63 @@
+# Excel 任務匯入指南
+
+## 概觀
+
+管理員（MANAGER 角色）可透過上傳 `.xlsx` 檔案批次建立任務。
+
+## API
+
+```
+POST /api/tasks/import
+Content-Type: multipart/form-data
+Authorization: (需要 MANAGER 角色的 session)
+
+Form field: file  — .xlsx 檔案
+```
+
+成功回應：
+
+```json
+{
+  "ok": true,
+  "data": {
+    "created": 10,
+    "errors": [
+      { "rowIndex": 2, "message": "title 為必填欄位" }
+    ]
+  }
+}
+```
+
+## Excel 欄位說明
+
+第一列必須為標題列，欄位名稱如下（順序不限）：
+
+| 欄位名稱 | 必填 | 說明 | 允許值 |
+|---|---|---|---|
+| `title` | 是 | 任務標題 | 任意文字 |
+| `description` | 否 | 任務說明 | 任意文字 |
+| `assigneeEmail` | 否 | 負責人 Email（須為系統內已建立的用戶） | e.g. `alice@example.com` |
+| `status` | 否 | 任務狀態（預設 `BACKLOG`） | `BACKLOG` / `TODO` / `IN_PROGRESS` / `REVIEW` / `DONE` |
+| `priority` | 否 | 優先度（預設 `P2`） | `P0` / `P1` / `P2` / `P3` |
+| `category` | 否 | 任務分類（預設 `PLANNED`） | `PLANNED` / `ADDED` / `INCIDENT` / `SUPPORT` / `ADMIN` / `LEARNING` |
+| `dueDate` | 否 | 到期日 | `YYYY-MM-DD` 格式，例如 `2026-04-30` |
+| `estimatedHours` | 否 | 預估工時（小時） | 數字，例如 `4` 或 `2.5` |
+
+## 範本
+
+`templates/task-import-template.xlsx` 提供空白範本，包含正確的標題列。
+
+## 行為說明
+
+- **有效列**：直接建立任務，`creatorId` 設定為目前登入的 MANAGER。
+- **無效列**：跳過該列，在回應的 `errors` 陣列中回報 `rowIndex`（0 起算，對應 Excel 第 2 列起）與錯誤訊息。
+- **assigneeEmail 找不到**：不視為錯誤，任務建立成功但 `primaryAssigneeId` 留空。
+- **空工作表**：回傳 400 錯誤。
+
+## 使用範例（curl）
+
+```bash
+curl -X POST https://your-titan-domain/api/tasks/import \
+  -H "Cookie: next-auth.session-token=<token>" \
+  -F "file=@/path/to/tasks.xlsx"
+```

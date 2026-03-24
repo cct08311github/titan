@@ -1,0 +1,499 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { Target } from "lucide-react";
+import { safeFixed, safePct } from "@/lib/safe-number";
+import { cn } from "@/lib/utils";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+
+// ── Types ──────────────────────────────────────────────────────────────────
+
+interface KPIAchievement {
+  id: string;
+  code: string;
+  title: string;
+  target: number;
+  actual: number;
+  status: string;
+  achievementRate: number;
+}
+
+interface WorkloadPerson {
+  userId: string;
+  name: string;
+  total: number;
+  planned: number;
+  unplanned: number;
+}
+
+interface WorkloadData {
+  byPerson: WorkloadPerson[];
+  plannedRate: number;
+  unplannedRate: number;
+  totalHours: number;
+}
+
+interface WeeklyData {
+  completedCount: number;
+  overdueCount: number;
+  delayCount: number;
+  scopeChangeCount: number;
+  totalHours: number;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  dueDate: string | null;
+}
+
+// ── KPI Achievement Section ─────────────────────────────────────────────────
+
+const KPI_STATUS_COLOR: Record<string, string> = {
+  ON_TRACK: "text-green-400 bg-green-500/10",
+  AT_RISK:  "text-yellow-400 bg-yellow-500/10",
+  BEHIND:   "text-red-400 bg-red-500/10",
+  ACHIEVED: "text-blue-400 bg-blue-500/10",
+};
+const KPI_STATUS_LABEL: Record<string, string> = {
+  ON_TRACK: "進行中",
+  AT_RISK:  "風險",
+  BEHIND:   "落後",
+  ACHIEVED: "達成",
+};
+
+function KPIAchievementSection() {
+  const [kpis, setKpis] = useState<KPIAchievement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchKPIs() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/kpi?year=${new Date().getFullYear()}`);
+      if (!res.ok) throw new Error("無法載入 KPI");
+      const data: Array<{
+        id: string; code: string; title: string; target: number; actual: number; status: string;
+        taskLinks: Array<{ weight: number; task: { status: string; progressPct: number } }>;
+        autoCalc: boolean;
+      }> = await res.json();
+      const mapped: KPIAchievement[] = (Array.isArray(data) ? data : []).map((k) => {
+        let rate = 0;
+        if (k.autoCalc && k.taskLinks.length > 0) {
+          const totalW = k.taskLinks.reduce((s, l) => s + l.weight, 0);
+          const weighted = k.taskLinks.reduce((s, l) => {
+            const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
+            return s + (prog * l.weight) / 100;
+          }, 0);
+          rate = totalW > 0 ? Math.min((weighted / totalW) * k.target, 100) : 0;
+        } else {
+          rate = k.target > 0 ? Math.min((k.actual / k.target) * 100, 100) : 0;
+        }
+        return { id: k.id, code: k.code, title: k.title, target: k.target, actual: k.actual, status: k.status, achievementRate: rate };
+      });
+      setKpis(mapped);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchKPIs(); }, []);
+
+  if (loading) return <PageLoading message="載入 KPI..." className="py-8" />;
+  if (error) return <PageError message={error} onRetry={fetchKPIs} className="py-8" />;
+  if (kpis.length === 0) return (
+    <PageEmpty
+      icon={<Target className="h-8 w-8" />}
+      title="尚無 KPI"
+      description="本年度尚未建立 KPI 指標"
+      className="py-8"
+    />
+  );
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-5">
+      <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
+        <Target className="h-4 w-4 text-primary" />
+        KPI 達成狀況（{new Date().getFullYear()} 年度）
+      </h2>
+      <div className="space-y-3">
+        {kpis.map((kpi) => {
+          const barColor =
+            kpi.achievementRate >= 100 ? "bg-green-500" :
+            kpi.achievementRate >= 60  ? "bg-primary" :
+            kpi.achievementRate >= 30  ? "bg-yellow-500" : "bg-red-500";
+          return (
+            <div key={kpi.id} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">{kpi.code}</span>
+                  <span className="text-sm text-foreground truncate">{kpi.title}</span>
+                  {kpi.status && (
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0",
+                      KPI_STATUS_COLOR[kpi.status] ?? "text-muted-foreground bg-accent")}>
+                      {KPI_STATUS_LABEL[kpi.status] ?? kpi.status}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className="text-sm font-semibold tabular-nums">{safePct(kpi.achievementRate, 0, "0")}%</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums ml-1.5">
+                    {kpi.actual} / {kpi.target}
+                  </span>
+                </div>
+              </div>
+              <div className="h-1.5 w-full bg-accent rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all", barColor)}
+                  style={{ width: `${Math.min(kpi.achievementRate, 100)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Helper ─────────────────────────────────────────────────────────────────
+
+function ProgressBar({ pct, color = "bg-primary" }: { pct: number; color?: string }) {
+  return (
+    <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
+      <div
+        className={cn("h-full rounded-full transition-all", color)}
+        style={{ width: `${Math.min(pct, 100)}%` }}
+      />
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn("text-2xl font-semibold tabular-nums", accent && "text-red-400")}>
+        {value}
+      </p>
+      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+    </div>
+  );
+}
+
+// ── Manager Dashboard ──────────────────────────────────────────────────────
+
+function ManagerDashboard() {
+  const [workload, setWorkload] = useState<WorkloadData | null>(null);
+  const [weekly, setWeekly] = useState<WeeklyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [wl, wr] = await Promise.all([
+        fetch("/api/reports/workload").then((r) => { if (!r.ok) throw new Error("工作負載載入失敗"); return r.json(); }),
+        fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
+      ]);
+      setWorkload(wl);
+      setWeekly(wr);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <PageLoading />;
+  if (error) return <PageError message={error} onRetry={load} />;
+
+  const maxPersonHours =
+    workload?.byPerson?.length
+      ? Math.max(...workload.byPerson.map((p) => p.total), 1)
+      : 1;
+
+  return (
+    <div className="space-y-6">
+      {/* ── Stats cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="本週完成任務" value={weekly?.completedCount ?? "—"} />
+        <StatCard label="本週總工時 (h)" value={safeFixed(weekly?.totalHours, 1, "—")} />
+        <StatCard
+          label="逾期任務"
+          value={weekly?.overdueCount ?? "—"}
+          accent={(weekly?.overdueCount ?? 0) > 0}
+        />
+        <StatCard label="本月計畫外比例" value={workload ? `${workload.unplannedRate}%` : "—"} />
+      </div>
+
+      {/* ── Team workload ── */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <h2 className="text-sm font-medium mb-4">團隊工時分佈（本月）</h2>
+        {workload?.byPerson?.length ? (
+          <div className="space-y-3">
+            {workload.byPerson.slice(0, 5).map((p) => {
+              const pct = (p.total / maxPersonHours) * 100;
+              const unplannedPct = p.total > 0 ? (p.unplanned / p.total) * 100 : 0;
+              return (
+                <div key={p.userId} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-foreground font-medium">{p.name}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {safeFixed(p.total, 1)} h
+                    </span>
+                  </div>
+                  <ProgressBar pct={pct} />
+                  {unplannedPct > 0 && (
+                    <p className="text-[11px] text-muted-foreground tabular-nums">
+                      計畫外 {safePct(unplannedPct, 0)}%
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">本月尚無工時紀錄</p>
+        )}
+      </div>
+
+      {/* ── 投入率 ── */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <h2 className="text-sm font-medium mb-4">投入率分析（計畫任務 vs 加入任務）</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">計畫內投入</span>
+              <span className="tabular-nums font-medium text-green-400">
+                {workload?.plannedRate ?? 0}%
+              </span>
+            </div>
+            <ProgressBar pct={workload?.plannedRate ?? 0} color="bg-green-500" />
+          </div>
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">計畫外投入</span>
+              <span className="tabular-nums font-medium text-orange-400">
+                {workload?.unplannedRate ?? 0}%
+              </span>
+            </div>
+            <ProgressBar pct={workload?.unplannedRate ?? 0} color="bg-orange-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* ── This month ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="本週延遲次數" value={weekly?.delayCount ?? "—"} accent={(weekly?.delayCount ?? 0) > 0} />
+        <StatCard label="本週範疇變更" value={weekly?.scopeChangeCount ?? "—"} />
+        <StatCard
+          label="計畫外負荷率"
+          value={workload ? `${workload.unplannedRate}%` : "—"}
+          sub="(ADDED+INCIDENT+SUPPORT)"
+        />
+        <StatCard
+          label="計畫投入率"
+          value={workload ? `${workload.plannedRate}%` : "—"}
+          sub="(PLANNED_TASK)"
+        />
+      </div>
+    </div>
+  );
+}
+
+// ── Engineer Dashboard ─────────────────────────────────────────────────────
+
+function EngineerDashboard() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [weekly, setWeekly] = useState<WeeklyData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [taskRes, wr] = await Promise.all([
+        fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS").then((r) => { if (!r.ok) throw new Error("任務載入失敗"); return r.json(); }),
+        fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
+      ]);
+      setTasks(Array.isArray(taskRes) ? taskRes : taskRes.tasks ?? []);
+      setWeekly(wr);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <PageLoading />;
+  if (error) return <PageError message={error} onRetry={load} />;
+
+  const weeklyPct = Math.min(((weekly?.totalHours ?? 0) / 40) * 100, 100);
+  const today = new Date().toDateString();
+  const overdue = tasks.filter(
+    (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "DONE"
+  );
+
+  const PRIORITY_LABEL: Record<string, string> = {
+    URGENT: "緊急",
+    HIGH: "高",
+    MEDIUM: "中",
+    LOW: "低",
+  };
+  const PRIORITY_COLOR: Record<string, string> = {
+    URGENT: "text-red-400",
+    HIGH: "text-orange-400",
+    MEDIUM: "text-yellow-400",
+    LOW: "text-muted-foreground",
+  };
+  const STATUS_LABEL: Record<string, string> = {
+    TODO: "待辦",
+    IN_PROGRESS: "進行中",
+    DONE: "完成",
+    BLOCKED: "封鎖",
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* ── Summary cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <StatCard label="進行中任務" value={tasks.length} />
+        <StatCard label="逾期任務" value={overdue.length} accent={overdue.length > 0} />
+        <StatCard
+          label="本週工時 (h)"
+          value={`${safeFixed(weekly?.totalHours, 1)} / 40`}
+          sub={`進度 ${safePct(weeklyPct, 0)}%`}
+        />
+      </div>
+
+      {/* ── Weekly hours bar ── */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium">本週工時進度</h2>
+          <span className="text-xs tabular-nums text-muted-foreground">
+            {safeFixed(weekly?.totalHours, 1)} / 40 h
+          </span>
+        </div>
+        <ProgressBar
+          pct={weeklyPct}
+          color={weeklyPct >= 90 ? "bg-green-500" : weeklyPct >= 60 ? "bg-primary" : "bg-yellow-500"}
+        />
+      </div>
+
+      {/* ── My tasks today ── */}
+      <div className="bg-card border border-border rounded-lg p-5">
+        <h2 className="text-sm font-medium mb-4">我的任務（待辦 + 進行中）</h2>
+        {tasks.length === 0 ? (
+          <p className="text-sm text-muted-foreground">目前沒有待處理的任務</p>
+        ) : (
+          <div className="space-y-2">
+            {tasks.map((t) => (
+              <div
+                key={t.id}
+                className="flex items-center gap-3 p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
+              >
+                <span
+                  className={cn(
+                    "text-[11px] font-medium w-8 flex-shrink-0",
+                    PRIORITY_COLOR[t.priority] ?? "text-muted-foreground"
+                  )}
+                >
+                  {PRIORITY_LABEL[t.priority] ?? t.priority}
+                </span>
+                <span className="flex-1 text-sm text-foreground truncate">{t.title}</span>
+                <span className="text-[11px] text-muted-foreground flex-shrink-0">
+                  {STATUS_LABEL[t.status] ?? t.status}
+                </span>
+                {t.dueDate && (
+                  <span
+                    className={cn(
+                      "text-[11px] tabular-nums flex-shrink-0",
+                      new Date(t.dueDate) < new Date()
+                        ? "text-red-400"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {new Date(t.dueDate).toLocaleDateString("zh-TW")}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Overdue ── */}
+      {overdue.length > 0 && (
+        <div className="bg-card border border-red-500/30 rounded-lg p-5">
+          <h2 className="text-sm font-medium text-red-400 mb-3">逾期任務</h2>
+          <div className="space-y-2">
+            {overdue.map((t) => (
+              <div key={t.id} className="flex items-center justify-between text-sm">
+                <span className="text-foreground truncate">{t.title}</span>
+                <span className="text-red-400 tabular-nums text-xs flex-shrink-0 ml-2">
+                  {t.dueDate ? new Date(t.dueDate).toLocaleDateString("zh-TW") : ""}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Page ───────────────────────────────────────────────────────────────────
+
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const isManager = session?.user?.role === "MANAGER";
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-medium tracking-[-0.04em]">儀表板</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isManager ? "主管視角 — 團隊整體狀況" : "工程師視角 — 我的工作狀況"}
+        </p>
+      </div>
+
+      {status === "loading" ? (
+        <PageLoading />
+      ) : isManager ? (
+        <ManagerDashboard />
+      ) : (
+        <EngineerDashboard />
+      )}
+
+      {/* ── KPI Achievement Cards ── */}
+      {status !== "loading" && (
+        <div className="mt-8">
+          <KPIAchievementSection />
+        </div>
+      )}
+    </div>
+  );
+}

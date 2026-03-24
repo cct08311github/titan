@@ -1,0 +1,28 @@
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { withAuth } from "@/lib/auth-middleware";
+import { success } from "@/lib/api-response";
+
+export const GET = withAuth(async (req: NextRequest) => {
+
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q")?.trim();
+  if (!q) return success([]);
+
+  const results = await prisma.$queryRaw<
+    { id: string; title: string; slug: string; parentId: string | null; snippet: string }[]
+  >`
+    SELECT
+      id,
+      title,
+      slug,
+      "parentId",
+      LEFT(content, 200) AS snippet
+    FROM documents
+    WHERE to_tsvector('simple', title || ' ' || content) @@ plainto_tsquery('simple', ${q})
+    ORDER BY ts_rank(to_tsvector('simple', title || ' ' || content), plainto_tsquery('simple', ${q})) DESC
+    LIMIT 20
+  `;
+
+  return success(results);
+});

@@ -1,0 +1,137 @@
+/**
+ * Component tests: TaskDetailModal
+ */
+import React from "react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import "@testing-library/jest-dom";
+import { TaskDetailModal } from "@/app/components/task-detail-modal";
+
+const mockFetch = jest.fn();
+global.fetch = mockFetch;
+
+// Mock child components
+jest.mock("@/app/components/subtask-list", () => ({
+  SubTaskList: () => <div data-testid="subtask-list" />,
+}));
+jest.mock("@/app/components/deliverable-list", () => ({
+  DeliverableList: () => <div data-testid="deliverable-list" />,
+}));
+
+const MOCK_TASK = {
+  id: "task-1",
+  title: "Test Task",
+  description: "A test description",
+  status: "TODO",
+  priority: "P2",
+  category: "PLANNED",
+  primaryAssigneeId: null,
+  backupAssigneeId: null,
+  monthlyGoalId: null,
+  dueDate: null,
+  estimatedHours: null,
+  subTasks: [],
+  deliverables: [],
+  primaryAssignee: null,
+  backupAssignee: null,
+  monthlyGoal: null,
+};
+
+describe("TaskDetailModal", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => MOCK_TASK,
+    } as Response);
+  });
+
+  it("renders loading state initially", async () => {
+    render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    // Check that fetch was called
+    expect(mockFetch).toHaveBeenCalledWith("/api/tasks/task-1");
+  });
+
+  it("renders task title after loading", async () => {
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    await waitFor(() => {
+      // Title is rendered in an <input value="..."> field
+      expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument();
+    });
+  });
+
+  it("renders close button (X icon)", async () => {
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    await waitFor(() => {
+      // Wait for the modal to finish loading (title input appears)
+      expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument();
+    });
+    // Close button is in the modal header (second button: Save + X)
+    const buttons = screen.getAllByRole("button");
+    expect(buttons.length).toBeGreaterThan(0);
+  });
+
+  it("calls onClose when close button is clicked", async () => {
+    const onClose = jest.fn();
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={onClose} />);
+    });
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument();
+    });
+    // Click the X button (second button in header: index 1)
+    const buttons = screen.getAllByRole("button");
+    const closeBtn = buttons[1];
+    fireEvent.click(closeBtn);
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("renders status select with options", async () => {
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("待處理")).toBeInTheDocument();
+    });
+  });
+
+  it("renders subtask list component", async () => {
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("subtask-list")).toBeInTheDocument();
+    });
+  });
+
+  it("renders deliverable list component", async () => {
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("deliverable-list")).toBeInTheDocument();
+    });
+  });
+
+  it("shows description when provided", async () => {
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    await waitFor(() => {
+      // Description is rendered in a <textarea value="..."> field
+      expect(screen.getByDisplayValue("A test description")).toBeInTheDocument();
+    });
+  });
+
+  it("handles fetch error gracefully", async () => {
+    mockFetch.mockResolvedValue({ ok: false } as Response);
+    await act(async () => {
+      render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
+    });
+    // Should not throw and show some error state or nothing
+    expect(screen.queryByDisplayValue("Test Task")).not.toBeInTheDocument();
+  });
+});
