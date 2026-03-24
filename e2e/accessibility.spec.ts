@@ -8,13 +8,41 @@ import { MANAGER_STATE_FILE } from './helpers/auth';
  * Known existing violations (to be fixed as separate issues):
  * - scrollable-region-focusable: kanban/scroll areas in Dashboard
  * - color-contrast: dark theme muted text in Login page
+ * - select-name: Kanban filter <select> missing accessible name label
  *
  * Tests FAIL only on newly introduced violations not in the known list.
  */
 const KNOWN_VIOLATIONS = new Set([
   'scrollable-region-focusable',
   'color-contrast',
+  'select-name',
 ]);
+
+/** Run axe scan and assert no NEW violations beyond the known list. */
+async function assertNoNewViolations(page: Parameters<typeof AxeBuilder>[0]['page'], label: string) {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa'])
+    .exclude('[aria-hidden="true"]')
+    .analyze();
+
+  const newViolations = results.violations.filter((v) => !KNOWN_VIOLATIONS.has(v.id));
+
+  if (results.violations.length > 0) {
+    console.log(
+      `${label} a11y: ${results.violations.length} total (${newViolations.length} new, ` +
+      `${results.violations.length - newViolations.length} known)`
+    );
+    results.violations.forEach((v) => {
+      const tag = KNOWN_VIOLATIONS.has(v.id) ? '[KNOWN]' : '[NEW]';
+      console.log(`  ${tag} ${v.id} (${v.impact}): ${v.description}`);
+    });
+  }
+
+  expect(
+    newViolations.map((v) => `${v.id}: ${v.description}`),
+    `Found ${newViolations.length} NEW a11y violations on ${label}`
+  ).toHaveLength(0);
+}
 
 test.describe('Accessibility 測試', () => {
   test('Dashboard 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
@@ -22,58 +50,43 @@ test.describe('Accessibility 測試', () => {
     const page = await context.newPage();
 
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForTimeout(1000);
+    // Wait for h1 to confirm page is hydrated before axe scan
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .exclude('[aria-hidden="true"]')
-      .analyze();
-
-    const newViolations = results.violations.filter((v) => !KNOWN_VIOLATIONS.has(v.id));
-
-    if (results.violations.length > 0) {
-      console.log(
-        `Dashboard a11y: ${results.violations.length} total (${newViolations.length} new, ` +
-        `${results.violations.length - newViolations.length} known)`
-      );
-      results.violations.forEach((v) => {
-        const tag = KNOWN_VIOLATIONS.has(v.id) ? '[KNOWN]' : '[NEW]';
-        console.log(`  ${tag} ${v.id} (${v.impact}): ${v.description}`);
-      });
-    }
-
-    expect(
-      newViolations.map((v) => `${v.id}: ${v.description}`),
-      `Found ${newViolations.length} NEW a11y violations on Dashboard`
-    ).toHaveLength(0);
+    await assertNoNewViolations(page, 'Dashboard');
 
     await context.close();
   });
 
   test('Login 頁面 axe accessibility 掃描（記錄違規）', async ({ page }) => {
     await page.goto('/login', { waitUntil: 'domcontentloaded' });
+    // Wait for login form to be interactive
+    await page.waitForSelector('#username', { state: 'visible', timeout: 10000 });
 
-    const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa'])
-      .exclude('[aria-hidden="true"]')
-      .analyze();
+    await assertNoNewViolations(page, 'Login');
+  });
 
-    const newViolations = results.violations.filter((v) => !KNOWN_VIOLATIONS.has(v.id));
+  test('Kanban 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
 
-    if (results.violations.length > 0) {
-      console.log(
-        `Login a11y: ${results.violations.length} total (${newViolations.length} new, ` +
-        `${results.violations.length - newViolations.length} known)`
-      );
-      results.violations.forEach((v) => {
-        const tag = KNOWN_VIOLATIONS.has(v.id) ? '[KNOWN]' : '[NEW]';
-        console.log(`  ${tag} ${v.id} (${v.impact}): ${v.description}`);
-      });
-    }
+    await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
-    expect(
-      newViolations.map((v) => `${v.id}: ${v.description}`),
-      `Found ${newViolations.length} NEW a11y violations on Login`
-    ).toHaveLength(0);
+    await assertNoNewViolations(page, 'Kanban');
+
+    await context.close();
+  });
+
+  test('KPI 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'KPI');
+
+    await context.close();
   });
 });

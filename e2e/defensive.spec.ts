@@ -36,8 +36,8 @@ test.describe('Defensive 測試', () => {
   test('所有頁面在登入後不白屏（body 有內容）', async ({ page }) => {
     for (const path of ALL_PAGES) {
       await page.goto(path, { waitUntil: 'domcontentloaded' });
-      // Give React time to hydrate
-      await page.waitForTimeout(1000);
+      // Wait for React to hydrate: h1 or main content area must be visible
+      await page.waitForSelector('h1, main, [data-testid]', { state: 'visible', timeout: 15000 });
 
       // Check body is not empty/blank
       const bodyText = await page.locator('body').innerText();
@@ -62,7 +62,8 @@ test.describe('Defensive 測試', () => {
 
     for (const path of ALL_PAGES) {
       await page.goto(path, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(800);
+      // Wait for meaningful DOM signal instead of fixed timeout
+      await page.waitForLoadState('networkidle');
     }
 
     expect(

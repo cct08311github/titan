@@ -147,7 +147,8 @@ describe("Dashboard Page", () => {
     setSession("MEMBER");
     setupFetch(WORKLOAD_EMPTY, WEEKLY_EMPTY, [], []);
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    expect(document.body.innerHTML.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
   // ── Case 2: loading state ────────────────────────────────────────────────
@@ -155,7 +156,8 @@ describe("Dashboard Page", () => {
     setSessionLoading();
     setupFetch();
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    expect(document.body.innerHTML.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
   // ── Case 3: key UI element — 儀表板 heading ──────────────────────────────
@@ -171,7 +173,8 @@ describe("Dashboard Page", () => {
     setSessionUnauthenticated();
     setupFetch();
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    expect(document.body.innerHTML.length).toBeGreaterThan(0);
+    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
   // ── Case 5: Engineer role subtitle ──────────────────────────────────────
@@ -211,7 +214,10 @@ describe("Dashboard Page", () => {
     setSession("MEMBER");
     mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) } as Response);
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    // PageError renders 「發生錯誤」— may appear multiple times (main + KPI section)
+    await waitFor(() => expect(screen.getAllByText("發生錯誤").length).toBeGreaterThan(0));
+    // Should show localised error message, not raw JSON
+    expect(screen.queryByText(/^\{"error"/)).not.toBeInTheDocument();
   });
 
   // ── Case 10: network rejection ───────────────────────────────────────────
@@ -219,7 +225,10 @@ describe("Dashboard Page", () => {
     setSession("MANAGER");
     mockFetch.mockRejectedValue(new Error("Network error"));
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    // PageError renders 「發生錯誤」— may appear multiple times (main + KPI section)
+    await waitFor(() => expect(screen.getAllByText("發生錯誤").length).toBeGreaterThan(0));
+    // Should show localised error message, not raw JSON
+    expect(screen.queryByText(/^\{"error"/)).not.toBeInTheDocument();
   });
 
   // ── Case 11: empty workload ──────────────────────────────────────────────
@@ -245,7 +254,8 @@ describe("Dashboard Page", () => {
     setSession("MANAGER");
     setupFetch(WORKLOAD_MALFORMED, WEEKLY_MALFORMED);
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    expect(screen.getByText("儀表板")).toBeInTheDocument();
+    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
   // ── Case 14: defensive — partial data (schema drift) ────────────────────
@@ -253,7 +263,8 @@ describe("Dashboard Page", () => {
     setSession("MANAGER");
     setupFetch(WORKLOAD_PARTIAL, WEEKLY_PARTIAL);
     await act(async () => { render(<DashboardPage />); });
-    expect(document.body).toBeDefined();
+    expect(screen.getByText("儀表板")).toBeInTheDocument();
+    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
   // ── Case 15: empty tasks list for Engineer ───────────────────────────────
