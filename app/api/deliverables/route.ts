@@ -22,7 +22,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
   });
 
   if (!query.success) {
-    throw new ValidationError(query.error.errors.map((e) => e.message).join(", "));
+    throw new ValidationError(query.error.issues.map((e) => e.message).join(", "));
   }
 
   const service = new DeliverableService(prisma);
@@ -38,7 +38,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
   const parsed = createDeliverableSchema.safeParse(body);
 
   if (!parsed.success) {
-    throw new ValidationError(parsed.error.errors.map((e) => e.message).join(", "));
+    throw new ValidationError(parsed.error.issues.map((e) => e.message).join(", "));
   }
 
   const service = new DeliverableService(prisma);

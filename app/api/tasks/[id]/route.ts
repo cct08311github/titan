@@ -11,18 +11,18 @@ const taskService = new TaskService(prisma);
 
 export const GET = withAuth(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const task = await taskService.getTask(id);
   return success(task);
 });
 
 export const PUT = withAuth(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const body = validateBody(updateTaskSchema, raw);
   const task = await taskService.updateTask(id, body);
@@ -31,19 +31,19 @@ export const PUT = withAuth(async (
 
 export const DELETE = withManager(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   await taskService.deleteTask(id);
   return success({ success: true });
 });
 
 export const PATCH = withAuth(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await requireAuth();
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const { status } = validateBody(updateTaskStatusSchema, raw);
   const task = await taskService.updateTaskStatus(id, status, session.user.id);

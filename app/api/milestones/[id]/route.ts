@@ -12,12 +12,12 @@ const getService = () => new MilestoneService(prisma);
 
 export const GET = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const milestone = await getService().getMilestone(id);
 
   return success(milestone);
@@ -25,12 +25,12 @@ export const GET = apiHandler(async (
 
 export const PUT = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const data = validateBody(updateMilestoneSchema, raw);
 
@@ -50,12 +50,12 @@ export const PUT = apiHandler(async (
 
 export const DELETE = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   await getService().deleteMilestone(id);
 
   return success({ id });

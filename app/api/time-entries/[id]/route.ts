@@ -10,12 +10,12 @@ import { success } from "@/lib/api-response";
 
 export const PUT = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const { taskId, date, hours, category, description } = validateBody(updateTimeEntrySchema, raw);
 
@@ -39,12 +39,12 @@ export const PUT = apiHandler(async (
 
 export const DELETE = apiHandler(async (
   _req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   await prisma.timeEntry.delete({ where: { id } });
   return success({ success: true });
 });

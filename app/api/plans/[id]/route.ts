@@ -8,10 +8,10 @@ import { withAuth, withManager } from "@/lib/auth-middleware";
 
 export const GET = withAuth(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const plan = await prisma.annualPlan.findUnique({
     where: { id },
     include: {
@@ -40,9 +40,9 @@ export const GET = withAuth(async (
 
 export const DELETE = withManager(async (
   _req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const existing = await prisma.annualPlan.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("計畫不存在");
 
@@ -52,9 +52,9 @@ export const DELETE = withManager(async (
 
 export const PUT = withManager(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const { title, description, implementationPlan, progressPct } = validateBody(updatePlanSchema, raw);
 

@@ -10,18 +10,18 @@ const userService = new UserService(prisma);
 
 export const GET = withAuth(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const user = await userService.getUser(id);
   return success(user);
 });
 
 export const PUT = withManager(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const body = validateBody(updateUserSchema, raw);
   const user = await userService.updateUser(id, body);
@@ -30,9 +30,9 @@ export const PUT = withManager(async (
 
 export const DELETE = withManager(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action");
 

@@ -6,39 +6,40 @@
  *     return success(data);
  *   });
  *
- *   export const POST = withManager(async (req) => {
+ *   export const POST = withManager(async (req, context) => {
+ *     const { id } = await context.params;
  *     return success(data);
  *   });
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/rbac";
-import { apiHandler } from "@/lib/api-handler";
+import { apiHandler, RouteContext } from "@/lib/api-handler";
 import type { ApiResponse } from "@/lib/api-response";
 
-type RouteHandler = (
-  req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
-) => Promise<NextResponse<ApiResponse>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyHandler = (req: NextRequest, context?: any) => Promise<NextResponse<ApiResponse>>;
 
 /**
  * Wraps a route handler with requireAuth check + unified error handling.
  * Any authenticated user (MANAGER or ENGINEER) may access.
  */
-export function withAuth(fn: RouteHandler): RouteHandler {
-  return apiHandler(async (req, context) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withAuth<T extends AnyHandler>(fn: T): T {
+  return apiHandler(async (req: NextRequest, context?: RouteContext) => {
     await requireAuth();
     return fn(req, context);
-  });
+  }) as unknown as T;
 }
 
 /**
  * Wraps a route handler with requireRole('MANAGER') check + error handling.
  * Only MANAGER role may access.
  */
-export function withManager(fn: RouteHandler): RouteHandler {
-  return apiHandler(async (req, context) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function withManager<T extends AnyHandler>(fn: T): T {
+  return apiHandler(async (req: NextRequest, context?: RouteContext) => {
     await requireRole("MANAGER");
     return fn(req, context);
-  });
+  }) as unknown as T;
 }

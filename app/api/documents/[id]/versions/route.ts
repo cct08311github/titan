@@ -7,12 +7,12 @@ import { success } from "@/lib/api-response";
 
 export const GET = apiHandler(async (
   _req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const versions = await prisma.documentVersion.findMany({
     where: { documentId: id },
     include: { creator: { select: { id: true, name: true } } },

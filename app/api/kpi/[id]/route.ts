@@ -8,10 +8,10 @@ import { withAuth, withManager } from "@/lib/auth-middleware";
 
 export const GET = withAuth(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const kpi = await prisma.kPI.findUnique({
     where: { id },
     include: {
@@ -40,9 +40,9 @@ export const GET = withAuth(async (
 
 export const DELETE = withManager(async (
   _req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const existing = await prisma.kPI.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("找不到 KPI");
 
@@ -53,9 +53,9 @@ export const DELETE = withManager(async (
 
 export const PUT = withManager(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const raw = await req.json();
   const { title, description, target, actual, weight, status, autoCalc } =
     validateBody(updateKpiSchema, raw);

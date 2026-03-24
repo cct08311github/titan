@@ -7,13 +7,13 @@ import { success } from "@/lib/api-response";
 
 export const POST = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
   if (session.user.role !== "MANAGER") throw new ForbiddenError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const body = await req.json();
   const { taskId, weight, remove } = body;
 

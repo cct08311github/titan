@@ -10,12 +10,12 @@ const changeTracker = new ChangeTrackingService(prisma);
 
 export const GET = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const changes = await changeTracker.getChangeHistory(id);
   const delayCount = changes.filter((c) => c.changeType === "DELAY").length;
   const scopeChangeCount = changes.filter((c) => c.changeType === "SCOPE_CHANGE").length;
@@ -25,12 +25,12 @@ export const GET = apiHandler(async (
 
 export const POST = apiHandler(async (
   req: NextRequest,
-  context?: { params: Promise<Record<string, string>> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
-  const { id } = await context!.params;
+  const { id } = await context.params;
   const body = await req.json();
   const { changeType, reason, oldValue, newValue } = body;
 
