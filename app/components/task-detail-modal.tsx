@@ -81,17 +81,24 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [users, setUsers] = useState<User[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
 
-  // Editable fields
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("");
-  const [priority, setPriority] = useState("");
-  const [category, setCategory] = useState("");
-  const [primaryAssigneeId, setPrimaryAssigneeId] = useState("");
-  const [backupAssigneeId, setBackupAssigneeId] = useState("");
-  const [monthlyGoalId, setMonthlyGoalId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [estimatedHours, setEstimatedHours] = useState("");
+  // Consolidated form state — Issue #293 (CR-22)
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    status: "",
+    priority: "",
+    category: "",
+    primaryAssigneeId: "",
+    backupAssigneeId: "",
+    monthlyGoalId: "",
+    dueDate: "",
+    estimatedHours: "",
+  });
+
+  /** Update a single form field by key */
+  function setField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
 
   const loadTask = useCallback(async () => {
     setLoading(true);
@@ -100,16 +107,18 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
       if (res.ok) {
         const data: TaskDetail = await res.json();
         setTask(data);
-        setTitle(data.title);
-        setDescription(data.description ?? "");
-        setStatus(data.status);
-        setPriority(data.priority);
-        setCategory(data.category);
-        setPrimaryAssigneeId(data.primaryAssigneeId ?? "");
-        setBackupAssigneeId(data.backupAssigneeId ?? "");
-        setMonthlyGoalId(data.monthlyGoalId ?? "");
-        setDueDate(data.dueDate ? data.dueDate.split("T")[0] : "");
-        setEstimatedHours(data.estimatedHours?.toString() ?? "");
+        setForm({
+          title: data.title,
+          description: data.description ?? "",
+          status: data.status,
+          priority: data.priority,
+          category: data.category,
+          primaryAssigneeId: data.primaryAssigneeId ?? "",
+          backupAssigneeId: data.backupAssigneeId ?? "",
+          monthlyGoalId: data.monthlyGoalId ?? "",
+          dueDate: data.dueDate ? data.dueDate.split("T")[0] : "",
+          estimatedHours: data.estimatedHours?.toString() ?? "",
+        });
       }
     } finally {
       setLoading(false);
@@ -129,16 +138,16 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          description: description || null,
-          status,
-          priority,
-          category,
-          primaryAssigneeId: primaryAssigneeId || null,
-          backupAssigneeId: backupAssigneeId || null,
-          monthlyGoalId: monthlyGoalId || null,
-          dueDate: dueDate || null,
-          estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
+          title: form.title,
+          description: form.description || null,
+          status: form.status,
+          priority: form.priority,
+          category: form.category,
+          primaryAssigneeId: form.primaryAssigneeId || null,
+          backupAssigneeId: form.backupAssigneeId || null,
+          monthlyGoalId: form.monthlyGoalId || null,
+          dueDate: form.dueDate || null,
+          estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
         }),
       });
       if (res.ok) {
@@ -197,8 +206,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
               <Label>標題</Label>
               <input
                 type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                value={form.title}
+                onChange={(e) => setField("title", e.target.value)}
                 className={inputCls}
               />
             </div>
@@ -207,8 +216,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             <div>
               <Label>描述</Label>
               <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                value={form.description}
+                onChange={(e) => setField("description", e.target.value)}
                 rows={3}
                 placeholder="任務描述..."
                 className={cn(inputCls, "resize-none")}
@@ -219,19 +228,19 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>狀態</Label>
-                <select value={status} onChange={(e) => setStatus(e.target.value)} className={selectCls}>
+                <select value={form.status} onChange={(e) => setField("status", e.target.value)} className={selectCls}>
                   {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <Label>優先度</Label>
-                <select value={priority} onChange={(e) => setPriority(e.target.value)} className={selectCls}>
+                <select value={form.priority} onChange={(e) => setField("priority", e.target.value)} className={selectCls}>
                   {priorityOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
                 <Label>分類</Label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectCls}>
+                <select value={form.category} onChange={(e) => setField("category", e.target.value)} className={selectCls}>
                   {categoryOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
@@ -241,14 +250,14 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>A角（主要負責人）</Label>
-                <select value={primaryAssigneeId} onChange={(e) => setPrimaryAssigneeId(e.target.value)} className={selectCls}>
+                <select value={form.primaryAssigneeId} onChange={(e) => setField("primaryAssigneeId", e.target.value)} className={selectCls}>
                   <option value="">未指派</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
               </div>
               <div>
                 <Label>B角（備援負責人）</Label>
-                <select value={backupAssigneeId} onChange={(e) => setBackupAssigneeId(e.target.value)} className={selectCls}>
+                <select value={form.backupAssigneeId} onChange={(e) => setField("backupAssigneeId", e.target.value)} className={selectCls}>
                   <option value="">未指派</option>
                   {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </select>
@@ -261,8 +270,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                 <Label>截止日期</Label>
                 <input
                   type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
+                  value={form.dueDate}
+                  onChange={(e) => setField("dueDate", e.target.value)}
                   className={inputCls}
                 />
               </div>
@@ -272,8 +281,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                   type="number"
                   min="0"
                   step="0.5"
-                  value={estimatedHours}
-                  onChange={(e) => setEstimatedHours(e.target.value)}
+                  value={form.estimatedHours}
+                  onChange={(e) => setField("estimatedHours", e.target.value)}
                   placeholder="0"
                   className={inputCls}
                 />
@@ -288,7 +297,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                   連結月度目標
                 </span>
               </Label>
-              <select value={monthlyGoalId} onChange={(e) => setMonthlyGoalId(e.target.value)} className={selectCls}>
+              <select value={form.monthlyGoalId} onChange={(e) => setField("monthlyGoalId", e.target.value)} className={selectCls}>
                 <option value="">不連結</option>
                 {goals.map((g) => (
                   <option key={g.id} value={g.id}>{g.month}月 — {g.title}</option>
