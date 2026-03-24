@@ -1,5 +1,6 @@
 import { Sidebar } from "@/app/components/sidebar";
 import { Topbar } from "@/app/components/topbar";
+import { CommandPalette } from "@/app/components/command-palette";
 import { NextAuthSessionProvider } from "@/app/components/session-provider";
 import { PasswordChangeGuard } from "@/app/components/password-change-guard";
 
@@ -14,6 +15,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <main className="flex-1 overflow-y-auto p-6">{children}</main>
           </div>
         </div>
+        <CommandPalette />
       </PasswordChangeGuard>
     </NextAuthSessionProvider>
   );
