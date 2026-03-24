@@ -36,7 +36,8 @@ describe("GET /api/plans", () => {
     const { GET } = await import("@/app/api/plans/route");
     const res = await GET(createMockRequest("/api/plans"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data[0].id).toBe("plan-1");
   });
 
@@ -103,5 +104,80 @@ describe("POST /api/plans", () => {
       body: { year: 2025, title: "Plan", milestones: [{ title: "Q1", plannedEnd: "2025-03-31" }] },
     }));
     expect(res.status).toBe(201);
+  });
+});
+
+describe("POST /api/plans/copy-template", () => {
+  const mockPlanService = {
+    copyTemplate: jest.fn(),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
+    mockPlanService.copyTemplate.mockResolvedValue({ ...MOCK_PLAN, year: 2025, copiedFromYear: 2024 });
+  });
+
+  it("returns 401 when no session", async () => {
+    mockGetServerSession.mockResolvedValue(null);
+    const { POST } = await import("@/app/api/plans/copy-template/route");
+    const res = await POST(
+      createMockRequest("/api/plans/copy-template", {
+        method: "POST",
+        body: { sourcePlanId: "plan-1", targetYear: 2025 },
+      })
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 403 when non-manager calls copy-template", async () => {
+    mockGetServerSession.mockResolvedValue({ user: { id: "u1", role: "MEMBER" }, expires: "2099" });
+    const { POST } = await import("@/app/api/plans/copy-template/route");
+    const res = await POST(
+      createMockRequest("/api/plans/copy-template", {
+        method: "POST",
+        body: { sourcePlanId: "plan-1", targetYear: 2025 },
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 400 when sourcePlanId is missing", async () => {
+    const { POST } = await import("@/app/api/plans/copy-template/route");
+    const res = await POST(
+      createMockRequest("/api/plans/copy-template", {
+        method: "POST",
+        body: { targetYear: 2025 },
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when targetYear is missing", async () => {
+    const { POST } = await import("@/app/api/plans/copy-template/route");
+    const res = await POST(
+      createMockRequest("/api/plans/copy-template", {
+        method: "POST",
+        body: { sourcePlanId: "plan-1" },
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("copies plan template and returns 201 with the new plan", async () => {
+    const copiedPlan = { ...MOCK_PLAN, id: "plan-2", year: 2025, copiedFromYear: 2024 };
+    mockAnnualPlan.findUnique.mockResolvedValue({ ...MOCK_PLAN, milestones: [], monthlyGoals: [] });
+    mockAnnualPlan.create.mockResolvedValue(copiedPlan);
+    const { POST } = await import("@/app/api/plans/copy-template/route");
+    const res = await POST(
+      createMockRequest("/api/plans/copy-template", {
+        method: "POST",
+        body: { sourcePlanId: "plan-1", targetYear: 2025 },
+      })
+    );
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    const data = body.data;
+    expect(data.year).toBe(2025);
   });
 });

@@ -46,7 +46,8 @@ describe("GET /api/reports/weekly", () => {
     const { GET } = await import("@/app/api/reports/weekly/route");
     const res = await GET(createMockRequest("/api/reports/weekly"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data).toHaveProperty("period");
     expect(data).toHaveProperty("completedTasks");
     expect(data).toHaveProperty("totalHours");
@@ -79,7 +80,8 @@ describe("GET /api/reports/weekly", () => {
     ]);
     const { GET } = await import("@/app/api/reports/weekly/route");
     const res = await GET(createMockRequest("/api/reports/weekly"));
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data.delayCount).toBe(1);
     expect(data.scopeChangeCount).toBe(1);
   });
@@ -96,7 +98,8 @@ describe("GET /api/reports/monthly", () => {
     const { GET } = await import("@/app/api/reports/monthly/route");
     const res = await GET(createMockRequest("/api/reports/monthly"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data).toHaveProperty("period");
     expect(data).toHaveProperty("completionRate");
   });
@@ -126,7 +129,8 @@ describe("GET /api/reports/workload", () => {
     const { GET } = await import("@/app/api/reports/workload/route");
     const res = await GET(createMockRequest("/api/reports/workload"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data).toHaveProperty("totalHours");
     expect(data).toHaveProperty("byPerson");
   });
@@ -152,7 +156,8 @@ describe("GET /api/reports/kpi", () => {
     const { GET } = await import("@/app/api/reports/kpi/route");
     const res = await GET(createMockRequest("/api/reports/kpi"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data).toHaveProperty("year");
     expect(data).toHaveProperty("kpis");
     expect(data).toHaveProperty("avgAchievement");
@@ -171,7 +176,92 @@ describe("GET /api/reports/kpi", () => {
     ]);
     const { GET } = await import("@/app/api/reports/kpi/route");
     const res = await GET(createMockRequest("/api/reports/kpi"));
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data.achievedCount).toBe(1);
+  });
+});
+
+describe("GET /api/reports/delay-change", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetServerSession.mockResolvedValue(SESSION);
+    setupMocks();
+  });
+
+  it("returns 401 when no session", async () => {
+    mockGetServerSession.mockResolvedValue(null);
+    const { GET } = await import("@/app/api/reports/delay-change/route");
+    const res = await GET(createMockRequest("/api/reports/delay-change"));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns delay and change counts when authenticated", async () => {
+    mockTaskChange.findMany.mockResolvedValue([
+      { changeType: "DELAY", changedAt: new Date("2024-01-10") },
+      { changeType: "DELAY", changedAt: new Date("2024-01-11") },
+      { changeType: "SCOPE_CHANGE", changedAt: new Date("2024-01-12") },
+    ]);
+    const { GET } = await import("@/app/api/reports/delay-change/route");
+    const res = await GET(createMockRequest("/api/reports/delay-change"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const data = body.data;
+    expect(data).toHaveProperty("delayCount");
+    expect(data).toHaveProperty("scopeChangeCount");
+    expect(data).toHaveProperty("total");
+    expect(data.delayCount).toBe(2);
+    expect(data.scopeChangeCount).toBe(1);
+    expect(data.total).toBe(3);
+  });
+
+  it("accepts startDate and endDate query params", async () => {
+    mockTaskChange.findMany.mockResolvedValue([]);
+    const { GET } = await import("@/app/api/reports/delay-change/route");
+    const res = await GET(
+      createMockRequest("/api/reports/delay-change", {
+        searchParams: { startDate: "2024-01-01", endDate: "2024-01-31" },
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(mockTaskChange.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          changedAt: expect.objectContaining({ gte: expect.any(Date), lte: expect.any(Date) }),
+        }),
+      })
+    );
+  });
+
+  it("groups changes by date in byDate field", async () => {
+    mockTaskChange.findMany.mockResolvedValue([
+      { changeType: "DELAY", changedAt: new Date("2024-01-10T10:00:00Z") },
+      { changeType: "SCOPE_CHANGE", changedAt: new Date("2024-01-10T14:00:00Z") },
+      { changeType: "DELAY", changedAt: new Date("2024-01-11T09:00:00Z") },
+    ]);
+    const { GET } = await import("@/app/api/reports/delay-change/route");
+    const res = await GET(createMockRequest("/api/reports/delay-change"));
+    const body = await res.json();
+    const data = body.data;
+    expect(data).toHaveProperty("byDate");
+    expect(Array.isArray(data.byDate)).toBe(true);
+  });
+
+  it("returns 500 on database error", async () => {
+    mockTaskChange.findMany.mockRejectedValue(new Error("DB error"));
+    const { GET } = await import("@/app/api/reports/delay-change/route");
+    const res = await GET(createMockRequest("/api/reports/delay-change"));
+    expect(res.status).toBe(500);
+  });
+
+  it("returns empty result when no changes exist", async () => {
+    mockTaskChange.findMany.mockResolvedValue([]);
+    const { GET } = await import("@/app/api/reports/delay-change/route");
+    const res = await GET(createMockRequest("/api/reports/delay-change"));
+    const body = await res.json();
+    const data = body.data;
+    expect(data.delayCount).toBe(0);
+    expect(data.scopeChangeCount).toBe(0);
+    expect(data.total).toBe(0);
   });
 });
