@@ -1,10 +1,18 @@
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 import { ChangeTrackingService } from "@/services/change-tracking-service";
 import { requireAuth } from "@/lib/rbac";
+
+const createTaskChangeSchema = z.object({
+  changeType: z.enum(["DELAY", "SCOPE_CHANGE"]),
+  reason: z.string().min(1),
+  oldValue: z.string().optional(),
+  newValue: z.string().optional(),
+});
 
 const changeTracker = new ChangeTrackingService(prisma);
 
@@ -26,12 +34,8 @@ export const POST = withAuth(async (
 ) => {
   const session = await requireAuth();
   const { id } = await context.params;
-  const body = await req.json();
-  const { changeType, reason, oldValue, newValue } = body;
-
-  if (!changeType || !reason) {
-    throw new ValidationError("changeType 和 reason 為必填");
-  }
+  const raw = await req.json();
+  const { changeType, reason, oldValue, newValue } = validateBody(createTaskChangeSchema, raw);
 
   const change = await prisma.taskChange.create({
     data: {
