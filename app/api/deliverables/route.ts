@@ -18,7 +18,10 @@ export const GET = withAuth(async (req: NextRequest) => {
   });
 
   if (!query.success) {
-    throw new ValidationError(query.error.issues.map((e) => e.message).join(", "));
+    const flat = query.error.flatten();
+    throw new ValidationError(
+      JSON.stringify({ error: "輸入驗證失敗", fields: flat.fieldErrors })
+    );
   }
 
   const service = new DeliverableService(prisma);
@@ -31,7 +34,10 @@ export const POST = withManager(async (req: NextRequest) => {
   const parsed = createDeliverableSchema.safeParse(body);
 
   if (!parsed.success) {
-    throw new ValidationError(parsed.error.issues.map((e) => e.message).join(", "));
+    const flat = parsed.error.flatten();
+    throw new ValidationError(
+      JSON.stringify({ error: "輸入驗證失敗", fields: flat.fieldErrors })
+    );
   }
 
   const service = new DeliverableService(prisma);
