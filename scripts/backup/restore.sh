@@ -116,6 +116,17 @@ MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-${MINIO_ROOT_PASSWORD}}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ============================================================
+# 累積式 Cleanup（防止雙重 trap 覆蓋）
+# ============================================================
+TEMP_DIRS=()
+_cleanup() {
+    if [[ ${#TEMP_DIRS[@]} -gt 0 ]]; then
+        rm -rf "${TEMP_DIRS[@]}"
+    fi
+}
+trap _cleanup EXIT
+
+# ============================================================
 # 開始還原
 # ============================================================
 log_section "TITAN 還原開始"
@@ -149,7 +160,7 @@ if [ -n "${RESTORE_POSTGRES}" ]; then
     
     # 停止相關服務
     log_info "停止 Outline 服務..."
-    cd "${TITAN_ROOT}"
+    cd "${TITAN_ROOT}" || { log_error "無法切換目錄: ${TITAN_ROOT}"; exit 1; }
     docker compose stop outline 2>/dev/null || true
     
     # 還原資料庫
@@ -163,7 +174,7 @@ if [ -n "${RESTORE_POSTGRES}" ]; then
         --if-exists \
         -v \
         "${BACKUP_FILE}"
-    
+
     if [ $? -eq 0 ]; then
         log_info "PostgreSQL 還原成功"
     else
@@ -208,11 +219,11 @@ if [ -n "${RESTORE_MINIO}" ]; then
     
     # 建立臨時目錄
     TEMP_DIR=$(mktemp -d)
-    trap "rm -rf ${TEMP_DIR}" EXIT
-    
+    TEMP_DIRS+=("${TEMP_DIR}")
+
     # 解壓縮
     tar -xzf "${BACKUP_FILE}" -C "${TEMP_DIR}"
-    
+
     # 還原每個 bucket
     for BUCKET_DIR in "${TEMP_DIR}"/*; do
         if [ -d "${BUCKET_DIR}" ]; then
@@ -254,8 +265,8 @@ if [ -n "${RESTORE_CONFIG}" ]; then
     
     # 解壓縮到臨時目錄
     TEMP_DIR=$(mktemp -d)
-    trap "rm -rf ${TEMP_DIR}" EXIT
-    
+    TEMP_DIRS+=("${TEMP_DIR}")
+
     tar -xzf "${BACKUP_FILE}" -C "${TEMP_DIR}"
     
     # 複製檔案
