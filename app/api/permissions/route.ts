@@ -1,56 +1,77 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { UnauthorizedError, ForbiddenError, ValidationError } from "@/services/errors";
 import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { PermissionService } from "@/services/permission-service";
+import { prisma } from "@/lib/prisma";
 
+const permissionService = new PermissionService(prisma);
+
+/** GET /api/permissions — list all permissions (MANAGER only) */
 export const GET = apiHandler(async (req: NextRequest) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
   if (session.user.role !== "MANAGER") throw new ForbiddenError();
 
-  const permissions = await prisma.permission.findMany({
-    include: {
-      grantee: { select: { id: true, name: true, email: true, role: true } },
-      granter: { select: { id: true, name: true } },
-    },
-    orderBy: { createdAt: "desc" },
+  const url = new URL(req.url);
+  const granteeId = url.searchParams.get("granteeId") ?? undefined;
+  const permType = url.searchParams.get("permType") ?? undefined;
+  const isActiveParam = url.searchParams.get("isActive");
+  const isActive =
+    isActiveParam === "true" ? true : isActiveParam === "false" ? false : undefined;
+
+  const permissions = await permissionService.listPermissions({
+    granteeId,
+    permType,
+    isActive,
   });
 
   return success(permissions);
 });
 
+/** POST /api/permissions — grant a permission (MANAGER only) */
 export const POST = apiHandler(async (req: NextRequest) => {
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
   if (session.user.role !== "MANAGER") throw new ForbiddenError();
 
   const body = await req.json();
-  const { granteeId, permType, targetId, expiresAt, revoke } = body;
+  const { granteeId, permType, targetId, expiresAt } = body;
 
   if (!granteeId || !permType) {
-    throw new ValidationError("缺少必填欄位");
+    throw new ValidationError("缺少必填欄位：granteeId, permType");
   }
 
-  if (revoke) {
-    await prisma.permission.updateMany({
-      where: { granteeId, permType, targetId: targetId || null },
-      data: { isActive: false },
-    });
-    return success({ message: "已撤銷授權" });
-  }
-
-  const permission = await prisma.permission.create({
-    data: {
-      granteeId,
-      granterId: session.user.id,
-      permType,
-      targetId: targetId || null,
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
-      isActive: true,
-    },
+  const permission = await permissionService.grantPermission({
+    granteeId,
+    granterId: session.user.id,
+    permType,
+    targetId: targetId ?? null,
+    expiresAt: expiresAt ? new Date(expiresAt) : null,
   });
 
   return success(permission, 201);
+});
+
+/** DELETE /api/permissions — revoke a permission (MANAGER only) */
+export const DELETE = apiHandler(async (req: NextRequest) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
+  if (session.user.role !== "MANAGER") throw new ForbiddenError();
+
+  const body = await req.json();
+  const { granteeId, permType, targetId } = body;
+
+  if (!granteeId || !permType) {
+    throw new ValidationError("缺少必填欄位：granteeId, permType");
+  }
+
+  await permissionService.revokePermission({
+    granteeId,
+    permType,
+    targetId: targetId ?? null,
+  });
+
+  return success({ message: "已撤銷授權" });
 });
