@@ -60,8 +60,8 @@ export const logger = pino({
 });
 
 /**
- * Create a child logger bound to a specific request ID (Issue #199).
- * Usage in route handlers: const log = withRequestId(headers().get('x-request-id'));
+ * Create a child logger bound to a request ID (Issue #199).
+ * Usage: const log = withRequestId(headers().get('x-request-id'));
  */
 export function withRequestId(requestId: string | null): pino.Logger {
   return requestId ? logger.child({ requestId }) : logger;
