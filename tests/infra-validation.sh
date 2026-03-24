@@ -62,6 +62,7 @@ EOF
   cat >"${dir}/bin/pg_restore" <<'EOF'
 #!/usr/bin/env bash
 echo "pg_restore $*" >>"${TEST_CALLS_FILE}"
+echo "pg_restore_env POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}" >>"${TEST_CALLS_FILE}"
 if [ "${PG_RESTORE_SHOULD_FAIL:-0}" = "1" ]; then
   exit 12
 fi
@@ -244,6 +245,28 @@ test_restore_postgres_failure_propagates() {
   assert_file_contains "${dir}/calls.log" 'pg_restore '
 }
 
+test_restore_all_uses_titan_env_credentials() {
+  local dir
+  dir="$(new_fixture restore-all-env-creds)"
+  write_stub_commands "${dir}"
+  create_postgres_backup "${dir}"
+  create_minio_backup "${dir}"
+  create_config_backup "${dir}"
+
+  cat >"${dir}/target/.env" <<'EOF'
+POSTGRES_PASSWORD=from-env-postgres
+MINIO_ROOT_USER=from-env-minio-user
+MINIO_ROOT_PASSWORD=from-env-minio-pass
+EOF
+
+  run_restore "${dir}" 'yes\nyes\nyes\n' --all >/dev/null
+  local status=$?
+  assert_exit_code 0 "${status}" "restore --all with titan env"
+
+  assert_file_contains "${dir}/calls.log" 'pg_restore_env POSTGRES_PASSWORD=from-env-postgres'
+  assert_file_contains "${dir}/calls.log" 'mc alias set titanrestore http://localhost:9000 from-env-minio-user from-env-minio-pass'
+}
+
 test_restore_minio_empty_archive_boundary() {
   local dir
   dir="$(new_fixture restore-minio-empty)"
@@ -277,6 +300,7 @@ main() {
   run_test test_restore_postgres_latest_missing_fails
   run_test test_restore_minio_decline_confirmation
   run_test test_restore_postgres_failure_propagates
+  run_test test_restore_all_uses_titan_env_credentials
   run_test test_restore_minio_empty_archive_boundary
   run_test test_restore_config_latest_boundary
   log "all validations passed (${TESTS_PASSED} cases)"

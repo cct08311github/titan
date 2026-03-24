@@ -97,10 +97,21 @@ done
 : "${POSTGRES_PORT:=5432}"
 : "${POSTGRES_USER:=titan}"
 : "${POSTGRES_DB:=titan}"
-: "${MINIO_ENDPOINT:=localhost:9000}"
-: "${MINIO_ACCESS_KEY:=minioadmin}"
-: "${MINIO_SECRET_KEY:=minioadmin}"
 : "${TITAN_ROOT:=/opt/titan}"
+
+if [ -f "${TITAN_ROOT}/.env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    . "${TITAN_ROOT}/.env"
+    set +a
+fi
+
+: "${MINIO_ENDPOINT:=localhost:9000}"
+: "${MINIO_ROOT_USER:=minioadmin}"
+: "${MINIO_ROOT_PASSWORD:=minioadmin}"
+
+MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY:-${MINIO_ROOT_USER}}"
+MINIO_SECRET_KEY="${MINIO_SECRET_KEY:-${MINIO_ROOT_PASSWORD}}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
