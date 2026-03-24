@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TaskService } from "@/services/task-service";
+import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
 import { updateTaskSchema, updateTaskStatusSchema } from "@/validators/task-validators";
 import { success } from "@/lib/api-response";
@@ -8,6 +9,11 @@ import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 
 const taskService = new TaskService(prisma);
+const auditService = new AuditService(prisma);
+
+function getClientIp(req: NextRequest): string | null {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+}
 
 export const GET = withAuth(async (
   req: NextRequest,
@@ -33,8 +39,18 @@ export const DELETE = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireAuth();
   const { id } = await context.params;
   await taskService.deleteTask(id);
+
+  await auditService.log({
+    userId: session.user.id,
+    action: "TASK_DELETE",
+    resourceType: "Task",
+    resourceId: id,
+    ipAddress: getClientIp(req),
+  });
+
   return success({ success: true });
 });
 

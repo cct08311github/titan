@@ -1,11 +1,18 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { NotFoundError } from "@/services/errors";
+import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
 import { updateDocumentSchema } from "@/validators/document-validators";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+
+const auditService = new AuditService(prisma);
+
+function getClientIp(req: NextRequest): string | null {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+}
 
 export const GET = withAuth(async (
   _req: NextRequest,
@@ -70,10 +77,20 @@ export const PUT = withAuth(async (
 });
 
 export const DELETE = withManager(async (
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireAuth();
   const { id } = await context.params;
   await prisma.document.delete({ where: { id } });
+
+  await auditService.log({
+    userId: session.user.id,
+    action: "DOCUMENT_DELETE",
+    resourceType: "Document",
+    resourceId: id,
+    ipAddress: getClientIp(req),
+  });
+
   return success({ success: true });
 });

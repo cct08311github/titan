@@ -4,9 +4,15 @@ import { withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 import { PermissionService } from "@/services/permission-service";
+import { AuditService } from "@/services/audit-service";
 import { prisma } from "@/lib/prisma";
 
 const permissionService = new PermissionService(prisma);
+const auditService = new AuditService(prisma);
+
+function getClientIp(req: NextRequest): string | null {
+  return req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? req.headers.get("x-real-ip") ?? null;
+}
 
 /** GET /api/permissions — list all permissions (MANAGER only) */
 export const GET = withManager(async (req: NextRequest) => {
@@ -45,11 +51,21 @@ export const POST = withManager(async (req: NextRequest) => {
     expiresAt: expiresAt ? new Date(expiresAt) : null,
   });
 
+  await auditService.log({
+    userId: session.user.id,
+    action: "PERMISSION_GRANT",
+    resourceType: "Permission",
+    resourceId: permission.id,
+    detail: JSON.stringify({ granteeId, permType, targetId: targetId ?? null }),
+    ipAddress: getClientIp(req),
+  });
+
   return success(permission, 201);
 });
 
 /** DELETE /api/permissions — revoke a permission (MANAGER only) */
 export const DELETE = withManager(async (req: NextRequest) => {
+  const session = await requireAuth();
   const body = await req.json();
   const { granteeId, permType, targetId } = body;
 
@@ -61,6 +77,14 @@ export const DELETE = withManager(async (req: NextRequest) => {
     granteeId,
     permType,
     targetId: targetId ?? null,
+  });
+
+  await auditService.log({
+    userId: session.user.id,
+    action: "PERMISSION_REVOKE",
+    resourceType: "Permission",
+    detail: JSON.stringify({ granteeId, permType, targetId: targetId ?? null }),
+    ipAddress: getClientIp(req),
   });
 
   return success({ message: "已撤銷授權" });
