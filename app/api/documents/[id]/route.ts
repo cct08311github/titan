@@ -45,20 +45,25 @@ export const PUT = withAuth(async (
   const existing = await prisma.document.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("文件不存在");
 
-  const newVersion = existing.version + 1;
+  const contentChanged = content !== undefined && content !== existing.content;
 
-  await prisma.documentVersion.create({
-    data: {
-      documentId: id,
-      content: existing.content,
-      version: existing.version,
-      createdBy: session.user.id,
-    },
-  });
+  if (contentChanged) {
+    await prisma.documentVersion.create({
+      data: {
+        documentId: id,
+        content: existing.content,
+        version: existing.version,
+        createdBy: session.user.id,
+      },
+    });
+  }
 
-  const updates: Record<string, unknown> = { updatedBy: session.user.id, version: newVersion };
+  const updates: Record<string, unknown> = { updatedBy: session.user.id };
   if (title !== undefined) updates.title = title;
-  if (content !== undefined) updates.content = content;
+  if (contentChanged) {
+    updates.content = content;
+    updates.version = existing.version + 1;
+  }
   if (parentId !== undefined) updates.parentId = parentId || null;
 
   const doc = await prisma.document.update({

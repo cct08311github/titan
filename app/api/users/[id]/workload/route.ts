@@ -17,12 +17,12 @@ export const GET = withAuth(async (
 
   // Members can only view their own workload; managers can view any
   if (session.user.role !== "MANAGER" && session.user.id !== id) {
-    throw new ForbiddenError("無法查看其他使用者的工作負荷");
+    throw new ForbiddenError("\u7121\u6cd5\u67e5\u770b\u5176\u4ed6\u4f7f\u7528\u8005\u7684\u5de5\u4f5c\u8ca0\u8377");
   }
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) {
-    throw new NotFoundError("找不到使用者");
+    throw new NotFoundError("\u627e\u4e0d\u5230\u4f7f\u7528\u8005");
   }
 
   const { searchParams } = new URL(req.url);
@@ -69,8 +69,34 @@ export const GET = withAuth(async (
 
   const taskCount = activeTasks.length;
   const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
-  const estimatedHours = activeTasks.reduce((sum, t) => sum + (t.estimatedHours ?? 0), 0);
-  const loadPct = Math.round((totalHours / STANDARD_MONTHLY_HOURS) * 100 * 10) / 10;
+  const estimatedHours = activeTasks.reduce(
+    (sum, t) => sum + (t.estimatedHours ?? 0),
+    0
+  );
+  const loadPct =
+    Math.round((totalHours / STANDARD_MONTHLY_HOURS) * 100 * 10) / 10;
+
+  // Unplanned ratio calculation
+  const plannedHours = timeEntries
+    .filter((e) => e.category === "PLANNED_TASK")
+    .reduce((sum, e) => sum + e.hours, 0);
+  const unplannedHours = timeEntries
+    .filter((e) =>
+      ["ADDED_TASK", "INCIDENT", "SUPPORT"].includes(e.category)
+    )
+    .reduce((sum, e) => sum + e.hours, 0);
+  const unplannedRatio =
+    totalHours > 0
+      ? Math.round((unplannedHours / totalHours) * 1000) / 1000
+      : 0;
+
+  // Weekly hours for current week
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const weeklyHours = timeEntries
+    .filter((e) => new Date(e.date) >= weekStart)
+    .reduce((sum, e) => sum + e.hours, 0);
 
   return success({
     userId: id,
@@ -78,8 +104,12 @@ export const GET = withAuth(async (
     period: { start: startDate, end: endDate },
     taskCount,
     totalHours,
+    plannedHours,
+    unplannedHours,
+    unplannedRatio,
     estimatedHours,
     loadPct,
+    weeklyHours,
     activeTasks,
   });
 });

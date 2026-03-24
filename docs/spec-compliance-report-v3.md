@@ -94,7 +94,7 @@
 | POST | `/api/users` | ✓ | UserService | ✓ | withManager | ✅ |
 | PATCH | `/api/users/:id` | ✓ | UserService | ✓ | withAuth | ✅ |
 | DELETE | `/api/users/:id` | ✓ | UserService | N/A | withManager | ✅ |
-| GET | `/api/users/:id/workload` | ❌ 缺失 | - | - | - | ❌ |
+| GET | `/api/users/:id/workload` | ✓ | 直接 Prisma | N/A | withAuth（Manager / 本人） | ✅ |
 | POST | `/api/users/:id/permissions` | ⚠️ 改用 `/api/permissions` | PermissionService | ✓ | withManager | ⚠️ |
 | GET | `/api/users/:id/permissions` | ⚠️ 改用 `/api/permissions?granteeId=` | PermissionService | N/A | withManager | ⚠️ |
 
@@ -241,10 +241,10 @@
 - 規格端點數：48 個
 - 已實作（完整）：39 個
 - 已實作（整合/路徑有差）：7 個
-- 缺失：4 個（`/api/tasks/import-template`、`/api/users/:id/workload`、`/api/notifications/read-all`、`/api/reports/delay-change`）
+- 缺失：3 個（`/api/tasks/import-template`、`/api/notifications/read-all`、`/api/reports/delay-change`）
 - 超規格新增：1 個（`GET /api/audit`）
 
-**API 合規率：46/48 ≈ 96%（含整合實作）；純完整匹配 39/48 = 81%**
+**API 合規率：47/48 ≈ 98%（含整合實作）；純完整匹配 40/48 = 83%**
 （與 v2 相同，v3 安全 Sprint 未修補功能缺口）
 
 ---
@@ -484,7 +484,7 @@
 |------|------|---------|----------|
 | `GET /api/reports/delay-change` | 規格有延期/變更統計專用端點，目前僅週報內含 delayCount | ❌ | ❌ 未改善 |
 | `PATCH /api/notifications/read-all` | 批次標記所有通知已讀的端點缺失 | ❌ | ❌ 未改善 |
-| `GET /api/users/:id/workload` | 個人工作負載明細端點缺失 | ❌ | ❌ 未改善 |
+| `GET /api/users/:id/workload` | 個人工作負載明細端點 | ❌ | ✅ 已實作（含任務數、工時、投入率、計畫外比率） |
 | Plans 頁缺少「從上年複製範本」按鈕 | 後端已完整，前端未串接 | ⚠️ | ⚠️ 未改善 |
 
 ### 中優先級（路徑或功能整合差異）
