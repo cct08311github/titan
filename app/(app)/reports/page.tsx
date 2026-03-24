@@ -1,10 +1,23 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Download, RefreshCw, BarChart3 } from "lucide-react";
+import { Download, RefreshCw, BarChart3, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { safeFixed, safePct } from "@/lib/safe-number";
+
+function PrintButton() {
+  return (
+    <button
+      onClick={() => window.print()}
+      data-print-hide
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-md hover:bg-accent transition-colors"
+    >
+      <Printer className="h-3.5 w-3.5" />
+      列印 PDF
+    </button>
+  );
+}
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -772,9 +785,18 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight">報表</h1>
-        <p className="text-sm text-muted-foreground mt-1">週報、月報、KPI、計畫外負荷分析</p>
+      {/* Print header — only visible when printing */}
+      <div className="print-header hidden">
+        <h1>TITAN — {activeTab === "weekly" ? "週報" : activeTab === "monthly" ? "月報" : activeTab === "kpi" ? "KPI 報表" : "計畫外負荷"}</h1>
+        <p>列印日期：{new Date().toLocaleDateString("zh-TW")}</p>
+      </div>
+
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">報表</h1>
+          <p className="text-sm text-muted-foreground mt-1">週報、月報、KPI、計畫外負荷分析</p>
+        </div>
+        <PrintButton />
       </div>
 
       {/* Tabs */}
