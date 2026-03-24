@@ -1,0 +1,356 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Plus, Loader2, ChevronRight, X, Target } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PlanTree } from "@/app/components/plan-tree";
+import { TaskDetailModal } from "@/app/components/task-detail-modal";
+
+type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+
+type Task = {
+  id: string;
+  title: string;
+  status: TaskStatus;
+  priority: string;
+  category: string;
+  dueDate?: string | null;
+  primaryAssignee?: { id: string; name: string; avatar?: string | null } | null;
+};
+
+type MonthlyGoal = {
+  id: string;
+  month: number;
+  title: string;
+  status: GoalStatus;
+  progressPct: number;
+  _count?: { tasks: number };
+  tasks?: Task[];
+};
+
+type AnnualPlan = {
+  id: string;
+  year: number;
+  title: string;
+  progressPct: number;
+  monthlyGoals: MonthlyGoal[];
+};
+
+const statusLabels: Record<TaskStatus, string> = {
+  BACKLOG: "待辦清單",
+  TODO: "待處理",
+  IN_PROGRESS: "進行中",
+  REVIEW: "審核中",
+  DONE: "已完成",
+};
+
+const statusColors: Record<TaskStatus, string> = {
+  BACKLOG: "text-zinc-400",
+  TODO: "text-blue-400",
+  IN_PROGRESS: "text-yellow-400",
+  REVIEW: "text-purple-400",
+  DONE: "text-emerald-400",
+};
+
+const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+
+export default function PlansPage() {
+  const [plans, setPlans] = useState<AnnualPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedGoal, setSelectedGoal] = useState<MonthlyGoal | null>(null);
+  const [goalLoading, setGoalLoading] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Create plan form
+  const [showPlanForm, setShowPlanForm] = useState(false);
+  const [newPlanYear, setNewPlanYear] = useState(new Date().getFullYear().toString());
+  const [newPlanTitle, setNewPlanTitle] = useState("");
+  const [creatingPlan, setCreatingPlan] = useState(false);
+
+  // Create goal form
+  const [showGoalForm, setShowGoalForm] = useState(false);
+  const [newGoalPlanId, setNewGoalPlanId] = useState("");
+  const [newGoalMonth, setNewGoalMonth] = useState("1");
+  const [newGoalTitle, setNewGoalTitle] = useState("");
+  const [creatingGoal, setCreatingGoal] = useState(false);
+
+  const fetchPlans = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/plans");
+      if (res.ok) {
+        const data = await res.json();
+        setPlans(Array.isArray(data) ? data : []);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchPlans(); }, [fetchPlans]);
+
+  async function loadGoal(goalId: string) {
+    setGoalLoading(true);
+    try {
+      const res = await fetch(`/api/goals/${goalId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedGoal(data);
+      }
+    } finally {
+      setGoalLoading(false);
+    }
+  }
+
+  async function createPlan() {
+    if (!newPlanTitle.trim() || !newPlanYear) return;
+    setCreatingPlan(true);
+    try {
+      const res = await fetch("/api/plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year: parseInt(newPlanYear), title: newPlanTitle.trim() }),
+      });
+      if (res.ok) {
+        setNewPlanTitle("");
+        setShowPlanForm(false);
+        fetchPlans();
+      }
+    } finally {
+      setCreatingPlan(false);
+    }
+  }
+
+  async function createGoal() {
+    if (!newGoalTitle.trim() || !newGoalPlanId) return;
+    setCreatingGoal(true);
+    try {
+      const res = await fetch("/api/goals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ annualPlanId: newGoalPlanId, month: parseInt(newGoalMonth), title: newGoalTitle.trim() }),
+      });
+      if (res.ok) {
+        setNewGoalTitle("");
+        setShowGoalForm(false);
+        fetchPlans();
+      }
+    } finally {
+      setCreatingGoal(false);
+    }
+  }
+
+  const inputCls = "bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors placeholder:text-zinc-600";
+  const selectCls = "bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors cursor-pointer";
+
+  return (
+    <div className="flex flex-col gap-6 max-w-5xl">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-xs text-zinc-500">
+        <span className="text-zinc-300 font-medium">年度計畫</span>
+        {selectedGoal && (
+          <>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-zinc-300 font-medium">
+              {monthNames[selectedGoal.month]} — {selectedGoal.title}
+            </span>
+          </>
+        )}
+      </nav>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-medium tracking-[-0.04em]">年度計畫</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">管理年度計畫與月度目標</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowGoalForm(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md transition-colors border border-zinc-700"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            新增月度目標
+          </button>
+          <button
+            onClick={() => setShowPlanForm(true)}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 rounded-md transition-colors"
+          >
+            <Target className="h-3.5 w-3.5" />
+            新增年度計畫
+          </button>
+        </div>
+      </div>
+
+      {/* Create plan form */}
+      {showPlanForm && (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-zinc-200">新增年度計畫</h3>
+            <button onClick={() => setShowPlanForm(false)} className="text-zinc-500 hover:text-zinc-200">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex gap-3">
+            <input
+              type="number"
+              value={newPlanYear}
+              onChange={(e) => setNewPlanYear(e.target.value)}
+              placeholder="年份"
+              className={cn(inputCls, "w-24")}
+            />
+            <input
+              type="text"
+              value={newPlanTitle}
+              onChange={(e) => setNewPlanTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createPlan()}
+              placeholder="計畫標題"
+              className={cn(inputCls, "flex-1")}
+              autoFocus
+            />
+            <button
+              onClick={createPlan}
+              disabled={creatingPlan || !newPlanTitle.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+            >
+              {creatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create goal form */}
+      {showGoalForm && (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-zinc-200">新增月度目標</h3>
+            <button onClick={() => setShowGoalForm(false)} className="text-zinc-500 hover:text-zinc-200">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <select
+              value={newGoalPlanId}
+              onChange={(e) => setNewGoalPlanId(e.target.value)}
+              className={cn(selectCls, "flex-1 min-w-40")}
+            >
+              <option value="">選擇年度計畫</option>
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>{p.year} — {p.title}</option>
+              ))}
+            </select>
+            <select
+              value={newGoalMonth}
+              onChange={(e) => setNewGoalMonth(e.target.value)}
+              className={cn(selectCls, "w-24")}
+            >
+              {monthNames.slice(1).map((m, i) => (
+                <option key={i + 1} value={i + 1}>{m}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              value={newGoalTitle}
+              onChange={(e) => setNewGoalTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createGoal()}
+              placeholder="目標標題"
+              className={cn(inputCls, "flex-1 min-w-48")}
+              autoFocus
+            />
+            <button
+              onClick={createGoal}
+              disabled={creatingGoal || !newGoalTitle.trim() || !newGoalPlanId}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+            >
+              {creatingGoal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Plan tree */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        </div>
+      ) : (
+        <PlanTree
+          plans={plans}
+          onSelectGoal={(goalId) => loadGoal(goalId)}
+          onSelectPlan={() => {}}
+        />
+      )}
+
+      {/* Goal detail panel */}
+      {selectedGoal && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+            <div>
+              <div className="text-xs text-zinc-500 mb-0.5">月度目標詳情</div>
+              <h2 className="text-sm font-medium text-zinc-200">
+                {monthNames[selectedGoal.month]} — {selectedGoal.title}
+              </h2>
+            </div>
+            <div className="flex items-center gap-3">
+              {goalLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />}
+              <button
+                onClick={() => setSelectedGoal(null)}
+                className="text-zinc-500 hover:text-zinc-200 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Tasks in this goal */}
+          <div className="p-4">
+            {selectedGoal.tasks && selectedGoal.tasks.length > 0 ? (
+              <div className="space-y-2">
+                <h3 className="text-xs font-medium text-zinc-400 mb-3">個人任務</h3>
+                {selectedGoal.tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    onClick={() => setSelectedTaskId(task.id)}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-800/50 cursor-pointer transition-colors group"
+                  >
+                    <span className={cn("text-xs font-medium w-16 flex-shrink-0", statusColors[task.status])}>
+                      {statusLabels[task.status]}
+                    </span>
+                    <span className="flex-1 text-sm text-zinc-200 group-hover:text-white truncate transition-colors">
+                      {task.title}
+                    </span>
+                    {task.primaryAssignee && (
+                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] text-zinc-300">
+                        {task.primaryAssignee.name.charAt(0)}
+                      </div>
+                    )}
+                    {task.dueDate && (
+                      <span className="text-[10px] text-zinc-500 flex-shrink-0">
+                        {new Date(task.dueDate).getMonth() + 1}/{new Date(task.dueDate).getDate()}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-600 text-center py-6">此月度目標尚無任務</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Task detail modal */}
+      {selectedTaskId && (
+        <TaskDetailModal
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+          onUpdated={() => {
+            setSelectedTaskId(null);
+            if (selectedGoal) loadGoal(selectedGoal.id);
+          }}
+        />
+      )}
+    </div>
+  );
+}
