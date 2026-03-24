@@ -208,7 +208,7 @@ export class UserService {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`User not found: ${id}`);
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: { isActive: true },
       select: {
@@ -219,5 +219,11 @@ export class UserService {
         isActive: true,
       },
     });
+
+    // Remove the userId-based blacklist key so the user's tokens are
+    // accepted again by withJwtBlacklist middleware — Issue #164.
+    JwtBlacklist.remove(`user:${id}`);
+
+    return updated;
   }
 }

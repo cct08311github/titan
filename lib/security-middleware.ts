@@ -20,8 +20,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import type { ApiResponse } from "@/lib/api-response";
+import { getCachedSession } from "@/lib/session-cache";
 import { error } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import {
@@ -78,7 +78,7 @@ async function getSessionUserId(req: NextRequest): Promise<string | null> {
   const override = req.headers.get("x-user-id");
   if (override) return override;
 
-  const session = await getServerSession();
+  const session = await getCachedSession(req);
   return (session?.user as { id?: string } | undefined)?.id ?? null;
 }
 
@@ -182,32 +182,46 @@ export function withAuditLog<T extends AnyHandler>(fn: T): T {
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 /**
- * Middleware wrapper: checks the X-Session-Last-Activity header (unix ms).
+ * Server-side last-activity store keyed by userId (unix ms timestamp).
+ *
+ * Process-local Map — acceptable for single-instance bank deployment.
+ * Exported so tests can inspect or reset it.
+ */
+export const sessionLastActivity = new Map<string, number>();
+
+/**
+ * Middleware wrapper: tracks last activity per userId on the server side.
  * Rejects with HTTP 401 if the session has been idle for more than 30 minutes.
  *
- * The header is expected to be set by the client or a reverse-proxy on each
- * API request. In production this can alternatively be read from a Redis
- * session store via the sessionId cookie.
+ * The previous implementation trusted the client-supplied
+ * X-Session-Last-Activity header, which allowed clients to bypass the timeout
+ * by sending a fake timestamp — Issue #165.  This version ignores that header
+ * entirely and relies on server-side state only.
  */
 export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
   const wrapped = async (
     req: NextRequest,
     context?: RouteContext
   ): Promise<NextResponse<ApiResponse>> => {
-    const lastActivityHeader = req.headers.get("x-session-last-activity");
+    const userId = await getSessionUserId(req);
 
-    if (lastActivityHeader !== null) {
-      const lastActivity = parseInt(lastActivityHeader, 10);
-      if (!Number.isNaN(lastActivity)) {
-        const idleMs = Date.now() - lastActivity;
+    if (userId) {
+      const now = Date.now();
+      const lastActivity = sessionLastActivity.get(userId);
+
+      if (lastActivity !== undefined) {
+        const idleMs = now - lastActivity;
         if (idleMs > SESSION_IDLE_TIMEOUT_MS) {
           logger.warn(
-            { idleMs },
+            { idleMs, userId },
             "[withSessionTimeout] Session idle timeout exceeded"
           );
           return error("UnauthorizedError", "Session expired — please log in again", 401) as NextResponse<ApiResponse>;
         }
       }
+
+      // Update last-activity timestamp on every valid request.
+      sessionLastActivity.set(userId, now);
     }
 
     return fn(req, context);
