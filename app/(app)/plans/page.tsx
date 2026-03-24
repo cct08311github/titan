@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Loader2, ChevronRight, X, Target } from "lucide-react";
+import { Plus, Loader2, ChevronRight, X, Target, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanTree } from "@/app/components/plan-tree";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
@@ -75,6 +75,13 @@ export default function PlansPage() {
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [creatingGoal, setCreatingGoal] = useState(false);
 
+  // Copy template form
+  const [showCopyForm, setShowCopyForm] = useState(false);
+  const [copySourcePlanId, setCopySourcePlanId] = useState("");
+  const [copyTargetYear, setCopyTargetYear] = useState((new Date().getFullYear() + 1).toString());
+  const [copyingTemplate, setCopyingTemplate] = useState(false);
+  const [copyError, setCopyError] = useState("");
+
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
@@ -141,6 +148,29 @@ export default function PlansPage() {
     }
   }
 
+  async function copyTemplate() {
+    if (!copySourcePlanId || !copyTargetYear) return;
+    setCopyingTemplate(true);
+    setCopyError("");
+    try {
+      const res = await fetch("/api/plans/copy-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourcePlanId: copySourcePlanId, targetYear: parseInt(copyTargetYear) }),
+      });
+      if (res.ok) {
+        setCopySourcePlanId("");
+        setShowCopyForm(false);
+        fetchPlans();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setCopyError(data?.error ?? "複製失敗，請再試一次");
+      }
+    } finally {
+      setCopyingTemplate(false);
+    }
+  }
+
   const inputCls = "bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors placeholder:text-zinc-600";
   const selectCls = "bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors cursor-pointer";
 
@@ -172,6 +202,13 @@ export default function PlansPage() {
           >
             <Plus className="h-3.5 w-3.5" />
             新增月度目標
+          </button>
+          <button
+            onClick={() => { setShowCopyForm((v) => !v); setShowPlanForm(false); setCopyError(""); }}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md transition-colors border border-zinc-700"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            從上年複製
           </button>
           <button
             onClick={() => setShowPlanForm(true)}
@@ -217,6 +254,48 @@ export default function PlansPage() {
               {creatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Copy template form */}
+      {showCopyForm && (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-zinc-200">從上年複製計畫</h3>
+            <button onClick={() => setShowCopyForm(false)} className="text-zinc-500 hover:text-zinc-200">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="text-xs text-zinc-500">選擇來源計畫，系統將複製其架構（月度目標與里程碑）到新年度。</p>
+          <div className="flex gap-3 flex-wrap">
+            <select
+              value={copySourcePlanId}
+              onChange={(e) => setCopySourcePlanId(e.target.value)}
+              className={cn(selectCls, "flex-1 min-w-48")}
+            >
+              <option value="">選擇來源計畫</option>
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>{p.year} — {p.title}</option>
+              ))}
+            </select>
+            <input
+              type="number"
+              value={copyTargetYear}
+              onChange={(e) => setCopyTargetYear(e.target.value)}
+              placeholder="目標年份"
+              className={cn(inputCls, "w-28")}
+            />
+            <button
+              onClick={copyTemplate}
+              disabled={copyingTemplate || !copySourcePlanId || !copyTargetYear}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+            >
+              {copyingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Copy className="h-3.5 w-3.5" />複製</>}
+            </button>
+          </div>
+          {copyError && (
+            <p className="text-xs text-red-400">{copyError}</p>
+          )}
         </div>
       )}
 

@@ -36,7 +36,8 @@ describe("GET /api/notifications", () => {
     const { GET } = await import("@/app/api/notifications/route");
     const res = await GET(createMockRequest("/api/notifications"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data.notifications).toHaveLength(1);
     expect(data.unreadCount).toBe(1);
   });
@@ -60,7 +61,8 @@ describe("GET /api/notifications", () => {
     const { GET } = await import("@/app/api/notifications/route");
     const res = await GET(createMockRequest("/api/notifications"));
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data.unreadCount).toBe(0);
   });
 
@@ -84,7 +86,8 @@ describe("PATCH /api/notifications/[id]/read", () => {
     const { PATCH } = await import("@/app/api/notifications/[id]/read/route");
     const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: { id: "notif-1" } });
     expect(res.status).toBe(200);
-    const data = await res.json();
+    const body = await res.json();
+    const data = body.data;
     expect(data.isRead).toBe(true);
   });
 
@@ -107,5 +110,64 @@ describe("PATCH /api/notifications/[id]/read", () => {
     const { PATCH } = await import("@/app/api/notifications/[id]/read/route");
     const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: { id: "notif-1" } });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("PATCH /api/notifications/read-all", () => {
+  const mockUpdateMany = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetServerSession.mockResolvedValue(SESSION);
+    mockUpdateMany.mockResolvedValue({ count: 3 });
+    // Extend the mock to include updateMany
+    (mockNotification as Record<string, jest.Mock>).updateMany = mockUpdateMany;
+  });
+
+  it("returns 401 when no session", async () => {
+    mockGetServerSession.mockResolvedValue(null);
+    const { PATCH } = await import("@/app/api/notifications/read-all/route");
+    const res = await PATCH(createMockRequest("/api/notifications/read-all", { method: "PATCH" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("marks all notifications as read for the current user", async () => {
+    mockUpdateMany.mockResolvedValue({ count: 5 });
+    const { PATCH } = await import("@/app/api/notifications/read-all/route");
+    const res = await PATCH(createMockRequest("/api/notifications/read-all", { method: "PATCH" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const data = body.data;
+    expect(data).toHaveProperty("updatedCount");
+    expect(data.updatedCount).toBe(5);
+  });
+
+  it("only marks the authenticated user's notifications", async () => {
+    mockUpdateMany.mockResolvedValue({ count: 2 });
+    const { PATCH } = await import("@/app/api/notifications/read-all/route");
+    await PATCH(createMockRequest("/api/notifications/read-all", { method: "PATCH" }));
+    expect(mockUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ userId: SESSION.user.id }),
+        data: expect.objectContaining({ isRead: true }),
+      })
+    );
+  });
+
+  it("returns updatedCount of 0 when no unread notifications exist", async () => {
+    mockUpdateMany.mockResolvedValue({ count: 0 });
+    const { PATCH } = await import("@/app/api/notifications/read-all/route");
+    const res = await PATCH(createMockRequest("/api/notifications/read-all", { method: "PATCH" }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const data = body.data;
+    expect(data.updatedCount).toBe(0);
+  });
+
+  it("returns 500 on database error", async () => {
+    mockUpdateMany.mockRejectedValue(new Error("DB error"));
+    const { PATCH } = await import("@/app/api/notifications/read-all/route");
+    const res = await PATCH(createMockRequest("/api/notifications/read-all", { method: "PATCH" }));
+    expect(res.status).toBe(500);
   });
 });
