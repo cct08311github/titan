@@ -32,6 +32,7 @@ jest.mock("next/server", () => {
 // ── Import after mocks ────────────────────────────────────────────────────
 import { apiHandler } from "@/lib/api-handler";
 import { success, error as errorResponse } from "@/lib/api-response";
+import { logger } from "@/lib/logger";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function makeFakeRequest(url = "http://localhost/api/test"): NextRequest {
@@ -130,15 +131,19 @@ describe("apiHandler", () => {
   });
 
   test("logs error details for 500 errors", async () => {
-    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    // apiHandler now uses pino logger.error instead of console.error
+    const loggerSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
     const handler = apiHandler(async () => {
       throw new Error("db crash");
     });
     await handler(req);
-    expect(consoleSpy).toHaveBeenCalled();
-    const callArgs = consoleSpy.mock.calls[0];
-    expect(callArgs.some((a) => String(a).includes("db crash") || a instanceof Error)).toBe(true);
-    consoleSpy.mockRestore();
+    expect(loggerSpy).toHaveBeenCalled();
+    const callArgs = loggerSpy.mock.calls[0];
+    // First arg is the bindings object with err field
+    const bindings = callArgs[0] as Record<string, unknown>;
+    expect(bindings.err).toBeInstanceOf(Error);
+    expect((bindings.err as Error).message).toBe("db crash");
+    loggerSpy.mockRestore();
   });
 
   test("does not expose stack trace in response", async () => {
