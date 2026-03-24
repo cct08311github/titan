@@ -228,6 +228,11 @@ if [ -n "${RESTORE_MINIO}" ]; then
     for BUCKET_DIR in "${TEMP_DIR}"/*; do
         if [ -d "${BUCKET_DIR}" ]; then
             BUCKET_NAME=$(basename "${BUCKET_DIR}")
+            # Validate bucket name: only allow safe characters
+            if ! [[ "${BUCKET_NAME}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+                log_warn "跳過不安全的 bucket 名稱: ${BUCKET_NAME}"
+                continue
+            fi
             log_info "還原 bucket: ${BUCKET_NAME}"
             mc mirror --preserve --overwrite "${BUCKET_DIR}" "titanrestore/${BUCKET_NAME}"
         fi
@@ -273,6 +278,11 @@ if [ -n "${RESTORE_CONFIG}" ]; then
     for ITEM in "${TEMP_DIR}"/*; do
         if [ -e "${ITEM}" ]; then
             ITEM_NAME=$(basename "${ITEM}")
+            # Validate item name: only allow safe characters
+            if ! [[ "${ITEM_NAME}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+                log_warn "跳過不安全的檔案名稱: ${ITEM_NAME}"
+                continue
+            fi
             log_info "還原: ${ITEM_NAME}"
             cp -rp "${ITEM}" "${TITAN_ROOT}/"
         fi
