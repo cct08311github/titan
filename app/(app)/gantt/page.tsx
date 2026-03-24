@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Diamond, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
@@ -86,14 +87,26 @@ function monthStartDay(month: number, year: number): number {
 
 // ─── Gantt Bar ────────────────────────────────────────────────────────────────
 
+function dayToDate(day: number, year: number): string {
+  const d = new Date(year, 0, 1);
+  d.setDate(d.getDate() + day);
+  return d.toISOString().split("T")[0];
+}
+
 type GanttBarProps = {
   task: Task;
   year: number;
   totalDays: number;
   onClick: () => void;
+  canDrag?: boolean;
+  onDateChange?: (taskId: string, startDate: string | null, dueDate: string | null) => void;
 };
 
-function GanttBar({ task, year, totalDays, onClick }: GanttBarProps) {
+function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: GanttBarProps) {
+  const barRef = useRef<HTMLDivElement>(null);
+  const [dragTooltip, setDragTooltip] = useState<string | null>(null);
+  const dragging = useRef<{ type: "move" | "resize-end"; startX: number; origStartDay: number; origEndDay: number } | null>(null);
+
   if (!task.startDate && !task.dueDate) {
     return (
       <div className="h-5 flex items-center">
@@ -102,23 +115,76 @@ function GanttBar({ task, year, totalDays, onClick }: GanttBarProps) {
     );
   }
 
-  const start = task.startDate
+  const startDay = task.startDate
     ? Math.max(0, dayOfYear(task.startDate, year))
     : (task.dueDate ? Math.max(0, dayOfYear(task.dueDate, year) - 7) : 0);
-  const end = task.dueDate
+  const endDay = task.dueDate
     ? Math.min(totalDays, dayOfYear(task.dueDate, year))
-    : Math.min(totalDays, start + 7);
+    : Math.min(totalDays, startDay + 7);
 
-  const leftPct = (start / totalDays) * 100;
-  const widthPct = Math.max(0.3, ((end - start) / totalDays) * 100);
+  const leftPct = (startDay / totalDays) * 100;
+  const widthPct = Math.max(0.3, ((endDay - startDay) / totalDays) * 100);
+
+  function handlePointerDown(e: React.PointerEvent, type: "move" | "resize-end") {
+    if (!canDrag || task.status === "DONE") return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragging.current = { type, startX: e.clientX, origStartDay: startDay, origEndDay: endDay };
+    const el = barRef.current?.parentElement;
+    if (!el) return;
+
+    const totalWidth = el.clientWidth;
+
+    function onMove(ev: PointerEvent) {
+      if (!dragging.current) return;
+      const dx = ev.clientX - dragging.current.startX;
+      const daysDelta = Math.round((dx / totalWidth) * totalDays);
+
+      if (dragging.current.type === "resize-end") {
+        const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
+        setDragTooltip(dayToDate(newEnd, year));
+      } else {
+        const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
+        const newEnd = dragging.current.origEndDay + daysDelta;
+        setDragTooltip(`${dayToDate(newStart, year)} → ${dayToDate(newEnd, year)}`);
+      }
+    }
+
+    function onUp(ev: PointerEvent) {
+      if (!dragging.current) return;
+      const dx = ev.clientX - dragging.current.startX;
+      const daysDelta = Math.round((dx / totalWidth) * totalDays);
+
+      if (daysDelta !== 0 && onDateChange) {
+        if (dragging.current.type === "resize-end") {
+          const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
+          onDateChange(task.id, task.startDate, dayToDate(newEnd, year));
+        } else {
+          const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
+          const newEnd = dragging.current.origEndDay + daysDelta;
+          onDateChange(task.id, dayToDate(newStart, year), dayToDate(newEnd, year));
+        }
+      }
+      dragging.current = null;
+      setDragTooltip(null);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    }
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
 
   return (
-    <div className="h-5 relative">
-      <button
+    <div className="h-5 relative" ref={barRef}>
+      <div
         onClick={onClick}
+        onPointerDown={(e) => handlePointerDown(e, "move")}
         title={`${task.title} — ${STATUS_LABEL[task.status] ?? task.status}`}
         className={cn(
-          "absolute h-5 rounded-sm cursor-pointer transition-opacity hover:opacity-90 flex items-center px-1.5 overflow-hidden",
+          "absolute h-5 rounded-sm flex items-center px-1.5 overflow-hidden",
+          canDrag && task.status !== "DONE" ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          "transition-opacity hover:opacity-90",
           STATUS_BAR[task.status] ?? "bg-muted"
         )}
         style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "4px" }}
@@ -128,14 +194,28 @@ function GanttBar({ task, year, totalDays, onClick }: GanttBarProps) {
             {task.title}
           </span>
         )}
-        {/* Progress overlay */}
         {task.progressPct > 0 && (
           <div
             className="absolute inset-0 left-0 bg-white/10 rounded-sm"
             style={{ width: `${task.progressPct}%` }}
           />
         )}
-      </button>
+        {/* Drag handle: right edge */}
+        {canDrag && task.status !== "DONE" && (
+          <div
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+            onPointerDown={(e) => handlePointerDown(e, "resize-end")}
+          />
+        )}
+      </div>
+      {/* Drag tooltip */}
+      {dragTooltip && (
+        <div
+          className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] px-2 py-0.5 rounded whitespace-nowrap z-20"
+        >
+          {dragTooltip}
+        </div>
+      )}
     </div>
   );
 }
@@ -173,6 +253,8 @@ function MilestoneMarker({ milestone, year, totalDays }: MilestoneMarkerProps) {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function GanttPage() {
+  const { data: session } = useSession();
+  const isManager = session?.user?.role === "MANAGER";
   const [year, setYear] = useState(new Date().getFullYear());
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [data, setData] = useState<{ annualPlan: AnnualPlan | null; year: number } | null>(null);
@@ -180,6 +262,26 @@ export default function GanttPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  const handleDateChange = useCallback(async (taskId: string, startDate: string | null, dueDate: string | null) => {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate, dueDate }),
+      });
+      if (!res.ok) throw new Error("更新失敗");
+      // Record the change
+      await fetch(`/api/tasks/${taskId}/changes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "DELAY", note: `甘特圖拖曳調整：截止日 → ${dueDate}` }),
+      });
+      fetchData();
+    } catch {
+      fetchData(); // Revert by re-fetching
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -392,6 +494,8 @@ export default function GanttPage() {
                           year={year}
                           totalDays={totalDays}
                           onClick={() => setSelectedTaskId(task.id)}
+                          canDrag={isManager}
+                          onDateChange={handleDateChange}
                         />
                       </div>
                     </div>
