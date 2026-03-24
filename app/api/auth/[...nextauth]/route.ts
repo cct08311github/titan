@@ -7,6 +7,7 @@ import { AccountLockService } from "@/lib/account-lock";
 import { logger } from "@/lib/logger";
 import { isPasswordExpired } from "@/lib/password-expiry";
 import { getRedisClient } from "@/lib/redis";
+import { AuditService } from "@/services/audit-service";
 
 /**
  * Singletons — created once at module load.
@@ -22,6 +23,7 @@ const accountLockService = new AccountLockService({
   lockDurationSeconds: 900,
   redisClient: redis,
 });
+const auditService = new AuditService(prisma);
 
 const handler = NextAuth({
   cookies: {
@@ -88,8 +90,16 @@ const handler = NextAuth({
         });
 
         if (!user || !user.isActive) {
-          // Count as a failure for lockout tracking
           await accountLockService.recordFailure(lockKey);
+          // Issue #187: persist login failure to AuditLog DB
+          auditService.log({
+            userId: null,
+            action: "LOGIN_FAILURE",
+            resourceType: "Auth",
+            resourceId: null,
+            detail: JSON.stringify({ username: credentials.username, reason: !user ? "user_not_found" : "account_inactive" }),
+            ipAddress: ip,
+          }).catch(() => {}); // fire-and-forget, never block auth
           return null;
         }
 
@@ -100,12 +110,31 @@ const handler = NextAuth({
             { username: credentials.username, ip },
             "[auth] Failed login attempt"
           );
+          // Issue #187: persist login failure to AuditLog DB
+          auditService.log({
+            userId: user.id,
+            action: "LOGIN_FAILURE",
+            resourceType: "Auth",
+            resourceId: user.id,
+            detail: JSON.stringify({ username: credentials.username, reason: "invalid_password" }),
+            ipAddress: ip,
+          }).catch(() => {});
           return null;
         }
 
         // 4. Successful login — clear failure counter
         await accountLockService.resetFailures(lockKey);
         logger.info({ userId: user.id, ip }, "[auth] Successful login");
+
+        // Issue #187: persist login success to AuditLog DB
+        auditService.log({
+          userId: user.id,
+          action: "LOGIN_SUCCESS",
+          resourceType: "Auth",
+          resourceId: user.id,
+          detail: JSON.stringify({ username: credentials.username }),
+          ipAddress: ip,
+        }).catch(() => {});
 
         // Issue #182: check if password change is required
         const needsPasswordChange =
