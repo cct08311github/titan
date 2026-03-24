@@ -1,8 +1,7 @@
 import type { Config } from "jest";
 
 const config: Config = {
-  preset: "ts-jest",
-  testEnvironment: "node",
+  testEnvironment: "jsdom",
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
   },
@@ -13,16 +12,25 @@ const config: Config = {
     "!services/**/index.ts",
   ],
   transform: {
-    "^.+\\.tsx?$": [
-      "ts-jest",
+    "^.+\\.(t|j)sx?$": [
+      "@swc/jest",
       {
-        tsconfig: {
-          module: "commonjs",
-          moduleResolution: "node",
+        jsc: {
+          parser: {
+            syntax: "typescript",
+            tsx: true,
+            decorators: false,
+          },
+          transform: {
+            react: {
+              runtime: "automatic",
+            },
+          },
         },
       },
     ],
   },
+  setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
 };
 
 export default config;
