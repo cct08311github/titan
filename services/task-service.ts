@@ -1,5 +1,6 @@
 import { PrismaClient, TaskStatus, Priority, TaskCategory } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
+import { ChangeTrackingService } from "./change-tracking-service";
 
 export interface ListTasksFilter {
   assignee?: string;
@@ -44,10 +45,15 @@ export interface UpdateTaskInput {
   addedSource?: string | null;
   progressPct?: number;
   changeReason?: string;
+  changedBy?: string;
 }
 
 export class TaskService {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly changeTracker: ChangeTrackingService;
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.changeTracker = new ChangeTrackingService(prisma);
+  }
 
   async listTasks(filter: ListTasksFilter) {
     const where: Record<string, unknown> = {};
@@ -179,6 +185,35 @@ export class TaskService {
         deliverables: true,
       },
     });
+
+    // Auto-detect delay/scope-change and record if changedBy is provided
+    if (input.changedBy) {
+      const reason = input.changeReason;
+
+      if (input.dueDate !== undefined) {
+        const oldDueDate = existing.dueDate ?? null;
+        const newDueDate = input.dueDate ? new Date(input.dueDate as string) : null;
+        await this.changeTracker.detectDelay({
+          taskId: id,
+          oldDueDate,
+          newDueDate,
+          changedBy: input.changedBy,
+          reason,
+        });
+      }
+
+      if (input.title !== undefined || input.description !== undefined) {
+        await this.changeTracker.detectScopeChange({
+          taskId: id,
+          oldTitle: existing.title,
+          newTitle: input.title ?? existing.title,
+          oldDescription: existing.description ?? null,
+          newDescription: input.description !== undefined ? (input.description ?? null) : (existing.description ?? null),
+          changedBy: input.changedBy,
+          reason,
+        });
+      }
+    }
 
     return task;
   }

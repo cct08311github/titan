@@ -4,6 +4,9 @@ import { getServerSession } from "next-auth";
 import { UnauthorizedError, ValidationError } from "@/services/errors";
 import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { ChangeTrackingService } from "@/services/change-tracking-service";
+
+const changeTracker = new ChangeTrackingService(prisma);
 
 export const GET = apiHandler(async (
   req: NextRequest,
@@ -13,15 +16,11 @@ export const GET = apiHandler(async (
   if (!session?.user?.id) throw new UnauthorizedError();
 
   const { id } = await context!.params;
-  const changes = await prisma.taskChange.findMany({
-    where: { taskId: id },
-    include: {
-      changedByUser: { select: { id: true, name: true } },
-    },
-    orderBy: { changedAt: "desc" },
-  });
+  const changes = await changeTracker.getChangeHistory(id);
+  const delayCount = changes.filter((c) => c.changeType === "DELAY").length;
+  const scopeChangeCount = changes.filter((c) => c.changeType === "SCOPE_CHANGE").length;
 
-  return success(changes);
+  return success({ changes, delayCount, scopeChangeCount });
 });
 
 export const POST = apiHandler(async (
