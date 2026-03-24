@@ -12,8 +12,16 @@ const taskService = new TaskService(prisma);
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
+
+  // Resolve "me" to the actual session userId (CR-19 / Issue #284)
+  let assignee = searchParams.get("assignee") ?? undefined;
+  if (assignee === "me") {
+    const session = await requireAuth();
+    assignee = session.user.id;
+  }
+
   const tasks = await taskService.listTasks({
-    assignee: searchParams.get("assignee") ?? undefined,
+    assignee,
     status: (searchParams.get("status") as TaskStatus) ?? undefined,
     priority: (searchParams.get("priority") as Priority) ?? undefined,
     category: (searchParams.get("category") as TaskCategory) ?? undefined,

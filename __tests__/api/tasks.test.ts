@@ -92,6 +92,20 @@ describe("GET /api/tasks", () => {
     );
   });
 
+  it("resolves assignee=me to session userId", async () => {
+    const { GET } = await import("@/app/api/tasks/route");
+    await GET(createMockRequest("/api/tasks", { searchParams: { assignee: "me" } }));
+    expect(mockTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: expect.arrayContaining([
+            expect.objectContaining({ primaryAssigneeId: MEMBER_SESSION.user.id }),
+          ]),
+        }),
+      })
+    );
+  });
+
   it("passes status filter to prisma", async () => {
     const { GET } = await import("@/app/api/tasks/route");
     await GET(createMockRequest("/api/tasks", { searchParams: { status: "TODO" } }));
