@@ -202,6 +202,42 @@ services:
 
   # ── 統一儀表板：Homepage ─────────────────────────────────
   # 集中呈現所有 TITAN 服務連結與狀態
+  # ── Docker Socket Proxy（Issue #183）──────────────────────
+  # 安全強化：Homepage 不再直接掛載 Docker socket
+  # 僅暴露容器狀態查詢（GET /containers），阻擋所有寫入操作
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.2
+    container_name: titan-docker-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: 1     # allow GET /containers
+      SERVICES: 0
+      TASKS: 0
+      NETWORKS: 0
+      NODES: 0
+      POST: 0           # block all POST (no container create/start/stop)
+      BUILD: 0
+      COMMIT: 0
+      CONFIGS: 0
+      DISTRIBUTION: 0
+      EXEC: 0
+      IMAGES: 0
+      INFO: 1
+      PLUGINS: 0
+      SECRETS: 0
+      SWARM: 0
+      SYSTEM: 0
+      VOLUMES: 0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - titan-internal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
+
   homepage:
     image: gethomepage/homepage:v0.9.13
     container_name: titan-homepage
@@ -210,9 +246,10 @@ services:
       PUID: ${HOMEPAGE_PUID:-1000}
       PGID: ${HOMEPAGE_PGID:-1000}
       HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS:-localhost}
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
     volumes:
       - ./config/homepage:/app/config      # 服務設定檔
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker 狀態讀取（唯讀）
+      # Issue #183: Docker socket 不再直接掛載，改用 socket proxy
     # 安全強化：保留外部端口供外部存取
     ports:
       - "${HOMEPAGE_PORT:-3000}:3000"
@@ -222,6 +259,7 @@ services:
     depends_on:
       - outline
       - minio
+      - docker-socket-proxy
     # 安全強化：Resource limits
     deploy:
       resources:
@@ -245,9 +283,11 @@ services:
     image: louislam/uptime-kuma:1.23.13
     container_name: titan-uptime-kuma
     restart: unless-stopped
+    environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
     volumes:
       - uptime-kuma-data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # 監控 Docker 容器狀態（唯讀）
+      # Issue #183: Docker socket 移除，改用 socket proxy
     ports:
       - "${UPTIME_KUMA_PORT:-3002}:3001"
     networks:
@@ -258,6 +298,42 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  # ── TITAN Next.js App（Issue #185）────────────────────────
+  # IT 團隊工作管理系統主應用
+  titan-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: titan-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@titan-redis:6379
+      NEXTAUTH_URL: ${TITAN_URL:-https://titan.bank.local/titan}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
+      NODE_ENV: production
+    # 安全強化：移除外部端口，僅透過 Nginx 反向代理存取
+    # ports:
+    #   - "3000:3000"
+    networks:
+      - titan-internal
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1024M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/auth/csrf || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
   # ── 專案管理：Plane ──────────────────────────────────────
   # ⚠️  Plane 採用獨立 docker-compose 部署，請參閱下列文件：
@@ -304,11 +380,13 @@ volumes:
 # 網路設定：強化隔離
 # ═══════════════════════════════════════════════════════════
 networks:
-  # 內部網路：僅允許服務間通訊，不對外開放
+  # 內部網路：僅允許服務間通訊，不對外開放（Issue #186）
+  # internal: true 阻止容器直接訪問外部網路
+  # DNS 解析由 Docker 內建 DNS (127.0.0.11) 提供，不需外部 DNS
   titan-internal:
     name: titan-internal
     driver: bridge
-    internal: false  #允許 DNS 解析
+    internal: true
   # 外部網路：允許對外服務（Homepage）
   titan-external:
     name: titan-external
