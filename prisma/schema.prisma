@@ -472,3 +472,20 @@ model DocumentVersion {
 
   @@map("document_versions")
 }
+
+// ═══════════════════════════════════════
+// 稽核日誌 (Audit Log — C8)
+// ═══════════════════════════════════════
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  userId       String?  // null for unauthenticated events (e.g. login failures)
+  action       String   // e.g. DELETE_TASK, ROLE_CHANGE, PASSWORD_CHANGE, LOGIN_FAILURE
+  resourceType String   // e.g. Task, User, Auth
+  resourceId   String?  // nullable for non-resource events
+  detail       String?  // human-readable or JSON-serialised description
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@map("audit_logs")
+}

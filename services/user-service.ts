@@ -1,6 +1,7 @@
 import { PrismaClient, Role } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { NotFoundError, ValidationError } from "./errors";
+import { AuditService } from "./audit-service";
 
 export interface ListUsersFilter {
   role?: Role | string;
@@ -23,10 +24,16 @@ export interface UpdateUserInput {
   role?: Role | string;
   avatar?: string | null;
   isActive?: boolean;
+  updatedBy?: string;
+  ipAddress?: string;
 }
 
 export class UserService {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly auditor: AuditService;
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.auditor = new AuditService(prisma);
+  }
 
   async listUsers(filter: ListUsersFilter) {
     const where: Record<string, unknown> = {};
@@ -133,7 +140,7 @@ export class UserService {
       updates.password = await hash(input.password, 10);
     }
 
-    return this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id },
       data: updates,
       select: {
@@ -145,6 +152,32 @@ export class UserService {
         isActive: true,
       },
     });
+
+    // Emit audit log for role change
+    if (input.role !== undefined && input.role !== existing.role) {
+      await this.auditor.log({
+        userId: input.updatedBy ?? null,
+        action: "ROLE_CHANGE",
+        resourceType: "User",
+        resourceId: id,
+        detail: JSON.stringify({ from: existing.role, to: input.role }),
+        ipAddress: input.ipAddress ?? null,
+      });
+    }
+
+    // Emit audit log for password change
+    if (input.password !== undefined) {
+      await this.auditor.log({
+        userId: input.updatedBy ?? null,
+        action: "PASSWORD_CHANGE",
+        resourceType: "User",
+        resourceId: id,
+        detail: "Password changed",
+        ipAddress: input.ipAddress ?? null,
+      });
+    }
+
+    return updated;
   }
 
   async suspendUser(id: string) {

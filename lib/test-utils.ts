@@ -39,6 +39,7 @@ export function createMockPrisma(): MockPrismaClient {
     permission: createMockModel(),
     notification: createMockModel(),
     deliverable: createMockModel(),
+    auditLog: createMockModel(),
     $transaction: jest.fn(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
