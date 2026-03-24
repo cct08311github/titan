@@ -4,6 +4,20 @@ import { getServerSession } from "next-auth";
 import { UnauthorizedError } from "@/services/errors";
 import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { DeliverableService } from "@/services/deliverable-service";
+
+export const GET = apiHandler(async (
+  req: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
+
+  const { id } = await context!.params;
+  const service = new DeliverableService(prisma);
+  const deliverable = await service.getDeliverable(id);
+  return success(deliverable);
+});
 
 export const PATCH = apiHandler(async (
   req: NextRequest,
