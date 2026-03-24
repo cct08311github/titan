@@ -1,14 +1,25 @@
 import { PrismaClient, Role } from "@prisma/client";
+import { hash } from "bcryptjs";
 import { NotFoundError, ValidationError } from "./errors";
 
 export interface ListUsersFilter {
   role?: Role | string;
   isActive?: boolean;
+  includeSuspended?: boolean;
+}
+
+export interface CreateUserInput {
+  name: string;
+  email: string;
+  password: string;
+  role?: Role | string;
+  avatar?: string;
 }
 
 export interface UpdateUserInput {
   name?: string;
   email?: string;
+  password?: string;
   role?: Role | string;
   avatar?: string | null;
   isActive?: boolean;
@@ -20,7 +31,11 @@ export class UserService {
   async listUsers(filter: ListUsersFilter) {
     const where: Record<string, unknown> = {};
     if (filter.role) where.role = filter.role;
-    if (filter.isActive !== undefined) where.isActive = filter.isActive;
+    // By default exclude suspended (isActive = false)
+    // unless caller explicitly opts in with includeSuspended
+    if (!filter.includeSuspended) {
+      where.isActive = true;
+    }
 
     return this.prisma.user.findMany({
       where,
@@ -56,6 +71,44 @@ export class UserService {
     return user;
   }
 
+  async createUser(input: CreateUserInput) {
+    if (!input.name?.trim()) {
+      throw new ValidationError("姓名為必填");
+    }
+    if (!input.email?.trim()) {
+      throw new ValidationError("電子郵件為必填");
+    }
+
+    // Check for duplicate email
+    const existing = await this.prisma.user.findUnique({
+      where: { email: input.email },
+    });
+    if (existing) {
+      throw new ValidationError(`Email already in use: ${input.email}`);
+    }
+
+    const passwordHash = await hash(input.password, 10);
+
+    return this.prisma.user.create({
+      data: {
+        name: input.name,
+        email: input.email,
+        password: passwordHash,
+        role: (input.role ?? "ENGINEER") as Role,
+        avatar: input.avatar ?? null,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        avatar: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+  }
+
   async updateUser(id: string, input: UpdateUserInput) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`User not found: ${id}`);
@@ -76,6 +129,9 @@ export class UserService {
     if (input.role !== undefined) updates.role = input.role;
     if (input.avatar !== undefined) updates.avatar = input.avatar;
     if (input.isActive !== undefined) updates.isActive = input.isActive;
+    if (input.password !== undefined) {
+      updates.password = await hash(input.password, 10);
+    }
 
     return this.prisma.user.update({
       where: { id },
@@ -86,6 +142,40 @@ export class UserService {
         email: true,
         role: true,
         avatar: true,
+        isActive: true,
+      },
+    });
+  }
+
+  async suspendUser(id: string) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError(`User not found: ${id}`);
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+      },
+    });
+  }
+
+  async unsuspendUser(id: string) {
+    const existing = await this.prisma.user.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError(`User not found: ${id}`);
+
+    return this.prisma.user.update({
+      where: { id },
+      data: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
         isActive: true,
       },
     });
