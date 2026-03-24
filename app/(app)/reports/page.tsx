@@ -8,7 +8,7 @@ import { safeFixed, safePct } from "@/lib/safe-number";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type TabId = "weekly" | "monthly" | "kpi" | "workload";
+type TabId = "weekly" | "monthly" | "kpi" | "workload" | "trends";
 
 interface Tab {
   id: TabId;
@@ -20,6 +20,7 @@ const TABS: Tab[] = [
   { id: "monthly", label: "月報" },
   { id: "kpi", label: "KPI 報表" },
   { id: "workload", label: "計畫外負荷" },
+  { id: "trends", label: "趨勢分析" },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -612,6 +613,149 @@ function WorkloadReport() {
   );
 }
 
+// ── Trends Report ────────────────────────────────────────────────────────
+
+type TrendMetric = "kpi" | "workload" | "delays";
+
+const TREND_METRICS: { id: TrendMetric; label: string; unit: string }[] = [
+  { id: "kpi", label: "KPI 達成率", unit: "%" },
+  { id: "workload", label: "計畫外比例", unit: "%" },
+  { id: "delays", label: "逾期任務數", unit: "件" },
+];
+
+const MONTHS = ["1月","2月","3月","4月","5月","6月","7月","8月","9月","10月","11月","12月"];
+
+function TrendsReport() {
+  const currentYear = new Date().getFullYear();
+  const [metric, setMetric] = useState<TrendMetric>("kpi");
+  const [years, setYears] = useState<number[]>([currentYear - 1, currentYear]);
+  const [data, setData] = useState<Record<number, Array<{ month: number; value: number }>>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTrends = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/reports/trends?metric=${metric}&years=${years.join(",")}`);
+      if (!res.ok) throw new Error("趨勢資料載入失敗");
+      const json = await res.json();
+      setData(json.data ?? {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }, [metric, years]);
+
+  useEffect(() => { fetchTrends(); }, [fetchTrends]);
+
+  const toggleYear = (y: number) => {
+    setYears((prev) =>
+      prev.includes(y) ? prev.filter((x) => x !== y) : [...prev, y].sort()
+    );
+  };
+
+  const metricInfo = TREND_METRICS.find((m) => m.id === metric)!;
+  const maxVal = Math.max(
+    1,
+    ...Object.values(data).flatMap((arr) => arr.map((d) => d.value))
+  );
+
+  const YEAR_COLORS: Record<number, string> = {
+    [currentYear - 2]: "bg-muted-foreground",
+    [currentYear - 1]: "bg-info",
+    [currentYear]: "bg-primary",
+    [currentYear + 1]: "bg-success",
+  };
+
+  if (loading) return <PageLoading message="載入趨勢資料..." />;
+  if (error) return <PageError message={error} onRetry={fetchTrends} />;
+
+  return (
+    <div className="space-y-6">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">指標</span>
+          <select
+            value={metric}
+            onChange={(e) => setMetric(e.target.value as TrendMetric)}
+            className="h-9 bg-card border border-border text-sm rounded-lg px-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer"
+            aria-label="選擇趨勢指標"
+          >
+            {TREND_METRICS.map((m) => (
+              <option key={m.id} value={m.id}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">年度</span>
+          {[currentYear - 2, currentYear - 1, currentYear].map((y) => (
+            <button
+              key={y}
+              onClick={() => toggleYear(y)}
+              className={cn(
+                "h-8 px-3 text-xs font-medium rounded-lg border transition-all",
+                years.includes(y)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border hover:border-primary/40"
+              )}
+            >
+              {y}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Chart table */}
+      <div className="bg-card rounded-xl shadow-card overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3 w-16">月份</th>
+              {years.map((y) => (
+                <th key={y} className="text-left text-xs font-medium text-muted-foreground px-4 py-3">
+                  <span className="flex items-center gap-2">
+                    <span className={cn("w-2.5 h-2.5 rounded-full", YEAR_COLORS[y] ?? "bg-muted-foreground")} />
+                    {y}
+                  </span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {MONTHS.map((label, i) => (
+              <tr key={i} className="border-b border-border/50 last:border-0">
+                <td className="px-4 py-2.5 text-xs text-muted-foreground font-medium">{label}</td>
+                {years.map((y) => {
+                  const val = data[y]?.[i]?.value ?? 0;
+                  const pct = maxVal > 0 ? (val / maxVal) * 100 : 0;
+                  return (
+                    <td key={y} className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden max-w-[120px]">
+                          <div
+                            className={cn("h-full rounded-full transition-all", YEAR_COLORS[y] ?? "bg-muted-foreground")}
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-xs tabular-nums text-muted-foreground w-12 text-right">
+                          {val}{metricInfo.unit}
+                        </span>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
@@ -619,6 +763,7 @@ const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   monthly: MonthlyReport,
   kpi: KPIReport,
   workload: WorkloadReport,
+  trends: TrendsReport,
 };
 
 export default function ReportsPage() {
