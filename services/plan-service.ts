@@ -129,4 +129,60 @@ export class PlanService {
 
     return this.prisma.annualPlan.delete({ where: { id } });
   }
+
+  async copyTemplate(sourcePlanId: string, targetYear: number, createdBy: string) {
+    const source = await this.prisma.annualPlan.findUnique({
+      where: { id: sourcePlanId },
+      include: {
+        monthlyGoals: {
+          orderBy: { month: "asc" },
+        },
+        milestones: {
+          orderBy: { order: "asc" },
+        },
+      },
+    });
+
+    if (!source) throw new NotFoundError(`Plan not found: ${sourcePlanId}`);
+
+    return this.prisma.annualPlan.create({
+      data: {
+        year: targetYear,
+        title: source.title,
+        description: source.description ?? null,
+        implementationPlan: source.implementationPlan ?? null,
+        copiedFromYear: source.year,
+        createdBy,
+        monthlyGoals: source.monthlyGoals.length
+          ? {
+              create: source.monthlyGoals.map((g) => ({
+                month: g.month,
+                title: g.title,
+                description: g.description ?? null,
+                status: "NOT_STARTED" as const,
+                progressPct: 0,
+              })),
+            }
+          : undefined,
+        milestones: source.milestones.length
+          ? {
+              create: source.milestones.map((m) => ({
+                title: m.title,
+                description: m.description ?? null,
+                plannedStart: m.plannedStart ?? null,
+                plannedEnd: m.plannedEnd,
+                actualStart: null,
+                actualEnd: null,
+                status: "PENDING" as const,
+                order: m.order,
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        monthlyGoals: true,
+        milestones: true,
+      },
+    });
+  }
 }
