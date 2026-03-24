@@ -104,6 +104,8 @@ export const config = {
     "/kanban/:path*",
     "/gantt/:path*",
     "/knowledge/:path*",
+    "/kpi/:path*",
+    "/plans/:path*",
     "/timesheet/:path*",
     "/reports/:path*",
     // All API routes — auth routes are excluded inside the middleware function
