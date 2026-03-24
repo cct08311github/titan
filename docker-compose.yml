@@ -340,11 +340,13 @@ volumes:
 # 網路設定：強化隔離
 # ═══════════════════════════════════════════════════════════
 networks:
-  # 內部網路：僅允許服務間通訊，不對外開放
+  # 內部網路：僅允許服務間通訊，不對外開放（Issue #186）
+  # internal: true 阻止容器直接訪問外部網路
+  # DNS 解析由 Docker 內建 DNS (127.0.0.11) 提供，不需外部 DNS
   titan-internal:
     name: titan-internal
     driver: bridge
-    internal: false  #允許 DNS 解析
+    internal: true
   # 外部網路：允許對外服務（Homepage）
   titan-external:
     name: titan-external
