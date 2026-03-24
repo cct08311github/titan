@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validate";
 import { updateDocumentSchema } from "@/validators/document-validators";
 import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { withManager } from "@/lib/auth-middleware";
 
 export const GET = apiHandler(async (
   _req: NextRequest,
@@ -73,13 +74,10 @@ export const PUT = apiHandler(async (
   return success(doc);
 });
 
-export const DELETE = apiHandler(async (
+export const DELETE = withManager(async (
   _req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context.params;
   await prisma.document.delete({ where: { id } });
   return success({ success: true });

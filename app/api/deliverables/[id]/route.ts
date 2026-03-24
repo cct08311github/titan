@@ -1,31 +1,23 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
 import { DeliverableService } from "@/services/deliverable-service";
+import { withAuth, withManager } from "@/lib/auth-middleware";
 
-export const GET = apiHandler(async (
+export const GET = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context.params;
   const service = new DeliverableService(prisma);
   const deliverable = await service.getDeliverable(id);
   return success(deliverable);
 });
 
-export const PATCH = apiHandler(async (
+export const PATCH = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context.params;
   const body = await req.json();
 
@@ -43,13 +35,10 @@ export const PATCH = apiHandler(async (
   return success(deliverable);
 });
 
-export const DELETE = apiHandler(async (
-  req: NextRequest,
+export const DELETE = withManager(async (
+  _req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context.params;
   await prisma.deliverable.delete({ where: { id } });
   return success({ success: true });
