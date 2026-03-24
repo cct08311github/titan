@@ -2,7 +2,13 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import Link from "next/link";
+import {
+  LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
+  Clock, BarChart2, Target, Crosshair,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
 
@@ -28,14 +34,37 @@ function ThemeToggle() {
   );
 }
 
+const MOBILE_NAV = [
+  { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
+  { href: "/kanban", label: "看板", icon: KanbanSquare },
+  { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
+  { href: "/plans", label: "年度計畫", icon: Target },
+  { href: "/kpi", label: "KPI", icon: Crosshair },
+  { href: "/knowledge", label: "知識庫", icon: BookOpen },
+  { href: "/timesheet", label: "工時紀錄", icon: Clock },
+  { href: "/reports", label: "報表", icon: BarChart2 },
+];
+
 export function Topbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1];
 
   return (
-    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-6 flex-shrink-0 sticky top-0 z-10">
-      <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
+    <>
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 flex-shrink-0 sticky top-0 z-10">
+      <div className="flex items-center gap-3">
+        {/* Mobile hamburger */}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="md:hidden p-2 -ml-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          aria-label="選單"
+        >
+          {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+        <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
+      </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
         <NotificationBell />
@@ -54,5 +83,42 @@ export function Topbar() {
         </button>
       </div>
     </header>
+
+    {/* Mobile navigation overlay */}
+    {mobileMenuOpen && (
+      <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
+        <nav
+          className="w-64 h-full bg-card shadow-xl p-4 space-y-1"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2.5 px-3 py-3 mb-3 border-b border-border">
+            <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-xs font-bold text-primary-foreground">T</span>
+            </div>
+            <span className="text-base font-semibold tracking-tight">TITAN</span>
+          </div>
+          {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href || pathname.startsWith(href + "/");
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg text-sm h-10 px-3 transition-colors",
+                  isActive
+                    ? "bg-primary/[0.06] text-primary font-medium"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    )}
+    </>
   );
 }

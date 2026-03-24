@@ -9,10 +9,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <NextAuthSessionProvider>
       <PasswordChangeGuard>
         <div className="flex h-screen bg-background overflow-hidden">
-          <Sidebar />
+          {/* Sidebar: hidden on mobile, visible on md+ */}
+          <div className="hidden md:block">
+            <Sidebar />
+          </div>
           <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
             <Topbar />
-            <main className="flex-1 overflow-y-auto p-6" tabIndex={0}>{children}</main>
+            <main className="flex-1 overflow-y-auto p-4 sm:p-6" tabIndex={0}>{children}</main>
           </div>
         </div>
         <CommandPalette />
