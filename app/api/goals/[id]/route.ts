@@ -32,7 +32,7 @@ export const GET = withAuth(async (
   return success(goal);
 });
 
-export const PUT = withAuth(async (
+export const PUT = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
