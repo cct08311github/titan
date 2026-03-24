@@ -8,8 +8,13 @@ import { ValidationError } from "@/services/errors";
 export function validateBody<T>(schema: ZodSchema<T>, body: unknown): T {
   const result = schema.safeParse(body);
   if (!result.success) {
-    const formatted = (result.error as ZodError).format();
-    throw new ValidationError(JSON.stringify(formatted));
+    const flat = (result.error as ZodError).flatten();
+    throw new ValidationError(
+      JSON.stringify({
+        error: "輸入驗證失敗",
+        fields: flat.fieldErrors,
+      })
+    );
   }
   return result.data;
 }
