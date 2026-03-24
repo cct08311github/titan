@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { TimeCategory } from "@prisma/client";
-import { UnauthorizedError } from "@/services/errors";
+import { ForbiddenError, NotFoundError, UnauthorizedError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateTimeEntrySchema } from "@/validators/time-entry-validators";
 import { apiHandler } from "@/lib/api-handler";
@@ -15,7 +15,18 @@ export const PUT = apiHandler(async (
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
+  const callerId = session.user.id;
   const { id } = await context.params;
+
+  // Fetch first to check ownership — single query, no N+1.
+  const existing = await prisma.timeEntry.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
+
+  // IDOR: all roles (including MANAGER) may only write their own entries.
+  if (existing.userId !== callerId) {
+    throw new ForbiddenError("只能修改自己的時間記錄");
+  }
+
   const raw = await req.json();
   const { taskId, date, hours, category, description } = validateBody(updateTimeEntrySchema, raw);
 
@@ -44,7 +55,18 @@ export const DELETE = apiHandler(async (
   const session = await getServerSession();
   if (!session?.user?.id) throw new UnauthorizedError();
 
+  const callerId = session.user.id;
   const { id } = await context.params;
+
+  // Fetch first to check ownership — single query, no N+1.
+  const existing = await prisma.timeEntry.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
+
+  // IDOR: all roles (including MANAGER) may only delete their own entries.
+  if (existing.userId !== callerId) {
+    throw new ForbiddenError("只能刪除自己的時間記錄");
+  }
+
   await prisma.timeEntry.delete({ where: { id } });
   return success({ success: true });
 });

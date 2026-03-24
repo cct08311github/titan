@@ -15,7 +15,7 @@ describe("TimeEntryService", () => {
     const mockEntries = [{ id: "te-1", userId: "user-1", hours: 2 }];
     (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue(mockEntries);
 
-    const result = await service.listTimeEntries({ userId: "user-1" });
+    const result = await service.listTimeEntries({ userId: "user-1" }, "user-1", "ENGINEER");
 
     expect(prisma.timeEntry.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -39,15 +39,15 @@ describe("TimeEntryService", () => {
     (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(null);
 
     await expect(
-      service.updateTimeEntry("nonexistent", { hours: 3 })
+      service.updateTimeEntry("nonexistent", { hours: 3 }, "user-1", "ENGINEER")
     ).rejects.toThrow(NotFoundError);
   });
 
   test("deleteTimeEntry removes entry", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({ id: "te-1" });
+    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({ id: "te-1", userId: "user-1" });
     (prisma.timeEntry.delete as jest.Mock).mockResolvedValue({ id: "te-1" });
 
-    await service.deleteTimeEntry("te-1");
+    await service.deleteTimeEntry("te-1", "user-1", "ENGINEER");
 
     expect(prisma.timeEntry.delete).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "te-1" } })
@@ -61,7 +61,7 @@ describe("TimeEntryService", () => {
     ];
     (prisma.timeEntry.findMany as jest.Mock).mockResolvedValue(mockEntries);
 
-    const result = await service.getStats({ userId: "user-1" });
+    const result = await service.getStats({ userId: "user-1" }, "user-1", "ENGINEER");
 
     expect(result.totalHours).toBe(5);
     expect(result).toHaveProperty("byCategory");
