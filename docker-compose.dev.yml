@@ -37,9 +37,10 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://titan:titan_dev_password@titan-db:5432/titan_dev
-      NEXTAUTH_URL: http://localhost:3100
+      NEXTAUTH_URL: http://mac-mini.tailde842d.ts.net:3100
       NEXTAUTH_SECRET: dev_secret_change_in_production
       NODE_ENV: development
+      PRISMA_QUERY_ENGINE_LIBRARY: /app/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
     ports:
       - "3100:3000"
     volumes:

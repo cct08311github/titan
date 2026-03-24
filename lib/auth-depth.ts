@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { jwtVerify, jwtDecrypt } from "jose";
 import { logger } from "@/lib/logger";
 
 const SESSION_COOKIE_NAMES = [
@@ -46,9 +46,29 @@ function extractToken(req: NextRequest): string | null {
 }
 
 /**
- * Builds a Uint8Array secret from NEXTAUTH_SECRET for use with jose.
+ * Derives the encryption key from NEXTAUTH_SECRET.
+ * NextAuth v4 uses HKDF to derive a 32-byte key from the secret
+ * for JWE (A256GCM) encryption. For JWS fallback we use the raw secret.
  */
-function getSecretKey(): Uint8Array | null {
+async function getDerivedEncryptionKey(): Promise<CryptoKey | null> {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) return null;
+
+  const enc = new TextEncoder();
+  // NextAuth v4 derives key via HKDF: SHA-256, salt="", info="NextAuth.js Generated Encryption Key"
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw", enc.encode(secret), "HKDF", false, ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode("NextAuth.js Generated Encryption Key") },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["decrypt"]
+  );
+}
+
+function getRawSecretKey(): Uint8Array | null {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) return null;
   return new TextEncoder().encode(secret);
@@ -63,8 +83,8 @@ function getSecretKey(): Uint8Array | null {
 export async function checkEdgeJwt(req: NextRequest): Promise<NextResponse | null> {
   const url = req.url;
 
-  const secretKey = getSecretKey();
-  if (!secretKey) {
+  const rawKey = getRawSecretKey();
+  if (!rawKey) {
     logger.warn({ url }, "[middleware] NEXTAUTH_SECRET not set — blocking request");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -76,8 +96,25 @@ export async function checkEdgeJwt(req: NextRequest): Promise<NextResponse | nul
   }
 
   try {
-    // next-auth v4 signs JWTs with HS256 using NEXTAUTH_SECRET
-    await jwtVerify(token, secretKey, { algorithms: ["HS256"] });
+    // NextAuth v4 default: JWE with dir+A256GCM (encrypted, not signed).
+    // Detect by checking the token header algorithm.
+    const [headerB64] = token.split(".");
+    const header = JSON.parse(atob(headerB64));
+
+    if (header.enc) {
+      // JWE token — decrypt using HKDF-derived key
+      const encKey = await getDerivedEncryptionKey();
+      if (!encKey) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      // Export the CryptoKey to raw bytes for jose
+      const keyBytes = new Uint8Array(await crypto.subtle.exportKey("raw", encKey));
+      await jwtDecrypt(token, keyBytes);
+    } else {
+      // JWS token — verify signature with raw secret
+      await jwtVerify(token, rawKey, { algorithms: ["HS256"] });
+    }
+
     return null; // valid — allow the request to continue
   } catch (err) {
     const code = (err as { code?: string }).code ?? "UNKNOWN";
