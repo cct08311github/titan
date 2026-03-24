@@ -1,33 +1,67 @@
 /**
- * Next.js Edge Middleware — Auth Defense in Depth (Issue #129)
+ * Next.js Edge Middleware — Auth Defense in Depth + CSP Nonce (Issue #129, #190)
  *
- * Layer 1 (this file, Edge runtime): lightweight JWT verification.
+ * Layer 1 (this file, Edge runtime): lightweight JWT verification + CSP nonce injection.
  *   - Applies to all /api/* routes except /api/auth/*
  *   - Uses NEXTAUTH_SECRET to verify the JWT signature and expiry
  *   - Blocks unauthenticated, expired, or tampered tokens with HTTP 401
  *   - Logs every blocked request via the structured logger
+ *   - 生成每請求唯一 nonce，寫入 Content-Security-Policy 與 x-nonce header
  *
  * Layer 2 (route handlers, Node.js runtime): full DB session check.
  *   - withAuth / withManager wrappers are kept on ALL route handlers (not removed)
  *   - getServerSession() re-validates the session against the database on every call
  *
  * Neither layer alone is sufficient — both must pass for a request to succeed.
+ *
+ * CSP Nonce 使用方式（Issue #190）：
+ *   - Server Components 可透過 headers() 讀取 'x-nonce'
+ *   - 將 nonce 傳給 <Script nonce={nonce}> 或自訂 inline script 元素
+ *   - next.config.ts 的靜態 CSP 作為未進入此 middleware 路由的 fallback
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { checkEdgeJwt } from "@/lib/auth-depth";
 
+/** 建構帶有動態 nonce 的 CSP header 值 */
+function buildCspWithNonce(nonce: string): string {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' wss: ws:",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+  ].join("; ");
+}
+
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = new URL(req.url);
 
+  // 生成每請求唯一 nonce（base64 編碼，Edge runtime 支援 crypto.getRandomValues）
+  const nonceBytes = new Uint8Array(16);
+  crypto.getRandomValues(nonceBytes);
+  const nonce = Buffer.from(nonceBytes).toString("base64");
+
   // Skip auth routes — next-auth handles its own sign-in / callback / CSRF flows
   if (pathname.startsWith("/api/auth/")) {
-    return NextResponse.next();
+    const res = NextResponse.next();
+    res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
+    res.headers.set("x-nonce", nonce);
+    return res;
   }
 
   // Skip the change-password page itself to avoid redirect loops
   if (pathname === "/change-password") {
-    return NextResponse.next();
+    const res = NextResponse.next();
+    res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
+    res.headers.set("x-nonce", nonce);
+    return res;
   }
 
   // Perform Edge JWT check
@@ -42,7 +76,15 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return jwtResult; // 401 response for API routes — blocked at Edge before hitting Node.js
   }
 
-  return NextResponse.next();
+  // 所有通過驗證的請求：注入 nonce-based CSP 與 x-nonce header
+  // Server Components 可透過 headers() 讀取 'x-nonce' 並傳給 inline script 元素
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-nonce", nonce);
+
+  const res = NextResponse.next({ request: { headers: requestHeaders } });
+  res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
+  res.headers.set("x-nonce", nonce);
+  return res;
 }
 
 export const config = {
