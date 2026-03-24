@@ -9,12 +9,14 @@ import {
   BookOpen,
   Clock,
   BarChart2,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
   { href: "/kanban", label: "看板", icon: KanbanSquare },
+  { href: "/plans", label: "年度計畫", icon: Target },
   { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
   { href: "/knowledge", label: "知識庫", icon: BookOpen },
   { href: "/timesheet", label: "工時紀錄", icon: Clock },
@@ -59,7 +61,7 @@ export function Sidebar() {
       {/* Version footer */}
       <div className="p-4 border-t border-sidebar-border">
         <p className="font-mono text-[11px] text-muted-foreground tabular-nums">
-          v0.1.0 — Sprint 1
+          v0.2.0 — Sprint 2
         </p>
       </div>
     </aside>
