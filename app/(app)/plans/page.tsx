@@ -47,7 +47,7 @@ const statusLabels: Record<TaskStatus, string> = {
 };
 
 const statusColors: Record<TaskStatus, string> = {
-  BACKLOG: "text-zinc-400",
+  BACKLOG: "text-muted-foreground",
   TODO: "text-blue-400",
   IN_PROGRESS: "text-yellow-400",
   REVIEW: "text-purple-400",
@@ -172,18 +172,18 @@ export default function PlansPage() {
     }
   }
 
-  const inputCls = "bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors placeholder:text-zinc-600";
-  const selectCls = "bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 transition-colors cursor-pointer";
+  const inputCls = "bg-card border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground";
+  const selectCls = "bg-card border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors cursor-pointer";
 
   return (
     <div className="flex flex-col gap-6 max-w-5xl">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-zinc-500">
-        <span className="text-zinc-300 font-medium">年度計畫</span>
+      <nav className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="text-foreground font-medium">年度計畫</span>
         {selectedGoal && (
           <>
             <ChevronRight className="h-3 w-3" />
-            <span className="text-zinc-300 font-medium">
+            <span className="text-foreground font-medium">
               {monthNames[selectedGoal.month]} — {selectedGoal.title}
             </span>
           </>
@@ -199,21 +199,21 @@ export default function PlansPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowGoalForm(true)}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md transition-colors border border-zinc-700"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
           >
             <Plus className="h-3.5 w-3.5" />
             新增月度目標
           </button>
           <button
             onClick={() => { setShowCopyForm((v) => !v); setShowPlanForm(false); setCopyError(""); }}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md transition-colors border border-zinc-700"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
           >
             <Copy className="h-3.5 w-3.5" />
             從上年複製
           </button>
           <button
             onClick={() => setShowPlanForm(true)}
-            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 rounded-md transition-colors"
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors"
           >
             <Target className="h-3.5 w-3.5" />
             新增年度計畫
@@ -223,10 +223,10 @@ export default function PlansPage() {
 
       {/* Create plan form */}
       {showPlanForm && (
-        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 space-y-3">
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-zinc-200">新增年度計畫</h3>
-            <button onClick={() => setShowPlanForm(false)} className="text-zinc-500 hover:text-zinc-200">
+            <h3 className="text-sm font-medium text-foreground">新增年度計畫</h3>
+            <button onClick={() => setShowPlanForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -250,7 +250,7 @@ export default function PlansPage() {
             <button
               onClick={createPlan}
               disabled={creatingPlan || !newPlanTitle.trim()}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
             >
               {creatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
@@ -260,14 +260,14 @@ export default function PlansPage() {
 
       {/* Copy template form */}
       {showCopyForm && (
-        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 space-y-3">
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-zinc-200">從上年複製計畫</h3>
-            <button onClick={() => setShowCopyForm(false)} className="text-zinc-500 hover:text-zinc-200">
+            <h3 className="text-sm font-medium text-foreground">從上年複製計畫</h3>
+            <button onClick={() => setShowCopyForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
-          <p className="text-xs text-zinc-500">選擇來源計畫，系統將複製其架構（月度目標與里程碑）到新年度。</p>
+          <p className="text-xs text-muted-foreground">選擇來源計畫，系統將複製其架構（月度目標與里程碑）到新年度。</p>
           <div className="flex gap-3 flex-wrap">
             <select
               value={copySourcePlanId}
@@ -289,7 +289,7 @@ export default function PlansPage() {
             <button
               onClick={copyTemplate}
               disabled={copyingTemplate || !copySourcePlanId || !copyTargetYear}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
             >
               {copyingTemplate ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Copy className="h-3.5 w-3.5" />複製</>}
             </button>
@@ -302,10 +302,10 @@ export default function PlansPage() {
 
       {/* Create goal form */}
       {showGoalForm && (
-        <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-4 space-y-3">
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-zinc-200">新增月度目標</h3>
-            <button onClick={() => setShowGoalForm(false)} className="text-zinc-500 hover:text-zinc-200">
+            <h3 className="text-sm font-medium text-foreground">新增月度目標</h3>
+            <button onClick={() => setShowGoalForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -341,7 +341,7 @@ export default function PlansPage() {
             <button
               onClick={createGoal}
               disabled={creatingGoal || !newGoalTitle.trim() || !newGoalPlanId}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-zinc-200 hover:bg-white text-zinc-900 text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
             >
               {creatingGoal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
@@ -352,7 +352,7 @@ export default function PlansPage() {
       {/* Plan tree */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : plans.length === 0 ? (
         <PageEmpty
@@ -370,19 +370,19 @@ export default function PlansPage() {
 
       {/* Goal detail panel */}
       {selectedGoal && (
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+        <div className="bg-card border border-border rounded-xl">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div>
-              <div className="text-xs text-zinc-500 mb-0.5">月度目標詳情</div>
-              <h2 className="text-sm font-medium text-zinc-200">
+              <div className="text-xs text-muted-foreground mb-0.5">月度目標詳情</div>
+              <h2 className="text-sm font-medium text-foreground">
                 {monthNames[selectedGoal.month]} — {selectedGoal.title}
               </h2>
             </div>
             <div className="flex items-center gap-3">
-              {goalLoading && <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />}
+              {goalLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               <button
                 onClick={() => setSelectedGoal(null)}
-                className="text-zinc-500 hover:text-zinc-200 transition-colors"
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -393,26 +393,26 @@ export default function PlansPage() {
           <div className="p-4">
             {selectedGoal.tasks && selectedGoal.tasks.length > 0 ? (
               <div className="space-y-2">
-                <h3 className="text-xs font-medium text-zinc-400 mb-3">個人任務</h3>
+                <h3 className="text-xs font-medium text-muted-foreground mb-3">個人任務</h3>
                 {selectedGoal.tasks.map((task) => (
                   <div
                     key={task.id}
                     onClick={() => setSelectedTaskId(task.id)}
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-zinc-800/50 cursor-pointer transition-colors group"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors group"
                   >
                     <span className={cn("text-xs font-medium w-16 flex-shrink-0", statusColors[task.status])}>
                       {statusLabels[task.status]}
                     </span>
-                    <span className="flex-1 text-sm text-zinc-200 group-hover:text-white truncate transition-colors">
+                    <span className="flex-1 text-sm text-foreground group-hover:text-foreground truncate transition-colors">
                       {task.title}
                     </span>
                     {task.primaryAssignee && (
-                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-zinc-700 flex items-center justify-center text-[10px] text-zinc-300">
+                      <div className="flex-shrink-0 h-5 w-5 rounded-full bg-accent flex items-center justify-center text-[10px] text-foreground">
                         {task.primaryAssignee.name.charAt(0)}
                       </div>
                     )}
                     {task.dueDate && (
-                      <span className="text-[10px] text-zinc-500 flex-shrink-0">
+                      <span className="text-[10px] text-muted-foreground flex-shrink-0">
                         {new Date(task.dueDate).getMonth() + 1}/{new Date(task.dueDate).getDate()}
                       </span>
                     )}
@@ -420,7 +420,7 @@ export default function PlansPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-zinc-600 text-center py-6">此月度目標尚無任務</p>
+              <p className="text-sm text-muted-foreground text-center py-6">此月度目標尚無任務</p>
             )}
           </div>
         </div>

@@ -58,35 +58,35 @@ export function DocumentSearch({ onSelect }: DocumentSearchProps) {
 
   return (
     <div className="relative">
-      <div className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2">
-        <Search className={cn("h-3.5 w-3.5 flex-shrink-0", loading ? "text-zinc-400 animate-pulse" : "text-zinc-500")} />
+      <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+        <Search className={cn("h-3.5 w-3.5 flex-shrink-0", loading ? "text-muted-foreground animate-pulse" : "text-muted-foreground")} />
         <input
           type="text"
           value={query}
           onChange={handleChange}
           onFocus={() => results.length > 0 && setOpen(true)}
           placeholder="搜尋文件..."
-          className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none"
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
         />
         {query && (
           <button onClick={() => { setQuery(""); setResults([]); setOpen(false); }}>
-            <X className="h-3.5 w-3.5 text-zinc-500 hover:text-zinc-300" />
+            <X className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
           </button>
         )}
       </div>
 
       {open && results.length > 0 && (
-        <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl overflow-hidden">
+        <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-card border border-border rounded-lg shadow-xl overflow-hidden">
           {results.map((r) => (
             <button
               key={r.id}
               onClick={() => handleSelect(r.id)}
-              className="w-full flex items-start gap-3 px-4 py-3 hover:bg-zinc-800 transition-colors text-left"
+              className="w-full flex items-start gap-3 px-4 py-3 hover:bg-accent transition-colors text-left"
             >
-              <FileText className="h-4 w-4 text-zinc-500 flex-shrink-0 mt-0.5" />
+              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <div className="text-sm font-medium text-zinc-200 truncate">{r.title}</div>
-                <div className="text-xs text-zinc-500 mt-0.5 line-clamp-2">{r.snippet}</div>
+                <div className="text-sm font-medium text-foreground truncate">{r.title}</div>
+                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{r.snippet}</div>
               </div>
             </button>
           ))}
@@ -94,7 +94,7 @@ export function DocumentSearch({ onSelect }: DocumentSearchProps) {
       )}
 
       {open && results.length === 0 && !loading && query.trim() && (
-        <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl px-4 py-3 text-sm text-zinc-500">
+        <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-card border border-border rounded-lg shadow-xl px-4 py-3 text-sm text-muted-foreground">
           找不到相關文件
         </div>
       )}

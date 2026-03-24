@@ -65,13 +65,13 @@ const categoryOptions = [
 ];
 
 const inputCls =
-  "w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 transition-colors placeholder:text-zinc-600";
+  "w-full bg-card border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground";
 
 const selectCls =
-  "w-full bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 transition-colors cursor-pointer";
+  "w-full bg-card border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors cursor-pointer";
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-zinc-400 mb-1">{children}</label>;
+  return <label className="block text-xs font-medium text-muted-foreground mb-1">{children}</label>;
 }
 
 export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalProps) {
@@ -161,17 +161,17 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm pt-12 pb-4 px-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 sticky top-0 bg-zinc-950 z-10">
-          <h2 className="text-sm font-medium text-zinc-300 tracking-wide">任務詳情</h2>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-card z-10">
+          <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={save}
               disabled={saving || loading}
               className={cn(
                 "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
-                "bg-zinc-800 hover:bg-zinc-700 text-zinc-200 disabled:opacity-40"
+                "bg-muted hover:bg-accent text-foreground disabled:opacity-40"
               )}
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -179,7 +179,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             </button>
             <button
               onClick={onClose}
-              className="text-zinc-500 hover:text-zinc-200 transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -188,7 +188,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : task ? (
           <div className="p-5 space-y-5">
@@ -298,8 +298,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
 
             {/* Subtasks */}
             <div>
-              <h3 className="text-xs font-medium text-zinc-400 mb-2">子任務清單</h3>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">子任務清單</h3>
+              <div className="bg-muted/30 border border-border rounded-lg p-3">
                 <SubTaskList
                   subtasks={task.subTasks}
                   taskId={taskId}
@@ -309,8 +309,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
 
             {/* Deliverables */}
             <div>
-              <h3 className="text-xs font-medium text-zinc-400 mb-2">交付項</h3>
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-3">
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">交付項</h3>
+              <div className="bg-muted/30 border border-border rounded-lg p-3">
                 <DeliverableList
                   deliverables={task.deliverables}
                   taskId={taskId}
@@ -319,7 +319,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             </div>
           </div>
         ) : (
-          <div className="py-16 text-center text-zinc-500 text-sm">任務不存在</div>
+          <div className="py-16 text-center text-muted-foreground text-sm">任務不存在</div>
         )}
       </div>
     </div>

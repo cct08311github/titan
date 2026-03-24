@@ -11,7 +11,7 @@ import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states"
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 
 const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
-  { status: "BACKLOG", label: "待辦清單", color: "text-zinc-400" },
+  { status: "BACKLOG", label: "待辦清單", color: "text-muted-foreground" },
   { status: "TODO", label: "待處理", color: "text-blue-400" },
   { status: "IN_PROGRESS", label: "進行中", color: "text-yellow-400" },
   { status: "REVIEW", label: "審核中", color: "text-purple-400" },
@@ -19,7 +19,7 @@ const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
 ];
 
 const columnBorder: Record<TaskStatus, string> = {
-  BACKLOG: "border-zinc-700/50",
+  BACKLOG: "border-border",
   TODO: "border-blue-500/20",
   IN_PROGRESS: "border-yellow-500/20",
   REVIEW: "border-purple-500/20",
@@ -27,7 +27,7 @@ const columnBorder: Record<TaskStatus, string> = {
 };
 
 const columnHeaderBg: Record<TaskStatus, string> = {
-  BACKLOG: "bg-zinc-800/60",
+  BACKLOG: "bg-muted/60",
   TODO: "bg-blue-500/10",
   IN_PROGRESS: "bg-yellow-500/10",
   REVIEW: "bg-purple-500/10",
@@ -121,7 +121,7 @@ export default function KanbanPage() {
           <h1 className="text-2xl font-medium tracking-[-0.04em]">看板</h1>
           <p className="text-muted-foreground text-sm mt-0.5">共 {tasks.length} 項任務</p>
         </div>
-        <button className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md transition-colors border border-zinc-700">
+        <button className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border">
           <Plus className="h-3.5 w-3.5" />
           新增任務
         </button>
@@ -160,7 +160,7 @@ export default function KanbanPage() {
                 className={cn(
                   "flex flex-col w-72 flex-shrink-0 rounded-xl border transition-colors",
                   columnBorder[status],
-                  isOver && "ring-1 ring-zinc-500"
+                  isOver && "ring-1 ring-ring"
                 )}
                 onDragOver={(e) => handleDragOver(e, status)}
                 onDragLeave={() => setDragOver(null)}
@@ -172,7 +172,7 @@ export default function KanbanPage() {
                     <span className={cn("text-xs font-semibold uppercase tracking-wider", color)}>
                       {label}
                     </span>
-                    <span className="text-xs text-zinc-500 tabular-nums bg-zinc-800/60 px-1.5 py-0.5 rounded">
+                    <span className="text-xs text-muted-foreground tabular-nums bg-muted/60 px-1.5 py-0.5 rounded">
                       {colTasks.length}
                     </span>
                   </div>
@@ -198,7 +198,7 @@ export default function KanbanPage() {
                       />
                       {movingTask === task.id && (
                         <div className="flex justify-center py-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-zinc-500" />
+                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                         </div>
                       )}
                     </div>
@@ -207,8 +207,8 @@ export default function KanbanPage() {
                   {colTasks.length === 0 && (
                     <div
                       className={cn(
-                        "flex items-center justify-center h-20 rounded-lg border border-dashed text-xs text-zinc-600 transition-colors",
-                        isOver ? "border-zinc-500 bg-zinc-800/30 text-zinc-400" : "border-zinc-800"
+                        "flex items-center justify-center h-20 rounded-lg border border-dashed text-xs text-muted-foreground transition-colors",
+                        isOver ? "border-ring bg-muted/30 text-foreground" : "border-border"
                       )}
                     >
                       {isOver ? "放置到此欄" : "尚無任務"}

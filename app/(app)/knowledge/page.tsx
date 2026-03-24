@@ -40,7 +40,8 @@ export default function KnowledgePage() {
     try {
       const res = await fetch("/api/documents");
       if (!res.ok) throw new Error("文件載入失敗");
-      setDocs(await res.json());
+      const body = await res.json();
+      setDocs(Array.isArray(body) ? body : body?.data ?? []);
     } catch (e) {
       setDocsError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -132,11 +133,11 @@ export default function KnowledgePage() {
       <div className="flex items-center justify-between pb-4 flex-shrink-0">
         <div>
           <h1 className="text-2xl font-medium tracking-[-0.04em]">知識庫</h1>
-          <p className="text-zinc-500 text-sm mt-0.5">Markdown 文件管理</p>
+          <p className="text-muted-foreground text-sm mt-0.5">Markdown 文件管理</p>
         </div>
         <button
           onClick={() => createDoc(null)}
-          className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-md transition-colors border border-zinc-700"
+          className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
         >
           <Plus className="h-3.5 w-3.5" />
           新增文件
@@ -144,11 +145,11 @@ export default function KnowledgePage() {
       </div>
 
       {/* Main layout */}
-      <div className="flex flex-1 min-h-0 gap-0 border border-zinc-800 rounded-xl overflow-hidden">
+      <div className="flex flex-1 min-h-0 gap-0 border border-border rounded-xl overflow-hidden">
         {/* Left sidebar */}
-        <div className="w-56 flex-shrink-0 border-r border-zinc-800 flex flex-col bg-zinc-950">
+        <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-card">
           {/* Search */}
-          <div className="p-2 border-b border-zinc-800">
+          <div className="p-2 border-b border-border">
             <DocumentSearch onSelect={setSelectedId} />
           </div>
 
@@ -184,27 +185,27 @@ export default function KnowledgePage() {
         </div>
 
         {/* Right panel */}
-        <div className="flex-1 flex flex-col min-w-0 bg-zinc-950">
+        <div className="flex-1 flex flex-col min-w-0 bg-card">
           {!selectedId ? (
             <div className="flex-1 flex items-center justify-center text-center">
               <div>
-                <p className="text-zinc-600 text-sm">從左側選擇文件</p>
-                <p className="text-zinc-700 text-xs mt-1">或點擊 + 新增文件</p>
+                <p className="text-muted-foreground text-sm">從左側選擇文件</p>
+                <p className="text-muted-foreground text-xs mt-1">或點擊 + 新增文件</p>
               </div>
             </div>
           ) : loadingDetail ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             </div>
           ) : docDetail ? (
             <>
               {/* Editor header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-800 flex-shrink-0">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border flex-shrink-0">
                 <input
                   type="text"
                   value={editTitle}
                   onChange={(e) => handleTitleChange(e.target.value)}
-                  className="flex-1 bg-transparent text-base font-semibold text-zinc-100 focus:outline-none placeholder:text-zinc-600 border-b border-transparent focus:border-zinc-700 pb-0.5 transition-colors"
+                  className="flex-1 bg-transparent text-base font-semibold text-foreground focus:outline-none placeholder:text-muted-foreground border-b border-transparent focus:border-border pb-0.5 transition-colors"
                   placeholder="文件標題..."
                 />
                 <div className="flex items-center gap-2 flex-shrink-0">
@@ -217,8 +218,8 @@ export default function KnowledgePage() {
                     className={cn(
                       "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
                       dirty
-                        ? "bg-zinc-700 hover:bg-zinc-600 text-zinc-200"
-                        : "bg-zinc-800 text-zinc-600 cursor-default"
+                        ? "bg-accent hover:bg-accent/80 text-foreground"
+                        : "bg-muted text-muted-foreground cursor-default"
                     )}
                   >
                     {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -228,15 +229,15 @@ export default function KnowledgePage() {
               </div>
 
               {/* Meta */}
-              <div className="px-4 py-1.5 border-b border-zinc-800/50 flex items-center gap-4 flex-shrink-0">
-                <span className="text-xs text-zinc-600">
+              <div className="px-4 py-1.5 border-b border-border/50 flex items-center gap-4 flex-shrink-0">
+                <span className="text-xs text-muted-foreground">
                   建立：{docDetail.creator.name}
                 </span>
-                <span className="text-xs text-zinc-600">
+                <span className="text-xs text-muted-foreground">
                   最後更新：{docDetail.updater.name}
                   　{new Date(docDetail.updatedAt).toLocaleDateString("zh-TW")}
                 </span>
-                <span className="text-xs text-zinc-700 ml-auto">v{docDetail.version}</span>
+                <span className="text-xs text-muted-foreground ml-auto">v{docDetail.version}</span>
               </div>
 
               {/* Markdown editor */}
@@ -258,7 +259,7 @@ export default function KnowledgePage() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-zinc-600 text-sm">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
               文件不存在
             </div>
           )}

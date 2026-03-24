@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html
       lang="zh-TW"
-      className={`${GeistSans.variable} ${GeistMono.variable} dark`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
       <body className={GeistSans.className}>{children}</body>
     </html>

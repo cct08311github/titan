@@ -45,7 +45,7 @@ type AnnualPlan = {
 const MONTHS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
 const STATUS_BAR: Record<string, string> = {
-  BACKLOG: "bg-zinc-700",
+  BACKLOG: "bg-muted",
   TODO: "bg-blue-500/70",
   IN_PROGRESS: "bg-yellow-500/80",
   REVIEW: "bg-purple-500/80",
@@ -61,11 +61,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const MILESTONE_STATUS_COLOR: Record<string, string> = {
-  PENDING: "text-zinc-400",
+  PENDING: "text-muted-foreground",
   IN_PROGRESS: "text-yellow-400",
   COMPLETED: "text-emerald-400",
   DELAYED: "text-red-400",
-  CANCELLED: "text-zinc-600",
+  CANCELLED: "text-muted-foreground",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -97,7 +97,7 @@ function GanttBar({ task, year, totalDays, onClick }: GanttBarProps) {
   if (!task.startDate && !task.dueDate) {
     return (
       <div className="h-5 flex items-center">
-        <span className="text-xs text-zinc-700 italic">無日期</span>
+        <span className="text-xs text-muted-foreground italic">無日期</span>
       </div>
     );
   }
@@ -119,7 +119,7 @@ function GanttBar({ task, year, totalDays, onClick }: GanttBarProps) {
         title={`${task.title} — ${STATUS_LABEL[task.status] ?? task.status}`}
         className={cn(
           "absolute h-5 rounded-sm cursor-pointer transition-opacity hover:opacity-90 flex items-center px-1.5 overflow-hidden",
-          STATUS_BAR[task.status] ?? "bg-zinc-600"
+          STATUS_BAR[task.status] ?? "bg-muted-foreground"
         )}
         style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "4px" }}
       >
@@ -160,11 +160,11 @@ function MilestoneMarker({ milestone, year, totalDays }: MilestoneMarkerProps) {
     >
       <div className="w-px h-full bg-amber-500/30" />
       <div
-        className={cn("absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5", MILESTONE_STATUS_COLOR[milestone.status] ?? "text-zinc-400")}
+        className={cn("absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5", MILESTONE_STATUS_COLOR[milestone.status] ?? "text-muted-foreground")}
         style={{ whiteSpace: "nowrap" }}
       >
         <Diamond className="h-3 w-3 fill-current" />
-        <span className="text-[9px] font-medium bg-zinc-950/80 px-1 rounded">{milestone.title}</span>
+        <span className="text-[9px] font-medium bg-background/80 px-1 rounded">{milestone.title}</span>
       </div>
     </div>
   );
@@ -212,7 +212,7 @@ export default function GanttPage() {
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-medium tracking-[-0.04em]">甘特圖</h1>
-          <p className="text-zinc-500 text-sm mt-0.5">
+          <p className="text-muted-foreground text-sm mt-0.5">
             {plan ? plan.title : `${year} 年度計畫`}
           </p>
         </div>
@@ -222,26 +222,26 @@ export default function GanttPage() {
           <select
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600 cursor-pointer"
+            className="bg-card border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             <option value="">全部成員</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
 
           {/* Year picker */}
-          <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-md">
+          <div className="flex items-center gap-1 bg-card border border-border rounded-md">
             <button
               onClick={() => setYear((y) => y - 1)}
-              className="p-1.5 hover:bg-zinc-700 rounded-l-md transition-colors"
+              className="p-1.5 hover:bg-accent rounded-l-md transition-colors"
             >
-              <ChevronLeft className="h-4 w-4 text-zinc-400" />
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
-            <span className="px-3 text-sm font-medium text-zinc-200 tabular-nums">{year}</span>
+            <span className="px-3 text-sm font-medium text-foreground tabular-nums">{year}</span>
             <button
               onClick={() => setYear((y) => y + 1)}
-              className="p-1.5 hover:bg-zinc-700 rounded-r-md transition-colors"
+              className="p-1.5 hover:bg-accent rounded-r-md transition-colors"
             >
-              <ChevronRight className="h-4 w-4 text-zinc-400" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -273,13 +273,13 @@ export default function GanttPage() {
 
               {/* Right: month header */}
               <div className="flex-1 relative">
-                <div className="flex border-b border-zinc-800">
+                <div className="flex border-b border-border">
                   {MONTHS.map((m, i) => {
                     const widthPct = ((new Date(year, i + 1, 0).getDate()) / totalDays) * 100;
                     return (
                       <div
                         key={i}
-                        className="text-center text-xs text-zinc-500 py-2 border-r border-zinc-800/50 last:border-0"
+                        className="text-center text-xs text-muted-foreground py-2 border-r border-border/50 last:border-0"
                         style={{ width: `${widthPct}%` }}
                       >
                         {m}
@@ -292,7 +292,7 @@ export default function GanttPage() {
 
             {/* Milestones row */}
             {plan.milestones.length > 0 && (
-              <div className="flex border-b border-zinc-800/50">
+              <div className="flex border-b border-border/50">
                 <div className="w-56 flex-shrink-0 px-3 py-2 flex items-center gap-2">
                   <Diamond className="h-3 w-3 text-amber-500" />
                   <span className="text-xs font-semibold text-amber-400/80">里程碑</span>
@@ -304,7 +304,7 @@ export default function GanttPage() {
                     return (
                       <div
                         key={i}
-                        className="absolute top-0 bottom-0 w-px bg-zinc-800/50"
+                        className="absolute top-0 bottom-0 w-px bg-border/50"
                         style={{ left: `${leftPct}%` }}
                       />
                     );
@@ -320,9 +320,9 @@ export default function GanttPage() {
             {plan.monthlyGoals.map((goal) => (
               <div key={goal.id}>
                 {/* Goal row */}
-                <div className="flex border-b border-zinc-800/30 bg-zinc-900/30">
+                <div className="flex border-b border-border/30 bg-muted/30">
                   <div className="w-56 flex-shrink-0 px-3 py-2">
-                    <span className="text-xs font-semibold text-zinc-400">
+                    <span className="text-xs font-semibold text-muted-foreground">
                       {goal.month}月　{goal.title}
                     </span>
                   </div>
@@ -330,7 +330,7 @@ export default function GanttPage() {
                     {MONTHS.map((_, i) => (
                       <div
                         key={i}
-                        className="absolute top-0 bottom-0 w-px bg-zinc-800/30"
+                        className="absolute top-0 bottom-0 w-px bg-border/30"
                         style={{ left: `${(monthStartDay(i, year) / totalDays) * 100}%` }}
                       />
                     ))}
@@ -342,7 +342,7 @@ export default function GanttPage() {
                       const l = (start / totalDays) * 100;
                       return (
                         <div
-                          className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-zinc-700/50"
+                          className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-full bg-muted/50"
                           style={{ left: `${l}%`, width: `${w}%` }}
                         />
                       );
@@ -352,28 +352,28 @@ export default function GanttPage() {
 
                 {/* Task rows */}
                 {goal.tasks.length === 0 ? (
-                  <div className="flex border-b border-zinc-800/20">
+                  <div className="flex border-b border-border/20">
                     <div className="w-56 flex-shrink-0 px-5 py-2">
-                      <span className="text-xs text-zinc-700 italic">無任務</span>
+                      <span className="text-xs text-muted-foreground italic">無任務</span>
                     </div>
                     <div className="flex-1 h-8" />
                   </div>
                 ) : (
                   goal.tasks.map((task) => (
-                    <div key={task.id} className="flex border-b border-zinc-800/20 hover:bg-zinc-900/20 transition-colors group">
+                    <div key={task.id} className="flex border-b border-border/20 hover:bg-muted/20 transition-colors group">
                       <div className="w-56 flex-shrink-0 px-5 py-1.5 flex items-center gap-2">
                         <div
-                          className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", STATUS_BAR[task.status] ?? "bg-zinc-600")}
+                          className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", STATUS_BAR[task.status] ?? "bg-muted-foreground")}
                         />
                         <span
-                          className="text-xs text-zinc-400 group-hover:text-zinc-200 cursor-pointer truncate transition-colors"
+                          className="text-xs text-muted-foreground group-hover:text-foreground cursor-pointer truncate transition-colors"
                           onClick={() => setSelectedTaskId(task.id)}
                           title={task.title}
                         >
                           {task.title}
                         </span>
                         {task.primaryAssignee && (
-                          <span className="ml-auto text-[10px] text-zinc-600 flex-shrink-0">
+                          <span className="ml-auto text-[10px] text-muted-foreground flex-shrink-0">
                             {task.primaryAssignee.name.slice(0, 2)}
                           </span>
                         )}
@@ -382,7 +382,7 @@ export default function GanttPage() {
                         {MONTHS.map((_, i) => (
                           <div
                             key={i}
-                            className="absolute top-0 bottom-0 w-px bg-zinc-800/20"
+                            className="absolute top-0 bottom-0 w-px bg-border/20"
                             style={{ left: `${(monthStartDay(i, year) / totalDays) * 100}%` }}
                           />
                         ))}

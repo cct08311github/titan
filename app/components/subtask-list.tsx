@@ -87,13 +87,13 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
       {/* Progress bar */}
       {total > 0 && (
         <div className="flex items-center gap-2 mb-3">
-          <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-300"
               style={{ width: `${pct}%` }}
             />
           </div>
-          <span className="text-xs text-zinc-400 tabular-nums">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {doneCount}/{total}
           </span>
         </div>
@@ -105,7 +105,7 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
           <div
             key={subtask.id}
             className={cn(
-              "flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-zinc-800/50 transition-colors",
+              "flex items-center gap-2 group px-2 py-1.5 rounded-md hover:bg-muted/50 transition-colors",
               loading === subtask.id && "opacity-50"
             )}
           >
@@ -116,7 +116,7 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
                 "flex-shrink-0 h-4 w-4 rounded border transition-colors flex items-center justify-center",
                 subtask.done
                   ? "bg-emerald-500 border-emerald-500"
-                  : "border-zinc-600 hover:border-zinc-400"
+                  : "border-border hover:border-ring"
               )}
             >
               {subtask.done && <Check className="h-3 w-3 text-white" />}
@@ -124,7 +124,7 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
             <span
               className={cn(
                 "flex-1 text-sm",
-                subtask.done ? "line-through text-zinc-500" : "text-zinc-200"
+                subtask.done ? "line-through text-muted-foreground" : "text-foreground"
               )}
             >
               {subtask.title}
@@ -132,7 +132,7 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
             <button
               onClick={() => deleteSubtask(subtask.id)}
               disabled={loading === subtask.id}
-              className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all"
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -148,12 +148,12 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
           onChange={(e) => setNewTitle(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && addSubtask()}
           placeholder="新增子任務..."
-          className="flex-1 bg-transparent border-b border-zinc-700 focus:border-zinc-500 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none py-1 transition-colors"
+          className="flex-1 bg-transparent border-b border-border focus:border-ring text-sm text-foreground placeholder:text-muted-foreground outline-none py-1 transition-colors"
         />
         <button
           onClick={addSubtask}
           disabled={adding || !newTitle.trim()}
-          className="text-zinc-500 hover:text-zinc-300 disabled:opacity-30 transition-colors"
+          className="text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
         >
           <Plus className="h-4 w-4" />
         </button>

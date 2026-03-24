@@ -91,7 +91,7 @@ function WeeklyReport() {
 
   if (loading) return <PageLoading message="載入週報..." />;
   if (error) return <PageError message={error} onRetry={load} />;
-  if (!data) return <PageEmpty title="無週報資料" description="本週尚無相關數據" />;
+  if (!data || !data.period) return <PageEmpty title="無週報資料" description="本週尚無相關數據" />;
 
   const start = new Date(data.period.start).toLocaleDateString("zh-TW");
   const end = new Date(data.period.end).toLocaleDateString("zh-TW");
@@ -238,7 +238,7 @@ function MonthlyReport() {
         <PageLoading message="載入月報..." />
       ) : error ? (
         <PageError message={error} onRetry={load} />
-      ) : !data ? (
+      ) : !data || !data.period ? (
         <PageEmpty title="無月報資料" description="本月尚無相關數據" />
       ) : (
         <>

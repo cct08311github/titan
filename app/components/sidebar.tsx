@@ -32,7 +32,7 @@ export function Sidebar() {
     <aside className="w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
       {/* Logo */}
       <div className="h-14 flex items-center px-5 border-b border-sidebar-border">
-        <span className="text-lg font-medium tracking-[-0.04em] text-foreground">
+        <span className="text-xl font-semibold tracking-[-0.04em] text-primary">
           TITAN
         </span>
       </div>
@@ -49,7 +49,7 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-primary font-medium"
+                  ? "bg-primary/10 text-primary font-medium border-l-2 border-primary"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
