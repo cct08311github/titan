@@ -185,7 +185,7 @@ export default function TimesheetPage() {
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-2xl font-medium tracking-[-0.04em]">工時紀錄</h1>
-          <p className="text-zinc-500 text-sm mt-0.5">{formatWeekLabel(weekStart)}</p>
+          <p className="text-muted-foreground text-sm mt-0.5">{formatWeekLabel(weekStart)}</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -193,34 +193,34 @@ export default function TimesheetPage() {
           <select
             value={userFilter}
             onChange={(e) => setUserFilter(e.target.value)}
-            className="bg-zinc-800 border border-zinc-700 rounded-md px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-zinc-600 cursor-pointer"
+            className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             <option value="">我的工時</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
 
           {/* Week navigation */}
-          <div className="flex items-center gap-1 bg-zinc-800 border border-zinc-700 rounded-md">
-            <button onClick={prevWeek} className="p-1.5 hover:bg-zinc-700 rounded-l-md transition-colors">
-              <ChevronLeft className="h-4 w-4 text-zinc-400" />
+          <div className="flex items-center gap-1 bg-background border border-border rounded-md">
+            <button onClick={prevWeek} className="p-1.5 hover:bg-accent rounded-l-md transition-colors">
+              <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
             <button
               onClick={thisWeek}
-              className="px-3 py-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+              className="px-3 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               本週
             </button>
-            <button onClick={nextWeek} className="p-1.5 hover:bg-zinc-700 rounded-r-md transition-colors">
-              <ChevronRight className="h-4 w-4 text-zinc-400" />
+            <button onClick={nextWeek} className="p-1.5 hover:bg-accent rounded-r-md transition-colors">
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
 
           <button
             onClick={loadEntries}
             disabled={loading}
-            className="p-1.5 rounded-md bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 transition-colors"
+            className="p-1.5 rounded-md bg-background border border-border hover:bg-accent transition-colors"
           >
-            <RefreshCw className={cn("h-4 w-4 text-zinc-400", loading && "animate-spin")} />
+            <RefreshCw className={cn("h-4 w-4 text-muted-foreground", loading && "animate-spin")} />
           </button>
         </div>
       </div>
@@ -229,7 +229,7 @@ export default function TimesheetPage() {
       <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-auto">
         {/* Stats summary */}
         {statsLoading ? (
-          <div className="flex items-center gap-2 text-xs text-zinc-600">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
             計算中...
           </div>
@@ -242,7 +242,7 @@ export default function TimesheetPage() {
         ) : null}
 
         {/* Grid */}
-        <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950">
+        <div className="border border-border rounded-xl overflow-hidden bg-card">
           {loading ? (
             <PageLoading message="載入工時..." className="py-12" />
           ) : loadError ? (
@@ -266,7 +266,7 @@ export default function TimesheetPage() {
         </div>
 
         {/* Help */}
-        <div className="text-xs text-zinc-700 pb-2">
+        <div className="text-xs text-muted-foreground/60 pb-2">
           點擊格子可輸入工時與分類。綠色 = 正常，橘色 = 超時（&gt;8h）。
         </div>
       </div>

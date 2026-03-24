@@ -23,7 +23,7 @@ const typeConfig: Record<DeliverableType, { label: string; icon: React.ElementTy
 };
 
 const statusConfig: Record<DeliverableStatus, { label: string; color: string }> = {
-  NOT_STARTED: { label: "未開始", color: "text-zinc-400 bg-zinc-800" },
+  NOT_STARTED: { label: "未開始", color: "text-muted-foreground bg-muted" },
   IN_PROGRESS: { label: "進行中", color: "text-blue-400 bg-blue-400/10" },
   DELIVERED: { label: "已交付", color: "text-orange-400 bg-orange-400/10" },
   ACCEPTED: { label: "已驗收", color: "text-emerald-400 bg-emerald-400/10" },
@@ -111,13 +111,13 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
           <div
             key={item.id}
             className={cn(
-              "flex items-center gap-2 group px-2 py-2 rounded-md hover:bg-zinc-800/50 transition-colors",
+              "flex items-center gap-2 group px-2 py-2 rounded-md hover:bg-accent/50 transition-colors",
               updating === item.id && "opacity-50"
             )}
           >
-            <Icon className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" />
-            <span className="flex-1 text-sm text-zinc-200 truncate">{item.title}</span>
-            <span className="text-[10px] text-zinc-500">{tConfig.label}</span>
+            <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <span className="flex-1 text-sm text-foreground truncate">{item.title}</span>
+            <span className="text-[10px] text-muted-foreground">{tConfig.label}</span>
             <button
               onClick={() => cycleStatus(item)}
               disabled={updating === item.id}
@@ -128,7 +128,7 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
             <button
               onClick={() => deleteItem(item.id)}
               disabled={updating === item.id}
-              className="opacity-0 group-hover:opacity-100 text-zinc-500 hover:text-red-400 transition-all"
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-all"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -137,7 +137,7 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
       })}
 
       {showForm ? (
-        <div className="flex items-center gap-2 mt-2 p-2 bg-zinc-800/50 rounded-md">
+        <div className="flex items-center gap-2 mt-2 p-2 bg-accent/50 rounded-md">
           <input
             type="text"
             value={newTitle}
@@ -145,12 +145,12 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
             onKeyDown={(e) => e.key === "Enter" && addDeliverable()}
             placeholder="交付項名稱..."
             autoFocus
-            className="flex-1 bg-transparent text-sm text-zinc-300 placeholder:text-zinc-600 outline-none"
+            className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           <select
             value={newType}
             onChange={(e) => setNewType(e.target.value as DeliverableType)}
-            className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-xs rounded px-1.5 py-1 focus:outline-none"
+            className="bg-background border border-border text-foreground text-xs rounded px-1.5 py-1 focus:outline-none"
           >
             {Object.entries(typeConfig).map(([k, v]) => (
               <option key={k} value={k}>{v.label}</option>
@@ -165,7 +165,7 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
           </button>
           <button
             onClick={() => { setShowForm(false); setNewTitle(""); }}
-            className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors"
+            className="text-muted-foreground hover:text-foreground text-xs transition-colors"
           >
             取消
           </button>
@@ -173,7 +173,7 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
       ) : (
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors mt-1"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mt-1"
         >
           <Plus className="h-3.5 w-3.5" />
           新增交付項
