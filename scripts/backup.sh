@@ -342,13 +342,32 @@ backup_configs() {
     log_warn "  docker-compose.yml 不存在"
   fi
 
-  # 備份 .env（敏感資料，加密儲存）
+  # 備份 .env（敏感資料，Issue #194: 加密儲存）
   if [[ -f "${PROJECT_DIR}/.env" ]]; then
-    cp "${PROJECT_DIR}/.env" "${configs_dir}/.env"
-    gzip -9 "${configs_dir}/.env"
-    # 限制讀取權限
-    chmod 600 "${configs_dir}/.env.gz"
-    log_info "  .env 備份完成（權限已設為 600）"
+    local env_backup="${configs_dir}/.env"
+
+    if command -v age &>/dev/null && [[ -f "${PROJECT_DIR}/.backup-key.pub" ]]; then
+      # age 加密：使用預先產生的公鑰加密
+      # 解密方式：age -d -i backup-key.txt .env.age > .env
+      age -r "$(cat "${PROJECT_DIR}/.backup-key.pub")" \
+        -o "${env_backup}.age" "${PROJECT_DIR}/.env"
+      chmod 600 "${env_backup}.age"
+      log_info "  .env 備份完成（age 加密）"
+    elif command -v gpg &>/dev/null && [[ -n "${BACKUP_GPG_RECIPIENT:-}" ]]; then
+      # GPG 加密（備用方案）
+      gpg --batch --yes --recipient "${BACKUP_GPG_RECIPIENT}" \
+        --output "${env_backup}.gpg" --encrypt "${PROJECT_DIR}/.env"
+      chmod 600 "${env_backup}.gpg"
+      log_info "  .env 備份完成（GPG 加密）"
+    else
+      # 無加密工具 — gzip + 權限限制（降級警告）
+      cp "${PROJECT_DIR}/.env" "${env_backup}"
+      gzip -9 "${env_backup}"
+      chmod 600 "${env_backup}.gz"
+      log_warn "  .env 備份完成（未加密！請安裝 age 或設定 GPG）"
+      log_warn "  安裝 age: brew install age 或 apt install age"
+      log_warn "  產生金鑰: age-keygen -o backup-key.txt && cat backup-key.txt | grep 'public' > .backup-key.pub"
+    fi
   else
     log_warn "  .env 不存在，請確認環境變數設定"
   fi
