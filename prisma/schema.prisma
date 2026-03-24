@@ -64,6 +64,8 @@ model Permission {
   grantee User @relation("PermissionGrantee", fields: [granteeId], references: [id])
   granter User @relation("PermissionGranter", fields: [granterId], references: [id])
 
+  @@index([granteeId])
+  @@index([granterId])
   @@map("permissions")
 }
 
@@ -99,6 +101,7 @@ model KPI {
   deliverables Deliverable[] @relation("KPIDeliverable")
 
   @@unique([year, code])
+  @@index([createdBy])
   @@map("kpis")
 }
 
@@ -113,6 +116,8 @@ model KPITaskLink {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@unique([kpiId, taskId])
+  @@index([kpiId])
+  @@index([taskId])
   @@map("kpi_task_links")
 }
 
@@ -138,6 +143,7 @@ model AnnualPlan {
   deliverables Deliverable[] @relation("AnnualPlanDeliverable")
 
   @@unique([year])
+  @@index([createdBy])
   @@map("annual_plans")
 }
 
@@ -164,6 +170,7 @@ model MonthlyGoal {
   deliverables Deliverable[] @relation("MonthlyGoalDeliverable")
 
   @@unique([annualPlanId, month, title])
+  @@index([annualPlanId])
   @@map("monthly_goals")
 }
 
@@ -195,6 +202,7 @@ model Milestone {
 
   annualPlan AnnualPlan @relation(fields: [annualPlanId], references: [id], onDelete: Cascade)
 
+  @@index([annualPlanId])
   @@map("milestones")
 }
 
@@ -261,6 +269,10 @@ model Task {
   kpiLinks        KPITaskLink[]
   deliverables    Deliverable[] @relation("TaskDeliverable")
 
+  @@index([monthlyGoalId])
+  @@index([primaryAssigneeId])
+  @@index([backupAssigneeId])
+  @@index([creatorId])
   @@map("tasks")
 }
 
@@ -276,6 +288,7 @@ model SubTask {
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
+  @@index([taskId])
   @@map("sub_tasks")
 }
 
@@ -290,6 +303,8 @@ model TaskComment {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
 
+  @@index([taskId])
+  @@index([userId])
   @@map("task_comments")
 }
 
@@ -304,6 +319,8 @@ model TaskActivity {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id])
 
+  @@index([taskId])
+  @@index([userId])
   @@map("task_activities")
 }
 
@@ -329,6 +346,8 @@ model TaskChange {
   task          Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   changedByUser User @relation(fields: [changedBy], references: [id])
 
+  @@index([taskId])
+  @@index([changedBy])
   @@map("task_changes")
 }
 
@@ -371,6 +390,10 @@ model Deliverable {
   task        Task?        @relation("TaskDeliverable", fields: [taskId], references: [id])
   acceptor    User?        @relation("DeliverableAcceptor", fields: [acceptedBy], references: [id])
 
+  @@index([taskId])
+  @@index([kpiId])
+  @@index([annualPlanId])
+  @@index([monthlyGoalId])
   @@map("deliverables")
 }
 
@@ -401,6 +424,9 @@ model TimeEntry {
   task Task? @relation(fields: [taskId], references: [id])
   user User  @relation(fields: [userId], references: [id])
 
+  @@index([taskId])
+  @@index([userId])
+  @@index([date])
   @@map("time_entries")
 }
 
@@ -431,6 +457,7 @@ model Notification {
 
   user User @relation(fields: [userId], references: [id])
 
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -456,6 +483,8 @@ model Document {
   updater  User              @relation("DocUpdater", fields: [updatedBy], references: [id])
   versions DocumentVersion[]
 
+  @@index([parentId])
+  @@index([createdBy])
   @@map("documents")
 }
 
@@ -470,6 +499,7 @@ model DocumentVersion {
   document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   creator  User     @relation(fields: [createdBy], references: [id])
 
+  @@index([documentId])
   @@map("document_versions")
 }
 
@@ -487,5 +517,7 @@ model AuditLog {
   ipAddress    String?
   createdAt    DateTime @default(now())
 
+  @@index([userId])
+  @@index([resourceType, resourceId])
   @@map("audit_logs")
 }

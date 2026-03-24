@@ -104,10 +104,15 @@ export class GoalService {
     const goal = await this.prisma.monthlyGoal.findUnique({ where: { id } });
     if (!goal) throw new NotFoundError(`Goal not found: ${id}`);
 
-    await this.prisma.task.updateMany({
-      where: { monthlyGoalId: id },
-      data: { monthlyGoalId: null },
-    });
-    return this.prisma.monthlyGoal.delete({ where: { id } });
+    return this.prisma.$transaction(
+      async (tx) => {
+        await tx.task.updateMany({
+          where: { monthlyGoalId: id },
+          data: { monthlyGoalId: null },
+        });
+        return tx.monthlyGoal.delete({ where: { id } });
+      },
+      { timeout: 10000 }
+    );
   }
 }

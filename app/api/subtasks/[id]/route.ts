@@ -1,17 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
+import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
-export const PATCH = apiHandler(async (
+export const PATCH = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context.params;
   const body = await req.json();
 
@@ -28,13 +23,10 @@ export const PATCH = apiHandler(async (
   return success(subtask);
 });
 
-export const DELETE = apiHandler(async (
-  req: NextRequest,
+export const DELETE = withAuth(async (
+  _req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context.params;
   await prisma.subTask.delete({ where: { id } });
   return success({ success: true });

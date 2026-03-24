@@ -1,19 +1,18 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
 import { TimeCategory } from "@prisma/client";
-import { ForbiddenError, NotFoundError, UnauthorizedError } from "@/services/errors";
+import { ForbiddenError, NotFoundError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateTimeEntrySchema } from "@/validators/time-entry-validators";
-import { apiHandler } from "@/lib/api-handler";
+import { withAuth } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 
-export const PUT = apiHandler(async (
+export const PUT = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+  const session = await requireAuth();
 
   const callerId = session.user.id;
   const { id } = await context.params;
@@ -48,12 +47,11 @@ export const PUT = apiHandler(async (
   return success(entry);
 });
 
-export const DELETE = apiHandler(async (
+export const DELETE = withAuth(async (
   _req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+  const session = await requireAuth();
 
   const callerId = session.user.id;
   const { id } = await context.params;

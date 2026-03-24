@@ -222,25 +222,30 @@ export class TaskService {
   }
 
   async updateTaskStatus(id: string, status: string, userId: string) {
-    const task = await this.prisma.task.update({
-      where: { id },
-      data: { status: status as TaskStatus },
-      include: {
-        primaryAssignee: { select: { id: true, name: true, avatar: true } },
-        backupAssignee: { select: { id: true, name: true, avatar: true } },
-      },
-    });
+    return this.prisma.$transaction(
+      async (tx) => {
+        const task = await tx.task.update({
+          where: { id },
+          data: { status: status as TaskStatus },
+          include: {
+            primaryAssignee: { select: { id: true, name: true, avatar: true } },
+            backupAssignee: { select: { id: true, name: true, avatar: true } },
+          },
+        });
 
-    await this.prisma.taskActivity.create({
-      data: {
-        taskId: id,
-        userId,
-        action: "STATUS_CHANGED",
-        detail: { status },
-      },
-    });
+        await tx.taskActivity.create({
+          data: {
+            taskId: id,
+            userId,
+            action: "STATUS_CHANGED",
+            detail: { status },
+          },
+        });
 
-    return task;
+        return task;
+      },
+      { timeout: 10000 }
+    );
   }
 
   async deleteTask(id: string, deletedBy?: string, ipAddress?: string) {

@@ -9,6 +9,9 @@ describe("GoalService", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new GoalService(prisma as never);
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
   });
 
   test("listGoals returns goals for plan", async () => {

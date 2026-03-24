@@ -88,36 +88,41 @@ export class DocumentService {
     const existing = await this.prisma.document.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`Document not found: ${id}`);
 
-    // Save current version as snapshot before updating
-    if (input.content !== undefined && input.content !== existing.content) {
-      await this.prisma.documentVersion.create({
-        data: {
-          documentId: id,
-          content: existing.content,
-          version: existing.version,
-          createdBy: input.updatedBy,
-        },
-      });
-    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        // Save current version as snapshot before updating
+        if (input.content !== undefined && input.content !== existing.content) {
+          await tx.documentVersion.create({
+            data: {
+              documentId: id,
+              content: existing.content,
+              version: existing.version,
+              createdBy: input.updatedBy,
+            },
+          });
+        }
 
-    const updates: Record<string, unknown> = {
-      updatedBy: input.updatedBy,
-    };
-    if (input.title !== undefined) updates.title = input.title;
-    if (input.content !== undefined) {
-      updates.content = input.content;
-      updates.version = existing.version + 1;
-    }
-    if (input.slug !== undefined) updates.slug = input.slug;
+        const updates: Record<string, unknown> = {
+          updatedBy: input.updatedBy,
+        };
+        if (input.title !== undefined) updates.title = input.title;
+        if (input.content !== undefined) {
+          updates.content = input.content;
+          updates.version = existing.version + 1;
+        }
+        if (input.slug !== undefined) updates.slug = input.slug;
 
-    return this.prisma.document.update({
-      where: { id },
-      data: updates,
-      include: {
-        creator: { select: { id: true, name: true } },
-        updater: { select: { id: true, name: true } },
+        return tx.document.update({
+          where: { id },
+          data: updates,
+          include: {
+            creator: { select: { id: true, name: true } },
+            updater: { select: { id: true, name: true } },
+          },
+        });
       },
-    });
+      { timeout: 10000 }
+    );
   }
 
   async deleteDocument(id: string) {

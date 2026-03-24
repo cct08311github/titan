@@ -1,16 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { createDocumentSchema } from "@/validators/document-validators";
-import { apiHandler } from "@/lib/api-handler";
+import { withAuth } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 
-export const GET = apiHandler(async () => {
-  const session = await getServerSession();
-  if (!session) throw new UnauthorizedError();
-
+export const GET = withAuth(async () => {
   const docs = await prisma.document.findMany({
     select: {
       id: true,
@@ -30,9 +26,8 @@ export const GET = apiHandler(async () => {
   return success(docs);
 });
 
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+export const POST = withAuth(async (req: NextRequest) => {
+  const session = await requireAuth();
 
   const raw = await req.json();
   const { title, content, parentId } = validateBody(createDocumentSchema, raw);
