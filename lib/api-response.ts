@@ -5,6 +5,7 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
   message?: string;
+  fields?: Record<string, string[] | undefined>;
 }
 
 /**
@@ -20,7 +21,10 @@ export function success<T>(data: T, status = 200): NextResponse<ApiResponse<T>> 
 export function error(
   errorName: string,
   message: string,
-  status: number
+  status: number,
+  fields?: Record<string, string[] | undefined>,
 ): NextResponse<ApiResponse> {
-  return NextResponse.json({ ok: false, error: errorName, message }, { status });
+  const body: ApiResponse = { ok: false, error: errorName, message };
+  if (fields) body.fields = fields;
+  return NextResponse.json(body, { status });
 }

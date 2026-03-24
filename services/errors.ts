@@ -6,9 +6,12 @@ export class NotFoundError extends Error {
 }
 
 export class ValidationError extends Error {
-  constructor(message: string) {
+  fields?: Record<string, string[] | undefined>;
+
+  constructor(message: string, fields?: Record<string, string[] | undefined>) {
     super(message);
     this.name = "ValidationError";
+    this.fields = fields;
   }
 }
 

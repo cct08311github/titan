@@ -80,8 +80,13 @@ export function NotificationBell() {
   }
 
   async function markAllRead() {
-    const unread = notifications.filter((n) => !n.isRead);
-    await Promise.all(unread.map((n) => markRead(n.id)));
+    const res = await fetch("/api/notifications/read-all", {
+      method: "PATCH",
+    });
+    if (res.ok) {
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    }
   }
 
   useEffect(() => {

@@ -51,7 +51,7 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
           return error("RateLimitError", err.message, 429);
         }
         if (err instanceof ValidationError) {
-          return error("ValidationError", err.message, 400);
+          return error("ValidationError", err.message, 400, err.fields);
         }
         if (err instanceof UnauthorizedError) {
           return error("UnauthorizedError", err.message, 401);

@@ -156,63 +156,55 @@ export class ImportService {
   }
 
   /**
-   * Imports validated rows into the database.
-   * Rows that fail validation or whose assigneeEmail cannot be resolved are skipped.
-   * Returns a summary of how many tasks were created and any per-row errors.
+   * Imports validated rows into the database using a single transaction.
+   * All-or-nothing: if any row fails, the entire batch is rolled back.
+   * Returns a summary of how many tasks were created and any per-row validation errors.
    */
   async importTasks(rows: ParsedRow[], creatorId: string): Promise<ImportResult> {
-    const errors: RowValidationError[] = [];
-    let created = 0;
-
     // Validate all rows first
     const validationErrors = this.validateRows(rows);
-    const invalidIndices = new Set(validationErrors.map((e) => e.rowIndex));
-    errors.push(...validationErrors);
-
-    for (let i = 0; i < rows.length; i++) {
-      if (invalidIndices.has(i)) continue;
-
-      const row = rows[i];
-
-      // Resolve assignee by email (optional)
-      let primaryAssigneeId: string | null = null;
-      if (row.assigneeEmail) {
-        const user = await this.prisma.user.findUnique({
-          where: { email: row.assigneeEmail },
-          select: { id: true },
-        });
-        if (user) {
-          primaryAssigneeId = user.id;
-        }
-        // If email provided but not found, we skip assignment silently (no hard error)
-      }
-
-      try {
-        await this.prisma.task.create({
-          data: {
-            title: row.title,
-            description: row.description || undefined,
-            status: (row.status ?? "BACKLOG") as never,
-            priority: (row.priority ?? "P2") as never,
-            category: (row.category ?? "PLANNED") as never,
-            primaryAssigneeId,
-            creatorId,
-            dueDate: row.dueDate ? new Date(row.dueDate) : null,
-            estimatedHours:
-              row.estimatedHours !== undefined && !isNaN(row.estimatedHours)
-                ? row.estimatedHours
-                : null,
-          },
-        });
-        created++;
-      } catch (err) {
-        errors.push({
-          rowIndex: i,
-          message: err instanceof Error ? err.message : "建立任務失敗",
-        });
-      }
+    if (validationErrors.length > 0) {
+      return { created: 0, errors: validationErrors };
     }
 
-    return { created, errors };
+    // Collect unique assignee emails for batch lookup
+    const uniqueEmails = [
+      ...new Set(rows.map((r) => r.assigneeEmail).filter(Boolean) as string[]),
+    ];
+
+    // Batch-resolve all assignees in one query instead of N individual lookups
+    const users =
+      uniqueEmails.length > 0
+        ? await this.prisma.user.findMany({
+            where: { email: { in: uniqueEmails } },
+            select: { id: true, email: true },
+          })
+        : [];
+
+    const emailToId = new Map(users.map((u) => [u.email, u.id]));
+
+    // Build all task records for createMany
+    const taskData = rows.map((row) => ({
+      title: row.title,
+      description: row.description || undefined,
+      status: (row.status ?? "BACKLOG") as never,
+      priority: (row.priority ?? "P2") as never,
+      category: (row.category ?? "PLANNED") as never,
+      primaryAssigneeId: row.assigneeEmail ? emailToId.get(row.assigneeEmail) ?? null : null,
+      creatorId,
+      dueDate: row.dueDate ? new Date(row.dueDate) : null,
+      estimatedHours:
+        row.estimatedHours !== undefined && !isNaN(row.estimatedHours)
+          ? row.estimatedHours
+          : null,
+    }));
+
+    // Use $transaction + createMany for atomicity and batch performance
+    const result = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.task.createMany({ data: taskData });
+      return created;
+    });
+
+    return { created: result.count, errors: [] };
   }
 }
