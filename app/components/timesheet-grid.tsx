@@ -62,17 +62,17 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-zinc-800">
-            <th className="text-left px-3 py-2.5 text-xs font-medium text-zinc-500 w-48 sticky left-0 bg-zinc-950 z-10">
+          <tr className="border-b border-border">
+            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground w-48 sticky left-0 bg-card z-10">
               任務
             </th>
             {DAYS.map((day, i) => (
               <th key={i} className="px-2 py-2.5 text-center min-w-[100px]">
-                <div className="text-xs font-semibold text-zinc-400">週{day}</div>
-                <div className="text-xs text-zinc-600 mt-0.5">{formatDateLabel(weekStart, i)}</div>
+                <div className="text-xs font-semibold text-muted-foreground">週{day}</div>
+                <div className="text-xs text-muted-foreground/60 mt-0.5">{formatDateLabel(weekStart, i)}</div>
               </th>
             ))}
-            <th className="px-3 py-2.5 text-center text-xs font-medium text-zinc-500 min-w-[64px]">
+            <th className="px-3 py-2.5 text-center text-xs font-medium text-muted-foreground min-w-[64px]">
               合計
             </th>
           </tr>
@@ -80,9 +80,9 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
 
         <tbody>
           {taskRows.map((row, rowIdx) => (
-            <tr key={row.taskId ?? `free-${rowIdx}`} className="border-b border-zinc-800/50 hover:bg-zinc-900/30 transition-colors group">
-              <td className="px-3 py-2 sticky left-0 bg-zinc-950 group-hover:bg-zinc-900/30 z-10">
-                <span className="text-xs text-zinc-400 truncate block max-w-[176px]" title={row.label}>
+            <tr key={row.taskId ?? `free-${rowIdx}`} className="border-b border-border/50 hover:bg-accent/20 transition-colors group">
+              <td className="px-3 py-2 sticky left-0 bg-card group-hover:bg-accent/20 z-10">
+                <span className="text-xs text-muted-foreground truncate block max-w-[176px]" title={row.label}>
                   {row.label}
                 </span>
               </td>
@@ -102,7 +102,7 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
                 );
               })}
               <td className="px-3 py-2 text-center">
-                <span className={cn("text-xs font-medium tabular-nums", rowTotals[rowIdx] > 0 ? "text-zinc-300" : "text-zinc-700")}>
+                <span className={cn("text-xs font-medium tabular-nums", rowTotals[rowIdx] > 0 ? "text-foreground" : "text-muted-foreground/40")}>
                   {rowTotals[rowIdx] > 0 ? safeFixed(rowTotals[rowIdx], 1) : "—"}
                 </span>
               </td>
@@ -111,19 +111,19 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
         </tbody>
 
         <tfoot>
-          <tr className="border-t border-zinc-700 bg-zinc-900/50">
-            <td className="px-3 py-2.5 sticky left-0 bg-zinc-900 z-10">
-              <span className="text-xs font-semibold text-zinc-400">每日合計</span>
+          <tr className="border-t border-border bg-muted/30">
+            <td className="px-3 py-2.5 sticky left-0 bg-muted/30 z-10">
+              <span className="text-xs font-semibold text-muted-foreground">每日合計</span>
             </td>
             {dailyTotals.map((total, i) => (
               <td key={i} className="px-2 py-2.5 text-center">
-                <span className={cn("text-xs font-semibold tabular-nums", total > 8 ? "text-amber-400" : total > 0 ? "text-emerald-400" : "text-zinc-600")}>
+                <span className={cn("text-xs font-semibold tabular-nums", total > 8 ? "text-amber-500" : total > 0 ? "text-emerald-500" : "text-muted-foreground/40")}>
                   {total > 0 ? safeFixed(total, 1) : "—"}
                 </span>
               </td>
             ))}
             <td className="px-3 py-2.5 text-center">
-              <span className="text-xs font-bold text-zinc-200 tabular-nums">{safeFixed(grandTotal, 1)}</span>
+              <span className="text-xs font-bold text-foreground tabular-nums">{safeFixed(grandTotal, 1)}</span>
             </td>
           </tr>
         </tfoot>

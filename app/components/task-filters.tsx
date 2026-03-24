@@ -50,11 +50,11 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
   const clearFilters = () => onChange({ assignee: "", priority: "", category: "" });
 
   const selectCls =
-    "bg-zinc-900 border border-zinc-700 text-zinc-300 text-sm rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-500 cursor-pointer hover:border-zinc-600 transition-colors";
+    "bg-background border border-border text-foreground text-sm rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring cursor-pointer hover:border-ring/50 transition-colors";
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex items-center gap-1.5 text-zinc-400">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
         <Filter className="h-3.5 w-3.5" />
         <span className="text-xs font-medium">篩選</span>
       </div>
@@ -104,8 +104,8 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
         <button
           onClick={clearFilters}
           className={cn(
-            "flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-200 transition-colors",
-            "px-2 py-1.5 rounded-md border border-zinc-700 hover:border-zinc-600 bg-zinc-900"
+            "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
+            "px-2 py-1.5 rounded-md border border-border hover:border-border/60 bg-background"
           )}
         >
           <X className="h-3 w-3" />

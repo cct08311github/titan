@@ -15,6 +15,7 @@ export type DocNode = {
 };
 
 function buildTree(docs: DocNode[]): (DocNode & { children: (DocNode & { children: DocNode[] })[] })[] {
+  if (!Array.isArray(docs)) return [];
   const map = new Map<string, DocNode & { children: DocNode[] }>();
   for (const d of docs) map.set(d.id, { ...d, children: [] });
   const roots: (DocNode & { children: DocNode[] })[] = [];
@@ -48,8 +49,8 @@ function TreeNode({ node, depth, selectedId, onSelect, onNewChild, onDelete }: T
         className={cn(
           "group flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer text-sm transition-colors",
           isSelected
-            ? "bg-zinc-700 text-zinc-100"
-            : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
         style={{ paddingLeft: `${8 + depth * 16}px` }}
         onClick={() => onSelect(node.id)}
@@ -72,7 +73,7 @@ function TreeNode({ node, depth, selectedId, onSelect, onNewChild, onDelete }: T
             ? expanded
               ? <FolderOpen className="h-3.5 w-3.5 text-yellow-500/70" />
               : <Folder className="h-3.5 w-3.5 text-yellow-500/70" />
-            : <FileText className="h-3.5 w-3.5 text-zinc-500" />}
+            : <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
         </span>
 
         {/* Title */}
@@ -82,14 +83,14 @@ function TreeNode({ node, depth, selectedId, onSelect, onNewChild, onDelete }: T
         <span className="flex-shrink-0 opacity-0 group-hover:opacity-100 flex items-center gap-0.5">
           <button
             title="新增子文件"
-            className="p-0.5 rounded hover:bg-zinc-600 text-zinc-400 hover:text-zinc-200"
+            className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
             onClick={(e) => { e.stopPropagation(); onNewChild(node.id); }}
           >
             <Plus className="h-3 w-3" />
           </button>
           <button
             title="刪除"
-            className="p-0.5 rounded hover:bg-red-900/40 text-zinc-500 hover:text-red-400"
+            className="p-0.5 rounded hover:bg-red-100/40 text-muted-foreground hover:text-red-500"
             onClick={(e) => { e.stopPropagation(); onDelete(node.id); }}
           >
             <Trash2 className="h-3 w-3" />
@@ -129,12 +130,12 @@ export function DocumentTree({ docs, selectedId, onSelect, onNewDoc, onDelete }:
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800">
-        <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">文件</span>
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">文件</span>
         <button
           title="新增根文件"
           onClick={() => onNewDoc(null)}
-          className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+          className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -142,7 +143,7 @@ export function DocumentTree({ docs, selectedId, onSelect, onNewDoc, onDelete }:
 
       <div className="flex-1 overflow-y-auto py-1">
         {tree.length === 0 ? (
-          <div className="px-4 py-6 text-center text-xs text-zinc-600">
+          <div className="px-4 py-6 text-center text-xs text-muted-foreground">
             尚無文件<br />點擊 + 新增
           </div>
         ) : (

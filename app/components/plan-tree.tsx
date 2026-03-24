@@ -25,10 +25,10 @@ type AnnualPlan = {
 };
 
 const goalStatusConfig: Record<GoalStatus, { icon: React.ElementType; color: string; label: string }> = {
-  NOT_STARTED: { icon: Circle, color: "text-zinc-500", label: "未開始" },
-  IN_PROGRESS: { icon: Clock, color: "text-blue-400", label: "進行中" },
-  COMPLETED: { icon: CheckCircle2, color: "text-emerald-400", label: "已完成" },
-  CANCELLED: { icon: XCircle, color: "text-zinc-600", label: "已取消" },
+  NOT_STARTED: { icon: Circle, color: "text-muted-foreground", label: "未開始" },
+  IN_PROGRESS: { icon: Clock, color: "text-blue-500", label: "進行中" },
+  COMPLETED: { icon: CheckCircle2, color: "text-emerald-500", label: "已完成" },
+  CANCELLED: { icon: XCircle, color: "text-muted-foreground/50", label: "已取消" },
 };
 
 const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
@@ -53,7 +53,7 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
 
   if (plans.length === 0) {
     return (
-      <div className="text-center py-12 text-zinc-500 text-sm">
+      <div className="text-center py-12 text-muted-foreground text-sm">
         尚無年度計畫，請先建立
       </div>
     );
@@ -64,47 +64,47 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
       {plans.map((plan) => {
         const expanded = expandedPlans.has(plan.id);
         return (
-          <div key={plan.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <div key={plan.id} className="bg-card border border-border rounded-xl overflow-hidden">
             {/* Plan header */}
             <div className="flex items-center gap-3 px-4 py-3">
               <button
                 onClick={() => togglePlan(plan.id)}
-                className="text-zinc-400 hover:text-zinc-200 transition-colors flex-shrink-0"
+                className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
               >
                 {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </button>
               <Target className="h-4 w-4 text-blue-400 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-zinc-500 font-mono">{plan.year}</span>
+                  <span className="text-xs text-muted-foreground font-mono">{plan.year}</span>
                   <button
                     onClick={() => onSelectPlan?.(plan.id)}
-                    className="text-sm font-medium text-zinc-200 hover:text-white truncate transition-colors text-left"
+                    className="text-sm font-medium text-foreground hover:text-foreground/80 truncate transition-colors text-left"
                   >
                     {plan.title}
                   </button>
                 </div>
                 {/* Progress bar */}
                 <div className="flex items-center gap-2 mt-1.5">
-                  <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500 rounded-full transition-all"
                       style={{ width: `${plan.progressPct}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-zinc-500 tabular-nums w-8 text-right">
+                  <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">
                     {Math.round(plan.progressPct)}%
                   </span>
                 </div>
               </div>
-              <span className="text-xs text-zinc-500 flex-shrink-0">
+              <span className="text-xs text-muted-foreground flex-shrink-0">
                 {plan.monthlyGoals.length} 個月度目標
               </span>
             </div>
 
             {/* Monthly goals */}
             {expanded && plan.monthlyGoals.length > 0 && (
-              <div className="border-t border-zinc-800">
+              <div className="border-t border-border">
                 {plan.monthlyGoals.map((goal, idx) => {
                   const sConfig = goalStatusConfig[goal.status];
                   const StatusIcon = sConfig.icon;
@@ -112,33 +112,33 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
                     <div
                       key={goal.id}
                       className={cn(
-                        "flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-800/50 transition-colors cursor-pointer",
-                        idx < plan.monthlyGoals.length - 1 && "border-b border-zinc-800/50"
+                        "flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors cursor-pointer",
+                        idx < plan.monthlyGoals.length - 1 && "border-b border-border/50"
                       )}
                       onClick={() => onSelectGoal?.(goal.id)}
                     >
                       {/* Indent */}
                       <div className="w-4 flex-shrink-0" />
-                      <Calendar className="h-3.5 w-3.5 text-zinc-600 flex-shrink-0" />
-                      <span className="text-xs text-zinc-500 w-7 flex-shrink-0 font-mono">
+                      <Calendar className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-xs text-muted-foreground w-7 flex-shrink-0 font-mono">
                         {monthNames[goal.month]}
                       </span>
                       <StatusIcon className={cn("h-3.5 w-3.5 flex-shrink-0", sConfig.color)} />
-                      <span className="flex-1 text-sm text-zinc-300 truncate">{goal.title}</span>
+                      <span className="flex-1 text-sm text-foreground truncate">{goal.title}</span>
                       {/* Mini progress */}
                       <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="w-16 h-1 bg-muted rounded-full overflow-hidden">
                           <div
                             className="h-full bg-emerald-500 rounded-full"
                             style={{ width: `${goal.progressPct}%` }}
                           />
                         </div>
-                        <span className="text-[10px] text-zinc-500 tabular-nums w-6 text-right">
+                        <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right">
                           {Math.round(goal.progressPct)}%
                         </span>
                       </div>
                       {goal._count && (
-                        <span className="text-[10px] text-zinc-600 w-10 text-right flex-shrink-0">
+                        <span className="text-[10px] text-muted-foreground/60 w-10 text-right flex-shrink-0">
                           {goal._count.tasks} 項
                         </span>
                       )}
@@ -149,7 +149,7 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
             )}
 
             {expanded && plan.monthlyGoals.length === 0 && (
-              <div className="border-t border-zinc-800 px-4 py-3 text-xs text-zinc-600">
+              <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
                 此計畫尚無月度目標
               </div>
             )}

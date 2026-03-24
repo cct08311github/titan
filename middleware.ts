@@ -25,10 +25,16 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return NextResponse.next();
   }
 
-  // Perform Edge JWT check for all other /api/* routes
+  // Perform Edge JWT check
   const jwtResult = await checkEdgeJwt(req);
   if (jwtResult !== null) {
-    return jwtResult; // 401 response — blocked at Edge before hitting Node.js
+    // Page routes: redirect to /login instead of returning 401 JSON
+    if (!pathname.startsWith("/api/")) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return jwtResult; // 401 response for API routes — blocked at Edge before hitting Node.js
   }
 
   return NextResponse.next();
