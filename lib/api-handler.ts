@@ -10,6 +10,7 @@ import type { ApiResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { requestLogger } from "@/lib/request-logger";
 import { validateCsrf, CsrfError } from "@/lib/csrf";
+import { RateLimitError } from "@/lib/rate-limiter";
 
 export type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -45,6 +46,9 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
       } catch (err) {
         if (err instanceof CsrfError) {
           return error("ForbiddenError", err.message, 403);
+        }
+        if (err instanceof RateLimitError) {
+          return error("RateLimitError", err.message, 429);
         }
         if (err instanceof ValidationError) {
           return error("ValidationError", err.message, 400);

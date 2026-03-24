@@ -2,6 +2,16 @@ import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { AccountLockService } from "@/lib/account-lock";
+import { logger } from "@/lib/logger";
+
+/**
+ * Singletons — created once at module load.
+ * In production, replace useMemory:true with a real Redis client.
+ */
+const loginRateLimiter = createLoginRateLimiter({ useMemory: true });
+const accountLockService = new AccountLockService({ maxFailures: 10, lockDurationSeconds: 900 });
 
 const handler = NextAuth({
   cookies: {
@@ -31,17 +41,61 @@ const handler = NextAuth({
         username: { label: "帳號", type: "text" },
         password: { label: "密碼", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.username || !credentials?.password) return null;
 
+        const ip =
+          (req?.headers as Record<string, string | undefined> | undefined)?.["x-forwarded-for"]?.split(",")[0]?.trim() ??
+          "unknown";
+        const rateLimitKey = `${ip}_${credentials.username}`;
+        const lockKey = credentials.username;
+
+        // 1. Check account lockout first (cheaper than DB lookup)
+        const locked = await accountLockService.isLocked(lockKey);
+        if (locked) {
+          const remaining = await accountLockService.getRemainingLockSeconds(lockKey);
+          logger.warn(
+            { username: credentials.username, ip, remaining },
+            "[auth] Login blocked — account locked"
+          );
+          return null;
+        }
+
+        // 2. Enforce IP+username rate limit (5 attempts/min)
+        try {
+          await checkRateLimit(loginRateLimiter, rateLimitKey);
+        } catch {
+          logger.warn(
+            { username: credentials.username, ip },
+            "[auth] Login rate limit exceeded"
+          );
+          return null;
+        }
+
+        // 3. Look up user
         const user = await prisma.user.findUnique({
           where: { email: credentials.username },
         });
 
-        if (!user || !user.isActive) return null;
+        if (!user || !user.isActive) {
+          // Count as a failure for lockout tracking
+          await accountLockService.recordFailure(lockKey);
+          return null;
+        }
 
         const isValid = await compare(credentials.password, user.password);
-        if (!isValid) return null;
+        if (!isValid) {
+          await accountLockService.recordFailure(lockKey);
+          logger.warn(
+            { username: credentials.username, ip },
+            "[auth] Failed login attempt"
+          );
+          return null;
+        }
+
+        // 4. Successful login — clear failure counter
+        await accountLockService.resetFailures(lockKey);
+        logger.info({ userId: user.id, ip }, "[auth] Successful login");
 
         return {
           id: user.id,
