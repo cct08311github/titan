@@ -1,69 +1,57 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { UnauthorizedError, ValidationError } from "@/services/errors";
+import { apiHandler } from "@/lib/api-handler";
+import { success } from "@/lib/api-response";
 
-export async function GET(
+export const GET = apiHandler(async (
   req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "未授權" }, { status: 401 });
-    }
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
 
-    const changes = await prisma.taskChange.findMany({
-      where: { taskId: params.id },
-      include: {
-        changedByUser: { select: { id: true, name: true } },
-      },
-      orderBy: { changedAt: "desc" },
-    });
+  const { id } = await context!.params;
+  const changes = await prisma.taskChange.findMany({
+    where: { taskId: id },
+    include: {
+      changedByUser: { select: { id: true, name: true } },
+    },
+    orderBy: { changedAt: "desc" },
+  });
 
-    return NextResponse.json(changes);
-  } catch (error) {
-    console.error("GET /api/tasks/[id]/changes error:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
-  }
-}
+  return success(changes);
+});
 
-export async function POST(
+export const POST = apiHandler(async (
   req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "未授權" }, { status: 401 });
-    }
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
 
-    const body = await req.json();
-    const { changeType, reason, oldValue, newValue } = body;
+  const { id } = await context!.params;
+  const body = await req.json();
+  const { changeType, reason, oldValue, newValue } = body;
 
-    if (!changeType || !reason) {
-      return NextResponse.json(
-        { error: "changeType 和 reason 為必填" },
-        { status: 400 }
-      );
-    }
-
-    const change = await prisma.taskChange.create({
-      data: {
-        taskId: params.id,
-        changeType,
-        reason,
-        oldValue: oldValue || null,
-        newValue: newValue || null,
-        changedBy: session.user.id,
-      },
-      include: {
-        changedByUser: { select: { id: true, name: true } },
-      },
-    });
-
-    return NextResponse.json(change, { status: 201 });
-  } catch (error) {
-    console.error("POST /api/tasks/[id]/changes error:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
+  if (!changeType || !reason) {
+    throw new ValidationError("changeType 和 reason 為必填");
   }
-}
+
+  const change = await prisma.taskChange.create({
+    data: {
+      taskId: id,
+      changeType,
+      reason,
+      oldValue: oldValue || null,
+      newValue: newValue || null,
+      changedBy: session.user.id,
+    },
+    include: {
+      changedByUser: { select: { id: true, name: true } },
+    },
+  });
+
+  return success(change, 201);
+});

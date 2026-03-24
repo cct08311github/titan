@@ -1,30 +1,26 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { UnauthorizedError } from "@/services/errors";
+import { apiHandler } from "@/lib/api-handler";
+import { success } from "@/lib/api-response";
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "未授權" }, { status: 401 });
-    }
+export const GET = apiHandler(async (req: NextRequest) => {
+  const session = await getServerSession();
+  if (!session?.user?.id) throw new UnauthorizedError();
 
-    const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") ?? "20");
+  const { searchParams } = new URL(req.url);
+  const limit = parseInt(searchParams.get("limit") ?? "20");
 
-    const notifications = await prisma.notification.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-    });
+  const notifications = await prisma.notification.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
 
-    const unreadCount = await prisma.notification.count({
-      where: { userId: session.user.id, isRead: false },
-    });
+  const unreadCount = await prisma.notification.count({
+    where: { userId: session.user.id, isRead: false },
+  });
 
-    return NextResponse.json({ notifications, unreadCount });
-  } catch (error) {
-    console.error("GET /api/notifications error:", error);
-    return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
-  }
-}
+  return success({ notifications, unreadCount });
+});
