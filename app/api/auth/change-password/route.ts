@@ -13,6 +13,7 @@ import { success, error } from "@/lib/api-response";
 import { isPasswordValid, PASSWORD_POLICY_DESCRIPTION } from "@/lib/password-policy";
 import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
+import { getClientIp } from "@/lib/get-client-ip";
 
 const auditService = new AuditService(prisma);
 
@@ -88,13 +89,14 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
-  // Audit log
+  // Audit log — never log password values
   await auditService.log({
     userId,
     action: "PASSWORD_CHANGE",
     resourceType: "User",
     resourceId: userId,
     detail: "Password changed by user (policy compliance)",
+    ipAddress: getClientIp(req),
   });
 
   logger.info({ userId }, "[auth] Password changed successfully");

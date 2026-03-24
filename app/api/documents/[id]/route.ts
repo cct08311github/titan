@@ -1,11 +1,15 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { NotFoundError } from "@/services/errors";
+import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
 import { updateDocumentSchema } from "@/validators/document-validators";
 import { withAuth, withManager } from "@/lib/auth-middleware";
-import { requireAuth } from "@/lib/rbac";
+import { requireAuth, requireRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { getClientIp } from "@/lib/get-client-ip";
+
+const auditService = new AuditService(prisma);
 
 export const GET = withAuth(async (
   _req: NextRequest,
@@ -70,10 +74,21 @@ export const PUT = withAuth(async (
 });
 
 export const DELETE = withManager(async (
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireRole("MANAGER");
   const { id } = await context.params;
   await prisma.document.delete({ where: { id } });
+
+  await auditService.log({
+    userId: session.user.id,
+    action: "DELETE_DOCUMENT",
+    resourceType: "Document",
+    resourceId: id,
+    detail: null,
+    ipAddress: getClientIp(req),
+  });
+
   return success({ success: true });
 });
