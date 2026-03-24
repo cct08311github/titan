@@ -162,57 +162,64 @@ export class ImportService {
    */
   async importTasks(rows: ParsedRow[], creatorId: string): Promise<ImportResult> {
     const errors: RowValidationError[] = [];
-    let created = 0;
 
     // Validate all rows first
     const validationErrors = this.validateRows(rows);
     const invalidIndices = new Set(validationErrors.map((e) => e.rowIndex));
     errors.push(...validationErrors);
 
-    for (let i = 0; i < rows.length; i++) {
-      if (invalidIndices.has(i)) continue;
+    // Collect valid rows
+    const validRows = rows
+      .map((row, i) => ({ row, index: i }))
+      .filter(({ index }) => !invalidIndices.has(index));
 
-      const row = rows[i];
+    if (validRows.length === 0) {
+      return { created: 0, errors };
+    }
 
-      // Resolve assignee by email (optional)
-      let primaryAssigneeId: string | null = null;
-      if (row.assigneeEmail) {
-        const user = await this.prisma.user.findUnique({
-          where: { email: row.assigneeEmail },
-          select: { id: true },
-        });
-        if (user) {
-          primaryAssigneeId = user.id;
-        }
-        // If email provided but not found, we skip assignment silently (no hard error)
-      }
+    // Batch-resolve all assignee emails in a single query
+    const uniqueEmails = [
+      ...new Set(
+        validRows
+          .map(({ row }) => row.assigneeEmail)
+          .filter((email): email is string => !!email)
+      ),
+    ];
 
-      try {
-        await this.prisma.task.create({
-          data: {
-            title: row.title,
-            description: row.description || undefined,
-            status: (row.status ?? "BACKLOG") as never,
-            priority: (row.priority ?? "P2") as never,
-            category: (row.category ?? "PLANNED") as never,
-            primaryAssigneeId,
-            creatorId,
-            dueDate: row.dueDate ? new Date(row.dueDate) : null,
-            estimatedHours:
-              row.estimatedHours !== undefined && !isNaN(row.estimatedHours)
-                ? row.estimatedHours
-                : null,
-          },
-        });
-        created++;
-      } catch (err) {
-        errors.push({
-          rowIndex: i,
-          message: err instanceof Error ? err.message : "建立任務失敗",
-        });
+    const emailToUserId = new Map<string, string>();
+    if (uniqueEmails.length > 0) {
+      const users = await this.prisma.user.findMany({
+        where: { email: { in: uniqueEmails } },
+        select: { id: true, email: true },
+      });
+      for (const u of users) {
+        emailToUserId.set(u.email, u.id);
       }
     }
 
-    return { created, errors };
+    // Build task data for batch creation
+    const taskData = validRows.map(({ row }) => ({
+      title: row.title,
+      description: row.description || undefined,
+      status: (row.status ?? "BACKLOG") as never,
+      priority: (row.priority ?? "P2") as never,
+      category: (row.category ?? "PLANNED") as never,
+      primaryAssigneeId: row.assigneeEmail
+        ? emailToUserId.get(row.assigneeEmail) ?? null
+        : null,
+      creatorId,
+      dueDate: row.dueDate ? new Date(row.dueDate) : null,
+      estimatedHours:
+        row.estimatedHours !== undefined && !isNaN(row.estimatedHours)
+          ? row.estimatedHours
+          : null,
+    }));
+
+    // Batch create all tasks in a single transaction
+    const result = await this.prisma.$transaction(async (tx) => {
+      return tx.task.createMany({ data: taskData });
+    });
+
+    return { created: result.count, errors };
   }
 }
