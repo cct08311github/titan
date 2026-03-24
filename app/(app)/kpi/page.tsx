@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Target, Plus, Link2, Unlink, ChevronDown, ChevronRight } from "lucide-react";
+import { Target, Plus, Unlink, ChevronDown, ChevronRight } from "lucide-react";
+import { z } from "zod";
 import { cn } from "@/lib/utils";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { FormError, FormBanner } from "@/app/components/form-error";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -80,6 +83,20 @@ const TASK_STATUS_LABEL: Record<string, string> = {
   BLOCKED: "封鎖",
 };
 
+// ── Zod schema for KPI form ─────────────────────────────────────────────────
+
+const createKpiFormSchema = z.object({
+  year: z.number().int().min(2000, "年度不得早於 2000").max(2100, "年度不得晚於 2100"),
+  code: z.string().min(1, "代碼為必填"),
+  title: z.string().min(1, "名稱為必填"),
+  description: z.string().optional(),
+  target: z.number().nonnegative("目標值不得為負數"),
+  weight: z.number().positive("權重必須大於 0"),
+  autoCalc: z.boolean(),
+});
+
+type KpiFormErrors = Partial<Record<keyof z.infer<typeof createKpiFormSchema>, string>>;
+
 // ── Create KPI Form ────────────────────────────────────────────────────────
 
 interface CreateFormProps {
@@ -99,25 +116,47 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
     autoCalc: false,
   });
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [bannerError, setBannerError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<KpiFormErrors>({});
+
+  function validate(): z.infer<typeof createKpiFormSchema> | null {
+    const result = createKpiFormSchema.safeParse({
+      year: parseInt(form.year) || 0,
+      code: form.code,
+      title: form.title,
+      description: form.description || undefined,
+      target: parseFloat(form.target),
+      weight: parseFloat(form.weight),
+      autoCalc: form.autoCalc,
+    });
+    if (!result.success) {
+      const errs: KpiFormErrors = {};
+      for (const issue of result.error.issues) {
+        const field = issue.path[0] as keyof KpiFormErrors;
+        if (field && !errs[field]) errs[field] = issue.message;
+      }
+      setFieldErrors(errs);
+      return null;
+    }
+    setFieldErrors({});
+    return result.data;
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.code || !form.title || !form.target) {
-      setError("代碼、名稱、目標值為必填");
-      return;
-    }
+    const parsed = validate();
+    if (!parsed) return;
     setSubmitting(true);
-    setError("");
+    setBannerError("");
     try {
       const res = await fetch("/api/kpi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(parsed),
       });
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error ?? "建立失敗");
+        setBannerError(data.error ?? "建立失敗");
         return;
       }
       const kpi = await res.json();
@@ -130,7 +169,7 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
   return (
     <form onSubmit={handleSubmit} className="bg-card border border-border rounded-lg p-5 space-y-4">
       <h2 className="text-sm font-medium">新增 KPI</h2>
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      <FormBanner message={bannerError} />
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">年度</label>
@@ -138,8 +177,10 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
             type="number"
             value={form.year}
             onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))}
-            className="w-full bg-accent border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className={cn("w-full bg-accent border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary",
+              fieldErrors.year ? "border-red-500" : "border-border")}
           />
+          <FormError message={fieldErrors.year} />
         </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">代碼 *</label>
@@ -148,8 +189,10 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
             placeholder="如 KPI-01"
             value={form.code}
             onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))}
-            className="w-full bg-accent border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className={cn("w-full bg-accent border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary",
+              fieldErrors.code ? "border-red-500" : "border-border")}
           />
+          <FormError message={fieldErrors.code} />
         </div>
         <div className="col-span-2 space-y-1">
           <label className="text-xs text-muted-foreground">名稱 *</label>
@@ -158,8 +201,10 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
             placeholder="KPI 名稱"
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-            className="w-full bg-accent border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className={cn("w-full bg-accent border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary",
+              fieldErrors.title ? "border-red-500" : "border-border")}
           />
+          <FormError message={fieldErrors.title} />
         </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">目標值 *</label>
@@ -168,8 +213,10 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
             placeholder="100"
             value={form.target}
             onChange={(e) => setForm((f) => ({ ...f, target: e.target.value }))}
-            className="w-full bg-accent border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className={cn("w-full bg-accent border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary",
+              fieldErrors.target ? "border-red-500" : "border-border")}
           />
+          <FormError message={fieldErrors.target} />
         </div>
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">權重</label>
@@ -178,8 +225,10 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
             step="0.1"
             value={form.weight}
             onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
-            className="w-full bg-accent border border-border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className={cn("w-full bg-accent border rounded px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary",
+              fieldErrors.weight ? "border-red-500" : "border-border")}
           />
+          <FormError message={fieldErrors.weight} />
         </div>
         <div className="col-span-2 space-y-1">
           <label className="text-xs text-muted-foreground">說明</label>
@@ -355,17 +404,20 @@ export default function KPIPage() {
 
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const year = new Date().getFullYear();
 
   async function fetchKPIs() {
     setLoading(true);
+    setFetchError(null);
     try {
       const res = await fetch(`/api/kpi?year=${year}`);
-      if (res.ok) {
-        const data = await res.json();
-        setKpis(Array.isArray(data) ? data : []);
-      }
+      if (!res.ok) throw new Error("KPI 載入失敗");
+      const data = await res.json();
+      setKpis(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
       setLoading(false);
     }
@@ -453,14 +505,15 @@ export default function KPIPage() {
 
       {/* KPI List */}
       {loading ? (
-        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-          載入中...
-        </div>
+        <PageLoading message="載入 KPI..." />
+      ) : fetchError ? (
+        <PageError message={fetchError} onRetry={fetchKPIs} />
       ) : kpis.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-48 gap-3">
-          <Target className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">尚無 KPI，{isManager ? "請點擊「新增 KPI」建立" : "請聯絡主管建立"}</p>
-        </div>
+        <PageEmpty
+          icon={<Target className="h-10 w-10" />}
+          title="尚無 KPI"
+          description={isManager ? "請點擊「新增 KPI」建立" : "請聯絡主管建立 KPI"}
+        />
       ) : (
         <div className="space-y-3">
           {kpis.map((kpi) => (

@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimesheetGrid, type TaskRow } from "@/app/components/timesheet-grid";
 import { TimeSummary } from "@/app/components/time-summary";
 import { type TimeEntry } from "@/app/components/time-entry-cell";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export default function TimesheetPage() {
   const [taskRows, setTaskRows] = useState<TaskRow[]>([FREE_ROW]);
   const [stats, setStats] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
   // Load users
@@ -63,31 +65,33 @@ export default function TimesheetPage() {
   // Load entries for the week
   const loadEntries = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const params = new URLSearchParams({
         weekStart: weekStart.toISOString().split("T")[0],
       });
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(`/api/time-entries?${params}`);
-      if (res.ok) {
-        const data: (TimeEntry & { task?: { id: string; title: string } | null })[] =
-          await res.json();
-        setEntries(data);
+      if (!res.ok) throw new Error("工時資料載入失敗");
+      const data: (TimeEntry & { task?: { id: string; title: string } | null })[] =
+        await res.json();
+      setEntries(data);
 
-        // Build task rows from entries + a free row
-        const seenTasks = new Map<string, string>();
-        for (const e of data) {
-          if (e.taskId && !seenTasks.has(e.taskId)) {
-            const label = (e as { task?: { title: string } | null }).task?.title ?? e.taskId;
-            seenTasks.set(e.taskId, label);
-          }
+      // Build task rows from entries + a free row
+      const seenTasks = new Map<string, string>();
+      for (const e of data) {
+        if (e.taskId && !seenTasks.has(e.taskId)) {
+          const label = (e as { task?: { title: string } | null }).task?.title ?? e.taskId;
+          seenTasks.set(e.taskId, label);
         }
-        const rows: TaskRow[] = [
-          ...Array.from(seenTasks.entries()).map(([taskId, label]) => ({ taskId, label })),
-          FREE_ROW,
-        ];
-        setTaskRows(rows);
       }
+      const rows: TaskRow[] = [
+        ...Array.from(seenTasks.entries()).map(([taskId, label]) => ({ taskId, label })),
+        FREE_ROW,
+      ];
+      setTaskRows(rows);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "載入失敗");
     } finally {
       setLoading(false);
     }
@@ -240,9 +244,16 @@ export default function TimesheetPage() {
         {/* Grid */}
         <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-950">
           {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
-            </div>
+            <PageLoading message="載入工時..." className="py-12" />
+          ) : loadError ? (
+            <PageError message={loadError} onRetry={loadEntries} className="py-12" />
+          ) : entries.length === 0 ? (
+            <PageEmpty
+              icon={<Clock className="h-8 w-8" />}
+              title="本週尚無工時記錄"
+              description="點擊格子可輸入工時"
+              className="py-10"
+            />
           ) : (
             <TimesheetGrid
               weekStart={weekStart}

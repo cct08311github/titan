@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Diamond } from "lucide-react";
+import { ChevronLeft, ChevronRight, Diamond, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -176,16 +177,21 @@ export default function GanttPage() {
   const [assigneeFilter, setAssigneeFilter] = useState("");
   const [data, setData] = useState<{ annualPlan: AnnualPlan | null; year: number } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams({ year: year.toString() });
       if (assigneeFilter) params.set("assignee", assigneeFilter);
       const res = await fetch(`/api/tasks/gantt?${params}`);
-      if (res.ok) setData(await res.json());
+      if (!res.ok) throw new Error("甘特圖資料載入失敗");
+      setData(await res.json());
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
       setLoading(false);
     }
@@ -242,15 +248,20 @@ export default function GanttPage() {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        <div className="flex-1">
+          <PageLoading message="載入甘特圖..." />
+        </div>
+      ) : fetchError ? (
+        <div className="flex-1">
+          <PageError message={fetchError} onRetry={fetchData} />
         </div>
       ) : !plan ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-zinc-600">
-            <p className="text-sm">找不到 {year} 年度計畫</p>
-            <p className="text-xs mt-1">請先在「年度計畫」頁面建立計畫</p>
-          </div>
+        <div className="flex-1">
+          <PageEmpty
+            icon={<BarChart2 className="h-10 w-10" />}
+            title={`找不到 ${year} 年度計畫`}
+            description="請先在「年度計畫」頁面建立計畫"
+          />
         </div>
       ) : (
         <div className="flex-1 overflow-auto">
