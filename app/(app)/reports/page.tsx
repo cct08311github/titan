@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Download, RefreshCw } from "lucide-react";
+import { Download, RefreshCw, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -73,16 +74,23 @@ interface WeeklyData {
 function WeeklyReport() {
   const [data, setData] = useState<WeeklyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
     fetch("/api/reports/weekly")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); })
       .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="py-12 text-center text-sm text-muted-foreground">載入中...</div>;
-  if (!data) return <div className="py-12 text-center text-sm text-muted-foreground">無法載入週報</div>;
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <PageLoading message="載入週報..." />;
+  if (error) return <PageError message={error} onRetry={load} />;
+  if (!data) return <PageEmpty title="無週報資料" description="本週尚無相關數據" />;
 
   const start = new Date(data.period.start).toLocaleDateString("zh-TW");
   const end = new Date(data.period.end).toLocaleDateString("zh-TW");
@@ -185,12 +193,15 @@ function MonthlyReport() {
   );
   const [data, setData] = useState<MonthlyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     fetch(`/api/reports/monthly?month=${month}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("月報載入失敗"); return r.json(); })
       .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, [month]);
 
@@ -223,9 +234,11 @@ function MonthlyReport() {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">載入中...</div>
+        <PageLoading message="載入月報..." />
+      ) : error ? (
+        <PageError message={error} onRetry={load} />
       ) : !data ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">無法載入月報</div>
+        <PageEmpty title="無月報資料" description="本月尚無相關數據" />
       ) : (
         <>
           <div className="bg-card border border-border rounded-lg p-4">
@@ -311,12 +324,15 @@ function KPIReport() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [data, setData] = useState<KPIReportData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     fetch(`/api/reports/kpi?year=${year}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("KPI 報表載入失敗"); return r.json(); })
       .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, [year]);
 
@@ -349,9 +365,15 @@ function KPIReport() {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">載入中...</div>
+        <PageLoading message="載入 KPI 報表..." />
+      ) : error ? (
+        <PageError message={error} onRetry={load} />
       ) : !data ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">無法載入 KPI 報表</div>
+        <PageEmpty
+          icon={<BarChart3 className="h-8 w-8" />}
+          title="無 KPI 報表資料"
+          description="本年度尚無 KPI 資料"
+        />
       ) : (
         <>
           <div className="grid grid-cols-3 gap-4">
@@ -438,12 +460,15 @@ function WorkloadReport() {
   );
   const [data, setData] = useState<WorkloadData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(null);
     fetch(`/api/reports/workload?startDate=${startDate}`)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("負荷報表載入失敗"); return r.json(); })
       .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, [startDate]);
 
@@ -479,9 +504,11 @@ function WorkloadReport() {
       </div>
 
       {loading ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">載入中...</div>
+        <PageLoading message="載入負荷報表..." />
+      ) : error ? (
+        <PageError message={error} onRetry={load} />
       ) : !data ? (
-        <div className="py-12 text-center text-sm text-muted-foreground">無法載入負荷報表</div>
+        <PageEmpty title="無負荷報表資料" description="所選期間尚無工時數據" />
       ) : (
         <>
           {/* Summary */}

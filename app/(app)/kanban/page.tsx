@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Kanban, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskCard, type TaskCardData } from "@/app/components/task-card";
 import { TaskFilters, type TaskFilters as FiltersType } from "@/app/components/task-filters";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 
@@ -36,6 +37,7 @@ const columnHeaderBg: Record<TaskStatus, string> = {
 export default function KanbanPage() {
   const [tasks, setTasks] = useState<TaskCardData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FiltersType>({ assignee: "", priority: "", category: "" });
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
@@ -44,16 +46,18 @@ export default function KanbanPage() {
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
     try {
       const params = new URLSearchParams();
       if (filters.assignee) params.set("assignee", filters.assignee);
       if (filters.priority) params.set("priority", filters.priority);
       if (filters.category) params.set("category", filters.category);
       const res = await fetch(`/api/tasks?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTasks(Array.isArray(data) ? data : []);
-      }
+      if (!res.ok) throw new Error("任務載入失敗");
+      const data = await res.json();
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
       setLoading(false);
     }
@@ -130,8 +134,20 @@ export default function KanbanPage() {
 
       {/* Board */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+        <div className="flex-1">
+          <PageLoading message="載入看板..." />
+        </div>
+      ) : fetchError ? (
+        <div className="flex-1">
+          <PageError message={fetchError} onRetry={fetchTasks} />
+        </div>
+      ) : tasks.length === 0 && !filters.assignee && !filters.priority && !filters.category ? (
+        <div className="flex-1">
+          <PageEmpty
+            icon={<Kanban className="h-10 w-10" />}
+            title="尚無任務"
+            description="目前沒有任何任務，請點擊「新增任務」開始"
+          />
         </div>
       ) : (
         <div className="flex-1 flex gap-3 overflow-x-auto pb-4 min-h-0">

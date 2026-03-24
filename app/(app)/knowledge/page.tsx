@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Save, Plus } from "lucide-react";
+import { Loader2, Save, Plus, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocumentTree, type DocNode } from "@/app/components/document-tree";
 import { MarkdownEditor } from "@/app/components/markdown-editor";
 import { DocumentSearch } from "@/app/components/document-search";
 import { VersionHistory } from "@/app/components/version-history";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 type DocDetail = {
   id: string;
@@ -23,6 +24,7 @@ type DocDetail = {
 export default function KnowledgePage() {
   const [docs, setDocs] = useState<DocNode[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
+  const [docsError, setDocsError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [docDetail, setDocDetail] = useState<DocDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
@@ -34,9 +36,13 @@ export default function KnowledgePage() {
   // Load doc tree
   const loadDocs = useCallback(async () => {
     setLoadingDocs(true);
+    setDocsError(null);
     try {
       const res = await fetch("/api/documents");
-      if (res.ok) setDocs(await res.json());
+      if (!res.ok) throw new Error("文件載入失敗");
+      setDocs(await res.json());
+    } catch (e) {
+      setDocsError(e instanceof Error ? e.message : "載入失敗");
     } finally {
       setLoadingDocs(false);
     }
@@ -149,7 +155,20 @@ export default function KnowledgePage() {
           {/* Tree */}
           {loadingDocs ? (
             <div className="flex-1 flex items-center justify-center">
-              <Loader2 className="h-4 w-4 animate-spin text-zinc-600" />
+              <PageLoading message="載入文件..." className="py-6" />
+            </div>
+          ) : docsError ? (
+            <div className="flex-1 flex items-center justify-center p-2">
+              <PageError message={docsError} onRetry={loadDocs} className="py-4" />
+            </div>
+          ) : docs.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center p-2">
+              <PageEmpty
+                icon={<BookOpen className="h-7 w-7" />}
+                title="尚無文件"
+                description="點擊 + 新增文件"
+                className="py-4"
+              />
             </div>
           ) : (
             <div className="flex-1 overflow-hidden">

@@ -2,9 +2,21 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { Target } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 // ── Types ──────────────────────────────────────────────────────────────────
+
+interface KPIAchievement {
+  id: string;
+  code: string;
+  title: string;
+  target: number;
+  actual: number;
+  status: string;
+  achievementRate: number;
+}
 
 interface WorkloadPerson {
   userId: string;
@@ -35,6 +47,118 @@ interface Task {
   status: string;
   priority: string;
   dueDate: string | null;
+}
+
+// ── KPI Achievement Section ─────────────────────────────────────────────────
+
+const KPI_STATUS_COLOR: Record<string, string> = {
+  ON_TRACK: "text-green-400 bg-green-500/10",
+  AT_RISK:  "text-yellow-400 bg-yellow-500/10",
+  BEHIND:   "text-red-400 bg-red-500/10",
+  ACHIEVED: "text-blue-400 bg-blue-500/10",
+};
+const KPI_STATUS_LABEL: Record<string, string> = {
+  ON_TRACK: "進行中",
+  AT_RISK:  "風險",
+  BEHIND:   "落後",
+  ACHIEVED: "達成",
+};
+
+function KPIAchievementSection() {
+  const [kpis, setKpis] = useState<KPIAchievement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchKPIs() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/kpi?year=${new Date().getFullYear()}`);
+      if (!res.ok) throw new Error("無法載入 KPI");
+      const data: Array<{
+        id: string; code: string; title: string; target: number; actual: number; status: string;
+        taskLinks: Array<{ weight: number; task: { status: string; progressPct: number } }>;
+        autoCalc: boolean;
+      }> = await res.json();
+      const mapped: KPIAchievement[] = (Array.isArray(data) ? data : []).map((k) => {
+        let rate = 0;
+        if (k.autoCalc && k.taskLinks.length > 0) {
+          const totalW = k.taskLinks.reduce((s, l) => s + l.weight, 0);
+          const weighted = k.taskLinks.reduce((s, l) => {
+            const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
+            return s + (prog * l.weight) / 100;
+          }, 0);
+          rate = totalW > 0 ? Math.min((weighted / totalW) * k.target, 100) : 0;
+        } else {
+          rate = k.target > 0 ? Math.min((k.actual / k.target) * 100, 100) : 0;
+        }
+        return { id: k.id, code: k.code, title: k.title, target: k.target, actual: k.actual, status: k.status, achievementRate: rate };
+      });
+      setKpis(mapped);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchKPIs(); }, []);
+
+  if (loading) return <PageLoading message="載入 KPI..." className="py-8" />;
+  if (error) return <PageError message={error} onRetry={fetchKPIs} className="py-8" />;
+  if (kpis.length === 0) return (
+    <PageEmpty
+      icon={<Target className="h-8 w-8" />}
+      title="尚無 KPI"
+      description="本年度尚未建立 KPI 指標"
+      className="py-8"
+    />
+  );
+
+  return (
+    <div className="bg-card border border-border rounded-lg p-5">
+      <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
+        <Target className="h-4 w-4 text-primary" />
+        KPI 達成狀況（{new Date().getFullYear()} 年度）
+      </h2>
+      <div className="space-y-3">
+        {kpis.map((kpi) => {
+          const barColor =
+            kpi.achievementRate >= 100 ? "bg-green-500" :
+            kpi.achievementRate >= 60  ? "bg-primary" :
+            kpi.achievementRate >= 30  ? "bg-yellow-500" : "bg-red-500";
+          return (
+            <div key={kpi.id} className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">{kpi.code}</span>
+                  <span className="text-sm text-foreground truncate">{kpi.title}</span>
+                  {kpi.status && (
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0",
+                      KPI_STATUS_COLOR[kpi.status] ?? "text-muted-foreground bg-accent")}>
+                      {KPI_STATUS_LABEL[kpi.status] ?? kpi.status}
+                    </span>
+                  )}
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <span className="text-sm font-semibold tabular-nums">{kpi.achievementRate.toFixed(0)}%</span>
+                  <span className="text-[10px] text-muted-foreground tabular-nums ml-1.5">
+                    {kpi.actual} / {kpi.target}
+                  </span>
+                </div>
+              </div>
+              <div className="h-1.5 w-full bg-accent rounded-full overflow-hidden">
+                <div
+                  className={cn("h-full rounded-full transition-all", barColor)}
+                  style={{ width: `${Math.min(kpi.achievementRate, 100)}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ── Helper ─────────────────────────────────────────────────────────────────
@@ -78,30 +202,29 @@ function ManagerDashboard() {
   const [workload, setWorkload] = useState<WorkloadData | null>(null);
   const [weekly, setWeekly] = useState<WeeklyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [wl, wr] = await Promise.all([
-          fetch("/api/reports/workload").then((r) => r.json()),
-          fetch("/api/reports/weekly").then((r) => r.json()),
-        ]);
-        setWorkload(wl);
-        setWeekly(wr);
-      } finally {
-        setLoading(false);
-      }
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [wl, wr] = await Promise.all([
+        fetch("/api/reports/workload").then((r) => { if (!r.ok) throw new Error("工作負載載入失敗"); return r.json(); }),
+        fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
+      ]);
+      setWorkload(wl);
+      setWeekly(wr);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-        載入中...
-      </div>
-    );
   }
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <PageLoading />;
+  if (error) return <PageError message={error} onRetry={load} />;
 
   const maxPersonHours =
     workload?.byPerson?.length
@@ -203,30 +326,29 @@ function EngineerDashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [weekly, setWeekly] = useState<WeeklyData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [taskRes, wr] = await Promise.all([
-          fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS").then((r) => r.json()),
-          fetch("/api/reports/weekly").then((r) => r.json()),
-        ]);
-        setTasks(Array.isArray(taskRes) ? taskRes : taskRes.tasks ?? []);
-        setWeekly(wr);
-      } finally {
-        setLoading(false);
-      }
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const [taskRes, wr] = await Promise.all([
+        fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS").then((r) => { if (!r.ok) throw new Error("任務載入失敗"); return r.json(); }),
+        fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
+      ]);
+      setTasks(Array.isArray(taskRes) ? taskRes : taskRes.tasks ?? []);
+      setWeekly(wr);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
     }
-    load();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-        載入中...
-      </div>
-    );
   }
+
+  useEffect(() => { load(); }, []);
+
+  if (loading) return <PageLoading />;
+  if (error) return <PageError message={error} onRetry={load} />;
 
   const weeklyPct = Math.min(((weekly?.totalHours ?? 0) / 40) * 100, 100);
   const today = new Date().toDateString();
@@ -358,13 +480,18 @@ export default function DashboardPage() {
       </div>
 
       {status === "loading" ? (
-        <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
-          載入中...
-        </div>
+        <PageLoading />
       ) : isManager ? (
         <ManagerDashboard />
       ) : (
         <EngineerDashboard />
+      )}
+
+      {/* ── KPI Achievement Cards ── */}
+      {status !== "loading" && (
+        <div className="mt-8">
+          <KPIAchievementSection />
+        </div>
       )}
     </div>
   );
