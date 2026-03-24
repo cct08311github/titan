@@ -32,6 +32,7 @@ describe("NotificationService", () => {
       backupAssigneeId: null,
     };
     (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: "user-a" }]);
 
     const existingKeys = new Set<string>();
     const result = await service.buildDueSoonTaskNotifications(NOW, existingKeys);
@@ -55,6 +56,10 @@ describe("NotificationService", () => {
       backupAssigneeId: "user-b",
     };
     (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { id: "user-a" },
+      { id: "user-b" },
+    ]);
 
     const result = await service.buildDueSoonTaskNotifications(NOW, new Set());
 
@@ -62,6 +67,26 @@ describe("NotificationService", () => {
     const userIds = result.map((n) => n.userId);
     expect(userIds).toContain("user-a");
     expect(userIds).toContain("user-b");
+  });
+
+  test("excludes suspended users from TASK_DUE_SOON notifications", async () => {
+    const task = {
+      id: "task-suspended-1",
+      title: "停權測試任務",
+      dueDate: DUE_IN_3_DAYS,
+      primaryAssigneeId: "user-active",
+      backupAssigneeId: "user-suspended",
+    };
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    // Only active user returned — suspended user filtered by isActive: true
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { id: "user-active" },
+    ]);
+
+    const result = await service.buildDueSoonTaskNotifications(NOW, new Set());
+
+    expect(result).toHaveLength(1);
+    expect(result[0].userId).toBe("user-active");
   });
 
   // ── MILESTONE_DUE ─────────────────────────────────────────────────────────
@@ -100,6 +125,24 @@ describe("NotificationService", () => {
     expect(result).toHaveLength(0);
   });
 
+  test("excludes suspended users from MILESTONE_DUE notifications", async () => {
+    const milestone = {
+      id: "ms-suspended-1",
+      title: "停權里程碑測試",
+      plannedEnd: DUE_IN_3_DAYS,
+    };
+    (prisma.milestone.findMany as jest.Mock).mockResolvedValue([milestone]);
+    // Only active user returned — suspended user filtered by isActive: true query
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { id: "user-active" },
+    ]);
+
+    const result = await service.buildDueSoonMilestoneNotifications(NOW, new Set());
+
+    expect(result).toHaveLength(1);
+    expect(result[0].userId).toBe("user-active");
+  });
+
   // ── TASK_OVERDUE ──────────────────────────────────────────────────────────
 
   test("generates TASK_OVERDUE for past-due tasks", async () => {
@@ -111,6 +154,7 @@ describe("NotificationService", () => {
       backupAssigneeId: null,
     };
     (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: "user-c" }]);
 
     const existingKeys = new Set<string>();
     const result = await service.buildOverdueTaskNotifications(NOW, existingKeys);
@@ -134,6 +178,23 @@ describe("NotificationService", () => {
     expect(result).toHaveLength(0);
   });
 
+  test("excludes suspended users from TASK_OVERDUE notifications", async () => {
+    const task = {
+      id: "task-suspended-2",
+      title: "停權逾期任務",
+      dueDate: TWO_DAYS_AGO,
+      primaryAssigneeId: "user-suspended",
+      backupAssigneeId: null,
+    };
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    // Suspended user not returned by active-only query
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.buildOverdueTaskNotifications(NOW, new Set());
+
+    expect(result).toHaveLength(0);
+  });
+
   // ── Duplicate prevention ──────────────────────────────────────────────────
 
   test("does not duplicate existing unread notifications", async () => {
@@ -145,6 +206,7 @@ describe("NotificationService", () => {
       backupAssigneeId: null,
     };
     (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: "user-a" }]);
 
     // Pre-seed existing key so duplicate check fires
     const existingKeys = new Set<string>(["user-a:TASK_DUE_SOON:task-4"]);
@@ -192,7 +254,11 @@ describe("NotificationService", () => {
       .mockResolvedValueOnce([overdueTask]); // overdue query
 
     (prisma.milestone.findMany as jest.Mock).mockResolvedValue([]);
-    (prisma.user.findMany as jest.Mock).mockResolvedValue([{ id: "user-a" }]);
+    // user.findMany is called multiple times: due-soon active check, milestone query, overdue active check
+    (prisma.user.findMany as jest.Mock)
+      .mockResolvedValueOnce([{ id: "user-a" }])  // due soon active users
+      .mockResolvedValueOnce([{ id: "user-a" }])  // milestone active users
+      .mockResolvedValueOnce([{ id: "user-b" }]); // overdue active users
     (prisma.notification.createMany as jest.Mock).mockResolvedValue({ count: 2 });
 
     const result = await service.generateAll(NOW);
