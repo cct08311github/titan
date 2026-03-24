@@ -235,7 +235,7 @@ function ManagerDashboard() {
   return (
     <div className="space-y-6">
       {/* ── Stats cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="本週完成任務" value={weekly?.completedCount ?? "—"} />
         <StatCard label="本週總工時 (h)" value={safeFixed(weekly?.totalHours, 1, "—")} />
         <StatCard
@@ -303,7 +303,7 @@ function ManagerDashboard() {
       </div>
 
       {/* ── This month ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="本週延遲次數" value={weekly?.delayCount ?? "—"} accent={(weekly?.delayCount ?? 0) > 0} />
         <StatCard label="本週範疇變更" value={weekly?.scopeChangeCount ?? "—"} />
         <StatCard
@@ -379,7 +379,7 @@ function EngineerDashboard() {
   return (
     <div className="space-y-6">
       {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard label="進行中任務" value={tasks.length} />
         <StatCard label="逾期任務" value={overdue.length} accent={overdue.length > 0} />
         <StatCard

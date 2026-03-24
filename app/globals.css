@@ -78,4 +78,9 @@
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground)); }
+
+  /* Projector viewport optimization (1024x768) — Issue #197 */
+  @media (max-width: 1024px) and (max-height: 768px) {
+    html { font-size: 14px; }
+  }
 }
