@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Target } from "lucide-react";
+import { Target, ClipboardList, Clock, BarChart3, Users } from "lucide-react";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -227,6 +227,59 @@ function ManagerDashboard() {
   if (loading) return <PageLoading />;
   if (error) return <PageError message={error} onRetry={load} />;
 
+  // Check if there is truly no data at all
+  const hasNoData =
+    (weekly?.completedCount ?? 0) === 0 &&
+    (weekly?.totalHours ?? 0) === 0 &&
+    (weekly?.overdueCount ?? 0) === 0 &&
+    (workload?.totalHours ?? 0) === 0 &&
+    (!workload?.byPerson || workload.byPerson.length === 0);
+
+  if (hasNoData) {
+    return (
+      <div className="space-y-6">
+        <PageEmpty
+          icon={<BarChart3 className="h-8 w-8" />}
+          title="尚無團隊數據"
+          description="目前沒有任務完成紀錄與工時資料。當團隊成員開始記錄工時與完成任務後，此處將自動顯示團隊整體狀況。"
+          className="py-16"
+        />
+        <div className="bg-card rounded-xl shadow-card p-6">
+          <h3 className="text-sm font-medium mb-3">快速開始指南</h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-semibold text-primary">1</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">建立年度計畫</p>
+                <p className="text-xs text-muted-foreground">前往「計畫」頁面建立年度計畫與月度目標</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-semibold text-primary">2</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">指派任務給團隊成員</p>
+                <p className="text-xs text-muted-foreground">在看板或任務列表中建立任務並指派負責人</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <span className="text-xs font-semibold text-primary">3</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">記錄工時</p>
+                <p className="text-xs text-muted-foreground">請團隊成員在「工時」頁面每日登錄工時，即可在此追蹤進度</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const maxPersonHours =
     workload?.byPerson?.length
       ? Math.max(...workload.byPerson.map((p) => p.total), 1)
@@ -273,7 +326,12 @@ function ManagerDashboard() {
             })}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">本月尚無工時紀錄</p>
+          <PageEmpty
+            icon={<Users className="h-6 w-6" />}
+            title="本月尚無工時紀錄"
+            description="團隊成員開始記錄工時後，此處將顯示每人的工時分佈與計畫外比例"
+            className="py-8"
+          />
         )}
       </div>
 
@@ -350,6 +408,45 @@ function EngineerDashboard() {
 
   if (loading) return <PageLoading />;
   if (error) return <PageError message={error} onRetry={load} />;
+
+  // Check if engineer has no data at all
+  const hasNoData = tasks.length === 0 && (weekly?.totalHours ?? 0) === 0;
+
+  if (hasNoData) {
+    return (
+      <div className="space-y-6">
+        <PageEmpty
+          icon={<ClipboardList className="h-8 w-8" />}
+          title="尚無待處理任務"
+          description="目前沒有進行中的任務與工時紀錄。當主管指派任務給您後，此處將顯示您的工作狀況。"
+          className="py-16"
+        />
+        <div className="bg-card rounded-xl shadow-card p-6">
+          <h3 className="text-sm font-medium mb-3">開始使用</h3>
+          <div className="space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Clock className="h-3 w-3 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">記錄每日工時</p>
+                <p className="text-xs text-muted-foreground">前往「工時」頁面登錄您的每日工作時數，協助團隊追蹤進度</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <ClipboardList className="h-3 w-3 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">查看看板</p>
+                <p className="text-xs text-muted-foreground">在「看板」頁面查看與管理您被指派的任務</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const weeklyPct = Math.min(((weekly?.totalHours ?? 0) / 40) * 100, 100);
   const today = new Date().toDateString();
