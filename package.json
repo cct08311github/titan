@@ -37,6 +37,8 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@swc/core": "^1.15.21",
+    "@swc/jest": "^0.2.39",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/bcryptjs": "^2.4.6",
