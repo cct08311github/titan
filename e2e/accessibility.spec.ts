@@ -11,9 +11,7 @@ import { MANAGER_STATE_FILE } from './helpers/auth';
  *
  * Tests FAIL only on newly introduced violations not in the known list.
  */
-const KNOWN_VIOLATIONS = new Set([
-  'scrollable-region-focusable',
-  'color-contrast',
+const KNOWN_VIOLATIONS = new Set<string>([
 ]);
 
 /** Run axe scan and assert no NEW violations beyond the known list. */

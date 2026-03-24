@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { MANAGER_STATE_FILE } from './helpers/auth';
+import { MANAGER_STATE_FILE, ENGINEER_STATE_FILE } from './helpers/auth';
 
 /**
  * Visual regression tests using Playwright's built-in toHaveScreenshot().
@@ -141,6 +141,26 @@ test.describe('Visual Regression', () => {
       maxDiffPixelRatio: 0.02,
     });
 
+    await context.close();
+  });
+
+  test('Dashboard Engineer 視角 visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/dashboard');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+    await expect(page).toHaveScreenshot('dashboard-engineer.png', { maxDiffPixelRatio: 0.02 });
+    await context.close();
+  });
+
+  test('Kanban Engineer 視角 visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/kanban');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+    await expect(page).toHaveScreenshot('kanban-engineer.png', { maxDiffPixelRatio: 0.02 });
     await context.close();
   });
 });

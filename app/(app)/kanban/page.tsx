@@ -150,7 +150,7 @@ export default function KanbanPage() {
           />
         </div>
       ) : (
-        <div className="flex-1 flex gap-3 overflow-x-auto pb-4 min-h-0">
+        <div className="flex-1 flex gap-3 overflow-x-auto pb-4 min-h-0" tabIndex={0} role="region" aria-label="看板欄位">
           {COLUMNS.map(({ status, label, color }) => {
             const colTasks = tasksByStatus(status);
             const isOver = dragOver === status;
