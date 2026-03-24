@@ -154,7 +154,7 @@ if [ -n "${RESTORE_POSTGRES}" ]; then
     
     # 還原資料庫
     log_info "開始還原資料庫..."
-    pg_restore \
+    PGPASSWORD="${POSTGRES_PASSWORD:-}" pg_restore \
         -h "${POSTGRES_HOST}" \
         -p "${POSTGRES_PORT}" \
         -U "${POSTGRES_USER}" \
