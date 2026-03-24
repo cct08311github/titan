@@ -1,7 +1,8 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { Bell, LogOut, User } from "lucide-react";
+import { LogOut, User } from "lucide-react";
+import { NotificationBell } from "@/app/components/notification-bell";
 
 export function Topbar() {
   const { data: session } = useSession();
@@ -14,14 +15,7 @@ export function Topbar() {
       {/* Right: notification + user */}
       <div className="flex items-center gap-3">
         {/* Notification bell */}
-        <button
-          className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          aria-label="通知"
-        >
-          <Bell className="h-4 w-4" />
-          {/* Unread badge placeholder */}
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
-        </button>
+        <NotificationBell />
 
         {/* User info */}
         <div className="flex items-center gap-2 pl-3 border-l border-border">

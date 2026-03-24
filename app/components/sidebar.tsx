@@ -10,6 +10,7 @@ import {
   Clock,
   BarChart2,
   Target,
+  Crosshair,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
   { href: "/knowledge", label: "知識庫", icon: BookOpen },
   { href: "/timesheet", label: "工時紀錄", icon: Clock },
+  { href: "/kpi", label: "KPI", icon: Crosshair },
   { href: "/reports", label: "報表", icon: BarChart2 },
 ];
 
@@ -61,7 +63,7 @@ export function Sidebar() {
       {/* Version footer */}
       <div className="p-4 border-t border-sidebar-border">
         <p className="font-mono text-[11px] text-muted-foreground tabular-nums">
-          v0.2.0 — Sprint 2
+          v1.0.0 — Sprint 4
         </p>
       </div>
     </aside>
