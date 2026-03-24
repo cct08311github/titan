@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
 
 // Valid enum values mirrored from Prisma schema
@@ -38,10 +38,10 @@ export class ImportService {
   constructor(private readonly prisma: PrismaClient) {}
 
   /**
-   * Parses an xlsx Buffer and returns an array of raw row objects.
+   * Parses an xlsx Buffer asynchronously and returns an array of raw row objects.
    * Throws if the buffer cannot be read as a valid xlsx workbook.
    */
-  parseExcel(buffer: Buffer): ParsedRow[] {
+  async parseExcel(buffer: Buffer): Promise<ParsedRow[]> {
     // Validate magic bytes: xlsx is a ZIP archive starting with PK\x03\x04
     const isXlsx =
       buffer.length >= 4 &&
@@ -54,42 +54,67 @@ export class ImportService {
       throw new Error("無效的 Excel 檔案格式：必須為 .xlsx 檔案");
     }
 
-    let workbook: XLSX.WorkBook;
+    const workbook = new ExcelJS.Workbook();
     try {
-      workbook = XLSX.read(buffer, { type: "buffer", cellDates: false });
+      await workbook.xlsx.load(buffer);
     } catch {
       throw new Error("無效的 Excel 檔案格式");
     }
 
-    const sheetName = workbook.SheetNames[0];
-    if (!sheetName) {
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet) {
       throw new Error("Excel 檔案沒有工作表");
     }
 
-    // Verify the workbook has valid sheet data (not just noise parsed as empty)
-    const sheet = workbook.Sheets[sheetName];
-    const ref = sheet["!ref"];
-    if (!ref) {
+    if (worksheet.rowCount === 0) {
       throw new Error("無效的 Excel 檔案格式：工作表為空");
     }
 
-    const raw = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
-      defval: "",
+    // Extract headers from the first row
+    const headerRow = worksheet.getRow(1);
+    const headers: string[] = [];
+    headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      headers[colNumber - 1] = String(cell.value ?? "").trim();
     });
 
-    return raw.map((r): ParsedRow => ({
-      title: String(r["title"] ?? "").trim(),
-      description: r["description"] !== undefined ? String(r["description"]).trim() : "",
-      assigneeEmail: r["assigneeEmail"] !== undefined ? String(r["assigneeEmail"]).trim() : "",
-      status: r["status"] !== undefined ? String(r["status"]).trim() : undefined,
-      priority: r["priority"] !== undefined ? String(r["priority"]).trim() : undefined,
-      category: r["category"] !== undefined ? String(r["category"]).trim() : undefined,
-      dueDate: r["dueDate"] !== undefined && r["dueDate"] !== "" ? String(r["dueDate"]).trim() : undefined,
-      estimatedHours:
-        r["estimatedHours"] !== undefined && r["estimatedHours"] !== ""
-          ? Number(r["estimatedHours"])
-          : undefined,
-    }));
+    if (headers.length === 0) {
+      throw new Error("無效的 Excel 檔案格式：工作表為空");
+    }
+
+    const rows: ParsedRow[] = [];
+
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return; // skip header row
+
+      const r: Record<string, unknown> = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber - 1];
+        if (header) {
+          r[header] = cell.value;
+        }
+      });
+
+      rows.push({
+        title: String(r["title"] ?? "").trim(),
+        description: r["description"] !== undefined ? String(r["description"]).trim() : "",
+        assigneeEmail: r["assigneeEmail"] !== undefined ? String(r["assigneeEmail"]).trim() : "",
+        status: r["status"] !== undefined ? String(r["status"]).trim() : undefined,
+        priority: r["priority"] !== undefined ? String(r["priority"]).trim() : undefined,
+        category: r["category"] !== undefined ? String(r["category"]).trim() : undefined,
+        dueDate:
+          r["dueDate"] !== undefined && r["dueDate"] !== "" && r["dueDate"] !== null
+            ? String(r["dueDate"]).trim()
+            : undefined,
+        estimatedHours:
+          r["estimatedHours"] !== undefined &&
+          r["estimatedHours"] !== "" &&
+          r["estimatedHours"] !== null
+            ? Number(r["estimatedHours"])
+            : undefined,
+      });
+    });
+
+    return rows;
   }
 
   /**

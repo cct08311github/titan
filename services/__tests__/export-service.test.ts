@@ -1,3 +1,4 @@
+import ExcelJS from "exceljs";
 import { ExportService } from "../export-service";
 
 describe("ExportService", () => {
@@ -9,7 +10,7 @@ describe("ExportService", () => {
 
   // ── generateExcel ─────────────────────────────────────────────────────────
 
-  test("generateExcel creates valid xlsx buffer", () => {
+  test("generateExcel creates valid xlsx buffer", async () => {
     const data = [
       { name: "Alice", hours: 8, tasks: 3 },
       { name: "Bob", hours: 6, tasks: 2 },
@@ -20,7 +21,7 @@ describe("ExportService", () => {
       { header: "Tasks", key: "tasks" },
     ];
 
-    const buffer = service.generateExcel(data, columns);
+    const buffer = await service.generateExcel(data, columns);
 
     expect(buffer).toBeInstanceOf(Buffer);
     expect(buffer.length).toBeGreaterThan(0);
@@ -29,8 +30,7 @@ describe("ExportService", () => {
     expect(buffer[1]).toBe(0x4b); // 'K'
   });
 
-  test("generateExcel includes all report columns", () => {
-    const XLSX = require("xlsx");
+  test("generateExcel includes all report columns", async () => {
     const data = [{ col1: "val1", col2: 42, col3: true }];
     const columns = [
       { header: "Column One", key: "col1" },
@@ -38,17 +38,23 @@ describe("ExportService", () => {
       { header: "Column Three", key: "col3" },
     ];
 
-    const buffer = service.generateExcel(data, columns);
-    const workbook = XLSX.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as unknown[][];
+    const buffer = await service.generateExcel(data, columns);
+
+    // Parse with exceljs to verify content
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(buffer);
+    const worksheet = workbook.worksheets[0];
 
     // First row should be headers
-    expect(rows[0]).toEqual(["Column One", "Column Two", "Column Three"]);
+    const headerRow = worksheet.getRow(1);
+    expect(headerRow.getCell(1).value).toBe("Column One");
+    expect(headerRow.getCell(2).value).toBe("Column Two");
+    expect(headerRow.getCell(3).value).toBe("Column Three");
+
     // Second row should be data
-    expect(rows[1][0]).toBe("val1");
-    expect(rows[1][1]).toBe(42);
+    const dataRow = worksheet.getRow(2);
+    expect(dataRow.getCell(1).value).toBe("val1");
+    expect(dataRow.getCell(2).value).toBe(42);
   });
 
   // ── generatePDF ───────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 export interface ExportColumn {
   header: string;
@@ -15,17 +15,22 @@ export class ExportService {
   /**
    * Generates an XLSX buffer from an array of data objects and column definitions.
    */
-  generateExcel(data: Record<string, unknown>[], columns: ExportColumn[]): Buffer {
-    const headerRow = columns.map((c) => c.header);
-    const dataRows = data.map((row) => columns.map((c) => row[c.key] ?? ""));
+  async generateExcel(data: Record<string, unknown>[], columns: ExportColumn[]): Promise<Buffer> {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Report");
 
-    const worksheetData = [headerRow, ...dataRows];
-    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+    worksheet.columns = columns.map((c) => ({ header: c.header, key: c.key }));
 
-    const xlsxBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" }) as Buffer;
-    return Buffer.from(xlsxBuffer);
+    for (const row of data) {
+      const rowData: Record<string, unknown> = {};
+      for (const col of columns) {
+        rowData[col.key] = row[col.key] ?? "";
+      }
+      worksheet.addRow(rowData);
+    }
+
+    const arrayBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(arrayBuffer);
   }
 
   /**
