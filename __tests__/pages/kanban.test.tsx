@@ -72,15 +72,16 @@ describe("Kanban Page", () => {
     expect(screen.getByTestId("task-filters")).toBeInTheDocument();
   });
 
-  it("handles empty task list", async () => {
+  it("shows empty state guidance when task list is empty", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
     const { default: KanbanPage } = await import("@/app/(app)/kanban/page");
     await act(async () => {
       render(<KanbanPage />);
     });
     await waitFor(() => {
-      // When tasks are empty with no filters, the page shows an empty state
+      // 空資料時顯示 PageEmpty 引導訊息
       expect(screen.getByText("尚無任務")).toBeInTheDocument();
+      expect(screen.getByText("目前沒有任何任務，請點擊「新增任務」開始")).toBeInTheDocument();
     });
   });
 
@@ -91,5 +92,48 @@ describe("Kanban Page", () => {
       render(<KanbanPage />);
     });
     expect(document.body).toBeDefined();
+  });
+
+  it("shows empty column state per column when tasks exist only in one status", async () => {
+    // Only BACKLOG tasks — IN_PROGRESS and DONE columns should be empty
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => [TASKS[0]], // only BACKLOG task
+    } as Response);
+    const { default: KanbanPage } = await import("@/app/(app)/kanban/page");
+    await act(async () => {
+      render(<KanbanPage />);
+    });
+    await waitFor(() => {
+      // All column headers still rendered
+      expect(screen.getByText("待辦清單")).toBeInTheDocument();
+      expect(screen.getByText("進行中")).toBeInTheDocument();
+      expect(screen.getByText("已完成")).toBeInTheDocument();
+    });
+  });
+
+  it("renders task card for each task in correct column", async () => {
+    const { default: KanbanPage } = await import("@/app/(app)/kanban/page");
+    await act(async () => {
+      render(<KanbanPage />);
+    });
+    await waitFor(() => {
+      // Both tasks should have task-card elements
+      const cards = screen.getAllByTestId("task-card");
+      expect(cards.length).toBe(2);
+      expect(screen.getByText("Backlog Task")).toBeInTheDocument();
+      expect(screen.getByText("In Progress Task")).toBeInTheDocument();
+    });
+  });
+
+  it("MEMBER role can view kanban board (no manager-only restriction)", async () => {
+    // Default mock session is MEMBER — board should still render
+    const { default: KanbanPage } = await import("@/app/(app)/kanban/page");
+    await act(async () => {
+      render(<KanbanPage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("待辦清單")).toBeInTheDocument();
+    });
   });
 });

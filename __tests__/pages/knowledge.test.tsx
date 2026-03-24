@@ -61,4 +61,32 @@ describe("Knowledge Page", () => {
     });
     expect(document.body).toBeDefined();
   });
+
+  it("shows empty state guidance when document list is empty", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
+    const { default: KnowledgePage } = await import("@/app/(app)/knowledge/page");
+    await act(async () => {
+      render(<KnowledgePage />);
+    });
+    await waitFor(() => {
+      // 無文件時應顯示引導訊息
+      expect(screen.getByText("尚無文件")).toBeInTheDocument();
+      expect(screen.getByText("點擊 + 新增文件")).toBeInTheDocument();
+    });
+    // 空資料時不應渲染 DocumentTree
+    expect(screen.queryByTestId("document-tree")).not.toBeInTheDocument();
+  });
+
+  it("renders without crash when document list has partial fields", async () => {
+    // Partial schema: docs missing optional fields
+    const partial = [
+      { id: "d1", parentId: null, title: "Doc A" /* slug / version / updatedAt missing */ },
+    ];
+    mockFetch.mockResolvedValue({ ok: true, json: async () => partial } as Response);
+    const { default: KnowledgePage } = await import("@/app/(app)/knowledge/page");
+    await act(async () => {
+      render(<KnowledgePage />);
+    });
+    expect(document.body).toBeDefined();
+  });
 });

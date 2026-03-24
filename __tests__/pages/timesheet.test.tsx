@@ -79,4 +79,50 @@ describe("Timesheet Page", () => {
     });
     expect(document.body).toBeDefined();
   });
+
+  it("renders without crash when entries and users are empty arrays", async () => {
+    mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    expect(document.body).toBeDefined();
+  });
+
+  it("shows empty state guidance when no time entries exist", async () => {
+    // Empty entries → page should guide user to add time
+    mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      // 空資料時應顯示引導訊息
+      expect(screen.getByText("本週尚無工時記錄")).toBeInTheDocument();
+      expect(screen.getByText("點擊格子可輸入工時")).toBeInTheDocument();
+    });
+    // 空資料時不應渲染 TimesheetGrid
+    expect(screen.queryByTestId("timesheet-grid")).not.toBeInTheDocument();
+  });
+
+  it("renders without crash when hours fields are null in time entries", async () => {
+    // Null hours guard: prevents NaN from null.toFixed()
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("time-entries/stats")) {
+        return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: "e-null", userId: "u1", taskId: null, date: "2024-01-15", hours: null, category: "PLANNED_TASK", description: null, task: null },
+        ],
+      } as Response);
+    });
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    // Should not throw TypeError on null.toFixed()
+    expect(document.body).toBeDefined();
+  });
 });

@@ -91,4 +91,59 @@ describe("Reports Page", () => {
     // Component shows loading or error state without crashing (data stays null)
     expect(document.body).toBeDefined();
   });
+
+  it("renders report tab labels (週報 / 月報)", async () => {
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    // Tab bar is rendered immediately without waiting for fetch
+    expect(screen.getByText("週報")).toBeInTheDocument();
+    expect(screen.getByText("月報")).toBeInTheDocument();
+  });
+
+  it("shows empty state guidance when weekly report data is null", async () => {
+    // Simulate API returning null (no report generated yet)
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => null } as unknown as Response);
+      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+    });
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    await waitFor(() => {
+      // 空資料時顯示引導訊息
+      expect(screen.getByText("無週報資料")).toBeInTheDocument();
+      expect(screen.getByText("本週尚無相關數據")).toBeInTheDocument();
+    });
+  });
+
+  it("handles API error (network failure) without crashing", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    // Page should catch the error and not propagate to React error boundary
+    expect(document.body).toBeDefined();
+  });
+
+  it("renders without crash on zero/empty weekly report values", async () => {
+    // Partial schema: numeric fields are 0, arrays are empty
+    const partial = {
+      period: { start: "2024-01-15T00:00:00Z", end: "2024-01-21T23:59:59Z" },
+      completedCount: 0, totalHours: 0, overdueCount: 0, delayCount: 0,
+      scopeChangeCount: 0, completedTasks: [], overdueTasks: [], hoursByCategory: {},
+    };
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => partial } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+    });
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    expect(document.body).toBeDefined();
+  });
 });

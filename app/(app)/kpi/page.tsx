@@ -7,6 +7,7 @@ import { z } from "zod";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { FormError, FormBanner } from "@/app/components/form-error";
+import { safeFixed, safePct } from "@/lib/safe-number";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -330,7 +331,7 @@ function KPICard({ kpi, isManager, onUnlink, onRefresh }: KPICardProps) {
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="text-lg font-semibold tabular-nums">{rate.toFixed(0)}%</p>
+            <p className="text-lg font-semibold tabular-nums">{safePct(rate, 0)}%</p>
             <p className="text-[10px] text-muted-foreground tabular-nums">
               {kpi.actual} / {kpi.target}
             </p>
@@ -490,7 +491,7 @@ export default function KPIPage() {
             <p className="text-xs text-muted-foreground mt-1">已達成</p>
           </div>
           <div className="bg-card border border-border rounded-lg p-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums">{avgRate.toFixed(0)}%</p>
+            <p className="text-2xl font-semibold tabular-nums">{safePct(avgRate, 0)}%</p>
             <p className="text-xs text-muted-foreground mt-1">平均達成率</p>
           </div>
         </div>

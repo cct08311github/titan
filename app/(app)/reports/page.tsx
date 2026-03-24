@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Download, RefreshCw, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { safeFixed, safePct } from "@/lib/safe-number";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ function WeeklyReport() {
       <div className="bg-card border border-border rounded-lg p-4">
         <SectionTitle>本週摘要</SectionTitle>
         <StatRow label="完成任務數" value={data.completedCount} />
-        <StatRow label="總工時 (h)" value={data.totalHours.toFixed(1)} />
+        <StatRow label="總工時 (h)" value={safeFixed(data.totalHours, 1)} />
         <StatRow label="逾期任務數" value={data.overdueCount} />
         <StatRow label="延遲次數" value={data.delayCount} />
         <StatRow label="範疇變更次數" value={data.scopeChangeCount} />
@@ -126,7 +127,7 @@ function WeeklyReport() {
             {Object.entries(data.hoursByCategory).map(([cat, hours]) => (
               <div key={cat} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground font-mono text-xs">{cat}</span>
-                <span className="tabular-nums">{hours.toFixed(1)} h</span>
+                <span className="tabular-nums">{safeFixed(hours, 1)} h</span>
               </div>
             ))}
           </div>
@@ -248,7 +249,7 @@ function MonthlyReport() {
             <StatRow label="總任務數" value={data.totalTasks} />
             <StatRow label="完成任務數" value={data.completedTasks} />
             <StatRow label="完成率" value={`${data.completionRate}%`} />
-            <StatRow label="總工時 (h)" value={data.totalHours.toFixed(1)} />
+            <StatRow label="總工時 (h)" value={safeFixed(data.totalHours, 1)} />
             <StatRow label="延遲次數" value={data.delayCount} />
             <StatRow label="範疇變更次數" value={data.scopeChangeCount} />
           </div>
@@ -407,7 +408,7 @@ function KPIReport() {
                       )}
                     </div>
                     <span className="text-sm font-medium tabular-nums flex-shrink-0 ml-2">
-                      {kpi.achievementRate.toFixed(0)}%
+                      {safePct(kpi.achievementRate, 0)}%
                     </span>
                   </div>
                   <ProgressBar
@@ -514,7 +515,7 @@ function WorkloadReport() {
           {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-card border border-border rounded-lg p-4 text-center">
-              <p className="text-xl font-semibold tabular-nums">{data.totalHours.toFixed(1)}</p>
+              <p className="text-xl font-semibold tabular-nums">{safeFixed(data.totalHours, 1)}</p>
               <p className="text-xs text-muted-foreground mt-1">總工時 (h)</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4 text-center">
@@ -526,7 +527,7 @@ function WorkloadReport() {
               <p className="text-xs text-muted-foreground mt-1">計畫外負荷率</p>
             </div>
             <div className="bg-card border border-border rounded-lg p-4 text-center">
-              <p className="text-xl font-semibold tabular-nums">{data.unplannedHours.toFixed(1)}</p>
+              <p className="text-xl font-semibold tabular-nums">{safeFixed(data.unplannedHours, 1)}</p>
               <p className="text-xs text-muted-foreground mt-1">計畫外工時 (h)</p>
             </div>
           </div>
@@ -537,14 +538,14 @@ function WorkloadReport() {
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-muted-foreground">計畫內 ({data.plannedHours.toFixed(1)} h)</span>
+                  <span className="text-muted-foreground">計畫內 ({safeFixed(data.plannedHours, 1)} h)</span>
                   <span className="tabular-nums text-green-400">{data.plannedRate}%</span>
                 </div>
                 <ProgressBar pct={data.plannedRate} color="bg-green-500" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
-                  <span className="text-muted-foreground">計畫外 ({data.unplannedHours.toFixed(1)} h)</span>
+                  <span className="text-muted-foreground">計畫外 ({safeFixed(data.unplannedHours, 1)} h)</span>
                   <span className="tabular-nums text-orange-400">{data.unplannedRate}%</span>
                 </div>
                 <ProgressBar pct={data.unplannedRate} color="bg-orange-500" />
@@ -564,7 +565,7 @@ function WorkloadReport() {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-foreground">{p.name}</span>
                         <span className="text-xs text-muted-foreground tabular-nums">
-                          計畫外 {unplannedPct.toFixed(0)}% | 共 {p.total.toFixed(1)} h
+                          計畫外 {safePct(unplannedPct, 0)}% | 共 {safeFixed(p.total, 1)} h
                         </span>
                       </div>
                       <div className="flex gap-0.5 h-2 rounded-full overflow-hidden">

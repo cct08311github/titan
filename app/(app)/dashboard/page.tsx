@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Target } from "lucide-react";
+import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
@@ -141,7 +142,7 @@ function KPIAchievementSection() {
                   )}
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <span className="text-sm font-semibold tabular-nums">{kpi.achievementRate.toFixed(0)}%</span>
+                  <span className="text-sm font-semibold tabular-nums">{safePct(kpi.achievementRate, 0, "0")}%</span>
                   <span className="text-[10px] text-muted-foreground tabular-nums ml-1.5">
                     {kpi.actual} / {kpi.target}
                   </span>
@@ -236,7 +237,7 @@ function ManagerDashboard() {
       {/* ── Stats cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <StatCard label="本週完成任務" value={weekly?.completedCount ?? "—"} />
-        <StatCard label="本週總工時 (h)" value={weekly ? weekly.totalHours.toFixed(1) : "—"} />
+        <StatCard label="本週總工時 (h)" value={safeFixed(weekly?.totalHours, 1, "—")} />
         <StatCard
           label="逾期任務"
           value={weekly?.overdueCount ?? "—"}
@@ -258,13 +259,13 @@ function ManagerDashboard() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-foreground font-medium">{p.name}</span>
                     <span className="tabular-nums text-muted-foreground">
-                      {p.total.toFixed(1)} h
+                      {safeFixed(p.total, 1)} h
                     </span>
                   </div>
                   <ProgressBar pct={pct} />
                   {unplannedPct > 0 && (
                     <p className="text-[11px] text-muted-foreground tabular-nums">
-                      計畫外 {unplannedPct.toFixed(0)}%
+                      計畫外 {safePct(unplannedPct, 0)}%
                     </p>
                   )}
                 </div>
@@ -383,8 +384,8 @@ function EngineerDashboard() {
         <StatCard label="逾期任務" value={overdue.length} accent={overdue.length > 0} />
         <StatCard
           label="本週工時 (h)"
-          value={`${(weekly?.totalHours ?? 0).toFixed(1)} / 40`}
-          sub={`進度 ${weeklyPct.toFixed(0)}%`}
+          value={`${safeFixed(weekly?.totalHours, 1)} / 40`}
+          sub={`進度 ${safePct(weeklyPct, 0)}%`}
         />
       </div>
 
@@ -393,7 +394,7 @@ function EngineerDashboard() {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium">本週工時進度</h2>
           <span className="text-xs tabular-nums text-muted-foreground">
-            {(weekly?.totalHours ?? 0).toFixed(1)} / 40 h
+            {safeFixed(weekly?.totalHours, 1)} / 40 h
           </span>
         </div>
         <ProgressBar

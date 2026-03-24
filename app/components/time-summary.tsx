@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { safeFixed } from "@/lib/safe-number";
 
 type CategoryBreakdown = {
   category: string;
@@ -29,7 +30,7 @@ export function TimeSummary({ totalHours, breakdown, taskInvestmentRate }: TimeS
       {/* Header totals */}
       <div className="flex items-center gap-6">
         <div>
-          <div className="text-2xl font-bold text-zinc-100 tabular-nums">{totalHours.toFixed(1)}</div>
+          <div className="text-2xl font-bold text-zinc-100 tabular-nums">{safeFixed(totalHours, 1)}</div>
           <div className="text-xs text-zinc-500 mt-0.5">本週總工時</div>
         </div>
         <div className="h-10 w-px bg-zinc-800" />
@@ -68,7 +69,7 @@ export function TimeSummary({ totalHours, breakdown, taskInvestmentRate }: TimeS
               </div>
               <div className="text-right min-w-[48px]">
                 <span className={cn("text-xs font-semibold tabular-nums", b.hours > 0 ? "text-zinc-200" : "text-zinc-700")}>
-                  {b.hours > 0 ? `${b.hours.toFixed(1)}h` : "—"}
+                  {b.hours > 0 ? `${safeFixed(b.hours, 1)}h` : "—"}
                 </span>
               </div>
               <div className="w-8 text-right">

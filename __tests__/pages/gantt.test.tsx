@@ -80,8 +80,23 @@ describe("Gantt Page", () => {
     expect(document.body).toBeDefined();
   });
 
-  it("handles empty task list", async () => {
+  it("shows empty state guidance when annualPlan is null", async () => {
     mockFetch.mockResolvedValue({ ok: true, json: async () => ({ year: 2024, annualPlan: null }) } as Response);
+    const { default: GanttPage } = await import("@/app/(app)/gantt/page");
+    await act(async () => {
+      render(<GanttPage />);
+    });
+    await waitFor(() => {
+      // 無計畫時應顯示引導訊息
+      expect(screen.getByText(/找不到.*年度計畫/)).toBeInTheDocument();
+      expect(screen.getByText("請先在「年度計畫」頁面建立計畫")).toBeInTheDocument();
+    });
+  });
+
+  it("renders without crash on partial plan data (empty milestones/goals)", async () => {
+    // Defensive: annualPlan with empty arrays (no tasks, no milestones)
+    const partial = { year: 2024, annualPlan: { id: "p1", title: "Plan", year: 2024, milestones: [], monthlyGoals: [] } };
+    mockFetch.mockResolvedValue({ ok: true, json: async () => partial } as Response);
     const { default: GanttPage } = await import("@/app/(app)/gantt/page");
     await act(async () => {
       render(<GanttPage />);

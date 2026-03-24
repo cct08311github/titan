@@ -17,8 +17,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 // ── Mock jose (JWT verification) ────────────────────────────────────────────
 const mockJwtVerify = jest.fn();
+const mockJwtDecrypt = jest.fn();
 jest.mock("jose", () => ({
   jwtVerify: (...args: unknown[]) => mockJwtVerify(...args),
+  jwtDecrypt: (...args: unknown[]) => mockJwtDecrypt(...args),
   createRemoteJWKSet: jest.fn(),
 }));
 
@@ -50,11 +52,15 @@ function makeRequest(
   return new NextRequest(url, { headers });
 }
 
-function bearerToken(token = "valid.jwt.token"): Record<string, string> {
+// JWS token: header must be valid base64url JSON with alg (no enc field)
+// eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9 = {"alg":"HS256","typ":"JWT"}
+const VALID_JWS_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig";
+
+function bearerToken(token = VALID_JWS_TOKEN): Record<string, string> {
   return { authorization: `Bearer ${token}` };
 }
 
-function cookieToken(token = "valid.jwt.token"): Record<string, string> {
+function cookieToken(token = VALID_JWS_TOKEN): Record<string, string> {
   return { cookie: `next-auth.session-token=${token}` };
 }
 
@@ -128,7 +134,7 @@ describe("checkEdgeJwt — Edge JWT verification", () => {
     mockJwtVerify.mockRejectedValue(
       Object.assign(new Error("JWTExpired"), { code: "ERR_JWT_EXPIRED" })
     );
-    const req = makeRequest("http://localhost/api/tasks", bearerToken("expired.jwt.token"));
+    const req = makeRequest("http://localhost/api/tasks", bearerToken(VALID_JWS_TOKEN));
 
     const result = await checkEdgeJwt(req);
 
@@ -140,7 +146,7 @@ describe("checkEdgeJwt — Edge JWT verification", () => {
     mockJwtVerify.mockRejectedValue(
       Object.assign(new Error("JWTExpired"), { code: "ERR_JWT_EXPIRED" })
     );
-    const req = makeRequest("http://localhost/api/tasks", bearerToken("expired.jwt.token"));
+    const req = makeRequest("http://localhost/api/tasks", bearerToken(VALID_JWS_TOKEN));
 
     await checkEdgeJwt(req);
 
@@ -158,7 +164,7 @@ describe("checkEdgeJwt — Edge JWT verification", () => {
         code: "ERR_JWS_SIGNATURE_VERIFICATION_FAILED",
       })
     );
-    const req = makeRequest("http://localhost/api/tasks", bearerToken("tampered.jwt.token"));
+    const req = makeRequest("http://localhost/api/tasks", bearerToken(VALID_JWS_TOKEN));
 
     const result = await checkEdgeJwt(req);
 
@@ -172,7 +178,7 @@ describe("checkEdgeJwt — Edge JWT verification", () => {
         code: "ERR_JWS_SIGNATURE_VERIFICATION_FAILED",
       })
     );
-    const req = makeRequest("http://localhost/api/tasks", bearerToken("tampered.jwt.token"));
+    const req = makeRequest("http://localhost/api/tasks", bearerToken(VALID_JWS_TOKEN));
 
     await checkEdgeJwt(req);
 

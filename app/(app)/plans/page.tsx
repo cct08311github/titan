@@ -5,6 +5,7 @@ import { Plus, Loader2, ChevronRight, X, Target, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PlanTree } from "@/app/components/plan-tree";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
+import { PageEmpty } from "@/app/components/page-states";
 
 type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
@@ -353,6 +354,12 @@ export default function PlansPage() {
         <div className="flex items-center justify-center py-16">
           <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
         </div>
+      ) : plans.length === 0 ? (
+        <PageEmpty
+          icon={<Target className="h-10 w-10" />}
+          title="尚無年度計畫"
+          description="目前沒有任何計畫，請點擊「新增年度計畫」建立"
+        />
       ) : (
         <PlanTree
           plans={plans}
