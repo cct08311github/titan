@@ -155,10 +155,10 @@ test.describe('Empty State — 所有頁面空資料不白屏', () => {
 
     await expect(page.locator('h1').first()).toContainText('報表', { timeout: 15000 });
 
-    // 週報 tab 預設開啟，等待資料載入
+    // 4 個 tab 按鈕存在
     await expect(page.getByRole('button', { name: '週報' })).toBeVisible({ timeout: 10000 });
 
-    // 頁面不白屏：有 h1 和 tab bar
+    // 空資料時顯示引導訊息
     const bodyText = await page.locator('body').innerText();
     expect(bodyText.length).toBeGreaterThan(50);
 
