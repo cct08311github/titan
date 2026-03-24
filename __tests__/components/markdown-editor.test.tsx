@@ -77,13 +77,13 @@ describe("MarkdownEditor", () => {
   it("highlights edit button as active in edit mode", () => {
     render(<MarkdownEditor {...defaultProps} />);
     const editBtn = screen.getByText("編輯").closest("button");
-    expect(editBtn?.className).toContain("bg-zinc-700");
+    expect(editBtn?.className).toContain("bg-accent");
   });
 
   it("highlights preview button as active in preview mode", () => {
     render(<MarkdownEditor {...defaultProps} />);
     fireEvent.click(screen.getByText("預覽"));
     const previewBtn = screen.getByText("預覽").closest("button");
-    expect(previewBtn?.className).toContain("bg-zinc-700");
+    expect(previewBtn?.className).toContain("bg-accent");
   });
 });
