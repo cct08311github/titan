@@ -9,7 +9,7 @@ test.describe('權限控制', () => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 
     const subtitle = page.locator('p', { hasText: '主管視角' });
-    await expect(subtitle).toBeVisible({ timeout: 10000 });
+    await expect(subtitle).toBeVisible();
 
     await context.close();
   });
@@ -21,7 +21,7 @@ test.describe('權限控制', () => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 
     const subtitle = page.locator('p', { hasText: '工程師視角' });
-    await expect(subtitle).toBeVisible({ timeout: 10000 });
+    await expect(subtitle).toBeVisible();
 
     await context.close();
   });

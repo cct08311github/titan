@@ -15,6 +15,10 @@ export function safeFixed(value: unknown, digits = 1, fallback = "0"): string {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value.toFixed(digits);
   }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed.toFixed(digits);
+  }
   return fallback;
 }
 
@@ -43,6 +47,7 @@ export function safeNum(value: unknown, fallback = 0): number {
     return value;
   }
   if (typeof value === "string") {
+    if (value.trim().length === 0) return fallback;
     const parsed = Number(value);
     if (Number.isFinite(parsed)) return parsed;
   }

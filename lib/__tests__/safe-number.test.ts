@@ -35,9 +35,13 @@ describe("safeFixed", () => {
     expect(safeFixed(-Infinity)).toBe("0");
   });
 
-  test("returns fallback for string", () => {
+  test("returns fallback for non-numeric string", () => {
     expect(safeFixed("hello")).toBe("0");
-    expect(safeFixed("123")).toBe("0"); // string, not number
+  });
+
+  test("parses numeric string (consistent with safeNum)", () => {
+    expect(safeFixed("123", 1)).toBe("123.0");
+    expect(safeFixed("3.14", 2)).toBe("3.14");
   });
 
   test("returns fallback for boolean", () => {
@@ -107,6 +111,11 @@ describe("safeNum", () => {
 
   test("uses custom fallback", () => {
     expect(safeNum(null, -1)).toBe(-1);
+  });
+
+  test("returns fallback for whitespace-only strings", () => {
+    expect(safeNum("  ")).toBe(0);
+    expect(safeNum("\t\n")).toBe(0);
   });
 });
 

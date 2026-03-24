@@ -104,7 +104,7 @@ describe("Plans Page", () => {
     });
   });
 
-  it("handles empty plans list without crashing", async () => {
+  it("shows empty state guidance when plans list is empty", async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => [],
@@ -114,8 +114,12 @@ describe("Plans Page", () => {
       render(<PlansPage />);
     });
     await waitFor(() => {
-      expect(screen.getByTestId("plan-tree")).toBeInTheDocument();
+      // 空資料時應顯示引導訊息，而非白屏或 PlanTree
+      expect(screen.getByText("尚無年度計畫")).toBeInTheDocument();
+      expect(screen.getByText("目前沒有任何計畫，請點擊「新增年度計畫」建立")).toBeInTheDocument();
     });
+    // 空資料時不應渲染 PlanTree
+    expect(screen.queryByTestId("plan-tree")).not.toBeInTheDocument();
   });
 
   it("handles fetch failure without crashing", async () => {

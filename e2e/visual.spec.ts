@@ -68,4 +68,79 @@ test.describe('Visual Regression', () => {
 
     await context.close();
   });
+
+  test('Gantt visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/gantt');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await expect(page).toHaveScreenshot('gantt.png', {
+      maxDiffPixelRatio: 0.02,
+    });
+
+    await context.close();
+  });
+
+  test('Knowledge visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/knowledge');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await expect(page).toHaveScreenshot('knowledge.png', {
+      maxDiffPixelRatio: 0.02,
+    });
+
+    await context.close();
+  });
+
+  test('Plans visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/plans');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await expect(page).toHaveScreenshot('plans.png', {
+      maxDiffPixelRatio: 0.02,
+    });
+
+    await context.close();
+  });
+
+  test('Reports visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/reports');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await expect(page).toHaveScreenshot('reports.png', {
+      maxDiffPixelRatio: 0.02,
+    });
+
+    await context.close();
+  });
+
+  test('Timesheet visual regression', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/timesheet');
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await expect(page).toHaveScreenshot('timesheet.png', {
+      maxDiffPixelRatio: 0.02,
+    });
+
+    await context.close();
+  });
 });

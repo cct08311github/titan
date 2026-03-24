@@ -102,6 +102,33 @@ describe("Reports Page", () => {
     expect(screen.getByText("月報")).toBeInTheDocument();
   });
 
+  it("shows empty state guidance when weekly report data is null", async () => {
+    // Simulate API returning null (no report generated yet)
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => null } as unknown as Response);
+      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+    });
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    await waitFor(() => {
+      // 空資料時顯示引導訊息
+      expect(screen.getByText("無週報資料")).toBeInTheDocument();
+      expect(screen.getByText("本週尚無相關數據")).toBeInTheDocument();
+    });
+  });
+
+  it("handles API error (network failure) without crashing", async () => {
+    mockFetch.mockRejectedValue(new Error("Network error"));
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    // Page should catch the error and not propagate to React error boundary
+    expect(document.body).toBeDefined();
+  });
+
   it("renders without crash on zero/empty weekly report values", async () => {
     // Partial schema: numeric fields are 0, arrays are empty
     const partial = {

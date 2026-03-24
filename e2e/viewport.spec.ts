@@ -5,6 +5,7 @@ const VIEWPORTS = [
   { name: '1920x1080 (Full HD)', width: 1920, height: 1080 },
   { name: '1280x720 (HD)',       width: 1280, height: 720 },
   { name: '1024x768 (XGA)',      width: 1024, height: 768 },
+  { name: '1024x576 (投影機)',   width: 1024, height: 576 },
 ];
 
 test.describe('Viewport 測試', () => {
@@ -19,7 +20,7 @@ test.describe('Viewport 測試', () => {
       await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
 
       // Page should have visible h1
-      await expect(page.locator('h1').first()).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('h1').first()).toBeVisible();
       await expect(page.locator('h1').first()).toContainText('儀表板');
 
       // Body should have a reasonable bounding box

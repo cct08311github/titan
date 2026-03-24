@@ -7,6 +7,7 @@ export default defineConfig({
   // Limit workers to avoid rate limiter triggering on concurrent logins
   workers: 3,
   globalSetup: './e2e/global-setup.ts',
+  expect: { timeout: 10000 },
   use: {
     baseURL: 'http://localhost:3100',
     screenshot: 'only-on-failure',

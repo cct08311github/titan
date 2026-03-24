@@ -89,4 +89,64 @@ test.describe('Accessibility 測試', () => {
 
     await context.close();
   });
+
+  test('Gantt 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/gantt', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Gantt');
+
+    await context.close();
+  });
+
+  test('Knowledge 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/knowledge', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Knowledge');
+
+    await context.close();
+  });
+
+  test('Plans 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/plans', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Plans');
+
+    await context.close();
+  });
+
+  test('Reports 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/reports', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Reports');
+
+    await context.close();
+  });
+
+  test('Timesheet 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Timesheet');
+
+    await context.close();
+  });
 });
