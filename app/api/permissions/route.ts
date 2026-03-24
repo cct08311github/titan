@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, ForbiddenError, ValidationError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
+import { ValidationError } from "@/services/errors";
+import { withManager } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 import { PermissionService } from "@/services/permission-service";
 import { prisma } from "@/lib/prisma";
@@ -9,11 +9,7 @@ import { prisma } from "@/lib/prisma";
 const permissionService = new PermissionService(prisma);
 
 /** GET /api/permissions — list all permissions (MANAGER only) */
-export const GET = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-  if (session.user.role !== "MANAGER") throw new ForbiddenError();
-
+export const GET = withManager(async (req: NextRequest) => {
   const url = new URL(req.url);
   const granteeId = url.searchParams.get("granteeId") ?? undefined;
   const permType = url.searchParams.get("permType") ?? undefined;
@@ -31,10 +27,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
 });
 
 /** POST /api/permissions — grant a permission (MANAGER only) */
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-  if (session.user.role !== "MANAGER") throw new ForbiddenError();
+export const POST = withManager(async (req: NextRequest) => {
+  const session = await requireAuth();
 
   const body = await req.json();
   const { granteeId, permType, targetId, expiresAt } = body;
@@ -55,11 +49,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
 });
 
 /** DELETE /api/permissions — revoke a permission (MANAGER only) */
-export const DELETE = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-  if (session.user.role !== "MANAGER") throw new ForbiddenError();
-
+export const DELETE = withManager(async (req: NextRequest) => {
   const body = await req.json();
   const { granteeId, permType, targetId } = body;
 

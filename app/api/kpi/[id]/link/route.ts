@@ -1,17 +1,13 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, ForbiddenError, ValidationError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
+import { ValidationError } from "@/services/errors";
+import { withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
-export const POST = apiHandler(async (
+export const POST = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-  if (session.user.role !== "MANAGER") throw new ForbiddenError();
 
   const { id } = await context.params;
   const body = await req.json();

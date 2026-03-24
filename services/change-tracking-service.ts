@@ -54,19 +54,24 @@ export class ChangeTrackingService {
     if (!oldDueDate || !newDueDate) return null;
     if (newDueDate.getTime() <= oldDueDate.getTime()) return null;
 
-    return this.prisma.taskChange.create({
-      data: {
-        taskId,
-        changeType: "DELAY",
-        reason: reason ?? "Due date extended",
-        oldValue: oldDueDate.toISOString(),
-        newValue: newDueDate.toISOString(),
-        changedBy,
+    return this.prisma.$transaction(
+      async (tx) => {
+        return tx.taskChange.create({
+          data: {
+            taskId,
+            changeType: "DELAY",
+            reason: reason ?? "Due date extended",
+            oldValue: oldDueDate.toISOString(),
+            newValue: newDueDate.toISOString(),
+            changedBy,
+          },
+          include: {
+            changedByUser: { select: { id: true, name: true } },
+          },
+        });
       },
-      include: {
-        changedByUser: { select: { id: true, name: true } },
-      },
-    });
+      { timeout: 10000 }
+    );
   }
 
   /**
@@ -85,19 +90,83 @@ export class ChangeTrackingService {
     const oldValue = titleChanged ? oldTitle : (oldDescription ?? "");
     const newValue = titleChanged ? newTitle : (newDescription ?? "");
 
-    return this.prisma.taskChange.create({
-      data: {
-        taskId,
-        changeType: "SCOPE_CHANGE",
-        reason: reason ?? "Scope changed",
-        oldValue,
-        newValue,
-        changedBy,
+    return this.prisma.$transaction(
+      async (tx) => {
+        return tx.taskChange.create({
+          data: {
+            taskId,
+            changeType: "SCOPE_CHANGE",
+            reason: reason ?? "Scope changed",
+            oldValue,
+            newValue,
+            changedBy,
+          },
+          include: {
+            changedByUser: { select: { id: true, name: true } },
+          },
+        });
       },
-      include: {
-        changedByUser: { select: { id: true, name: true } },
+      { timeout: 10000 }
+    );
+  }
+
+  /**
+   * Atomically detects and records both delay and scope-change within one transaction.
+   * Use this when updating a task to ensure all change records are written together.
+   */
+  async detectAndRecordAll(
+    delayInput: DetectDelayInput | null,
+    scopeInput: DetectScopeChangeInput | null
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const results: unknown[] = [];
+
+        if (delayInput) {
+          const { taskId, oldDueDate, newDueDate, changedBy, reason } = delayInput;
+          if (oldDueDate && newDueDate && newDueDate.getTime() > oldDueDate.getTime()) {
+            const record = await tx.taskChange.create({
+              data: {
+                taskId,
+                changeType: "DELAY",
+                reason: reason ?? "Due date extended",
+                oldValue: oldDueDate.toISOString(),
+                newValue: newDueDate.toISOString(),
+                changedBy,
+              },
+              include: { changedByUser: { select: { id: true, name: true } } },
+            });
+            results.push(record);
+          }
+        }
+
+        if (scopeInput) {
+          const { taskId, oldTitle, newTitle, oldDescription, newDescription, changedBy, reason } = scopeInput;
+          const titleChanged = isTitleSignificantlyChanged(oldTitle ?? "", newTitle ?? "");
+          const descriptionChanged = (oldDescription ?? "") !== (newDescription ?? "");
+
+          if (titleChanged || descriptionChanged) {
+            const oldValue = titleChanged ? oldTitle : (oldDescription ?? "");
+            const newValue = titleChanged ? newTitle : (newDescription ?? "");
+            const record = await tx.taskChange.create({
+              data: {
+                taskId,
+                changeType: "SCOPE_CHANGE",
+                reason: reason ?? "Scope changed",
+                oldValue,
+                newValue,
+                changedBy,
+              },
+              include: { changedByUser: { select: { id: true, name: true } } },
+            });
+            results.push(record);
+          }
+        }
+
+        return results;
       },
-    });
+      { timeout: 10000 }
+    );
   }
 
   /**

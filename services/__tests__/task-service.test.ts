@@ -9,6 +9,9 @@ describe("TaskService", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new TaskService(prisma as never);
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
   });
 
   describe("listTasks", () => {

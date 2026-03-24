@@ -1,13 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, ValidationError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
+import { ValidationError } from "@/services/errors";
+import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+export const POST = withAuth(async (req: NextRequest) => {
 
   const body = await req.json();
   const { taskId, title, assigneeId, dueDate, order } = body;

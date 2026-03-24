@@ -1,16 +1,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { createGoalSchema } from "@/validators/plan-validators";
-import { apiHandler } from "@/lib/api-handler";
+import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
-export const GET = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session) throw new UnauthorizedError();
-
+export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const planId = searchParams.get("planId");
   const month = searchParams.get("month");
@@ -31,10 +26,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
   return success(goals);
 });
 
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
+export const POST = withAuth(async (req: NextRequest) => {
   const raw = await req.json();
   const { annualPlanId, month, title, description } = validateBody(createGoalSchema, raw);
 

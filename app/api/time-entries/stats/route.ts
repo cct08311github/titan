@@ -1,15 +1,14 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { ForbiddenError, UnauthorizedError } from "@/services/errors";
-import { apiHandler } from "@/lib/api-handler";
+import { ForbiddenError } from "@/services/errors";
+import { withAuth } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 
 const READ_ALL_ROLES = new Set(["MANAGER", "ADMIN"]);
 
-export const GET = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+export const GET = withAuth(async (req: NextRequest) => {
+  const session = await requireAuth();
 
   const callerId = session.user.id;
   const callerRole = session.user.role ?? "ENGINEER";

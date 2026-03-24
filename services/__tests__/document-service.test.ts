@@ -9,6 +9,9 @@ describe("DocumentService", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new DocumentService(prisma as never);
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
   });
 
   test("listDocuments returns documents", async () => {

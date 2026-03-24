@@ -17,6 +17,9 @@ describe("ChangeTrackingService", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new ChangeTrackingService(prisma as never);
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
   });
 
   describe("detectDelay", () => {

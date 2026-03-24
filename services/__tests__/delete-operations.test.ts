@@ -14,6 +14,9 @@ describe("KPIService.deleteKPI", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new KPIService(prisma as never);
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
   });
 
   test("deletes KPI and its task links", async () => {
@@ -88,6 +91,9 @@ describe("GoalService.deleteGoal", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new GoalService(prisma as never);
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)
+    );
   });
 
   test("deletes goal and reassigns orphan tasks", async () => {

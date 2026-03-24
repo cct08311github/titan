@@ -1,20 +1,16 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, NotFoundError } from "@/services/errors";
+import { NotFoundError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateDocumentSchema } from "@/validators/document-validators";
-import { apiHandler } from "@/lib/api-handler";
+import { withAuth, withManager } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
-import { withManager } from "@/lib/auth-middleware";
 
-export const GET = apiHandler(async (
+export const GET = withAuth(async (
   _req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session) throw new UnauthorizedError();
-
   const { id } = await context.params;
   const doc = await prisma.document.findUnique({
     where: { id },
@@ -32,12 +28,11 @@ export const GET = apiHandler(async (
   return success(doc);
 });
 
-export const PUT = apiHandler(async (
+export const PUT = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+  const session = await requireAuth();
 
   const { id } = await context.params;
   const raw = await req.json();
