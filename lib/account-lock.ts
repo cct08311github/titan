@@ -1,14 +1,13 @@
 /**
- * Account lockout service — Issue #128
+ * Account lockout service — Issue #128, Redis migration Issue #178
  *
  * Tracks per-account login failure counts and enforces lockout after N
- * consecutive failures.  Uses an in-memory store by default (suitable for
- * tests and single-instance deployments) with a TTL-based expiry.
- *
- * In production, swap the in-memory store for Redis via the constructor opts.
+ * consecutive failures. Supports Redis backend (production) with
+ * in-memory fallback (tests/single-instance).
  */
 
 import { logger } from "@/lib/logger";
+import type Redis from "ioredis";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -17,6 +16,8 @@ export interface AccountLockOptions {
   maxFailures?: number;
   /** How long (seconds) the lock lasts. Default: 900 (15 min) */
   lockDurationSeconds?: number;
+  /** Redis client instance. If null, uses in-memory store. */
+  redisClient?: Redis | null;
 }
 
 interface LockRecord {
@@ -26,40 +27,73 @@ interface LockRecord {
 
 // ── AccountLockService ────────────────────────────────────────────────────
 
-/**
- * Tracks login failures and locks accounts after exceeding the threshold.
- *
- * Key: any string identifier (userId, username, or IP+username).
- */
 export class AccountLockService {
   private readonly maxFailures: number;
   private readonly lockDurationMs: number;
-  /** In-memory store: key → LockRecord */
-  private readonly store = new Map<string, LockRecord>();
+  private readonly redis: Redis | null;
+  /** In-memory fallback store */
+  private readonly memStore = new Map<string, LockRecord>();
+  private static readonly KEY_PREFIX = "acctlock:";
 
   constructor(opts: AccountLockOptions = {}) {
     this.maxFailures = opts.maxFailures ?? 10;
     this.lockDurationMs = (opts.lockDurationSeconds ?? 900) * 1000;
+    this.redis = opts.redisClient ?? null;
   }
 
   // ── Private helpers ──────────────────────────────────────────────────
 
-  private getRecord(id: string): LockRecord {
-    return this.store.get(id) ?? { failures: 0, lockedUntil: null };
+  private redisKey(id: string): string {
+    return `${AccountLockService.KEY_PREFIX}${id}`;
   }
 
-  private setRecord(id: string, record: LockRecord): void {
-    this.store.set(id, record);
+  private async getRecord(id: string): Promise<LockRecord> {
+    if (this.redis) {
+      try {
+        const raw = await this.redis.get(this.redisKey(id));
+        if (raw) return JSON.parse(raw);
+      } catch (err) {
+        logger.error({ err, id }, "[account-lock] Redis read failed, using memory fallback");
+      }
+    }
+    return this.memStore.get(id) ?? { failures: 0, lockedUntil: null };
+  }
+
+  private async setRecord(id: string, record: LockRecord): Promise<void> {
+    if (this.redis) {
+      try {
+        // TTL = lock duration * 2 to ensure cleanup
+        const ttlSeconds = Math.ceil((this.lockDurationMs * 2) / 1000);
+        await this.redis.set(
+          this.redisKey(id),
+          JSON.stringify(record),
+          "EX",
+          ttlSeconds
+        );
+        return;
+      } catch (err) {
+        logger.error({ err, id }, "[account-lock] Redis write failed, using memory fallback");
+      }
+    }
+    this.memStore.set(id, record);
+  }
+
+  private async deleteRecord(id: string): Promise<void> {
+    if (this.redis) {
+      try {
+        await this.redis.del(this.redisKey(id));
+        return;
+      } catch (err) {
+        logger.error({ err, id }, "[account-lock] Redis delete failed");
+      }
+    }
+    this.memStore.delete(id);
   }
 
   // ── Public API ───────────────────────────────────────────────────────
 
-  /**
-   * Record one failed login attempt for the given account id.
-   * Locks the account when the failure count reaches maxFailures.
-   */
   async recordFailure(id: string): Promise<void> {
-    const rec = this.getRecord(id);
+    const rec = await this.getRecord(id);
     rec.failures += 1;
 
     if (rec.failures >= this.maxFailures) {
@@ -70,47 +104,32 @@ export class AccountLockService {
       );
     }
 
-    this.setRecord(id, rec);
+    await this.setRecord(id, rec);
   }
 
-  /**
-   * Returns true if the account is currently locked.
-   * Automatically clears an expired lock.
-   */
   async isLocked(id: string): Promise<boolean> {
-    const rec = this.getRecord(id);
+    const rec = await this.getRecord(id);
     if (rec.lockedUntil === null) return false;
 
     if (Date.now() >= rec.lockedUntil) {
       // Lock has expired — auto-clear
-      rec.lockedUntil = null;
-      rec.failures = 0;
-      this.setRecord(id, rec);
+      await this.deleteRecord(id);
       return false;
     }
 
     return true;
   }
 
-  /** Returns current failure count (0 if no record). */
   async getFailureCount(id: string): Promise<number> {
-    return this.getRecord(id).failures;
+    return (await this.getRecord(id)).failures;
   }
 
-  /**
-   * Clears the failure count and removes any lock.
-   * Call this on successful login.
-   */
   async resetFailures(id: string): Promise<void> {
-    this.store.delete(id);
+    await this.deleteRecord(id);
   }
 
-  /**
-   * Returns how many seconds remain on the current lock.
-   * Returns 0 if the account is not locked.
-   */
   async getRemainingLockSeconds(id: string): Promise<number> {
-    const rec = this.getRecord(id);
+    const rec = await this.getRecord(id);
     if (rec.lockedUntil === null) return 0;
 
     const remaining = rec.lockedUntil - Date.now();

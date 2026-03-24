@@ -139,6 +139,8 @@ export class UserService {
     if (input.isActive !== undefined) updates.isActive = input.isActive;
     if (input.password !== undefined) {
       updates.password = await hash(input.password, 10);
+      updates.passwordChangedAt = new Date();
+      updates.mustChangePassword = false;
     }
 
     const updated = await this.prisma.user.update({
