@@ -124,6 +124,15 @@ zug (Claude Opus) 建 Issue → cct (OpenClaw) 開 branch 開發 → 提 PR → 
 - 必填密碼以 `:?` 語法強制（`${POSTGRES_PASSWORD:?...}`）
 - Healthcheck 定義在每個服務上
 
+## Application Features (P2 完成)
+
+- **Request Correlation ID** (`middleware.ts`): 每個 request 注入 `x-request-id`，支援跨層追蹤
+- **Error Boundary** (`app/global-error.tsx`, `app/(app)/error.tsx`): 前端錯誤自動回報到 AuditLog via `/api/error-report`
+- **Command Palette** (`app/components/command-palette.tsx`): `Ctrl+K` 搜尋導航 + `G`+字母快捷鍵
+- **Password History** (`PasswordHistory` model): 禁止重複使用最近 5 組密碼
+- **Prometheus Metrics** (`/api/metrics`): 應用層 request/error/duration 指標，Prometheus scrape config 已加入
+- **Projector Viewport**: sidebar 在 ≤1024px 自動收合，dashboard grid 使用 `md:` breakpoint
+
 ## Environment Variables
 
 `.env` 由 `.env.example` 複製產生。關鍵 secrets 使用 `openssl rand -hex 32` 產生。必填欄位標記為 `:?`（啟動時未設定會報錯）。
