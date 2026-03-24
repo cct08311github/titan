@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validate";
 import { updateGoalSchema } from "@/validators/plan-validators";
 import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { withManager } from "@/lib/auth-middleware";
 
 export const GET = apiHandler(async (
   req: NextRequest,
@@ -62,4 +63,20 @@ export const PUT = apiHandler(async (
   });
 
   return success(goal);
+});
+
+export const DELETE = withManager(async (
+  _req: NextRequest,
+  context?: { params: Promise<Record<string, string>> }
+) => {
+  const { id } = await context!.params;
+  const existing = await prisma.monthlyGoal.findUnique({ where: { id } });
+  if (!existing) throw new NotFoundError("目標不存在");
+
+  await prisma.task.updateMany({
+    where: { monthlyGoalId: id },
+    data: { monthlyGoalId: null },
+  });
+  await prisma.monthlyGoal.delete({ where: { id } });
+  return success({ deleted: true });
 });

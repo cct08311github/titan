@@ -129,6 +129,14 @@ export class KPIService {
     });
   }
 
+  async deleteKPI(id: string) {
+    const existing = await this.prisma.kPI.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError(`KPI not found: ${id}`);
+
+    await this.prisma.kPITaskLink.deleteMany({ where: { kpiId: id } });
+    return this.prisma.kPI.delete({ where: { id } });
+  }
+
   async calculateAchievement(kpiId: string) {
     const kpi = await this.prisma.kPI.findUnique({
       where: { id: kpiId },
