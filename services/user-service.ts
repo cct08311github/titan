@@ -156,26 +156,34 @@ export class UserService {
       },
     });
 
-    // Emit audit log for role change
-    if (input.role !== undefined && input.role !== existing.role) {
-      await this.auditor.log({
-        userId: input.updatedBy ?? null,
-        action: "ROLE_CHANGE",
-        resourceType: "User",
-        resourceId: id,
-        detail: JSON.stringify({ from: existing.role, to: input.role }),
-        ipAddress: input.ipAddress ?? null,
-      });
-    }
+    // Issue #191: record before/after diff for all changes (ISO 27001 A.12.4.1)
+    const changes: Record<string, { from: unknown; to: unknown }> = {};
+    if (input.name !== undefined && input.name !== existing.name)
+      changes.name = { from: existing.name, to: input.name };
+    if (input.email !== undefined && input.email !== existing.email)
+      changes.email = { from: existing.email, to: input.email };
+    if (input.role !== undefined && input.role !== existing.role)
+      changes.role = { from: existing.role, to: input.role };
+    if (input.isActive !== undefined && input.isActive !== existing.isActive)
+      changes.isActive = { from: existing.isActive, to: input.isActive };
+    if (input.password !== undefined)
+      changes.password = { from: "[redacted]", to: "[changed]" };
+    if (input.avatar !== undefined && input.avatar !== existing.avatar)
+      changes.avatar = { from: existing.avatar ? "[had avatar]" : null, to: input.avatar ? "[new avatar]" : null };
 
-    // Emit audit log for password change
-    if (input.password !== undefined) {
+    if (Object.keys(changes).length > 0) {
+      const action = input.role !== undefined && input.role !== existing.role
+        ? "ROLE_CHANGE"
+        : input.password !== undefined
+        ? "PASSWORD_CHANGE"
+        : "USER_UPDATE";
+
       await this.auditor.log({
         userId: input.updatedBy ?? null,
-        action: "PASSWORD_CHANGE",
+        action,
         resourceType: "User",
         resourceId: id,
-        detail: "Password changed",
+        detail: JSON.stringify({ changes }),
         ipAddress: input.ipAddress ?? null,
       });
     }
