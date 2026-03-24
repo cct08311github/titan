@@ -191,6 +191,7 @@ export default function TimesheetPage() {
         <div className="flex items-center gap-3">
           {/* User filter */}
           <select
+            aria-label="篩選使用者"
             value={userFilter}
             onChange={(e) => setUserFilter(e.target.value)}
             className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"

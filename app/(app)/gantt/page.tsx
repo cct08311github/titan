@@ -220,6 +220,7 @@ export default function GanttPage() {
         <div className="flex items-center gap-3">
           {/* Assignee filter */}
           <select
+            aria-label="篩選負責人"
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value)}
             className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"

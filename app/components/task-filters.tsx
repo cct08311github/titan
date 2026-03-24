@@ -61,6 +61,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
 
       {/* Assignee */}
       <select
+        aria-label="篩選負責人"
         value={filters.assignee}
         onChange={(e) => onChange({ ...filters, assignee: e.target.value })}
         className={selectCls}
@@ -75,6 +76,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
 
       {/* Priority */}
       <select
+        aria-label="篩選優先度"
         value={filters.priority}
         onChange={(e) => onChange({ ...filters, priority: e.target.value })}
         className={selectCls}
@@ -88,6 +90,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
 
       {/* Category */}
       <select
+        aria-label="篩選分類"
         value={filters.category}
         onChange={(e) => onChange({ ...filters, category: e.target.value })}
         className={selectCls}

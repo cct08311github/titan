@@ -270,6 +270,7 @@ export default function PlansPage() {
           <p className="text-xs text-muted-foreground">選擇來源計畫，系統將複製其架構（月度目標與里程碑）到新年度。</p>
           <div className="flex gap-3 flex-wrap">
             <select
+              aria-label="來源計畫"
               value={copySourcePlanId}
               onChange={(e) => setCopySourcePlanId(e.target.value)}
               className={cn(selectCls, "flex-1 min-w-48")}
@@ -311,6 +312,7 @@ export default function PlansPage() {
           </div>
           <div className="flex gap-3 flex-wrap">
             <select
+              aria-label="年度計畫"
               value={newGoalPlanId}
               onChange={(e) => setNewGoalPlanId(e.target.value)}
               className={cn(selectCls, "flex-1 min-w-40")}
@@ -321,6 +323,7 @@ export default function PlansPage() {
               ))}
             </select>
             <select
+              aria-label="目標月份"
               value={newGoalMonth}
               onChange={(e) => setNewGoalMonth(e.target.value)}
               className={cn(selectCls, "w-24")}
