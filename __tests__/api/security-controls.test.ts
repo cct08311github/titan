@@ -45,6 +45,7 @@ import {
   withSessionTimeout,
   withJwtBlacklist,
   setApiRateLimiter,
+  sessionLastActivity,
 } from "@/lib/security-middleware";
 import { JwtBlacklist } from "@/lib/jwt-blacklist";
 import { UserService } from "@/services/user-service";
@@ -88,6 +89,7 @@ function errorHandler(): ReturnType<typeof withRateLimit> {
 beforeEach(() => {
   jest.clearAllMocks();
   JwtBlacklist.clear();
+  sessionLastActivity.clear(); // reset server-side session tracking between tests
   setApiRateLimiter(null); // reset singleton between tests
 });
 
@@ -189,42 +191,68 @@ describe("withAuditLog", () => {
 });
 
 // ── 3. withSessionTimeout ────────────────────────────────────────────────────
+//
+// Updated for Issue #165: server-side Map tracking replaces client header trust.
 
 describe("withSessionTimeout", () => {
-  test("allows request when session last-activity is within 30 minutes", async () => {
-    const recentActivity = Date.now() - 5 * 60 * 1000; // 5 minutes ago
+  test("allows request when server-side last-activity is within 30 minutes", async () => {
+    const userId = "user-active-sc";
+    mockGetServerSession.mockResolvedValue({ user: { id: userId } });
+
+    // Pre-record activity 5 minutes ago
+    sessionLastActivity.set(userId, Date.now() - 5 * 60 * 1000);
 
     const wrapped = withSessionTimeout(okHandler());
-    const res = await wrapped(
-      makeReq("GET", "/api/tasks", {
-        "x-session-last-activity": String(recentActivity),
-      })
-    );
+    const res = await wrapped(makeReq("GET", "/api/tasks", { "x-user-id": userId }));
 
     expect(res.status).toBe(200);
   });
 
-  test("rejects with 401 when session has been idle for more than 30 minutes", async () => {
-    const staleActivity = Date.now() - 31 * 60 * 1000; // 31 minutes ago
+  test("rejects with 401 when server-side last-activity exceeds 30 minutes", async () => {
+    const userId = "user-stale-sc";
+    mockGetServerSession.mockResolvedValue({ user: { id: userId } });
+
+    // Pre-record stale activity 31 minutes ago
+    sessionLastActivity.set(userId, Date.now() - 31 * 60 * 1000);
 
     const wrapped = withSessionTimeout(okHandler());
-    const res = await wrapped(
-      makeReq("GET", "/api/tasks", {
-        "x-session-last-activity": String(staleActivity),
-      })
-    );
+    const res = await wrapped(makeReq("GET", "/api/tasks", { "x-user-id": userId }));
 
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.error).toMatch(/UnauthorizedError/);
   });
 
-  test("allows request when no X-Session-Last-Activity header is present", async () => {
-    // When no header is present the middleware defers to the inner handler
+  test("ignores X-Session-Last-Activity header — client cannot bypass timeout", async () => {
+    const userId = "user-bypass-sc";
+    mockGetServerSession.mockResolvedValue({ user: { id: userId } });
+
+    // Server records stale activity
+    sessionLastActivity.set(userId, Date.now() - 31 * 60 * 1000);
+
+    // Client sends a fresh fake timestamp in the header — must be ignored
     const wrapped = withSessionTimeout(okHandler());
-    const res = await wrapped(makeReq("GET", "/api/tasks"));
+    const res = await wrapped(
+      makeReq("GET", "/api/tasks", {
+        "x-user-id": userId,
+        "x-session-last-activity": String(Date.now()), // fake fresh timestamp
+      })
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  test("allows request when no server-side activity recorded yet (first request)", async () => {
+    const userId = "user-new-sc";
+    mockGetServerSession.mockResolvedValue({ user: { id: userId } });
+
+    // No entry in the Map — first request for this user
+    const wrapped = withSessionTimeout(okHandler());
+    const res = await wrapped(makeReq("GET", "/api/tasks", { "x-user-id": userId }));
 
     expect(res.status).toBe(200);
+    // Activity must now be recorded
+    expect(sessionLastActivity.has(userId)).toBe(true);
   });
 });
 

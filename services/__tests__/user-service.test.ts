@@ -1,6 +1,7 @@
 import { UserService } from "../user-service";
 import { createMockPrisma } from "../../lib/test-utils";
 import { NotFoundError, ValidationError } from "../errors";
+import { JwtBlacklist } from "../../lib/jwt-blacklist";
 
 describe("UserService", () => {
   let service: UserService;
@@ -25,6 +26,25 @@ describe("UserService", () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
 
     await expect(service.getUser("nonexistent")).rejects.toThrow(NotFoundError);
+  });
+
+  test("unsuspendUser removes user from JWT blacklist", async () => {
+    const mockUser = { id: "u1", name: "Alice", email: "alice@example.com", role: "ENGINEER", isActive: false };
+    const updatedUser = { ...mockUser, isActive: true };
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+    (prisma.user.update as jest.Mock).mockResolvedValue(updatedUser);
+
+    // Pre-populate the blacklist as suspendUser would do
+    JwtBlacklist.add("user:u1");
+    expect(JwtBlacklist.has("user:u1")).toBe(true);
+
+    await service.unsuspendUser("u1");
+
+    // After unsuspend, the blacklist entry must be removed
+    expect(JwtBlacklist.has("user:u1")).toBe(false);
+
+    // Cleanup
+    JwtBlacklist.clear();
   });
 
   test("updateUser validates email uniqueness", async () => {
