@@ -1,0 +1,116 @@
+groups:
+  - name: titan-host-alerts
+    rules:
+      - alert: HostHighCPUUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+        for: 10m
+        labels:
+          severity: warning
+          scope: host
+        annotations:
+          summary: "主機 CPU 使用率過高"
+          description: "{{ $labels.instance }} CPU 使用率已超過 85% 並持續 10 分鐘。"
+
+      - alert: HostHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          scope: host
+        annotations:
+          summary: "主機記憶體使用率過高"
+          description: "{{ $labels.instance }} RAM 使用率已超過 85% 並持續 10 分鐘。"
+
+      - alert: HostDiskUsageHigh
+        expr: (1 - (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"})) * 100 > 80
+        for: 15m
+        labels:
+          severity: warning
+          scope: host
+        annotations:
+          summary: "磁碟使用率過高"
+          description: "{{ $labels.instance }} 掛載點 {{ $labels.mountpoint }} 使用率已超過 80%。"
+
+      - alert: HostDiskWillFillSoon
+        expr: predict_linear(node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}[6h], 24 * 3600) < 0
+        for: 30m
+        labels:
+          severity: critical
+          scope: host
+        annotations:
+          summary: "磁碟空間即將耗盡"
+          description: "{{ $labels.instance }} 掛載點 {{ $labels.mountpoint }} 依目前趨勢，24 小時內將滿載。"
+
+  - name: titan-service-alerts
+    rules:
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 3m
+        labels:
+          severity: critical
+          scope: service
+        annotations:
+          summary: "監控目標不可達"
+          description: "Job={{ $labels.job }} instance={{ $labels.instance }} 已離線超過 3 分鐘。"
+
+      - alert: OutlineHealthcheckFailed
+        expr: up{job="outline"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          scope: application
+        annotations:
+          summary: "Outline 健康檢查失敗"
+          description: "Outline 服務無法回應 HTTP 檢查。"
+
+      - alert: MinioHealthcheckFailed
+        expr: up{job="minio"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          scope: storage
+        annotations:
+          summary: "MinIO 健康檢查失敗"
+          description: "MinIO 服務無法回應監控檢查。"
+
+      - alert: PostgreSQLTooManyConnections
+        expr: sum(pg_stat_activity_count) by (instance) > 80
+        for: 10m
+        labels:
+          severity: warning
+          scope: database
+        annotations:
+          summary: "PostgreSQL 連線數偏高"
+          description: "{{ $labels.instance }} PostgreSQL 連線數已超過 80。"
+
+      - alert: RedisMemoryUsageHigh
+        expr: redis_memory_used_bytes / redis_total_system_memory_bytes * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          scope: cache
+        annotations:
+          summary: "Redis 記憶體使用率過高"
+          description: "Redis 記憶體使用率已超過 80%。"
+
+  - name: titan-container-alerts
+    rules:
+      - alert: ContainerHighCPUUsage
+        expr: sum by (name) (rate(container_cpu_usage_seconds_total{name!=""}[5m])) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          scope: container
+        annotations:
+          summary: "容器 CPU 使用率偏高"
+          description: "容器 {{ $labels.name }} CPU 使用率已超過 80%。"
+
+      - alert: ContainerHighMemoryUsage
+        expr: (container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!="", container_spec_memory_limit_bytes>0}) * 100 > 85
+        for: 10m
+        labels:
+          severity: warning
+          scope: container
+        annotations:
+          summary: "容器記憶體使用率偏高"
+          description: "容器 {{ $labels.name }} 記憶體使用率已超過 85%。"
