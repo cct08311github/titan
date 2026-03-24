@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
@@ -38,6 +38,15 @@ const navGroups = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Auto-collapse on projector/small viewports (≤1024px) — Issue #197
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1024px)");
+    setCollapsed(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setCollapsed(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   return (
     <aside
