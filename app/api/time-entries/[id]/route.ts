@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { TimeCategory } from "@prisma/client";
+import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { updateTimeEntrySchema } from "@/validators/time-entry-validators";
 
 export async function PUT(
   req: NextRequest,
@@ -13,13 +16,16 @@ export async function PUT(
       return NextResponse.json({ error: "未授權" }, { status: 401 });
     }
     const { id } = await params;
-    const body = await req.json();
-    const { taskId, date, hours, category, description } = body;
+    const raw = await req.json();
+    const { taskId, date, hours, category, description } = validateBody(
+      updateTimeEntrySchema,
+      raw
+    );
 
     const updates: Record<string, unknown> = {};
     if (taskId !== undefined) updates.taskId = taskId || null;
     if (date !== undefined) updates.date = new Date(date);
-    if (hours !== undefined) updates.hours = parseFloat(hours);
+    if (hours !== undefined) updates.hours = hours;
     if (category !== undefined) updates.category = category as TimeCategory;
     if (description !== undefined) updates.description = description || null;
 
@@ -33,6 +39,9 @@ export async function PUT(
 
     return NextResponse.json(entry);
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("PUT /api/time-entries/[id] error:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
   }

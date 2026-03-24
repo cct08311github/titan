@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
+import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { createDocumentSchema } from "@/validators/document-validators";
 
 export async function GET() {
   try {
@@ -9,7 +12,6 @@ export async function GET() {
       return NextResponse.json({ error: "未授權" }, { status: 401 });
     }
 
-    // Return full tree — roots first, then children resolved client-side
     const docs = await prisma.document.findMany({
       select: {
         id: true,
@@ -40,14 +42,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "未授權" }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { parentId, title, content } = body;
+    const raw = await req.json();
+    const { title, content, parentId } = validateBody(createDocumentSchema, raw);
 
-    if (!title) {
-      return NextResponse.json({ error: "標題為必填" }, { status: 400 });
-    }
-
-    // Generate unique slug
     const base = title
       .toLowerCase()
       .replace(/[^a-z0-9\u4e00-\u9fff]+/g, "-")
@@ -73,6 +70,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(doc, { status: 201 });
   } catch (error) {
+    if (error instanceof ValidationError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     console.error("POST /api/documents error:", error);
     return NextResponse.json({ error: "伺服器錯誤" }, { status: 500 });
   }

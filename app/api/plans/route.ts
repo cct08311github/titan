@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { PlanService } from "@/services/plan-service";
 import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { createPlanSchema } from "@/validators/plan-validators";
 
 const planService = new PlanService(prisma);
 
@@ -30,10 +32,13 @@ export async function POST(req: NextRequest) {
     const session = await getServerSession();
     if (!session?.user?.id) return NextResponse.json({ error: "未授權" }, { status: 401 });
 
-    const body = await req.json();
+    const raw = await req.json();
+    const body = validateBody(createPlanSchema, {
+      ...raw,
+      year: raw.year ? parseInt(raw.year) : raw.year,
+    });
     const plan = await planService.createPlan({
       ...body,
-      year: body.year ? parseInt(body.year) : body.year,
       createdBy: session.user.id,
     });
 

@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import { TaskStatus, Priority, TaskCategory } from "@prisma/client";
 import { TaskService } from "@/services/task-service";
 import { ValidationError } from "@/services/errors";
+import { validateBody } from "@/lib/validate";
+import { createTaskSchema } from "@/validators/task-validators";
 
 const taskService = new TaskService(prisma);
 
@@ -37,7 +39,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "未授權" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const raw = await req.json();
+    const body = validateBody(createTaskSchema, raw);
     const task = await taskService.createTask({
       ...body,
       creatorId: session.user.id,
