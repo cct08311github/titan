@@ -114,6 +114,50 @@ describe("updateTaskSchema", () => {
     const result = updateTaskSchema.safeParse({ estimatedHours: -5 });
     expect(result.success).toBe(false);
   });
+
+  test("accepts null dueDate (clear date)", () => {
+    const result = updateTaskSchema.safeParse({ dueDate: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.dueDate).toBeNull();
+    }
+  });
+
+  test("accepts null startDate (clear date)", () => {
+    const result = updateTaskSchema.safeParse({ startDate: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.startDate).toBeNull();
+    }
+  });
+
+  test("accepts valid datetime string for dueDate", () => {
+    const result = updateTaskSchema.safeParse({
+      dueDate: "2026-06-15T00:00:00.000Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects invalid string for dueDate", () => {
+    const result = updateTaskSchema.safeParse({ dueDate: "not-a-date" });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts null primaryAssigneeId (unassign)", () => {
+    const result = updateTaskSchema.safeParse({ primaryAssigneeId: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.primaryAssigneeId).toBeNull();
+    }
+  });
+
+  test("accepts null backupAssigneeId (unassign)", () => {
+    const result = updateTaskSchema.safeParse({ backupAssigneeId: null });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.backupAssigneeId).toBeNull();
+    }
+  });
 });
 
 describe("updateTaskStatusSchema", () => {
