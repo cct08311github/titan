@@ -50,6 +50,18 @@ describe("Timesheet Page", () => {
   });
 
   it("renders timesheet grid", async () => {
+    // Provide mock time entries so the grid is rendered instead of the empty state
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("time-entries/stats")) {
+        return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: "e1", userId: "u1", taskId: null, date: "2024-01-15", hours: 4, category: "PLANNED_TASK", description: null, task: null },
+        ],
+      } as Response);
+    });
     const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
     await act(async () => {
       render(<TimesheetPage />);

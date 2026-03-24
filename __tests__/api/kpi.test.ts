@@ -41,8 +41,8 @@ describe("GET /api/kpi", () => {
     const { GET } = await import("@/app/api/kpi/route");
     const res = await GET(createMockRequest("/api/kpi"));
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data[0].id).toBe("kpi-1");
+    const body = await res.json();
+    expect(body.data[0].id).toBe("kpi-1");
   });
 
   it("returns 401 when no session", async () => {
@@ -120,8 +120,8 @@ describe("GET /api/kpi/[id]", () => {
     const { GET } = await import("@/app/api/kpi/[id]/route");
     const res = await GET(createMockRequest("/api/kpi/kpi-1"), { params: { id: "kpi-1" } });
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.id).toBe("kpi-1");
+    const body = await res.json();
+    expect(body.data.id).toBe("kpi-1");
   });
 
   it("returns 404 when not found", async () => {

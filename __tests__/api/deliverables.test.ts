@@ -14,13 +14,14 @@ const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
 
 const SESSION = { user: { id: "u1", name: "Test", email: "t@e.com", role: "MEMBER" }, expires: "2099" };
+const MANAGER_SESSION = { user: { id: "u1", name: "Test", email: "t@e.com", role: "MANAGER" }, expires: "2099" };
 
 const MOCK_DEL = { id: "del-1", title: "Deliverable 1", type: "DOCUMENT", taskId: "task-1", status: "NOT_STARTED", kpiId: null, annualPlanId: null, monthlyGoalId: null, attachmentUrl: null };
 
 describe("POST /api/deliverables", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetServerSession.mockResolvedValue(SESSION);
+    mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
     mockDeliverable.create.mockResolvedValue(MOCK_DEL);
   });
 
@@ -28,8 +29,8 @@ describe("POST /api/deliverables", () => {
     const { POST } = await import("@/app/api/deliverables/route");
     const res = await POST(createMockRequest("/api/deliverables", { method: "POST", body: { title: "Del", type: "DOCUMENT", taskId: "task-1" } }));
     expect(res.status).toBe(201);
-    const data = await res.json();
-    expect(data.id).toBe("del-1");
+    const body = await res.json();
+    expect(body.data.id).toBe("del-1");
   });
 
   it("returns 400 when title missing", async () => {
@@ -62,7 +63,7 @@ describe("POST /api/deliverables", () => {
 describe("PATCH/DELETE /api/deliverables/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetServerSession.mockResolvedValue(SESSION);
+    mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
     mockDeliverable.update.mockResolvedValue({ ...MOCK_DEL, status: "DONE" });
     mockDeliverable.delete.mockResolvedValue(MOCK_DEL);
   });
@@ -93,8 +94,8 @@ describe("PATCH/DELETE /api/deliverables/[id]", () => {
       { params: Promise.resolve({ id: "del-1" }) }
     );
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.success).toBe(true);
+    const body = await res.json();
+    expect(body.data.success).toBe(true);
   });
 
   it("DELETE returns 401 when no session", async () => {

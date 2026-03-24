@@ -28,8 +28,8 @@ describe("POST /api/subtasks", () => {
     const { POST } = await import("@/app/api/subtasks/route");
     const res = await POST(createMockRequest("/api/subtasks", { method: "POST", body: { taskId: "task-1", title: "Sub Task" } }));
     expect(res.status).toBe(201);
-    const data = await res.json();
-    expect(data.id).toBe("sub-1");
+    const body = await res.json();
+    expect(body.data.id).toBe("sub-1");
   });
 
   it("returns 400 when taskId missing", async () => {
@@ -74,8 +74,8 @@ describe("PATCH/DELETE /api/subtasks/[id]", () => {
       { params: Promise.resolve({ id: "sub-1" }) }
     );
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.done).toBe(true);
+    const body = await res.json();
+    expect(body.data.done).toBe(true);
   });
 
   it("PATCH updates subtask title", async () => {
@@ -105,8 +105,8 @@ describe("PATCH/DELETE /api/subtasks/[id]", () => {
       { params: Promise.resolve({ id: "sub-1" }) }
     );
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.success).toBe(true);
+    const body = await res.json();
+    expect(body.data.success).toBe(true);
   });
 
   it("DELETE returns 401 when no session", async () => {

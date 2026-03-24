@@ -7,6 +7,9 @@
 import { createMockRequest } from "../utils/test-utils";
 
 // ── Mocks (inline factories — no circular require) ────────────────────────
+// These are defined before jest.mock so the factory can close over them.
+// jest.mock is hoisted, but the factory function runs lazily at import time,
+// so the variables are already initialised by then.
 const mockTask = {
   findMany: jest.fn(),
   findUnique: jest.fn(),
@@ -16,9 +19,18 @@ const mockTask = {
 };
 const mockTaskChange = { create: jest.fn() };
 const mockTaskActivity = { create: jest.fn() };
+const mockAuditLog = { create: jest.fn() };
+// $transaction is shared across TaskService and ChangeTrackingService
+const mockTransaction = jest.fn();
 
 jest.mock("@/lib/prisma", () => ({
-  prisma: { task: mockTask, taskChange: mockTaskChange, taskActivity: mockTaskActivity },
+  prisma: {
+    task: mockTask,
+    taskChange: mockTaskChange,
+    taskActivity: mockTaskActivity,
+    auditLog: mockAuditLog,
+    $transaction: mockTransaction,
+  },
 }));
 
 const mockGetServerSession = jest.fn();
@@ -61,8 +73,8 @@ describe("GET /api/tasks", () => {
     const req = createMockRequest("/api/tasks");
     const res = await GET(req);
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data[0].id).toBe("task-1");
+    const body = await res.json();
+    expect(body.data[0].id).toBe("task-1");
   });
 
   it("returns 401 when no session", async () => {
@@ -143,8 +155,8 @@ describe("GET /api/tasks/[id]", () => {
     const { GET } = await import("@/app/api/tasks/[id]/route");
     const res = await GET(createMockRequest("/api/tasks/task-1"), { params: Promise.resolve({ id: "task-1" }) });
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.id).toBe("task-1");
+    const body = await res.json();
+    expect(body.data.id).toBe("task-1");
   });
 
   it("returns 404 when not found", async () => {
@@ -170,6 +182,11 @@ describe("PUT /api/tasks/[id]", () => {
     mockTask.findUnique.mockResolvedValue(MOCK_TASK);
     mockTask.update.mockResolvedValue({ ...MOCK_TASK, title: "Updated" });
     mockTaskChange.create.mockResolvedValue({});
+    // $transaction used by ChangeTrackingService.detectDelay/detectScopeChange
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = { task: mockTask, taskActivity: mockTaskActivity, taskChange: mockTaskChange };
+      return fn(tx);
+    });
   });
 
   it("updates task and returns 200", async () => {
@@ -202,22 +219,33 @@ describe("PUT /api/tasks/[id]", () => {
   });
 
   it("creates TaskChange when dueDate changes", async () => {
-    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, dueDate: new Date("2024-01-01") });
+    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, dueDate: new Date("2024-01-01T00:00:00.000Z") });
+    mockTaskChange.create.mockResolvedValue({});
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      return fn({ task: mockTask, taskActivity: mockTaskActivity, taskChange: mockTaskChange });
+    });
     const { PUT } = await import("@/app/api/tasks/[id]/route");
     await PUT(
-      createMockRequest("/api/tasks/task-1", { method: "PUT", body: { dueDate: "2024-02-01" } }),
+      createMockRequest("/api/tasks/task-1", { method: "PUT", body: { dueDate: "2024-02-01T00:00:00.000Z", changedBy: "user-1" } }),
       { params: Promise.resolve({ id: "task-1" }) }
     );
     expect(mockTaskChange.create).toHaveBeenCalled();
   });
 });
 
+const MANAGER_SESSION = {
+  user: { id: "user-1", name: "Manager", email: "m@e.com", role: "MANAGER" },
+  expires: "2099-01-01",
+};
+
 // ── DELETE /api/tasks/[id] ────────────────────────────────────────────────
 describe("DELETE /api/tasks/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetServerSession.mockResolvedValue(MEMBER_SESSION);
+    mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
+    mockTask.findUnique.mockResolvedValue(MOCK_TASK);
     mockTask.delete.mockResolvedValue(MOCK_TASK);
+    mockAuditLog.create.mockResolvedValue({});
   });
 
   it("deletes task and returns success", async () => {
@@ -227,8 +255,8 @@ describe("DELETE /api/tasks/[id]", () => {
       { params: Promise.resolve({ id: "task-1" }) }
     );
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.success).toBe(true);
+    const body = await res.json();
+    expect(body.data.success).toBe(true);
   });
 
   it("returns 401 when no session", async () => {
@@ -249,6 +277,11 @@ describe("PATCH /api/tasks/[id]", () => {
     mockGetServerSession.mockResolvedValue(MEMBER_SESSION);
     mockTask.update.mockResolvedValue({ ...MOCK_TASK, status: "DONE" });
     mockTaskActivity.create.mockResolvedValue({});
+    // $transaction receives a callback; simulate calling it with a tx proxy
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = { task: mockTask, taskActivity: mockTaskActivity, taskChange: mockTaskChange };
+      return fn(tx);
+    });
   });
 
   it("updates status and returns 200", async () => {

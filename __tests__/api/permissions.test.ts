@@ -38,8 +38,8 @@ describe("GET /api/permissions", () => {
     const { GET } = await import("@/app/api/permissions/route");
     const res = await GET(createMockRequest("/api/permissions"));
     expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data[0].id).toBe("perm-1");
+    const body = await res.json();
+    expect(body.data[0].id).toBe("perm-1");
   });
 
   it("returns 403 for non-manager", async () => {
@@ -76,16 +76,16 @@ describe("POST /api/permissions", () => {
     const { POST } = await import("@/app/api/permissions/route");
     const res = await POST(createMockRequest("/api/permissions", {
       method: "POST",
-      body: { granteeId: "u1", permType: "VIEW_ALL_TASKS" },
+      body: { granteeId: "u1", permType: "VIEW_TEAM" },
     }));
     expect(res.status).toBe(201);
   });
 
-  it("revokes permission when revoke is true", async () => {
-    const { POST } = await import("@/app/api/permissions/route");
-    const res = await POST(createMockRequest("/api/permissions", {
-      method: "POST",
-      body: { granteeId: "u1", permType: "VIEW_ALL_TASKS", revoke: true },
+  it("revokes permission via DELETE", async () => {
+    const { DELETE } = await import("@/app/api/permissions/route");
+    const res = await DELETE(createMockRequest("/api/permissions", {
+      method: "DELETE",
+      body: { granteeId: "u1", permType: "VIEW_TEAM" },
     }));
     expect(res.status).toBe(200);
     expect(mockPermission.updateMany).toHaveBeenCalled();
@@ -93,7 +93,7 @@ describe("POST /api/permissions", () => {
 
   it("returns 400 when granteeId missing", async () => {
     const { POST } = await import("@/app/api/permissions/route");
-    const res = await POST(createMockRequest("/api/permissions", { method: "POST", body: { permType: "VIEW_ALL_TASKS" } }));
+    const res = await POST(createMockRequest("/api/permissions", { method: "POST", body: { permType: "VIEW_TEAM" } }));
     expect(res.status).toBe(400);
   });
 
@@ -102,7 +102,7 @@ describe("POST /api/permissions", () => {
     const { POST } = await import("@/app/api/permissions/route");
     const res = await POST(createMockRequest("/api/permissions", {
       method: "POST",
-      body: { granteeId: "u1", permType: "VIEW_ALL_TASKS" },
+      body: { granteeId: "u1", permType: "VIEW_TEAM" },
     }));
     expect(res.status).toBe(403);
   });
