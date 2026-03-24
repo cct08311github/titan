@@ -1,0 +1,474 @@
+// schema.prisma
+// TITAN v3.0 — 完整資料模型
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════
+// 使用者與權限
+// ═══════════════════════════════════════
+
+enum Role {
+  MANAGER
+  ENGINEER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String   // bcrypt hash
+  role      Role     @default(ENGINEER)
+  avatar    String?  // base64 or filename
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 關聯
+  createdPlans             AnnualPlan[]      @relation("PlanCreator")
+  primaryTasks             Task[]            @relation("TaskPrimaryAssignee")
+  backupTasks              Task[]            @relation("TaskBackupAssignee")
+  createdTasks             Task[]            @relation("TaskCreator")
+  comments                 TaskComment[]
+  activities               TaskActivity[]
+  taskChanges              TaskChange[]
+  timeEntries              TimeEntry[]
+  createdDocuments         Document[]        @relation("DocCreator")
+  updatedDocuments         Document[]        @relation("DocUpdater")
+  docVersions              DocumentVersion[]
+  notifications            Notification[]
+  grantedPermissions       Permission[]      @relation("PermissionGrantee")
+  grantedByPermissions     Permission[]      @relation("PermissionGranter")
+  deliverableAcceptances   Deliverable[]     @relation("DeliverableAcceptor")
+  createdKPIs              KPI[]             @relation("KPICreator")
+
+  @@map("users")
+}
+
+model Permission {
+  id        String    @id @default(cuid())
+  granteeId String    // 被授權的 Engineer
+  granterId String    // 授權的 Manager
+  permType  String    // "VIEW_TEAM" | "VIEW_PERSON"
+  targetId  String?   // 若 permType = VIEW_PERSON，則為目標使用者 ID
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  grantee User @relation("PermissionGrantee", fields: [granteeId], references: [id])
+  granter User @relation("PermissionGranter", fields: [granterId], references: [id])
+
+  @@map("permissions")
+}
+
+// ═══════════════════════════════════════
+// KPI 系統
+// ═══════════════════════════════════════
+
+enum KPIStatus {
+  DRAFT
+  ACTIVE
+  ACHIEVED
+  MISSED
+  CANCELLED
+}
+
+model KPI {
+  id          String    @id @default(cuid())
+  year        Int
+  code        String    // e.g., "KPI-2026-01"
+  title       String
+  description String?
+  target      Float     // 目標值（如 95.0 代表 95%）
+  actual      Float     @default(0)
+  weight      Float     @default(1)
+  status      KPIStatus @default(ACTIVE)
+  autoCalc    Boolean   @default(false)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  creator      User          @relation("KPICreator", fields: [createdBy], references: [id])
+  taskLinks    KPITaskLink[]
+  deliverables Deliverable[] @relation("KPIDeliverable")
+
+  @@unique([year, code])
+  @@map("kpis")
+}
+
+model KPITaskLink {
+  id        String   @id @default(cuid())
+  kpiId     String
+  taskId    String
+  weight    Float    @default(1)
+  createdAt DateTime @default(now())
+
+  kpi  KPI  @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([kpiId, taskId])
+  @@map("kpi_task_links")
+}
+
+// ═══════════════════════════════════════
+// 年度計畫、月度目標
+// ═══════════════════════════════════════
+
+model AnnualPlan {
+  id                 String   @id @default(cuid())
+  year               Int
+  title              String
+  description        String?
+  implementationPlan String?  // 執行計畫說明（Markdown）
+  progressPct        Float    @default(0)
+  copiedFromYear     Int?
+  createdBy          String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  creator      User          @relation("PlanCreator", fields: [createdBy], references: [id])
+  monthlyGoals MonthlyGoal[]
+  milestones   Milestone[]
+  deliverables Deliverable[] @relation("AnnualPlanDeliverable")
+
+  @@unique([year])
+  @@map("annual_plans")
+}
+
+enum GoalStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+model MonthlyGoal {
+  id           String     @id @default(cuid())
+  annualPlanId String
+  month        Int        // 1–12
+  title        String
+  description  String?
+  status       GoalStatus @default(NOT_STARTED)
+  progressPct  Float      @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  annualPlan   AnnualPlan  @relation(fields: [annualPlanId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+  deliverables Deliverable[] @relation("MonthlyGoalDeliverable")
+
+  @@unique([annualPlanId, month, title])
+  @@map("monthly_goals")
+}
+
+// ═══════════════════════════════════════
+// 里程碑
+// ═══════════════════════════════════════
+
+enum MilestoneStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DELAYED
+  CANCELLED
+}
+
+model Milestone {
+  id           String          @id @default(cuid())
+  annualPlanId String
+  title        String
+  description  String?
+  plannedStart DateTime?
+  plannedEnd   DateTime
+  actualStart  DateTime?
+  actualEnd    DateTime?
+  status       MilestoneStatus @default(PENDING)
+  order        Int             @default(0)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  annualPlan AnnualPlan @relation(fields: [annualPlanId], references: [id], onDelete: Cascade)
+
+  @@map("milestones")
+}
+
+// ═══════════════════════════════════════
+// 任務
+// ═══════════════════════════════════════
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  P0
+  P1
+  P2
+  P3
+}
+
+enum TaskCategory {
+  PLANNED
+  ADDED
+  INCIDENT
+  SUPPORT
+  ADMIN
+  LEARNING
+}
+
+model Task {
+  id                String       @id @default(cuid())
+  monthlyGoalId     String?
+  title             String
+  description       String?
+  category          TaskCategory @default(PLANNED)
+  primaryAssigneeId String?
+  backupAssigneeId  String?
+  creatorId         String
+  status            TaskStatus   @default(BACKLOG)
+  priority          Priority     @default(P2)
+  dueDate           DateTime?
+  startDate         DateTime?
+  estimatedHours    Float?
+  actualHours       Float        @default(0)
+  progressPct       Float        @default(0)
+  tags              String[]
+  addedDate         DateTime?
+  addedReason       String?
+  addedSource       String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  monthlyGoal     MonthlyGoal?  @relation(fields: [monthlyGoalId], references: [id])
+  primaryAssignee User?         @relation("TaskPrimaryAssignee", fields: [primaryAssigneeId], references: [id])
+  backupAssignee  User?         @relation("TaskBackupAssignee", fields: [backupAssigneeId], references: [id])
+  creator         User          @relation("TaskCreator", fields: [creatorId], references: [id])
+  subTasks        SubTask[]
+  comments        TaskComment[]
+  activities      TaskActivity[]
+  taskChanges     TaskChange[]
+  timeEntries     TimeEntry[]
+  kpiLinks        KPITaskLink[]
+  deliverables    Deliverable[] @relation("TaskDeliverable")
+
+  @@map("tasks")
+}
+
+model SubTask {
+  id         String    @id @default(cuid())
+  taskId     String
+  title      String
+  done       Boolean   @default(false)
+  order      Int       @default(0)
+  assigneeId String?
+  dueDate    DateTime?
+  createdAt  DateTime  @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("sub_tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  content   String   // Markdown
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("task_comments")
+}
+
+model TaskActivity {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  action    String
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("task_activities")
+}
+
+// ═══════════════════════════════════════
+// 延期與變更追蹤
+// ═══════════════════════════════════════
+
+enum ChangeType {
+  DELAY
+  SCOPE_CHANGE
+}
+
+model TaskChange {
+  id         String     @id @default(cuid())
+  taskId     String
+  changeType ChangeType
+  reason     String
+  oldValue   String?
+  newValue   String?
+  changedBy  String
+  changedAt  DateTime   @default(now())
+
+  task          Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  changedByUser User @relation(fields: [changedBy], references: [id])
+
+  @@map("task_changes")
+}
+
+// ═══════════════════════════════════════
+// 交付項
+// ═══════════════════════════════════════
+
+enum DeliverableType {
+  DOCUMENT
+  SYSTEM
+  REPORT
+  APPROVAL
+}
+
+enum DeliverableStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  DELIVERED
+  ACCEPTED
+}
+
+model Deliverable {
+  id            String            @id @default(cuid())
+  title         String
+  type          DeliverableType
+  status        DeliverableStatus @default(NOT_STARTED)
+  attachmentUrl String?
+  acceptedBy    String?
+  acceptedAt    DateTime?
+  kpiId         String?
+  annualPlanId  String?
+  monthlyGoalId String?
+  taskId        String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  kpi         KPI?         @relation("KPIDeliverable", fields: [kpiId], references: [id])
+  annualPlan  AnnualPlan?  @relation("AnnualPlanDeliverable", fields: [annualPlanId], references: [id])
+  monthlyGoal MonthlyGoal? @relation("MonthlyGoalDeliverable", fields: [monthlyGoalId], references: [id])
+  task        Task?        @relation("TaskDeliverable", fields: [taskId], references: [id])
+  acceptor    User?        @relation("DeliverableAcceptor", fields: [acceptedBy], references: [id])
+
+  @@map("deliverables")
+}
+
+// ═══════════════════════════════════════
+// 工時紀錄
+// ═══════════════════════════════════════
+
+enum TimeCategory {
+  PLANNED_TASK
+  ADDED_TASK
+  INCIDENT
+  SUPPORT
+  ADMIN
+  LEARNING
+}
+
+model TimeEntry {
+  id          String       @id @default(cuid())
+  taskId      String?
+  userId      String
+  date        DateTime     @db.Date
+  hours       Float
+  category    TimeCategory @default(PLANNED_TASK)
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  task Task? @relation(fields: [taskId], references: [id])
+  user User  @relation(fields: [userId], references: [id])
+
+  @@map("time_entries")
+}
+
+// ═══════════════════════════════════════
+// 通知
+// ═══════════════════════════════════════
+
+enum NotificationType {
+  TASK_ASSIGNED
+  TASK_DUE_SOON
+  TASK_OVERDUE
+  TASK_COMMENTED
+  MILESTONE_DUE
+  BACKUP_ACTIVATED
+  TASK_CHANGED
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  body        String?
+  relatedId   String?
+  relatedType String?
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ═══════════════════════════════════════
+// 知識庫文件
+// ═══════════════════════════════════════
+
+model Document {
+  id        String   @id @default(cuid())
+  parentId  String?
+  title     String
+  content   String   // Markdown
+  slug      String   @unique
+  createdBy String
+  updatedBy String
+  version   Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parent   Document?         @relation("DocTree", fields: [parentId], references: [id])
+  children Document[]        @relation("DocTree")
+  creator  User              @relation("DocCreator", fields: [createdBy], references: [id])
+  updater  User              @relation("DocUpdater", fields: [updatedBy], references: [id])
+  versions DocumentVersion[]
+
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  content    String
+  version    Int
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  creator  User     @relation(fields: [createdBy], references: [id])
+
+  @@map("document_versions")
+}

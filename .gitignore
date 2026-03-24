@@ -6,6 +6,19 @@
 # macOS 系統檔案
 .DS_Store
 
+# Next.js build output
+.next/
+out/
+node_modules/
+npm-debug.log*
+
+# Prisma
+prisma/migrations/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
 # Homepage 自動產生的快取檔案
 config/homepage/logs/
 config/homepage/cache/
