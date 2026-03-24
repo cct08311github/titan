@@ -118,10 +118,10 @@ export default function KanbanPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-medium tracking-[-0.04em]">看板</h1>
+          <h1 className="text-xl font-semibold tracking-tight">看板</h1>
           <p className="text-muted-foreground text-sm mt-0.5">共 {tasks.length} 項任務</p>
         </div>
-        <button className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border">
+        <button className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90">
           <Plus className="h-3.5 w-3.5" />
           新增任務
         </button>

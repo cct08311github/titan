@@ -1,43 +1,55 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { LogOut, User } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { LogOut, Moon, Sun } from "lucide-react";
+import { useState, useEffect } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
+
+const PAGE_TITLES: Record<string, string> = {
+  "/dashboard": "儀表板", "/kanban": "看板", "/gantt": "甘特圖",
+  "/plans": "年度計畫", "/kpi": "KPI", "/knowledge": "知識庫",
+  "/timesheet": "工時紀錄", "/reports": "報表",
+};
+
+function ThemeToggle() {
+  const [dark, setDark] = useState(false);
+  useEffect(() => { setDark(document.documentElement.classList.contains("dark")); }, []);
+  function toggle() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("titan-theme", next ? "dark" : "light");
+  }
+  return (
+    <button onClick={toggle} className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label={dark ? "切換淺色模式" : "切換深色模式"} title={dark ? "切換淺色模式" : "切換深色模式"}>
+      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </button>
+  );
+}
 
 export function Topbar() {
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1];
 
   return (
-    <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6 flex-shrink-0">
-      {/* Left: breadcrumb placeholder */}
-      <div />
-
-      {/* Right: notification + user */}
-      <div className="flex items-center gap-3">
-        {/* Notification bell */}
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-6 flex-shrink-0 sticky top-0 z-10">
+      <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
         <NotificationBell />
-
-        {/* User info */}
-        <div className="flex items-center gap-2 pl-3 border-l border-border">
-          <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
-            <User className="h-3.5 w-3.5 text-primary" />
+        <div className="w-px h-6 bg-border mx-2" />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <span className="text-xs font-semibold text-primary">{session?.user?.name?.charAt(0) ?? "U"}</span>
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm leading-none text-foreground">
-              {session?.user?.name ?? "使用者"}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5 font-mono tabular-nums">
-              {session?.user?.role === "MANAGER" ? "主管" : "工程師"}
-            </p>
+            <p className="text-sm font-medium leading-none text-foreground">{session?.user?.name ?? "使用者"}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{session?.user?.role === "MANAGER" ? "主管" : "工程師"}</p>
           </div>
         </div>
-
-        {/* Logout */}
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-          aria-label="登出"
-        >
+        <button onClick={() => signOut({ callbackUrl: "/login" })} className="p-2 rounded-lg text-muted-foreground hover:text-danger hover:bg-accent transition-colors ml-1" aria-label="登出" title="登出">
           <LogOut className="h-4 w-4" />
         </button>
       </div>

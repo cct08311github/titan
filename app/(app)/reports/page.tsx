@@ -110,7 +110,7 @@ function WeeklyReport() {
       </div>
 
       {/* Stats */}
-      <div className="bg-card border border-border rounded-lg p-4">
+      <div className="bg-card rounded-xl shadow-card p-4">
         <SectionTitle>本週摘要</SectionTitle>
         <StatRow label="完成任務數" value={data.completedCount} />
         <StatRow label="總工時 (h)" value={safeFixed(data.totalHours, 1)} />
@@ -121,7 +121,7 @@ function WeeklyReport() {
 
       {/* Hours by category */}
       {Object.keys(data.hoursByCategory).length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card rounded-xl shadow-card p-4">
           <SectionTitle>工時分類</SectionTitle>
           <div className="space-y-2">
             {Object.entries(data.hoursByCategory).map(([cat, hours]) => (
@@ -136,7 +136,7 @@ function WeeklyReport() {
 
       {/* Completed tasks */}
       {data.completedTasks.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-4">
+        <div className="bg-card rounded-xl shadow-card p-4">
           <SectionTitle>本週完成任務</SectionTitle>
           <div className="space-y-1.5">
             {data.completedTasks.map((t) => (
@@ -155,13 +155,13 @@ function WeeklyReport() {
 
       {/* Overdue tasks */}
       {data.overdueTasks.length > 0 && (
-        <div className="bg-card border border-red-500/30 rounded-lg p-4">
+        <div className="bg-card border-l-[3px] border-l-danger shadow-card rounded-lg p-4">
           <SectionTitle>逾期任務</SectionTitle>
           <div className="space-y-1.5">
             {data.overdueTasks.map((t) => (
               <div key={t.id} className="flex items-center justify-between text-sm">
                 <span className="text-foreground truncate">{t.title}</span>
-                <span className="text-xs text-red-400 flex-shrink-0 ml-2 tabular-nums">
+                <span className="text-xs text-danger flex-shrink-0 ml-2 tabular-nums">
                   {new Date(t.dueDate).toLocaleDateString("zh-TW")}
                 </span>
               </div>
@@ -242,7 +242,7 @@ function MonthlyReport() {
         <PageEmpty title="無月報資料" description="本月尚無相關數據" />
       ) : (
         <>
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <SectionTitle>
               {data.period.year} 年 {data.period.month} 月摘要
             </SectionTitle>
@@ -254,7 +254,7 @@ function MonthlyReport() {
             <StatRow label="範疇變更次數" value={data.scopeChangeCount} />
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <SectionTitle>任務完成率</SectionTitle>
             <div className="space-y-1">
               <div className="flex justify-between text-xs mb-1">
@@ -263,13 +263,13 @@ function MonthlyReport() {
               </div>
               <ProgressBar
                 pct={data.completionRate}
-                color={data.completionRate >= 80 ? "bg-green-500" : data.completionRate >= 50 ? "bg-primary" : "bg-yellow-500"}
+                color={data.completionRate >= 80 ? "bg-success" : data.completionRate >= 50 ? "bg-primary" : "bg-warning"}
               />
             </div>
           </div>
 
           {data.monthlyGoals.length > 0 && (
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="bg-card rounded-xl shadow-card p-4">
               <SectionTitle>月度目標</SectionTitle>
               <div className="space-y-3">
                 {data.monthlyGoals.map((g) => {
@@ -378,21 +378,21 @@ function KPIReport() {
       ) : (
         <>
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
               <p className="text-2xl font-semibold tabular-nums">{data.totalCount}</p>
               <p className="text-xs text-muted-foreground mt-1">KPI 總數</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
-              <p className="text-2xl font-semibold tabular-nums text-green-400">{data.achievedCount}</p>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-2xl font-semibold tabular-nums text-success">{data.achievedCount}</p>
               <p className="text-xs text-muted-foreground mt-1">已達成</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
               <p className="text-2xl font-semibold tabular-nums">{data.avgAchievement}%</p>
               <p className="text-xs text-muted-foreground mt-1">平均達成率</p>
             </div>
           </div>
 
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <SectionTitle>各 KPI 達成狀況</SectionTitle>
             <div className="space-y-4">
               {data.kpis.map((kpi) => (
@@ -415,10 +415,10 @@ function KPIReport() {
                     pct={kpi.achievementRate}
                     color={
                       kpi.achievementRate >= 100
-                        ? "bg-green-500"
+                        ? "bg-success"
                         : kpi.achievementRate >= 60
                         ? "bg-primary"
-                        : "bg-yellow-500"
+                        : "bg-warning"
                     }
                   />
                   <p className="text-[11px] text-muted-foreground mt-0.5 tabular-nums">
@@ -514,48 +514,48 @@ function WorkloadReport() {
         <>
           {/* Summary */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
               <p className="text-xl font-semibold tabular-nums">{safeFixed(data.totalHours, 1)}</p>
               <p className="text-xs text-muted-foreground mt-1">總工時 (h)</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
-              <p className="text-xl font-semibold tabular-nums text-green-400">{data.plannedRate}%</p>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-xl font-semibold tabular-nums text-success">{data.plannedRate}%</p>
               <p className="text-xs text-muted-foreground mt-1">計畫投入率</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
-              <p className="text-xl font-semibold tabular-nums text-orange-400">{data.unplannedRate}%</p>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-xl font-semibold tabular-nums text-warning">{data.unplannedRate}%</p>
               <p className="text-xs text-muted-foreground mt-1">計畫外負荷率</p>
             </div>
-            <div className="bg-card border border-border rounded-lg p-4 text-center">
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
               <p className="text-xl font-semibold tabular-nums">{safeFixed(data.unplannedHours, 1)}</p>
               <p className="text-xs text-muted-foreground mt-1">計畫外工時 (h)</p>
             </div>
           </div>
 
           {/* Planned vs Unplanned */}
-          <div className="bg-card border border-border rounded-lg p-4">
+          <div className="bg-card rounded-xl shadow-card p-4">
             <SectionTitle>計畫 vs 計畫外</SectionTitle>
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-muted-foreground">計畫內 ({safeFixed(data.plannedHours, 1)} h)</span>
-                  <span className="tabular-nums text-green-400">{data.plannedRate}%</span>
+                  <span className="tabular-nums text-success">{data.plannedRate}%</span>
                 </div>
-                <ProgressBar pct={data.plannedRate} color="bg-green-500" />
+                <ProgressBar pct={data.plannedRate} color="bg-success" />
               </div>
               <div>
                 <div className="flex justify-between text-xs mb-1">
                   <span className="text-muted-foreground">計畫外 ({safeFixed(data.unplannedHours, 1)} h)</span>
-                  <span className="tabular-nums text-orange-400">{data.unplannedRate}%</span>
+                  <span className="tabular-nums text-warning">{data.unplannedRate}%</span>
                 </div>
-                <ProgressBar pct={data.unplannedRate} color="bg-orange-500" />
+                <ProgressBar pct={data.unplannedRate} color="bg-warning" />
               </div>
             </div>
           </div>
 
           {/* Per person */}
           {data.byPerson.length > 0 && (
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="bg-card rounded-xl shadow-card p-4">
               <SectionTitle>個人負荷分析</SectionTitle>
               <div className="space-y-4">
                 {data.byPerson.map((p) => {
@@ -572,11 +572,11 @@ function WorkloadReport() {
                         {p.total > 0 && (
                           <>
                             <div
-                              className="bg-green-500"
+                              className="bg-success"
                               style={{ width: `${(p.planned / p.total) * 100}%` }}
                             />
                             <div
-                              className="bg-orange-500"
+                              className="bg-warning"
                               style={{ width: `${(p.unplanned / p.total) * 100}%` }}
                             />
                           </>
@@ -592,7 +592,7 @@ function WorkloadReport() {
 
           {/* Unplanned source */}
           {Object.keys(data.unplannedBySource).length > 0 && (
-            <div className="bg-card border border-border rounded-lg p-4">
+            <div className="bg-card rounded-xl shadow-card p-4">
               <SectionTitle>計畫外任務來源</SectionTitle>
               <div className="space-y-2">
                 {Object.entries(data.unplannedBySource)
@@ -628,7 +628,7 @@ export default function ReportsPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-medium tracking-[-0.04em]">報表</h1>
+        <h1 className="text-xl font-semibold tracking-tight">報表</h1>
         <p className="text-sm text-muted-foreground mt-1">週報、月報、KPI、計畫外負荷分析</p>
       </div>
 

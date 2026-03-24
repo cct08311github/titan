@@ -65,13 +65,13 @@ const categoryOptions = [
 ];
 
 const inputCls =
-  "w-full bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors placeholder:text-muted-foreground";
+  "w-full h-10 bg-background border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/60";
 
 const selectCls =
-  "w-full bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring transition-colors cursor-pointer";
+  "w-full h-10 bg-background border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer";
 
 function Label({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-medium text-muted-foreground mb-1">{children}</label>;
+  return <label className="block text-xs font-medium text-muted-foreground mb-1.5">{children}</label>;
 }
 
 export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalProps) {
@@ -161,17 +161,17 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm pt-12 pb-4 px-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="bg-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-card z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card z-10 rounded-t-2xl">
           <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={save}
               disabled={saving || loading}
               className={cn(
-                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
-                "bg-accent hover:bg-accent/80 text-accent-foreground disabled:opacity-40"
+                "flex items-center gap-1.5 text-xs font-medium h-8 px-3 rounded-lg transition-all",
+                "bg-primary text-primary-foreground shadow-sm hover:opacity-90 disabled:opacity-40"
               )}
             >
               {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
@@ -179,7 +179,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             </button>
             <button
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -299,7 +299,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             {/* Subtasks */}
             <div>
               <h3 className="text-xs font-medium text-muted-foreground mb-2">子任務清單</h3>
-              <div className="bg-muted/30 border border-border rounded-lg p-3">
+              <div className="bg-muted/30 rounded-xl p-3">
                 <SubTaskList
                   subtasks={task.subTasks}
                   taskId={taskId}
@@ -310,7 +310,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             {/* Deliverables */}
             <div>
               <h3 className="text-xs font-medium text-muted-foreground mb-2">交付項</h3>
-              <div className="bg-muted/30 border border-border rounded-lg p-3">
+              <div className="bg-muted/30 rounded-xl p-3">
                 <DeliverableList
                   deliverables={task.deliverables}
                   taskId={taskId}

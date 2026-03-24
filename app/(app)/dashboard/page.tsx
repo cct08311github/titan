@@ -53,9 +53,9 @@ interface Task {
 // ── KPI Achievement Section ─────────────────────────────────────────────────
 
 const KPI_STATUS_COLOR: Record<string, string> = {
-  ON_TRACK: "text-green-400 bg-green-500/10",
-  AT_RISK:  "text-yellow-400 bg-yellow-500/10",
-  BEHIND:   "text-red-400 bg-red-500/10",
+  ON_TRACK: "text-success bg-success/10",
+  AT_RISK:  "text-yellow-400 bg-warning/10",
+  BEHIND:   "text-danger bg-danger/10",
   ACHIEVED: "text-blue-400 bg-blue-500/10",
 };
 const KPI_STATUS_LABEL: Record<string, string> = {
@@ -117,7 +117,7 @@ function KPIAchievementSection() {
   );
 
   return (
-    <div className="bg-card border border-border rounded-lg p-5">
+    <div className="bg-card rounded-xl shadow-card p-5">
       <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
         <Target className="h-4 w-4 text-primary" />
         KPI 達成狀況（{new Date().getFullYear()} 年度）
@@ -125,9 +125,9 @@ function KPIAchievementSection() {
       <div className="space-y-3">
         {kpis.map((kpi) => {
           const barColor =
-            kpi.achievementRate >= 100 ? "bg-green-500" :
+            kpi.achievementRate >= 100 ? "bg-success" :
             kpi.achievementRate >= 60  ? "bg-primary" :
-            kpi.achievementRate >= 30  ? "bg-yellow-500" : "bg-red-500";
+            kpi.achievementRate >= 30  ? "bg-warning" : "bg-danger";
           return (
             <div key={kpi.id} className="space-y-1.5">
               <div className="flex items-center justify-between gap-3">
@@ -187,9 +187,9 @@ function StatCard({
   accent?: boolean;
 }) {
   return (
-    <div className="bg-card border border-border rounded-lg p-4 flex flex-col gap-1">
+    <div className="bg-card rounded-xl shadow-card p-4 flex flex-col gap-1">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-2xl font-semibold tabular-nums", accent && "text-red-400")}>
+      <p className={cn("text-2xl font-semibold tabular-nums", accent && "text-danger")}>
         {value}
       </p>
       {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
@@ -247,7 +247,7 @@ function ManagerDashboard() {
       </div>
 
       {/* ── Team workload ── */}
-      <div className="bg-card border border-border rounded-lg p-5">
+      <div className="bg-card rounded-xl shadow-card p-5">
         <h2 className="text-sm font-medium mb-4">團隊工時分佈（本月）</h2>
         {workload?.byPerson?.length ? (
           <div className="space-y-3">
@@ -278,26 +278,26 @@ function ManagerDashboard() {
       </div>
 
       {/* ── 投入率 ── */}
-      <div className="bg-card border border-border rounded-lg p-5">
+      <div className="bg-card rounded-xl shadow-card p-5">
         <h2 className="text-sm font-medium mb-4">投入率分析（計畫任務 vs 加入任務）</h2>
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">計畫內投入</span>
-              <span className="tabular-nums font-medium text-green-400">
+              <span className="tabular-nums font-medium text-success">
                 {workload?.plannedRate ?? 0}%
               </span>
             </div>
-            <ProgressBar pct={workload?.plannedRate ?? 0} color="bg-green-500" />
+            <ProgressBar pct={workload?.plannedRate ?? 0} color="bg-success" />
           </div>
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">計畫外投入</span>
-              <span className="tabular-nums font-medium text-orange-400">
+              <span className="tabular-nums font-medium text-warning">
                 {workload?.unplannedRate ?? 0}%
               </span>
             </div>
-            <ProgressBar pct={workload?.unplannedRate ?? 0} color="bg-orange-500" />
+            <ProgressBar pct={workload?.unplannedRate ?? 0} color="bg-warning" />
           </div>
         </div>
       </div>
@@ -364,8 +364,8 @@ function EngineerDashboard() {
     LOW: "低",
   };
   const PRIORITY_COLOR: Record<string, string> = {
-    URGENT: "text-red-400",
-    HIGH: "text-orange-400",
+    URGENT: "text-danger",
+    HIGH: "text-warning",
     MEDIUM: "text-yellow-400",
     LOW: "text-muted-foreground",
   };
@@ -390,7 +390,7 @@ function EngineerDashboard() {
       </div>
 
       {/* ── Weekly hours bar ── */}
-      <div className="bg-card border border-border rounded-lg p-5">
+      <div className="bg-card rounded-xl shadow-card p-5">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium">本週工時進度</h2>
           <span className="text-xs tabular-nums text-muted-foreground">
@@ -399,12 +399,12 @@ function EngineerDashboard() {
         </div>
         <ProgressBar
           pct={weeklyPct}
-          color={weeklyPct >= 90 ? "bg-green-500" : weeklyPct >= 60 ? "bg-primary" : "bg-yellow-500"}
+          color={weeklyPct >= 90 ? "bg-success" : weeklyPct >= 60 ? "bg-primary" : "bg-warning"}
         />
       </div>
 
       {/* ── My tasks today ── */}
-      <div className="bg-card border border-border rounded-lg p-5">
+      <div className="bg-card rounded-xl shadow-card p-5">
         <h2 className="text-sm font-medium mb-4">我的任務（待辦 + 進行中）</h2>
         {tasks.length === 0 ? (
           <p className="text-sm text-muted-foreground">目前沒有待處理的任務</p>
@@ -432,7 +432,7 @@ function EngineerDashboard() {
                     className={cn(
                       "text-[11px] tabular-nums flex-shrink-0",
                       new Date(t.dueDate) < new Date()
-                        ? "text-red-400"
+                        ? "text-danger"
                         : "text-muted-foreground"
                     )}
                   >
@@ -447,13 +447,13 @@ function EngineerDashboard() {
 
       {/* ── Overdue ── */}
       {overdue.length > 0 && (
-        <div className="bg-card border border-red-500/30 rounded-lg p-5">
-          <h2 className="text-sm font-medium text-red-400 mb-3">逾期任務</h2>
+        <div className="bg-card border-l-[3px] border-l-danger shadow-card rounded-lg p-5">
+          <h2 className="text-sm font-medium text-danger mb-3">逾期任務</h2>
           <div className="space-y-2">
             {overdue.map((t) => (
               <div key={t.id} className="flex items-center justify-between text-sm">
                 <span className="text-foreground truncate">{t.title}</span>
-                <span className="text-red-400 tabular-nums text-xs flex-shrink-0 ml-2">
+                <span className="text-danger tabular-nums text-xs flex-shrink-0 ml-2">
                   {t.dueDate ? new Date(t.dueDate).toLocaleDateString("zh-TW") : ""}
                 </span>
               </div>
@@ -474,7 +474,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-medium tracking-[-0.04em]">儀表板</h1>
+        <h1 className="text-xl font-semibold tracking-tight">儀表板</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {isManager ? "主管視角 — 團隊整體狀況" : "工程師視角 — 我的工作狀況"}
         </p>

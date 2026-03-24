@@ -184,7 +184,7 @@ export default function TimesheetPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-medium tracking-[-0.04em]">工時紀錄</h1>
+          <h1 className="text-xl font-semibold tracking-tight">工時紀錄</h1>
           <p className="text-muted-foreground text-sm mt-0.5">{formatWeekLabel(weekStart)}</p>
         </div>
 

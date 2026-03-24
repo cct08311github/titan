@@ -47,7 +47,7 @@ const MONTHS = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", 
 const STATUS_BAR: Record<string, string> = {
   BACKLOG: "bg-muted",
   TODO: "bg-blue-500/70",
-  IN_PROGRESS: "bg-yellow-500/80",
+  IN_PROGRESS: "bg-warning/80",
   REVIEW: "bg-purple-500/80",
   DONE: "bg-emerald-500/80",
 };
@@ -64,7 +64,7 @@ const MILESTONE_STATUS_COLOR: Record<string, string> = {
   PENDING: "text-muted-foreground",
   IN_PROGRESS: "text-yellow-500",
   COMPLETED: "text-emerald-500",
-  DELAYED: "text-red-500",
+  DELAYED: "text-danger",
   CANCELLED: "text-muted-foreground/50",
 };
 
@@ -211,7 +211,7 @@ export default function GanttPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-medium tracking-[-0.04em]">甘特圖</h1>
+          <h1 className="text-xl font-semibold tracking-tight">甘特圖</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             {plan ? plan.title : `${year} 年度計畫`}
           </p>
