@@ -7,8 +7,9 @@ async function main() {
   console.log("🌱 開始建立種子資料...");
 
   // ── 建立使用者 ──────────────────────────────────────
-  const adminPassword = await hash("admin123", 12);
-  const engPassword = await hash("engineer123", 12);
+  // Issue #180: passwords must meet policy (12+ chars, upper+lower+digit+special)
+  const adminPassword = await hash("Admin@2026!x", 12);
+  const engPassword = await hash("Engineer@2026!", 12);
 
   const admin = await prisma.user.upsert({
     where: { email: "admin" },
@@ -224,8 +225,8 @@ async function main() {
   console.log("✅ 建立 4 個範例任務");
   console.log("\n🎉 種子資料建立完成！");
   console.log("\n登入帳號：");
-  console.log("  主管：admin / admin123");
-  console.log("  工程師：eng01 ~ eng04 / engineer123");
+  console.log("  主管：admin / Admin@2026!x");
+  console.log("  工程師：eng01 ~ eng04 / Engineer@2026!");
 }
 
 main()

@@ -29,7 +29,7 @@ describe("UserService CRUD", () => {
     const result = await service.createUser({
       name: "Alice",
       email: "alice@example.com",
-      password: "securepassword123",
+      password: "Secure@Pass2026!",
       role: "ENGINEER",
     });
 
@@ -39,7 +39,7 @@ describe("UserService CRUD", () => {
           name: "Alice",
           email: "alice@example.com",
           // password stored as hash, not plaintext
-          password: expect.not.stringContaining("securepassword123"),
+          password: expect.not.stringContaining("Secure@Pass2026!"),
         }),
       })
     );
@@ -56,7 +56,7 @@ describe("UserService CRUD", () => {
       service.createUser({
         name: "Alice Clone",
         email: "alice@example.com",
-        password: "securepassword123",
+        password: "Secure@Pass2026!",
       })
     ).rejects.toThrow(ValidationError);
   });
