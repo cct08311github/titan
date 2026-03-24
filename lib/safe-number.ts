@@ -35,6 +35,10 @@ export function safeLocaleString(
   if (typeof value === "number" && Number.isFinite(value)) {
     return value.toLocaleString(locale, options);
   }
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed.toLocaleString(locale, options);
+  }
   return fallback;
 }
 
@@ -64,8 +68,15 @@ export function safePct(
   fallback = "0",
   allowOverflow = false
 ): string {
+  let num: number | undefined;
   if (typeof value === "number" && Number.isFinite(value)) {
-    const clamped = allowOverflow ? value : Math.max(0, Math.min(100, value));
+    num = value;
+  } else if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) num = parsed;
+  }
+  if (num !== undefined) {
+    const clamped = allowOverflow ? num : Math.max(0, Math.min(100, num));
     return clamped.toFixed(digits);
   }
   return fallback;
