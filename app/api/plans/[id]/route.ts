@@ -1,18 +1,15 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, NotFoundError } from "@/services/errors";
+import { NotFoundError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updatePlanSchema } from "@/validators/plan-validators";
-import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { withAuth, withManager } from "@/lib/auth-middleware";
 
-export const GET = apiHandler(async (
+export const GET = withAuth(async (
   req: NextRequest,
   context?: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session) throw new UnauthorizedError();
 
   const { id } = await context!.params;
   const plan = await prisma.annualPlan.findUnique({
@@ -41,13 +38,10 @@ export const GET = apiHandler(async (
   return success(plan);
 });
 
-export const PUT = apiHandler(async (
+export const PUT = withManager(async (
   req: NextRequest,
   context?: { params: Promise<Record<string, string>> }
 ) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-
   const { id } = await context!.params;
   const raw = await req.json();
   const { title, description, implementationPlan, progressPct } = validateBody(updatePlanSchema, raw);

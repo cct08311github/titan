@@ -1,15 +1,12 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { UnauthorizedError, ForbiddenError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { createKpiSchema } from "@/validators/kpi-validators";
-import { apiHandler } from "@/lib/api-handler";
 import { success } from "@/lib/api-response";
+import { withAuth, withManager } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 
-export const GET = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
+export const GET = withAuth(async (req: NextRequest) => {
 
   const { searchParams } = new URL(req.url);
   const year = searchParams.get("year")
@@ -41,10 +38,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
   return success(kpis);
 });
 
-export const POST = apiHandler(async (req: NextRequest) => {
-  const session = await getServerSession();
-  if (!session?.user?.id) throw new UnauthorizedError();
-  if (session.user.role !== "MANAGER") throw new ForbiddenError();
+export const POST = withManager(async (req: NextRequest) => {
+  const session = await requireAuth();
 
   const raw = await req.json();
   const { year, code, title, description, target, weight, autoCalc } = validateBody(
