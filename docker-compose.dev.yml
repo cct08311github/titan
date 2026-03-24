@@ -1,0 +1,53 @@
+version: "3.9"
+
+# TITAN Next.js App — 開發環境
+# 用途：本機開發，含 PostgreSQL + Next.js dev server
+# 使用方式：docker compose -f docker-compose.dev.yml up -d
+
+services:
+  # ── PostgreSQL 16 ──────────────────────────────────────
+  titan-db:
+    image: postgres:16-alpine
+    container_name: titan-db-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: titan
+      POSTGRES_PASSWORD: titan_dev_password
+      POSTGRES_DB: titan_dev
+    ports:
+      - "5433:5432"   # 避免與本機 5432 衝突
+    volumes:
+      - titan-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U titan -d titan_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Next.js Dev Server ─────────────────────────────────
+  titan-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: deps   # deps stage for dev
+    container_name: titan-app-dev
+    restart: unless-stopped
+    depends_on:
+      titan-db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://titan:titan_dev_password@titan-db:5432/titan_dev
+      NEXTAUTH_URL: http://localhost:3100
+      NEXTAUTH_SECRET: dev_secret_change_in_production
+      NODE_ENV: development
+    ports:
+      - "3100:3000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev
+
+volumes:
+  titan-db-data:
+    name: titan-db-data-dev
