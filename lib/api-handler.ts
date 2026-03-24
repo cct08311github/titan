@@ -9,6 +9,7 @@ import { success, error } from "@/lib/api-response";
 import type { ApiResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { requestLogger } from "@/lib/request-logger";
+import { validateCsrf, CsrfError } from "@/lib/csrf";
 
 export type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -39,8 +40,12 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
   ): Promise<NextResponse<ApiResponse>> => {
     return requestLogger(req, async () => {
       try {
+        validateCsrf(req);
         return await fn(req, context);
       } catch (err) {
+        if (err instanceof CsrfError) {
+          return error("ForbiddenError", err.message, 403);
+        }
         if (err instanceof ValidationError) {
           return error("ValidationError", err.message, 400);
         }
