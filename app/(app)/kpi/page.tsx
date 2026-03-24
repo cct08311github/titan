@@ -72,9 +72,9 @@ const STATUS_LABEL: Record<string, string> = {
   ACHIEVED: "達成",
 };
 const STATUS_COLOR: Record<string, string> = {
-  ON_TRACK: "text-green-400 bg-green-500/10",
-  AT_RISK: "text-yellow-400 bg-yellow-500/10",
-  BEHIND: "text-red-400 bg-red-500/10",
+  ON_TRACK: "text-success bg-success/10",
+  AT_RISK: "text-yellow-400 bg-warning/10",
+  BEHIND: "text-danger bg-danger/10",
   ACHIEVED: "text-blue-400 bg-blue-500/10",
 };
 const TASK_STATUS_LABEL: Record<string, string> = {
@@ -168,7 +168,7 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-card border border-border rounded-lg p-5 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-card rounded-xl shadow-card p-5 space-y-4">
       <h2 className="text-sm font-medium">新增 KPI</h2>
       <FormBanner message={bannerError} />
       <div className="grid grid-cols-2 gap-3">
@@ -289,15 +289,15 @@ function KPICard({ kpi, isManager, onUnlink, onRefresh }: KPICardProps) {
 
   const barColor =
     rate >= 100
-      ? "bg-green-500"
+      ? "bg-success"
       : rate >= 60
       ? "bg-primary"
       : rate >= 30
-      ? "bg-yellow-500"
-      : "bg-red-500";
+      ? "bg-warning"
+      : "bg-danger";
 
   return (
-    <div className="bg-card border border-border rounded-lg overflow-hidden">
+    <div className="bg-card rounded-xl shadow-card overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setExpanded((v) => !v)}
@@ -381,7 +381,7 @@ function KPICard({ kpi, isManager, onUnlink, onRefresh }: KPICardProps) {
                   {isManager && (
                     <button
                       onClick={() => onUnlink(kpi.id, link.taskId)}
-                      className="p-1 rounded text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="p-1 rounded text-muted-foreground hover:text-danger hover:bg-danger/10 transition-colors"
                       title="移除連結"
                     >
                       <Unlink className="h-3.5 w-3.5" />
@@ -460,7 +460,7 @@ export default function KPIPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-medium tracking-[-0.04em] flex items-center gap-2">
+          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />
             KPI 管理
           </h1>
@@ -480,17 +480,17 @@ export default function KPIPage() {
       {/* Summary */}
       {kpis.length > 0 && (
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
+          <div className="bg-card rounded-xl shadow-card p-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{kpis.length}</p>
             <p className="text-xs text-muted-foreground mt-1">KPI 總數</p>
           </div>
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
-            <p className="text-2xl font-semibold tabular-nums text-green-400">
+          <div className="bg-card rounded-xl shadow-card p-4 text-center">
+            <p className="text-2xl font-semibold tabular-nums text-success">
               {kpis.filter((k) => achievementRate(k) >= 100).length}
             </p>
             <p className="text-xs text-muted-foreground mt-1">已達成</p>
           </div>
-          <div className="bg-card border border-border rounded-lg p-4 text-center">
+          <div className="bg-card rounded-xl shadow-card p-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{safePct(avgRate, 0)}%</p>
             <p className="text-xs text-muted-foreground mt-1">平均達成率</p>
           </div>

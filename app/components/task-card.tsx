@@ -30,14 +30,14 @@ export type TaskCardData = {
 };
 
 const priorityConfig = {
-  P0: { label: "P0", icon: AlertCircle, color: "text-red-400 bg-red-400/10 border-red-400/20" },
-  P1: { label: "P1", icon: ArrowUp, color: "text-orange-400 bg-orange-400/10 border-orange-400/20" },
-  P2: { label: "P2", icon: Minus, color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20" },
+  P0: { label: "P0", icon: AlertCircle, color: "text-danger bg-danger/10" },
+  P1: { label: "P1", icon: ArrowUp, color: "text-warning bg-warning/10" },
+  P2: { label: "P2", icon: Minus, color: "text-muted-foreground bg-muted" },
   P3: { label: "P3", icon: ArrowDown, color: "text-muted-foreground bg-muted border-border" },
 };
 
 const categoryConfig = {
-  PLANNED: { label: "規劃", icon: Layers, color: "text-blue-400" },
+  PLANNED: { label: "規劃", icon: Layers, color: "text-primary" },
   ADDED: { label: "追加", icon: CheckSquare, color: "text-purple-400" },
   INCIDENT: { label: "突發", icon: Zap, color: "text-red-400" },
   SUPPORT: { label: "支援", icon: Users, color: "text-green-400" },
@@ -89,10 +89,10 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
     <div
       onClick={() => onClick?.(task)}
       className={cn(
-        "bg-card border border-border rounded-lg p-3 cursor-pointer select-none",
-        "hover:border-border/60 hover:bg-accent/30 transition-all duration-150",
+        "bg-card rounded-xl p-3.5 cursor-pointer select-none shadow-card",
+        "hover:shadow-card-hover hover:-translate-y-px transition-all duration-150",
         isDragging && "opacity-50 rotate-1 scale-105 shadow-xl",
-        task.priority === "P0" && "border-l-2 border-l-red-500"
+        task.priority === "P0" && "border-l-[3px] border-l-danger"
       )}
     >
       {/* Header: priority + category */}
@@ -158,7 +158,7 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
           <span
             className={cn(
               "text-[10px] flex items-center gap-0.5",
-              dueInfo.overdue ? "text-red-500 font-medium" : dueInfo.soon ? "text-orange-500" : "text-muted-foreground"
+              dueInfo.overdue ? "text-danger font-medium" : dueInfo.soon ? "text-warning" : "text-muted-foreground"
             )}
           >
             <Calendar className="h-2.5 w-2.5" />

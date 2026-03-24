@@ -48,7 +48,7 @@ export default function ChangePasswordPage() {
 
   return (
     <div className="w-full max-w-sm">
-      <div className="bg-card border border-border rounded-lg p-8 shadow-xl">
+      <div className="bg-card rounded-2xl shadow-lg p-8">
         <div className="mb-6 text-center">
           <h1 className="text-xl font-semibold text-foreground">變更密碼</h1>
           <p className="text-sm text-muted-foreground mt-2">
@@ -56,7 +56,7 @@ export default function ChangePasswordPage() {
           </p>
         </div>
 
-        <div className="mb-4 p-3 bg-muted/50 border border-border rounded-md">
+        <div className="mb-4 p-3 bg-muted/50 rounded-lg">
           <p className="text-xs text-muted-foreground">{PASSWORD_POLICY_DESCRIPTION}</p>
         </div>
 
@@ -70,7 +70,7 @@ export default function ChangePasswordPage() {
               type="password"
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-11 px-3.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
               required
               autoComplete="current-password"
             />
@@ -85,7 +85,7 @@ export default function ChangePasswordPage() {
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-11 px-3.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
               required
               minLength={12}
               autoComplete="new-password"
@@ -101,7 +101,7 @@ export default function ChangePasswordPage() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 bg-input border border-border rounded-md text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full h-11 px-3.5 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
               required
               minLength={12}
               autoComplete="new-password"
@@ -109,13 +109,13 @@ export default function ChangePasswordPage() {
           </div>
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-danger">{error}</p>
           )}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full h-11 bg-primary text-primary-foreground rounded-lg text-sm font-medium shadow-sm hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? "變更中..." : "變更密碼"}
           </button>

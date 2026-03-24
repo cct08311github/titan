@@ -193,7 +193,7 @@ export default function PlansPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-medium tracking-[-0.04em]">年度計畫</h1>
+          <h1 className="text-xl font-semibold tracking-tight">年度計畫</h1>
           <p className="text-muted-foreground text-sm mt-0.5">管理年度計畫與月度目標</p>
         </div>
         <div className="flex items-center gap-2">
@@ -295,7 +295,7 @@ export default function PlansPage() {
             </button>
           </div>
           {copyError && (
-            <p className="text-xs text-red-400">{copyError}</p>
+            <p className="text-xs text-danger">{copyError}</p>
           )}
         </div>
       )}

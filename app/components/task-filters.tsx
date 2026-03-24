@@ -50,7 +50,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
   const clearFilters = () => onChange({ assignee: "", priority: "", category: "" });
 
   const selectCls =
-    "bg-background border border-border text-foreground text-sm rounded-md px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring focus:border-ring cursor-pointer hover:border-ring/50 transition-colors";
+    "h-9 bg-card border border-border text-foreground text-sm rounded-lg px-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer hover:border-muted-foreground/30 transition-all shadow-sm";
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
