@@ -6,13 +6,22 @@ import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { AccountLockService } from "@/lib/account-lock";
 import { logger } from "@/lib/logger";
 import { isPasswordExpired } from "@/lib/password-expiry";
+import { getRedisClient } from "@/lib/redis";
 
 /**
  * Singletons — created once at module load.
- * In production, replace useMemory:true with a real Redis client.
+ * Issue #178: Use Redis when available, fallback to in-memory.
  */
-const loginRateLimiter = createLoginRateLimiter({ useMemory: true });
-const accountLockService = new AccountLockService({ maxFailures: 10, lockDurationSeconds: 900 });
+const redis = getRedisClient();
+const loginRateLimiter = createLoginRateLimiter({
+  redisClient: redis ?? undefined,
+  useMemory: !redis,
+});
+const accountLockService = new AccountLockService({
+  maxFailures: 10,
+  lockDurationSeconds: 900,
+  redisClient: redis,
+});
 
 const handler = NextAuth({
   cookies: {

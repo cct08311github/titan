@@ -33,6 +33,7 @@ import { AuditService } from "@/services/audit-service";
 import { prisma } from "@/lib/prisma";
 import type { RouteContext } from "@/lib/api-handler";
 import { JwtBlacklist } from "@/lib/jwt-blacklist";
+import { getRedisClient } from "@/lib/redis";
 export { JwtBlacklist } from "@/lib/jwt-blacklist";
 
 // ---------------------------------------------------------------------------
@@ -44,7 +45,13 @@ let _apiLimiter: ReturnType<typeof createApiRateLimiter> | null = null;
 /** Returns (creating once) the shared API rate limiter instance. */
 export function getApiRateLimiter(opts: ApiRateLimiterOptions = {}) {
   if (!_apiLimiter) {
-    _apiLimiter = createApiRateLimiter(opts);
+    // Issue #178: use Redis when available
+    const redis = getRedisClient();
+    _apiLimiter = createApiRateLimiter({
+      ...opts,
+      redisClient: redis ?? undefined,
+      useMemory: !redis,
+    });
   }
   return _apiLimiter;
 }
@@ -180,20 +187,70 @@ export function withAuditLog<T extends AnyHandler>(fn: T): T {
 // ---------------------------------------------------------------------------
 
 const SESSION_IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const SESSION_IDLE_TIMEOUT_S = 30 * 60; // 30 minutes in seconds
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Server-side last-activity store keyed by userId (unix ms timestamp).
  *
- * Process-local Map — acceptable for single-instance bank deployment.
- * For multi-instance production, migrate to Redis.
+ * Issue #178: Uses Redis when available, falls back to in-memory Map.
  * Exported so tests can inspect or reset it.
  */
 export const sessionLastActivity = new Map<string, number>();
 
+const SESSION_REDIS_PREFIX = "sess_activity:";
+
+/** Get last activity from Redis or memory. */
+async function getLastActivity(userId: string): Promise<number | undefined> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const val = await redis.get(`${SESSION_REDIS_PREFIX}${userId}`);
+      return val ? parseInt(val, 10) : undefined;
+    } catch {
+      // fallback to memory
+    }
+  }
+  return sessionLastActivity.get(userId);
+}
+
+/** Set last activity in Redis or memory. */
+async function setLastActivity(userId: string, now: number): Promise<void> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      await redis.set(
+        `${SESSION_REDIS_PREFIX}${userId}`,
+        now.toString(),
+        "EX",
+        SESSION_IDLE_TIMEOUT_S * 2
+      );
+      return;
+    } catch {
+      // fallback to memory
+    }
+  }
+  sessionLastActivity.set(userId, now);
+}
+
+/** Delete last activity from Redis or memory. */
+async function deleteLastActivity(userId: string): Promise<void> {
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      await redis.del(`${SESSION_REDIS_PREFIX}${userId}`);
+      return;
+    } catch {
+      // fallback to memory
+    }
+  }
+  sessionLastActivity.delete(userId);
+}
+
 /**
  * Throttled cleanup: removes entries that have been idle longer than
  * 2x the timeout window. Runs at most once per CLEANUP_INTERVAL_MS.
+ * Only needed for in-memory store (Redis uses TTL).
  */
 let _lastCleanup = Date.now();
 export function _cleanupStaleEntries(now: number): void {
@@ -230,13 +287,12 @@ export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
 
     if (userId) {
       const now = Date.now();
-      const lastActivity = sessionLastActivity.get(userId);
+      const lastActivity = await getLastActivity(userId);
 
       if (lastActivity !== undefined) {
         const idleMs = now - lastActivity;
         if (idleMs > SESSION_IDLE_TIMEOUT_MS) {
-          // Remove stale entry to prevent unbounded Map growth
-          sessionLastActivity.delete(userId);
+          await deleteLastActivity(userId);
           logger.warn(
             { idleMs, userId },
             "[withSessionTimeout] Session idle timeout exceeded"
@@ -246,9 +302,9 @@ export function withSessionTimeout<T extends AnyHandler>(fn: T): T {
       }
 
       // Update last-activity timestamp on every valid request.
-      sessionLastActivity.set(userId, now);
+      await setLastActivity(userId, now);
 
-      // Periodically sweep stale entries to prevent memory leak
+      // Periodically sweep stale entries in memory fallback
       _cleanupStaleEntries(now);
     }
 
