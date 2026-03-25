@@ -109,6 +109,10 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
       });
       if (res.ok) {
         onUpdated?.();
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = errBody?.message ?? errBody?.error ?? "儲存失敗";
+        alert(msg);
       }
     } finally {
       setSaving(false);
