@@ -184,21 +184,21 @@ export default function TimesheetPage() {
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
+      {/* Header — stacks vertically on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">工時紀錄</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{formatWeekLabel(weekStart)}</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">工時紀錄</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">{formatWeekLabel(weekStart)}</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* User filter — only visible to MANAGER */}
           {isManager && (
             <select
               aria-label="篩選使用者"
               value={userFilter}
               onChange={(e) => setUserFilter(e.target.value)}
-              className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+              className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer flex-1 sm:flex-none min-w-0"
             >
               <option value="">我的工時</option>
               {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -247,8 +247,8 @@ export default function TimesheetPage() {
           />
         ) : null}
 
-        {/* Grid */}
-        <div className="border border-border rounded-xl overflow-hidden bg-card">
+        {/* Grid — horizontally scrollable on mobile for the wide time table */}
+        <div className="border border-border rounded-xl overflow-x-auto bg-card">
           {loading ? (
             <PageLoading message="載入工時..." className="py-12" />
           ) : loadError ? (
