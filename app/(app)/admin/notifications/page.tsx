@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
+import { extractData } from "@/lib/api-client";
 
 interface NotificationPref {
   type: string;
@@ -37,9 +38,10 @@ export default function NotificationPreferencesPage() {
     if (!userId) return;
     try {
       const res = await fetch(`/api/users/${userId}/notification-preferences`);
-      const json = await res.json();
-      if (json.ok) {
-        setPreferences(json.data.preferences);
+      const body = await res.json();
+      const data = extractData<{ preferences: NotificationPref[] }>(body);
+      if (data?.preferences) {
+        setPreferences(data.preferences);
       }
     } catch {
       setMessage("載入通知偏好失敗");
@@ -69,12 +71,13 @@ export default function NotificationPreferencesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ preferences }),
       });
-      const json = await res.json();
-      if (json.ok) {
+      const body = await res.json();
+      const data = extractData<{ preferences: NotificationPref[] }>(body);
+      if (res.ok && data?.preferences) {
         setMessage("通知偏好已儲存");
-        setPreferences(json.data.preferences);
+        setPreferences(data.preferences);
       } else {
-        setMessage(json.message || "儲存失敗");
+        setMessage((body as { message?: string })?.message || "儲存失敗");
       }
     } catch {
       setMessage("網路錯誤，請稍後再試");

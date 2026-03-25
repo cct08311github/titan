@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Target, Plus, Unlink, ChevronDown, ChevronRight } from "lucide-react";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import { extractItems, extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { FormError, FormBanner } from "@/app/components/form-error";
 import { safeFixed, safePct } from "@/lib/safe-number";
@@ -147,12 +148,12 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
         body: JSON.stringify(parsed),
       });
       if (!res.ok) {
-        const data = await res.json();
-        setBannerError(data.error ?? "建立失敗");
+        const errBody = await res.json().catch(() => ({}));
+        setBannerError(errBody?.error ?? errBody?.message ?? "建立失敗");
         return;
       }
       const body = await res.json();
-      const kpi = body?.data ?? body;
+      const kpi = extractData<KPI>(body);
       onCreated(kpi);
     } finally {
       setSubmitting(false);
@@ -407,8 +408,8 @@ export default function KPIPage() {
     try {
       const res = await fetch(`/api/kpi?year=${year}`);
       if (!res.ok) throw new Error("KPI 載入失敗");
-      const data = await res.json();
-      const kpiItems = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []; setKpis(kpiItems);
+      const body = await res.json();
+      setKpis(extractItems<KPI>(body));
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {

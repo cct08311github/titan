@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData } from "@/lib/api-client";
 
 type SubTask = {
   id: string;
@@ -71,7 +72,8 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
         body: JSON.stringify({ taskId, title: newTitle.trim(), order: subtasks.length }),
       });
       if (res.ok) {
-        const created = await res.json();
+        const body = await res.json();
+        const created = extractData<SubTask>(body);
         const updated = [...subtasks, created];
         setSubtasks(updated);
         onUpdate?.(updated);

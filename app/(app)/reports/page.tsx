@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Download, RefreshCw, BarChart3, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { formatDate } from "@/lib/format";
@@ -97,7 +98,7 @@ function WeeklyReport() {
     setError(null);
     fetch("/api/reports/weekly")
       .then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); })
-      .then(setData)
+      .then((body) => setData(extractData<WeeklyData>(body)))
       .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, []);
@@ -216,7 +217,7 @@ function MonthlyReport() {
     setError(null);
     fetch(`/api/reports/monthly?month=${month}`)
       .then((r) => { if (!r.ok) throw new Error("月報載入失敗"); return r.json(); })
-      .then(setData)
+      .then((body) => setData(extractData<MonthlyData>(body)))
       .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, [month]);
@@ -347,7 +348,7 @@ function KPIReport() {
     setError(null);
     fetch(`/api/reports/kpi?year=${year}`)
       .then((r) => { if (!r.ok) throw new Error("KPI 報表載入失敗"); return r.json(); })
-      .then(setData)
+      .then((body) => setData(extractData<KPIReportData>(body)))
       .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, [year]);
@@ -483,7 +484,7 @@ function WorkloadReport() {
     setError(null);
     fetch(`/api/reports/workload?startDate=${startDate}`)
       .then((r) => { if (!r.ok) throw new Error("負荷報表載入失敗"); return r.json(); })
-      .then(setData)
+      .then((body) => setData(extractData<WorkloadData>(body)))
       .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
       .finally(() => setLoading(false));
   }, [startDate]);
@@ -653,8 +654,8 @@ function TrendsReport() {
     try {
       const res = await fetch(`/api/reports/trends?metric=${metric}&years=${years.join(",")}`);
       if (!res.ok) throw new Error("趨勢資料載入失敗");
-      const json = await res.json();
-      setData(json.data ?? {});
+      const body = await res.json();
+      setData(extractData<Record<number, Array<{ month: number; value: number }>>>(body) ?? {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {

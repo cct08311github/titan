@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2, FileText, Monitor, BarChart2, Stamp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData } from "@/lib/api-client";
 
 type DeliverableType = "DOCUMENT" | "SYSTEM" | "REPORT" | "APPROVAL";
 type DeliverableStatus = "NOT_STARTED" | "IN_PROGRESS" | "DELIVERED" | "ACCEPTED";
@@ -89,7 +90,8 @@ export function DeliverableList({ deliverables: initial, taskId, onUpdate }: Del
         body: JSON.stringify({ title: newTitle.trim(), type: newType, taskId }),
       });
       if (res.ok) {
-        const created = await res.json();
+        const body = await res.json();
+        const created = extractData<Deliverable>(body);
         const updated = [...items, created];
         setItems(updated);
         onUpdate?.(updated);

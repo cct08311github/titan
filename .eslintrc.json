@@ -1,0 +1,12 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "AwaitExpression > CallExpression > MemberExpression[property.name='json']",
+        "message": "Use extractData() or extractItems() from @/lib/api-client instead of raw .json(). See lib/api-client.ts for usage."
+      }
+    ]
+  }
+}

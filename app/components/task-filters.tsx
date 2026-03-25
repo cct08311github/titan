@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Filter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractItems } from "@/lib/api-client";
 
 export type TaskFilters = {
   assignee: string;
@@ -41,7 +42,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
-      .then((data) => setUsers(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []))
+      .then((body) => setUsers(extractItems<User>(body)))
       .catch(() => {});
   }, []);
 

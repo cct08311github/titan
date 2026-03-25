@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { History, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractItems } from "@/lib/api-client";
 import { formatShortDateTime } from "@/lib/format";
 
 type DocVersion = {
@@ -30,8 +31,8 @@ export function VersionHistory({ documentId, currentVersion, onRestore }: Versio
     try {
       const res = await fetch(`/api/documents/${documentId}/versions`);
       if (res.ok) {
-        const data = await res.json();
-        setVersions(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
+        const body = await res.json();
+        setVersions(extractItems<DocVersion>(body));
       }
     } finally {
       setLoading(false);

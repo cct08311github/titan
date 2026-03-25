@@ -15,6 +15,7 @@ import {
   Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData, extractItems } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -58,8 +59,8 @@ function BackupStatusSection() {
     try {
       const res = await fetch("/api/admin/backup-status");
       if (!res.ok) throw new Error("備份狀態載入失敗");
-      const json = await res.json();
-      setStatus(json.data ?? json);
+      const body = await res.json();
+      setStatus(extractData<BackupStatus>(body));
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -196,8 +197,8 @@ function AuditLogSection() {
       if (actionFilter) params.set("action", actionFilter);
       const res = await fetch(`/api/audit?${params.toString()}`);
       if (!res.ok) throw new Error("稽核日誌載入失敗");
-      const json = await res.json();
-      setLogs(json.data ?? json);
+      const body = await res.json();
+      setLogs(extractItems<AuditLogEntry>(body));
       setPage(0);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Bell, CheckCheck, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData } from "@/lib/api-client";
 
 interface Notification {
   id: string;
@@ -61,9 +62,8 @@ export function NotificationBell() {
     try {
       const res = await fetch("/api/notifications?limit=15");
       if (res.ok) {
-        const json = await res.json();
-        // Support paginated response { data: { items, unreadCount, pagination } }
-        const payload = json?.data ?? json;
+        const body = await res.json();
+        const payload = extractData<{ items?: Notification[]; notifications?: Notification[]; unreadCount?: number }>(body);
         setNotifications(payload?.items ?? payload?.notifications ?? []);
         setUnreadCount(payload?.unreadCount ?? 0);
       }

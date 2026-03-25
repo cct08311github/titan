@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Diamond, BarChart2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData, extractItems } from "@/lib/api-client";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
@@ -292,7 +293,7 @@ export default function GanttPage() {
       const res = await fetch(`/api/tasks/gantt?${params}`);
       if (!res.ok) throw new Error("甘特圖資料載入失敗");
       const body = await res.json();
-      setData(body?.data ?? body);
+      setData(extractData<{ annualPlan: AnnualPlan | null; year: number }>(body));
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -303,7 +304,7 @@ export default function GanttPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    fetch("/api/users").then((r) => r.json()).then((raw) => { const d = raw?.data ?? raw; setUsers(Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : []); }).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
   }, []);
 
   const plan = data?.annualPlan;

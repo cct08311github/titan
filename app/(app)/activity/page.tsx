@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Activity, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData } from "@/lib/api-client";
 import { PageError, PageEmpty, ListSkeleton } from "@/app/components/page-states";
 import { formatRelative } from "@/lib/format";
 
@@ -63,10 +64,10 @@ export default function ActivityPage() {
     try {
       const res = await fetch(`/api/activity?page=${page}&limit=30`);
       if (!res.ok) throw new Error("活動紀錄載入失敗");
-      const json = await res.json();
-      const data = json?.data ?? json;
-      setItems(data.items ?? []);
-      setPagination(data.pagination ?? null);
+      const body = await res.json();
+      const data = extractData<{ items: ActivityItem[]; pagination: PaginationMeta }>(body);
+      setItems(data?.items ?? []);
+      setPagination(data?.pagination ?? null);
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
