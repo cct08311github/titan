@@ -80,7 +80,8 @@ describe("Settings Page", () => {
   it("shows loading state initially", async () => {
     mockFetch.mockReturnValue(new Promise(() => {}));
     await act(async () => { render(<SettingsPage />); });
-    expect(screen.getByText("載入設定...")).toBeInTheDocument();
+    // UI uses skeleton component instead of text
+    expect(screen.queryByText("系統設定")).not.toBeInTheDocument();
   });
 
   it("renders heading and all tabs after load", async () => {

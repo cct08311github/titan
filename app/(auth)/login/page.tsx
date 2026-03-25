@@ -18,9 +18,11 @@ export default function LoginPage() {
     setError("");
     const result = await signIn("credentials", { username, password, redirect: false });
     if (result?.error) {
-      if (result.code === "credentials") {
+      const errorStr = result.error || "";
+      const codeStr = (result as unknown as Record<string, unknown>).code as string || "";
+      if (errorStr === "CredentialsSignin" || codeStr === "credentials") {
         setError("帳號或密碼錯誤");
-      } else if (result.code?.includes("locked")) {
+      } else if (errorStr.includes("locked") || codeStr.includes("locked")) {
         setError("帳號已被鎖定，請等待 15 分鐘後再試");
       } else {
         setError("登入失敗，請稍後再試");

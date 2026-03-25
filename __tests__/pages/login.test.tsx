@@ -89,7 +89,7 @@ describe("Login Page", () => {
       fireEvent.click(screen.getByRole("button", { name: /登入/i }));
     });
     await waitFor(() => {
-      expect(screen.getByText("帳號或密碼錯誤，請重新輸入")).toBeInTheDocument();
+      expect(screen.getByText("帳號或密碼錯誤")).toBeInTheDocument();
     });
   });
 

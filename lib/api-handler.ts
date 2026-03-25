@@ -97,7 +97,7 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
 
           // Extract userId from session (non-blocking)
           auth()
-            .then((session) => {
+            .then((session: { user?: { id?: string } } | null) => {
               const userId = session?.user?.id ?? null;
               return auditService.log({
                 userId,
@@ -107,7 +107,7 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
                 ipAddress,
               });
             })
-            .catch((auditErr) => {
+            .catch((auditErr: unknown) => {
               // Error-level logging for audit failures — these indicate data integrity risks
               logger.error(
                 {

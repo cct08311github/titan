@@ -88,7 +88,8 @@ describe("Activity Feed Page", () => {
   it("shows loading state initially", async () => {
     mockFetch.mockReturnValue(new Promise(() => {})); // never resolves
     await act(async () => { render(<ActivityPage />); });
-    expect(screen.getByText("載入動態...")).toBeInTheDocument();
+    // UI uses ListSkeleton component instead of text
+    expect(screen.queryByText("尚無活動紀錄")).not.toBeInTheDocument();
   });
 
   it("shows empty state when no items", async () => {

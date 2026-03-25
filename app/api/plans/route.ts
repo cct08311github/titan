@@ -4,6 +4,7 @@ import { PlanService } from "@/services/plan-service";
 import { validateBody } from "@/lib/validate";
 import { createPlanSchema } from "@/validators/plan-validators";
 import { success } from "@/lib/api-response";
+import { ValidationError } from "@/services/errors";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 

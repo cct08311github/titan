@@ -63,12 +63,15 @@ export interface PushNotificationProvider {
  */
 export class StubPushProvider implements PushNotificationProvider {
   send(recipients: PushRecipient[], message: PushMessage): Promise<PushResult> {
-    logger.warn("[PushNotification] STUB — notification NOT delivered (push is disabled)", {
-      recipientCount: recipients.length,
-      recipientIds: recipients.map((r) => r.userId),
-      title: message.title,
-      priority: message.priority ?? "normal",
-    });
+    logger.warn(
+      {
+        recipientCount: recipients.length,
+        recipientIds: recipients.map((r) => r.userId),
+        title: message.title,
+        priority: message.priority ?? "normal",
+      },
+      "[PushNotification] STUB — notification NOT delivered (push is disabled)"
+    );
 
     return Promise.resolve({
       success: true,
