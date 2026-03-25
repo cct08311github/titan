@@ -1,4 +1,3 @@
-npm warn exec The following package was not found and will be installed: prisma@5.22.0
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('MANAGER', 'ENGINEER');
 
@@ -583,14 +582,3 @@ ALTER TABLE "document_versions" ADD CONSTRAINT "document_versions_documentId_fke
 
 -- AddForeignKey
 ALTER TABLE "document_versions" ADD CONSTRAINT "document_versions_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
-┌─────────────────────────────────────────────────────────┐
-│  Update available 5.22.0 -> 7.5.0                       │
-│                                                         │
-│  This is a major update - please follow the guide at    │
-│  https://pris.ly/d/major-version-upgrade                │
-│                                                         │
-│  Run the following to update                            │
-│    npm i --save-dev prisma@latest                       │
-│    npm i @prisma/client@latest                          │
-└─────────────────────────────────────────────────────────┘
