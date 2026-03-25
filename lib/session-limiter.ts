@@ -104,6 +104,16 @@ export async function registerSession(
 }
 
 /**
+ * Remove stale session entries from the Redis sorted set.
+ * Members with score (timestamp) older than SESSION_TTL are expired sessions
+ * that were never explicitly cleared (e.g., browser closed without logout).
+ */
+async function pruneStaleMembers(redis: NonNullable<ReturnType<typeof getRedisClient>>, key: string): Promise<void> {
+  const cutoff = Date.now() - SESSION_TTL * 1000;
+  await redis.zremrangebyscore(key, 0, cutoff);
+}
+
+/**
  * Check if a session is still active for its user.
  */
 export async function isSessionActive(
@@ -114,17 +124,31 @@ export async function isSessionActive(
 
   if (redis) {
     try {
+      const key = `${REDIS_PREFIX}${userId}`;
+
+      // Prune stale members before checking
+      await pruneStaleMembers(redis, key);
+
+      // Refresh key TTL on active check
+      await redis.expire(key, SESSION_TTL);
+
       // zscore returns null if member doesn't exist
-      const score = await redis.zscore(`${REDIS_PREFIX}${userId}`, sessionId);
+      const score = await redis.zscore(key, sessionId);
       return score !== null;
     } catch {
       // fallback
     }
   }
 
+  // In-memory fallback: also prune stale entries
   const sessions = memStore.get(userId);
   if (!sessions) return false;
-  return sessions.some((s) => s.sessionId === sessionId);
+  const cutoff = Date.now() - SESSION_TTL * 1000;
+  const active = sessions.filter((s) => s.createdAt > cutoff);
+  if (active.length !== sessions.length) {
+    memStore.set(userId, active);
+  }
+  return active.some((s) => s.sessionId === sessionId);
 }
 
 /**
@@ -163,19 +187,30 @@ export async function clearSession(
 
 /**
  * Get the count of active sessions for a user.
+ * Prunes stale entries before counting.
  */
 export async function getActiveSessionCount(userId: string): Promise<number> {
   const redis = getRedisClient();
 
   if (redis) {
     try {
-      return await redis.zcard(`${REDIS_PREFIX}${userId}`);
+      const key = `${REDIS_PREFIX}${userId}`;
+      await pruneStaleMembers(redis, key);
+      return await redis.zcard(key);
     } catch {
       // fallback
     }
   }
 
-  return memStore.get(userId)?.length ?? 0;
+  // In-memory fallback: prune stale entries
+  const sessions = memStore.get(userId);
+  if (!sessions) return 0;
+  const cutoff = Date.now() - SESSION_TTL * 1000;
+  const active = sessions.filter((s) => s.createdAt > cutoff);
+  if (active.length !== sessions.length) {
+    memStore.set(userId, active);
+  }
+  return active.length;
 }
 
 /** Exported for testing — allows overriding the max concurrent sessions */
