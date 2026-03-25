@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Grid3X3, List } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { TimesheetGrid, type TaskRow } from "@/app/components/timesheet-grid";
+import { TimesheetListView } from "@/app/components/timesheet-list-view";
 import { TimeSummary } from "@/app/components/time-summary";
+import { TimerWidget } from "@/app/components/timer-widget";
 import { type TimeEntry } from "@/app/components/time-entry-cell";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
@@ -20,6 +22,8 @@ type StatsData = {
   taskInvestmentRate: number;
   entryCount: number;
 };
+
+type ViewMode = "grid" | "list";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,12 +61,25 @@ export default function TimesheetPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
 
   // Load users
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
       .then((body) => setUsers(extractItems<User>(body)))
+      .catch(() => {});
+  }, []);
+
+  // Load tasks for timer widget task selector
+  useEffect(() => {
+    fetch("/api/tasks")
+      .then((r) => r.json())
+      .then((body) => {
+        const items = extractItems<{ id: string; title: string }>(body);
+        setTasks(items);
+      })
       .catch(() => {});
   }, []);
 
@@ -173,6 +190,11 @@ export default function TimesheetPage() {
     }
   }
 
+  function handleTimerChange() {
+    loadEntries();
+    loadStats();
+  }
+
   function prevWeek() {
     setWeekStart((d) => { const n = new Date(d); n.setDate(n.getDate() - 7); return n; });
   }
@@ -206,6 +228,34 @@ export default function TimesheetPage() {
             </select>
           )}
 
+          {/* View toggle — grid / list */}
+          <div className="flex items-center bg-background border border-border rounded-md overflow-hidden">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors",
+                viewMode === "grid"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              <Grid3X3 className="h-3.5 w-3.5" />
+              格子
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors",
+                viewMode === "list"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+            >
+              <List className="h-3.5 w-3.5" />
+              列表
+            </button>
+          </div>
+
           {/* Week navigation */}
           <div className="flex items-center gap-1 bg-background border border-border rounded-md">
             <button onClick={prevWeek} className="p-1.5 hover:bg-accent rounded-l-md transition-colors">
@@ -234,27 +284,32 @@ export default function TimesheetPage() {
 
       {/* Content */}
       <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-auto">
-        {/* Stats summary */}
-        {statsLoading ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            計算中...
+        {/* Timer widget + Stats summary — side by side on desktop */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <TimerWidget tasks={tasks} onTimerChange={handleTimerChange} />
+          <div className="flex-1">
+            {statsLoading ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                計算中...
+              </div>
+            ) : stats && stats.totalHours > 0 ? (
+              <TimeSummary
+                totalHours={stats.totalHours}
+                breakdown={stats.breakdown}
+                taskInvestmentRate={stats.taskInvestmentRate}
+              />
+            ) : null}
           </div>
-        ) : stats && stats.totalHours > 0 ? (
-          <TimeSummary
-            totalHours={stats.totalHours}
-            breakdown={stats.breakdown}
-            taskInvestmentRate={stats.taskInvestmentRate}
-          />
-        ) : null}
+        </div>
 
-        {/* Grid — horizontally scrollable on mobile for the wide time table */}
+        {/* Grid or List view — horizontally scrollable on mobile */}
         <div className="border border-border rounded-xl overflow-x-auto bg-card">
           {loading ? (
             <PageLoading message="載入工時..." className="py-12" />
           ) : loadError ? (
             <PageError message={loadError} onRetry={loadEntries} className="py-12" />
-          ) : (
+          ) : viewMode === "grid" ? (
             <>
               {entries.length === 0 && (
                 <div className="text-center py-3 text-xs text-muted-foreground border-b border-border">
@@ -269,6 +324,11 @@ export default function TimesheetPage() {
                 onCellDelete={handleCellDelete}
               />
             </>
+          ) : (
+            <TimesheetListView
+              entries={entries}
+              onDelete={handleCellDelete}
+            />
           )}
         </div>
 
