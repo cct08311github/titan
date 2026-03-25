@@ -7,11 +7,22 @@
 import { createMockRequest } from "../utils/test-utils";
 
 const mockPermission = { findMany: jest.fn(), create: jest.fn(), updateMany: jest.fn() };
+const mockAuditLog = { create: jest.fn() };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { permission: mockPermission } }));
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    permission: mockPermission,
+    auditLog: mockAuditLog,
+  },
+}));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
+
+// Mock logger to suppress output in tests
+jest.mock("@/lib/logger", () => ({
+  logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+}));
 
 const MEMBER = { user: { id: "u1", name: "Test", email: "t@e.com", role: "MEMBER" }, expires: "2099" };
 const MANAGER = { user: { id: "mgr", name: "Mgr", email: "m@e.com", role: "MANAGER" }, expires: "2099" };
@@ -70,6 +81,7 @@ describe("POST /api/permissions", () => {
     mockGetServerSession.mockResolvedValue(MANAGER);
     mockPermission.create.mockResolvedValue(MOCK_PERM);
     mockPermission.updateMany.mockResolvedValue({ count: 1 });
+    mockAuditLog.create.mockResolvedValue({ id: "audit-1" });
   });
 
   it("creates permission as manager", async () => {

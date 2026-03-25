@@ -125,17 +125,28 @@ describe("ImportService", () => {
     ];
 
     test("importTasks creates tasks in batch", async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: "user-1" });
-      (prisma.task.create as jest.Mock).mockResolvedValue({ id: "task-1" });
+      (prisma.user.findMany as jest.Mock).mockResolvedValue([
+        { id: "user-1", email: "a@b.com" },
+        { id: "user-2", email: "b@c.com" },
+      ]);
+      // $transaction receives a callback — invoke it with a mock tx that has task.createMany
+      (prisma.$transaction as jest.Mock).mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        return cb({ task: { createMany: jest.fn().mockResolvedValue({ count: validRows.length }) } });
+      });
 
       await service.importTasks(validRows, "creator-1");
 
-      expect(prisma.task.create).toHaveBeenCalledTimes(validRows.length);
+      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
     });
 
     test("importTasks returns count and errors", async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({ id: "user-1" });
-      (prisma.task.create as jest.Mock).mockResolvedValue({ id: "task-1" });
+      (prisma.user.findMany as jest.Mock).mockResolvedValue([
+        { id: "user-1", email: "a@b.com" },
+        { id: "user-2", email: "b@c.com" },
+      ]);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        return cb({ task: { createMany: jest.fn().mockResolvedValue({ count: 2 }) } });
+      });
 
       const result = await service.importTasks(validRows, "creator-1");
 
@@ -148,8 +159,10 @@ describe("ImportService", () => {
         { title: "", description: "", assigneeEmail: "", status: "TODO", priority: "P2", category: "PLANNED" }, // invalid: no title
       ];
 
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
-      (prisma.task.create as jest.Mock).mockResolvedValue({ id: "task-1" });
+      (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+      (prisma.$transaction as jest.Mock).mockImplementation(async (cb: (tx: unknown) => unknown) => {
+        return cb({ task: { createMany: jest.fn().mockResolvedValue({ count: 1 }) } });
+      });
 
       const result = await service.importTasks(mixedRows, "creator-1");
 

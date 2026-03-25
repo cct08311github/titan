@@ -6,6 +6,21 @@ import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { Sidebar } from "@/app/components/sidebar";
 
+// Mock window.matchMedia (not available in jsdom)
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 jest.mock("next/link", () => {
   const MockLink = ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
     <a href={href} className={className}>{children}</a>
@@ -49,7 +64,7 @@ describe("Sidebar", () => {
   it("marks dashboard link as active when on dashboard path", () => {
     render(<Sidebar />);
     const dashboardLink = screen.getByText("儀表板").closest("a");
-    expect(dashboardLink?.className).toContain("bg-sidebar-accent");
+    expect(dashboardLink?.className).toContain("bg-[hsl(var(--sidebar-accent))]");
   });
 
   it("does not mark kanban as active when on dashboard", () => {
@@ -57,7 +72,7 @@ describe("Sidebar", () => {
     const dashboardLink = screen.getByText("儀表板").closest("a");
     const kanbanLink = screen.getByText("看板").closest("a");
     // Dashboard should be active, kanban should not have the active (non-hover) class as a standalone class
-    expect(dashboardLink?.className).toContain("bg-sidebar-accent");
+    expect(dashboardLink?.className).toContain("bg-[hsl(var(--sidebar-accent))]");
     // Kanban is not active — it should not contain the font-medium active indicator
     expect(kanbanLink?.className).not.toContain("font-medium");
   });
@@ -66,7 +81,7 @@ describe("Sidebar", () => {
     mockUsePathname.mockReturnValue("/kanban");
     render(<Sidebar />);
     const kanbanLink = screen.getByText("看板").closest("a");
-    expect(kanbanLink?.className).toContain("bg-sidebar-accent");
+    expect(kanbanLink?.className).toContain("bg-[hsl(var(--sidebar-accent))]");
   });
 
   it("renders navigation links with correct hrefs", () => {
