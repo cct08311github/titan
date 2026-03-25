@@ -20,10 +20,20 @@ route:
       repeat_interval: 30m
       continue: true
     - matchers:
+        - severity = "critical"
+      receiver: critical-webhook
+      repeat_interval: 30m
+      continue: false
+    - matchers:
         - severity = "warning"
       receiver: warning-email
       repeat_interval: 4h
       continue: true
+    - matchers:
+        - severity = "warning"
+      receiver: warning-webhook
+      repeat_interval: 4h
+      continue: false
 
 receivers:
   - name: default-email
@@ -47,7 +57,14 @@ receivers:
         headers:
           Subject: '[TITAN 警告] {{ .GroupLabels.alertname }}'
 
-  # Webhook backup (optional — configure if webhook receiver available)
+  # Webhook receivers — 確保告警即使 Email 故障也能透過 webhook 送達
+  # 設定 ALERT_WEBHOOK_URL 環境變數指向實際的 webhook 端點（Slack incoming webhook / n8n / custom）
+  - name: default-webhook
+    webhook_configs:
+      - url: '${ALERT_WEBHOOK_URL:-http://host.docker.internal:8088/webhooks/alerts/default}'
+        send_resolved: true
+        max_alerts: 20
+
   - name: critical-webhook
     webhook_configs:
       - url: 'http://host.docker.internal:8088/webhooks/alerts/critical'
