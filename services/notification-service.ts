@@ -348,6 +348,115 @@ export class NotificationService {
   }
 
   /**
+   * TS-27: Detect engineers with <5h total for 3+ consecutive work days.
+   * Generates TIMESHEET_REMINDER notifications sent to all MANAGERs.
+   *
+   * Looks back 5 work days from `now`. Skips weekends.
+   * Only notifies managers (not the flagged engineer).
+   */
+  async buildAnomalyNotifications(
+    now: Date,
+    existingKeys: Set<string>
+  ): Promise<NotificationInput[]> {
+    const DAILY_THRESHOLD = 5;
+    const CONSECUTIVE_DAYS_THRESHOLD = 3;
+    const LOOKBACK_WORK_DAYS = 5;
+
+    // Build list of work days to check (going back from today)
+    const workDays: Date[] = [];
+    const cursor = new Date(now);
+    cursor.setHours(0, 0, 0, 0);
+    while (workDays.length < LOOKBACK_WORK_DAYS) {
+      const day = cursor.getDay();
+      if (day !== 0 && day !== 6) {
+        workDays.unshift(new Date(cursor));
+      }
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    if (workDays.length < CONSECUTIVE_DAYS_THRESHOLD) return [];
+
+    const rangeStart = workDays[0];
+    const rangeEnd = new Date(workDays[workDays.length - 1]);
+    rangeEnd.setHours(23, 59, 59, 999);
+
+    // Get all active engineers
+    const engineers = await this.prisma.user.findMany({
+      where: { isActive: true, role: "ENGINEER" },
+      select: { id: true, name: true },
+    });
+
+    if (engineers.length === 0) return [];
+
+    // Get all managers (to receive notifications)
+    const managers = await this.prisma.user.findMany({
+      where: { isActive: true, role: "MANAGER" },
+      select: { id: true, name: true },
+    });
+
+    if (managers.length === 0) return [];
+
+    // Get time entries in the range
+    const entries = await this.prisma.timeEntry.findMany({
+      where: {
+        userId: { in: engineers.map((e: { id: string }) => e.id) },
+        date: { gte: rangeStart, lte: rangeEnd },
+      },
+      select: { userId: true, date: true, hours: true },
+    });
+
+    // Group hours by userId and date
+    const hoursByUserDate: Record<string, Record<string, number>> = {};
+    for (const entry of entries) {
+      const dateStr = new Date(entry.date).toISOString().slice(0, 10);
+      if (!hoursByUserDate[entry.userId]) hoursByUserDate[entry.userId] = {};
+      hoursByUserDate[entry.userId][dateStr] =
+        (hoursByUserDate[entry.userId][dateStr] ?? 0) + entry.hours;
+    }
+
+    const todayKey = now.toISOString().slice(0, 10);
+    const result: NotificationInput[] = [];
+
+    for (const eng of engineers) {
+      const userDays = hoursByUserDate[eng.id] ?? {};
+
+      // Check for consecutive work days with <5h
+      let consecutive = 0;
+      let maxConsecutive = 0;
+      for (const wd of workDays) {
+        const dateStr = wd.toISOString().slice(0, 10);
+        const dayHours = userDays[dateStr] ?? 0;
+        if (dayHours < DAILY_THRESHOLD) {
+          consecutive++;
+          if (consecutive > maxConsecutive) maxConsecutive = consecutive;
+        } else {
+          consecutive = 0;
+        }
+      }
+
+      if (maxConsecutive < CONSECUTIVE_DAYS_THRESHOLD) continue;
+
+      // Generate notification for each manager
+      for (const mgr of managers) {
+        const key = `${mgr.id}:TIMESHEET_REMINDER:anomaly:${eng.id}:${todayKey}`;
+        if (existingKeys.has(key)) continue;
+
+        result.push({
+          userId: mgr.id,
+          type: "TIMESHEET_REMINDER",
+          title: `工時異常警示：${eng.name}`,
+          body: `${eng.name} 已連續 ${maxConsecutive} 個工作日填報工時低於 ${DAILY_THRESHOLD} 小時，請關注。`,
+          relatedId: `anomaly:${eng.id}:${todayKey}`,
+          relatedType: "TimeEntry",
+        });
+        existingKeys.add(key);
+      }
+    }
+
+    return result;
+  }
+
+  /**
    * Full pipeline: build all notification payloads and persist them.
    * Returns counts for observability.
    */
