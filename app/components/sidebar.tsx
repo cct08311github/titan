@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +32,12 @@ const navGroups = [
     items: [
       { href: "/timesheet", label: "工時紀錄", icon: Clock },
       { href: "/reports", label: "報表", icon: BarChart2 },
+    ],
+  },
+  {
+    label: "系統",
+    items: [
+      { href: "/admin", label: "系統管理", icon: Shield },
     ],
   },
 ];
