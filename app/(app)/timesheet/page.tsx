@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, CalendarDays } from "lucide-react";
 import {
   useTimesheet,
   TimesheetGrid,
@@ -18,6 +19,7 @@ import { PageLoading, PageError } from "@/app/components/page-states";
 
 export default function TimesheetPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const isManager = session?.user?.role === "MANAGER";
   const [userFilter, setUserFilter] = useState("");
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
@@ -79,9 +81,17 @@ export default function TimesheetPage() {
         getDateStr={ts.getDateStr}
       />
 
-      {/* Manager user filter */}
+      {/* Manager actions */}
       {isManager && (
-        <select
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => router.push("/timesheet/monthly")}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors"
+          >
+            <CalendarDays className="h-4 w-4" />
+            月報
+          </button>
+          <select
           aria-label="篩選使用者"
           value={userFilter}
           onChange={(e) => setUserFilter(e.target.value)}
@@ -92,6 +102,7 @@ export default function TimesheetPage() {
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
+        </div>
       )}
 
       {/* Content area */}

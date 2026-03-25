@@ -56,6 +56,7 @@ model User {
   approvalRequests         ApprovalRequest[]    @relation("ApprovalRequester")
   approvalReviews          ApprovalRequest[]    @relation("ApprovalApprover")
   timeEntryTemplates       TimeEntryTemplate[]
+  timesheetReviews         TimesheetApproval[]  @relation("TimesheetReviewer")
 
   @@map("users")
 }
@@ -438,6 +439,13 @@ enum OvertimeType {
   HOLIDAY   // 假日加班（國定假日/週末）
 }
 
+// Phase 2: 工時審核狀態
+enum TimesheetApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model TimeEntry {
   id          String       @id @default(cuid())
   taskId      String?
@@ -460,6 +468,12 @@ model TimeEntry {
   // TS-04: 覆核鎖定
   locked Boolean @default(false)
 
+  // Phase 2: 審核狀態
+  approvalStatus TimesheetApprovalStatus @default(PENDING)
+
+  // Phase 2: 審核歷程
+  approvals TimesheetApproval[]
+
   // TS-05: 計時器運行狀態
   isRunning Boolean @default(false)
 
@@ -475,6 +489,27 @@ model TimeEntry {
   @@index([userId, isRunning])
   @@index([userId, date])
   @@map("time_entries")
+}
+
+// ═══════════════════════════════════════
+// 工時審核 (Phase 2)
+// ═══════════════════════════════════════
+
+/// 審核歷程 — 每次核准/駁回記錄一筆，保留完整歷史
+model TimesheetApproval {
+  id          String                   @id @default(cuid())
+  timeEntryId String
+  reviewerId  String
+  status      TimesheetApprovalStatus
+  reason      String?                  // 駁回理由
+  createdAt   DateTime                 @default(now())
+
+  timeEntry TimeEntry @relation(fields: [timeEntryId], references: [id], onDelete: Cascade)
+  reviewer  User      @relation("TimesheetReviewer", fields: [reviewerId], references: [id])
+
+  @@index([timeEntryId])
+  @@index([reviewerId])
+  @@map("timesheet_approvals")
 }
 
 // ═══════════════════════════════════════
@@ -524,6 +559,7 @@ enum NotificationType {
   BACKUP_ACTIVATED
   TASK_CHANGED
   TIMESHEET_REMINDER
+  TIMESHEET_REJECTED    // Phase 2: 工時被駁回通知
 }
 
 model Notification {
