@@ -21,14 +21,14 @@ until docker exec titan-db-dev pg_isready -U titan -d titan_dev > /dev/null 2>&1
   echo "  Waiting for PostgreSQL..."
   sleep 2
 done
-echo "✅ PostgreSQL ready"
+echo "PostgreSQL ready"
 
 # 3. Check Redis
 until docker exec titan-redis-dev redis-cli ping > /dev/null 2>&1; do
   echo "  Waiting for Redis..."
   sleep 2
 done
-echo "✅ Redis ready"
+echo "Redis ready"
 
 # 4. Generate Prisma Client
 echo "Generating Prisma Client..."
@@ -53,24 +53,20 @@ if [ "${USER_COUNT:-0}" -eq "0" ]; then
       ('eng-004', '工程師D', 'eng-d@titan.local', '\$2a\$10\$oR/zOfynJPAopTHPcAlMnulib1MjTe7yOfQzL3/MTZwjpS20IZXza', 'ENGINEER', true, NOW(), NOW())
     ON CONFLICT (id) DO NOTHING;
   " 2>/dev/null
-  echo "✅ Database seeded"
+  echo "Database seeded"
 fi
 
-# 7. Start Next.js
-# Fixed secret for dev — sessions survive server restart
-SECRET="titan-dev-secret-2026-do-not-use-in-production-abcdef1234567890"
+# 7. Load .env.development and start Next.js
 echo ""
 echo "=== Starting Next.js dev server ==="
 echo "URL: http://mac-mini.tailde842d.ts.net:3100"
 echo "Login: admin@titan.local / Titan@2026"
 echo ""
 
+# Environment variables are loaded from .env.development
+# Explicit overrides for DB and Redis connection only
 exec env \
   DATABASE_URL="postgresql://titan:titan_dev_password@localhost:5433/titan_dev" \
   REDIS_URL="redis://localhost:6379" \
-  NEXTAUTH_SECRET="$SECRET" \
-  AUTH_SECRET="$SECRET" \
-  AUTH_URL="http://mac-mini.tailde842d.ts.net:3100" \
-  NEXTAUTH_URL="http://mac-mini.tailde842d.ts.net:3100" \
   NODE_ENV=development \
   npx next dev -p 3100
