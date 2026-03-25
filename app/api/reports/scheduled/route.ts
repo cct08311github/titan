@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { success } from "@/lib/api-response";
 import { withManager } from "@/lib/auth-middleware";
 import { ReportService } from "@/services/report-service";
+import { formatLocalDate } from "@/lib/utils/date";
 
 const reportService = new ReportService(prisma);
 
@@ -26,7 +27,7 @@ export const POST = withManager(async (_req: NextRequest) => {
 
   // Same-day idempotency guard: if a scheduled report notification already
   // exists for today, return early instead of regenerating.
-  const todayKey = `report-scheduled-${now.toISOString().slice(0, 10)}`;
+  const todayKey = `report-scheduled-${formatLocalDate(now)}`;
   const existingToday = await prisma.notification.count({
     where: {
       type: "TASK_CHANGED",
@@ -74,7 +75,7 @@ export const POST = withManager(async (_req: NextRequest) => {
   ].join("\n");
 
   // Create notifications for all managers
-  const weekKey = `report-${report.period.start.toISOString().slice(0, 10)}`;
+  const weekKey = `report-${formatLocalDate(report.period.start)}`;
 
   // Check for existing notifications to avoid duplicates
   const existing = await prisma.notification.findMany({

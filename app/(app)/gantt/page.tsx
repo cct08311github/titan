@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { formatLocalDate } from "@/lib/utils/date";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,7 +84,7 @@ function daysInYear(year: number): number {
 }
 
 function monthStartDay(month: number, year: number): number {
-  return dayOfYear(new Date(year, month, 1).toISOString().split("T")[0], year);
+  return dayOfYear(formatLocalDate(new Date(year, month, 1)), year);
 }
 
 // ─── Gantt Bar ────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ function monthStartDay(month: number, year: number): number {
 function dayToDate(day: number, year: number): string {
   const d = new Date(year, 0, 1);
   d.setDate(d.getDate() + day);
-  return d.toISOString().split("T")[0];
+  return formatLocalDate(d);
 }
 
 type GanttBarProps = {

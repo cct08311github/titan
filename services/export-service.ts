@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { formatLocalDate } from "@/lib/utils/date";
 
 export interface ExportColumn {
   header: string;
@@ -106,7 +107,7 @@ ${bodyRows}
       id: t.id,
       title: t.title,
       assignee: t.primaryAssignee?.name ?? "",
-      completedAt: t.updatedAt instanceof Date ? t.updatedAt.toISOString().split("T")[0] : String(t.updatedAt),
+      completedAt: t.updatedAt instanceof Date ? formatLocalDate(t.updatedAt) : String(t.updatedAt),
     }));
 
     return {
@@ -143,7 +144,7 @@ ${bodyRows}
       title: t.title,
       status: t.status,
       priority: t.priority,
-      dueDate: t.dueDate instanceof Date ? t.dueDate.toISOString().split("T")[0] : (t.dueDate ?? ""),
+      dueDate: t.dueDate instanceof Date ? formatLocalDate(t.dueDate) : (t.dueDate ?? ""),
     }));
 
     const monthStr = String(input.month).padStart(2, "0");

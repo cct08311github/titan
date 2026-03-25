@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { TimeEntryCell, type TimeEntry } from "./time-entry-cell";
 import { safeFixed } from "@/lib/safe-number";
+import { formatLocalDate } from "@/lib/utils/date";
 
 export type TaskRow = {
   taskId: string | null;
@@ -23,7 +24,7 @@ type TimesheetGridProps = {
 function getDateStr(weekStart: Date, dayOffset: number): string {
   const d = new Date(weekStart);
   d.setDate(d.getDate() + dayOffset);
-  return d.toISOString().split("T")[0];
+  return formatLocalDate(d);
 }
 
 function formatDateLabel(weekStart: Date, offset: number): string {

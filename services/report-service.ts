@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { calculateAchievement, calculateAvgAchievement } from "@/lib/kpi-calculator";
+import { formatLocalDate } from "@/lib/utils/date";
 
 // ── Filter types ────────────────────────────────────────────────────────────
 
@@ -481,7 +482,7 @@ export class ReportService {
 
     const byDateMap = changes.reduce(
       (acc, c) => {
-        const dateKey = c.changedAt.toISOString().slice(0, 10);
+        const dateKey = formatLocalDate(c.changedAt);
         if (!acc[dateKey]) {
           acc[dateKey] = {
             date: dateKey,
