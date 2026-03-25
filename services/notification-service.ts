@@ -286,6 +286,68 @@ export class NotificationService {
   }
 
   /**
+   * Builds daily timesheet reminders for active users who have zero
+   * time entries for the given date. Intended to run at 18:00 daily (TS-29).
+   *
+   * Skips weekends (Saturday=6, Sunday=0).
+   */
+  async buildDailyTimesheetReminders(
+    now: Date,
+    existingKeys: Set<string>
+  ): Promise<NotificationInput[]> {
+    const day = now.getDay();
+    // Skip weekends
+    if (day === 0 || day === 6) return [];
+
+    // Normalize to date-only (start of day)
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const todayKey = todayStart.toISOString().slice(0, 10);
+
+    // Get all active users (engineers + managers)
+    const activeUsers = await this.prisma.user.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+    });
+
+    if (activeUsers.length === 0) return [];
+
+    // Get today's entries for all active users
+    const todayEntries = await this.prisma.timeEntry.findMany({
+      where: {
+        userId: { in: activeUsers.map((u) => u.id) },
+        date: { gte: todayStart, lte: todayEnd },
+      },
+      select: { userId: true },
+    });
+
+    const usersWithEntries = new Set(todayEntries.map((e) => e.userId));
+
+    const result: NotificationInput[] = [];
+    for (const user of activeUsers) {
+      if (usersWithEntries.has(user.id)) continue;
+
+      const key = `${user.id}:TIMESHEET_REMINDER:daily:${todayKey}`;
+      if (existingKeys.has(key)) continue;
+
+      result.push({
+        userId: user.id,
+        type: "TIMESHEET_REMINDER",
+        title: "每日工時填報提醒",
+        body: `您今日（${todayKey}）尚未填報任何工時，請於下班前完成填報。`,
+        relatedId: todayKey,
+        relatedType: "TimeEntry",
+      });
+      existingKeys.add(key);
+    }
+
+    return result;
+  }
+
+  /**
    * Full pipeline: build all notification payloads and persist them.
    * Returns counts for observability.
    */
