@@ -3,6 +3,7 @@
 > Issue: #402
 > Date: 2026-03-25
 > Status: Evaluation
+> **Decision: REJECTED** — npm 已足夠，遷移 pnpm 的投入/產出比不適合 5 人團隊封閉環境。
 
 ## 1. 現況
 

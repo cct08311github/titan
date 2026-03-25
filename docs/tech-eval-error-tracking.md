@@ -3,6 +3,7 @@
 > Issues: #403, #410
 > Date: 2026-03-25
 > Status: Evaluation
+> **Decision: DEFERRED** — 現有 Error Boundary + pino logging 足以滿足 v1.0 需求。Sentry/Highlight 待 Phase 2 有外網存取時再評估。
 
 ## 1. 現況分析
 

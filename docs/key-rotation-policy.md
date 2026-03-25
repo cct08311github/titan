@@ -10,7 +10,7 @@
 
 | 密鑰 | 位置 | 輪換週期 | 負責人 |
 |------|------|----------|--------|
-| `NEXTAUTH_SECRET` | .env | 90 天 | 系統管理員 |
+| `AUTH_SECRET` | .env | 90 天 | 系統管理員 |
 | `POSTGRES_PASSWORD` | .env | 90 天 | DBA |
 | `REDIS_PASSWORD` | .env | 90 天 | 系統管理員 |
 | `BACKUP_ENCRYPTION_KEY` | .env | 180 天 | 系統管理員 |
@@ -18,20 +18,20 @@
 
 ## 輪換流程
 
-### NEXTAUTH_SECRET
+### AUTH_SECRET
 
 ```bash
 # 1. 生成新 secret
 NEW_SECRET=$(openssl rand -base64 32)
 
 # 2. 更新 .env
-sed -i "s/NEXTAUTH_SECRET=.*/NEXTAUTH_SECRET=$NEW_SECRET/" .env
+sed -i "s/AUTH_SECRET=.*/AUTH_SECRET=$NEW_SECRET/" .env
 
 # 3. 重啟應用（所有現有 session 會失效，使用者需重新登入）
 docker compose restart titan-app
 
 # 4. 記錄輪換日期
-echo "$(date '+%Y-%m-%d') NEXTAUTH_SECRET rotated" >> /var/log/titan/key-rotation.log
+echo "$(date '+%Y-%m-%d') AUTH_SECRET rotated" >> /var/log/titan/key-rotation.log
 ```
 
 ### POSTGRES_PASSWORD

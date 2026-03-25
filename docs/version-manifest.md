@@ -36,7 +36,23 @@
 | `minio/minio` | `RELEASE.2024-01-01T00-00-00Z` | `sha256:（需從 Docker Hub 取得）` | ~100 MB | S3 相容物件儲存 |
 | `nginx` | `1.25-alpine` | `sha256:（需從 Docker Hub 取得）` | ~20 MB | 反向代理 / TLS 終止 |
 
-### 1.3 Phase C 預備（待納入）
+### 1.3 應用程式依賴版本
+
+| 套件 | 版本 | 用途 |
+|------|------|------|
+| `next` | `15.5.14` | App Router 全端框架 |
+| `react` / `react-dom` | `19.0.0` | UI 函式庫 |
+| `next-auth` | `5.0.0-beta.30` | Auth.js v5 認證 |
+| `@prisma/client` | `5.22.0` | ORM |
+| `zod` | `4.3.6` | Schema 驗證 |
+| `ioredis` | `5.10.1` | Redis client |
+| `pino` | `10.3.1` | Structured logging |
+| `tailwindcss` | `3.4.19` | CSS 框架 |
+| `typescript` | `5.x` | 型別系統 |
+| `jest` | `30.3.0` | 單元/整合測試 |
+| `@playwright/test` | `1.58.2` | E2E 測試 |
+
+### 1.4 Phase C 預備（待納入）
 
 | 映像名稱 | 計畫版本 | 用途 |
 |---------|---------|------|
@@ -243,6 +259,7 @@ trivy image --format json --output outline-1.6.1-scan.json outlinewiki/outline:1
 |------|------|---------|-------|
 | v1.0 | 2026-03-23 | 初始版本建立，記錄 MVP 所有映像 | cct |
 | v1.1 | 2026-03-25 | Outline 從 0.80.2 升級至 1.6.1 (Issue #255) | claude |
+| v1.2 | 2026-03-25 | 新增應用程式依賴版本清單 (Issue #530) | claude |
 
 ---
 

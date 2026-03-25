@@ -3,6 +3,7 @@
 > Issue: #392
 > Date: 2026-03-25
 > Status: Evaluation
+> **Decision: DEFERRED** — 現有 `useApi` hook 可滿足 v1.0 需求。SWR/React Query 待 Phase 2 功能擴展時再評估。
 
 ## 1. 背景
 
