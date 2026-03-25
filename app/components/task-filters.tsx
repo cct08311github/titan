@@ -41,7 +41,7 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
-      .then((data) => setUsers(Array.isArray(data) ? data : []))
+      .then((data) => setUsers(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []))
       .catch(() => {});
   }, []);
 

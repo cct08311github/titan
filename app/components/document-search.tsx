@@ -34,7 +34,7 @@ export function DocumentSearch({ onSelect }: DocumentSearchProps) {
       const res = await fetch(`/api/documents/search?q=${encodeURIComponent(q)}`);
       if (res.ok) {
         const data = await res.json();
-        setResults(Array.isArray(data) ? data : []);
+        setResults(Array.isArray(data) ? data : Array.isArray(data?.data?.items) ? data.data.items : Array.isArray(data?.data) ? data.data : []);
         setOpen(true);
       }
     } finally {

@@ -407,7 +407,7 @@ export default function KPIPage() {
       const res = await fetch(`/api/kpi?year=${year}`);
       if (!res.ok) throw new Error("KPI 載入失敗");
       const data = await res.json();
-      setKpis(Array.isArray(data) ? data : []);
+      const kpiItems = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []; setKpis(kpiItems);
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {

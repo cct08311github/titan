@@ -220,7 +220,7 @@ function KPIAchievementSection() {
         taskLinks: Array<{ weight: number; task: { status: string; progressPct: number } }>;
         autoCalc: boolean;
       }> = await res.json();
-      const mapped: KPIAchievement[] = (Array.isArray(data) ? data : []).map((k) => {
+      const mapped: KPIAchievement[] = (Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []).map((k) => {
         let rate = 0;
         if (k.autoCalc && k.taskLinks.length > 0) {
           const totalW = k.taskLinks.reduce((s, l) => s + l.weight, 0);

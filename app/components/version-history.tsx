@@ -31,7 +31,7 @@ export function VersionHistory({ documentId, currentVersion, onRestore }: Versio
       const res = await fetch(`/api/documents/${documentId}/versions`);
       if (res.ok) {
         const data = await res.json();
-        setVersions(Array.isArray(data) ? data : []);
+        setVersions(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
       }
     } finally {
       setLoading(false);
