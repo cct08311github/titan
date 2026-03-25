@@ -1,6 +1,15 @@
 import { PrismaClient } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
 
+/**
+ * Shift a Date by a given number of years, preserving month/day.
+ */
+function shiftDateByYears(date: Date, years: number): Date {
+  const shifted = new Date(date);
+  shifted.setFullYear(shifted.getFullYear() + years);
+  return shifted;
+}
+
 export interface ListPlansFilter {
   year?: number;
 }
@@ -130,6 +139,12 @@ export class PlanService {
     return this.prisma.annualPlan.delete({ where: { id } });
   }
 
+  /**
+   * Copy an annual plan as a template to a new target year.
+   * Copies: plan metadata, monthly goals, and milestones.
+   * Milestone dates are shifted by the year delta (e.g. 2025→2026 shifts +1 year).
+   * Monthly goals and milestones are reset to initial status.
+   */
   async copyTemplate(sourcePlanId: string, targetYear: number, createdBy: string) {
     const source = await this.prisma.annualPlan.findUnique({
       where: { id: sourcePlanId },
@@ -144,6 +159,9 @@ export class PlanService {
     });
 
     if (!source) throw new NotFoundError(`Plan not found: ${sourcePlanId}`);
+
+    // Shift milestone dates by the year delta
+    const yearDelta = targetYear - source.year;
 
     return this.prisma.annualPlan.create({
       data: {
@@ -169,8 +187,10 @@ export class PlanService {
               create: source.milestones.map((m) => ({
                 title: m.title,
                 description: m.description ?? null,
-                plannedStart: m.plannedStart ?? null,
-                plannedEnd: m.plannedEnd,
+                plannedStart: m.plannedStart
+                  ? shiftDateByYears(m.plannedStart, yearDelta)
+                  : null,
+                plannedEnd: shiftDateByYears(m.plannedEnd, yearDelta),
                 actualStart: null,
                 actualEnd: null,
                 status: "PENDING" as const,
