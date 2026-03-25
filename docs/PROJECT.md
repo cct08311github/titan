@@ -63,8 +63,17 @@ titan/
 │   ├── account-integration.md   # 帳號整合說明
 │   ├── version-manifest.md      # 版本清單
 │   │
-│   └── auth/                    # 認證相關文件目錄
-│       └── security/            # 資安相關文件目錄
+│   ├── pg-replication.md        # PostgreSQL Primary-Replica 設定
+│   ├── pg-failover.md           # PostgreSQL 自動 Failover
+│   ├── key-rotation-policy.md   # 金鑰輪換政策
+│   │
+│   ├── auth/                    # 認證相關文件目錄
+│   │   └── keycloak-phase2-upgrade.md # Keycloak Phase 2 升級指引（新增）
+│   │
+│   └── security/                # 資安相關文件目錄
+│       ├── checklist.md         # 安全檢查清單
+│       ├── os-baseline.md       # OS 安全基線
+│       └── docker-socket-isolation.md # Docker Socket 隔離策略（新增）
 ```
 
 ---

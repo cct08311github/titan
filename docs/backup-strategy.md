@@ -35,13 +35,42 @@
 
 ### 安裝排程
 
+**方法 A：自動安裝（建議）**
+
 ```bash
-# 以具備 docker 權限的使用者安裝
+# 使用安裝腳本（自動檢查重複、設定權限）
+sudo /opt/titan/scripts/backup.sh --install-cron
+
+# 或手動安裝
 sudo crontab -l | cat - /opt/titan/config/cron/backup-cron | sudo crontab -
 
 # 確認安裝
 sudo crontab -l
 ```
+
+**方法 B：Docker 初次部署時自動安裝**
+
+首次執行 `docker compose up -d` 後，執行部署後腳本：
+
+```bash
+# 部署後設定（含 cron 安裝、權限設定、首次備份）
+/opt/titan/scripts/backup.sh --install-cron
+/opt/titan/scripts/backup.sh  # 立即執行首次備份
+```
+
+**驗證排程已安裝：**
+
+```bash
+# 檢查 crontab 中是否包含 backup.sh
+sudo crontab -l | grep backup
+# 預期輸出：0 2 * * * root /opt/titan/scripts/backup.sh ...
+
+# 檢查最近一次備份是否成功
+ls -lt /opt/titan/backups/daily/ | head -5
+```
+
+> **重要**：Cron 排程檔位於 `config/cron/backup-cron`。若修改備份時間或保留策略，
+> 需重新執行安裝指令。詳見 `docs/disaster-recovery.md` §3 備份策略。
 
 ---
 
