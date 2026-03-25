@@ -18,9 +18,9 @@ export type TimeEntry = {
 
 const CATEGORIES = [
   { value: "PLANNED_TASK", label: "原始規劃", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  { value: "ADDED_TASK", label: "追加任務", color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
+  { value: "ADDED_TASK", label: "追加任務", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
   { value: "INCIDENT", label: "突發事件", color: "bg-red-500/20 text-red-300 border-red-500/30" },
-  { value: "SUPPORT", label: "用戶支援", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+  { value: "SUPPORT", label: "用戶支援", color: "bg-orange-500/20 text-orange-300 border-orange-500/30" },
   { value: "ADMIN", label: "行政庶務", color: "bg-slate-200/50 text-slate-600 border-slate-300/50" },
   { value: "LEARNING", label: "學習成長", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30" },
 ];
