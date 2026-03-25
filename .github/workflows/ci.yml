@@ -35,6 +35,11 @@ jobs:
 
       - run: npx prisma generate
 
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
+
       - name: Type check
         run: npx tsc --noEmit
 
