@@ -17,7 +17,16 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     const result = await signIn("credentials", { username, password, redirect: false });
-    if (result?.error) { setError("帳號或密碼錯誤，請重新輸入"); setLoading(false); }
+    if (result?.error) {
+      if (result.code === "credentials") {
+        setError("帳號或密碼錯誤");
+      } else if (result.code?.includes("locked")) {
+        setError("帳號已被鎖定，請等待 15 分鐘後再試");
+      } else {
+        setError("登入失敗，請稍後再試");
+      }
+      setLoading(false);
+    }
     else { router.push("/dashboard"); }
   }
 
