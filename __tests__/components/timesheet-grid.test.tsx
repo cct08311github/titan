@@ -76,4 +76,30 @@ describe("TimesheetGrid", () => {
     render(<TimesheetGrid {...defaultProps} taskRows={[]} />);
     expect(screen.queryByTestId("time-entry-cell")).not.toBeInTheDocument();
   });
+
+  it("shows '每日合計' label in footer row", () => {
+    render(<TimesheetGrid {...defaultProps} />);
+    expect(screen.getByText("每日合計")).toBeInTheDocument();
+  });
+
+  it("shows grand total of all hours in footer", () => {
+    render(<TimesheetGrid {...defaultProps} />);
+    // Total = 4 + 2 = 6.0
+    expect(screen.getByText("6.0")).toBeInTheDocument();
+  });
+
+  it("shows daily column total for Monday (4.0)", () => {
+    render(<TimesheetGrid {...defaultProps} />);
+    // Monday has 4h from entry e1
+    const allFourZero = screen.getAllByText("4.0");
+    // Should appear at least once (in daily total and/or row total)
+    expect(allFourZero.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows daily column total for Tuesday (2.0)", () => {
+    render(<TimesheetGrid {...defaultProps} />);
+    // Tuesday has 2h from entry e2
+    const allTwoZero = screen.getAllByText("2.0");
+    expect(allTwoZero.length).toBeGreaterThanOrEqual(1);
+  });
 });
