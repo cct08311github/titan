@@ -4,6 +4,7 @@ import { ValidationError } from "@/services/errors";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 import { createSubTaskSchema } from "@/validators/subtask-validators";
+import { recalcParentProgress } from "@/lib/subtask-progress";
 
 export const POST = withAuth(async (req: NextRequest) => {
   const body = await req.json();
@@ -26,6 +27,9 @@ export const POST = withAuth(async (req: NextRequest) => {
       order,
     },
   });
+
+  // Recalculate parent task progress after new subtask added (Issue #421)
+  await recalcParentProgress(taskId);
 
   return success(subtask, 201);
 });
