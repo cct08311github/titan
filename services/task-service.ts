@@ -6,8 +6,8 @@ import { AuditService } from "./audit-service";
 export interface ListTasksFilter {
   assignee?: string;
   status?: TaskStatus | TaskStatus[] | string;
-  priority?: Priority | string;
-  category?: TaskCategory | string;
+  priority?: Priority | Priority[] | string;
+  category?: TaskCategory | TaskCategory[] | string;
   monthlyGoalId?: string;
   skip?: number;
   take?: number;
@@ -72,8 +72,12 @@ export class TaskService {
     if (filter.status) {
       where.status = Array.isArray(filter.status) ? { in: filter.status } : filter.status;
     }
-    if (filter.priority) where.priority = filter.priority;
-    if (filter.category) where.category = filter.category;
+    if (filter.priority) {
+      where.priority = Array.isArray(filter.priority) ? { in: filter.priority } : filter.priority;
+    }
+    if (filter.category) {
+      where.category = Array.isArray(filter.category) ? { in: filter.category } : filter.category;
+    }
     if (filter.monthlyGoalId) where.monthlyGoalId = filter.monthlyGoalId;
 
     const [tasks, total] = await Promise.all([
