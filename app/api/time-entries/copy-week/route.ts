@@ -13,6 +13,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
+import { formatLocalDate } from "@/lib/utils/date";
 import { validateBody } from "@/lib/validate";
 import { success } from "@/lib/api-response";
 
@@ -59,7 +60,7 @@ export const POST = withAuth(async (req: NextRequest) => {
 
   const targetKeys = new Set(
     targetEntries.map((e) => {
-      const dateStr = new Date(e.date).toISOString().slice(0, 10);
+      const dateStr = formatLocalDate(new Date(e.date));
       return `${dateStr}:${e.taskId ?? ""}`;
     })
   );
@@ -72,7 +73,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     const srcDate = new Date(entry.date);
     const tgtDate = new Date(srcDate);
     tgtDate.setDate(tgtDate.getDate() + 7);
-    const tgtDateStr = tgtDate.toISOString().slice(0, 10);
+    const tgtDateStr = formatLocalDate(tgtDate);
 
     const key = `${tgtDateStr}:${entry.taskId ?? ""}`;
     if (targetKeys.has(key)) {

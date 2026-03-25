@@ -98,7 +98,8 @@ describe("Timesheet Page", () => {
     });
     await waitFor(() => {
       // 空資料時仍顯示 grid（讓使用者可以點擊格子輸入），但有引導提示
-      expect(screen.getAllByText(/點擊格子可輸入工時/).length).toBeGreaterThanOrEqual(1);
+      // Refactored page shows help text
+      expect(screen.getByText(/點擊格子直接輸入數字/)).toBeInTheDocument();
     });
   });
 

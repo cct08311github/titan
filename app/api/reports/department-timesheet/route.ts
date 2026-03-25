@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { formatLocalDate } from "@/lib/utils/date";
 
 interface UserDayHours {
   [date: string]: number;
@@ -59,7 +60,7 @@ export const GET = withManager(async (req: NextRequest) => {
   for (const entry of entries) {
     const userId = entry.userId;
     const userName = (entry as unknown as { user: { name: string } }).user?.name ?? "Unknown";
-    const dateStr = new Date(entry.date).toISOString().slice(0, 10);
+    const dateStr = formatLocalDate(new Date(entry.date));
 
     if (!byUserMap.has(userId)) {
       byUserMap.set(userId, {
@@ -79,8 +80,8 @@ export const GET = withManager(async (req: NextRequest) => {
   const grandTotal = entries.reduce((sum, e) => sum + e.hours, 0);
 
   return success({
-    weekStart: start.toISOString().slice(0, 10),
-    weekEnd: end.toISOString().slice(0, 10),
+    weekStart: formatLocalDate(start),
+    weekEnd: formatLocalDate(end),
     grandTotal,
     byUser,
     entries,

@@ -16,6 +16,7 @@ import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { formatLocalDate } from "@/lib/utils/date";
 
 interface DailyEntry {
   date: string;
@@ -74,7 +75,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
   for (const [userId, { userName, entries: userEntries }] of byUser) {
     const dailyEntries: DailyEntry[] = userEntries.map((e) => ({
-      date: new Date(e.date).toISOString().slice(0, 10),
+      date: formatLocalDate(new Date(e.date)),
       hours: e.hours,
       overtime: Boolean((e as Record<string, unknown>).overtime),
       locked: Boolean((e as Record<string, unknown>).locked),
@@ -147,8 +148,8 @@ export const GET = withManager(async (req: NextRequest) => {
   }
 
   return success({
-    startDate: start.toISOString().slice(0, 10),
-    endDate: end.toISOString().slice(0, 10),
+    startDate: formatLocalDate(start),
+    endDate: formatLocalDate(end),
     users,
   });
 });

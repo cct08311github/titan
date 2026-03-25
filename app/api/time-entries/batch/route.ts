@@ -13,6 +13,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { TimeCategory } from "@prisma/client";
 import { withAuth } from "@/lib/auth-middleware";
+import { formatLocalDate } from "@/lib/utils/date";
 import { requireAuth } from "@/lib/rbac";
 import { validateBody } from "@/lib/validate";
 import { success, error } from "@/lib/api-response";
@@ -59,7 +60,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     // Build a set of existing date+taskId keys for overlap detection
     const existingKeys = new Set(
       existing.map((e) => {
-        const dateStr = new Date(e.date).toISOString().slice(0, 10);
+        const dateStr = formatLocalDate(new Date(e.date));
         return `${dateStr}:${e.taskId ?? ""}`;
       })
     );

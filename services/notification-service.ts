@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { formatLocalDate } from "@/lib/utils/date";
 
 const DAYS_AHEAD = 7;
 
@@ -239,7 +240,7 @@ export class NotificationService {
     if (now.getDay() !== 5) return [];
 
     const { weekStart, weekEnd } = this.getWeekBounds(now);
-    const weekKey = `${weekStart.toISOString().slice(0, 10)}`;
+    const weekKey = `${formatLocalDate(weekStart)}`;
 
     // Get all active engineers
     const engineers = await this.prisma.user.findMany({
@@ -305,7 +306,7 @@ export class NotificationService {
     const todayEnd = new Date(now);
     todayEnd.setHours(23, 59, 59, 999);
 
-    const todayKey = todayStart.toISOString().slice(0, 10);
+    const todayKey = formatLocalDate(todayStart);
 
     // Get all active users (engineers + managers)
     const activeUsers = await this.prisma.user.findMany({
@@ -408,13 +409,13 @@ export class NotificationService {
     // Group hours by userId and date
     const hoursByUserDate: Record<string, Record<string, number>> = {};
     for (const entry of entries) {
-      const dateStr = new Date(entry.date).toISOString().slice(0, 10);
+      const dateStr = formatLocalDate(new Date(entry.date));
       if (!hoursByUserDate[entry.userId]) hoursByUserDate[entry.userId] = {};
       hoursByUserDate[entry.userId][dateStr] =
         (hoursByUserDate[entry.userId][dateStr] ?? 0) + entry.hours;
     }
 
-    const todayKey = now.toISOString().slice(0, 10);
+    const todayKey = formatLocalDate(now);
     const result: NotificationInput[] = [];
 
     for (const eng of engineers) {
@@ -424,7 +425,7 @@ export class NotificationService {
       let consecutive = 0;
       let maxConsecutive = 0;
       for (const wd of workDays) {
-        const dateStr = wd.toISOString().slice(0, 10);
+        const dateStr = formatLocalDate(wd);
         const dayHours = userDays[dateStr] ?? 0;
         if (dayHours < DAILY_THRESHOLD) {
           consecutive++;

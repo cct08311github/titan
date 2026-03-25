@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { ExportService } from "@/services/export-service";
+import { formatLocalDate } from "@/lib/utils/date";
 import { calculateAchievement, calculateAvgAchievement } from "@/lib/kpi-calculator";
 
 const exportService = new ExportService();
@@ -62,8 +63,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     }, {} as Record<string, number>);
 
     result = exportService.exportWeeklyReport({
-      weekStart: weekStart.toISOString().split("T")[0],
-      weekEnd: weekEnd.toISOString().split("T")[0],
+      weekStart: formatLocalDate(weekStart),
+      weekEnd: formatLocalDate(weekEnd),
       completedTasks,
       totalHours,
       hoursByCategory,
@@ -187,8 +188,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     }, {} as Record<string, { userId: string; name: string; total: number; planned: number; unplanned: number }>);
 
     result = exportService.exportWorkloadReport({
-      startDate: startDate.toISOString().split("T")[0],
-      endDate: endDate.toISOString().split("T")[0],
+      startDate: formatLocalDate(startDate),
+      endDate: formatLocalDate(endDate),
       totalHours,
       plannedHours,
       unplannedHours,

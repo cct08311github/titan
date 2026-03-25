@@ -88,9 +88,8 @@ describe("Timesheet Extended — Basic render", () => {
     setupFetchWithEntries();
     const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
     await act(async () => { render(<TimesheetPage />); });
-    // The label format: "YYYY 年　M/D — M/D"
-    const weekLabel = screen.getByText(/\d{4} 年/);
-    expect(weekLabel).toBeInTheDocument();
+    // Refactored toolbar shows page title
+    expect(screen.getByText("工時紀錄")).toBeInTheDocument();
   });
 
   it("renders 本週 navigation button", async () => {
@@ -107,7 +106,7 @@ describe("Timesheet Extended — Basic render", () => {
     const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
     await act(async () => { render(<TimesheetPage />); });
     await waitFor(() => {
-      expect(screen.getByText(/點擊格子可輸入工時與分類/)).toBeInTheDocument();
+      expect(screen.getByText(/點擊格子直接輸入數字/)).toBeInTheDocument();
     });
   });
 });

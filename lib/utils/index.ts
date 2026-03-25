@@ -14,3 +14,4 @@
 
 export { safeFixed, safePct, safeNum } from "@/lib/safe-number";
 export { getClientIp } from "@/lib/get-client-ip";
+export { formatLocalDate } from "@/lib/utils/date";

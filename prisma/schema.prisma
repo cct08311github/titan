@@ -432,6 +432,12 @@ enum TimeCategory {
   LEARNING
 }
 
+enum OvertimeType {
+  NONE      // 非加班
+  WEEKDAY   // 平日加班
+  HOLIDAY   // 假日加班（國定假日/週末）
+}
+
 model TimeEntry {
   id          String       @id @default(cuid())
   taskId      String?
@@ -448,13 +454,17 @@ model TimeEntry {
   endTime   DateTime?
 
   // TS-03: 加班標記
-  overtime Boolean @default(false)
+  overtime     Boolean      @default(false)   // 保留，遷移期間使用
+  overtimeType OvertimeType @default(NONE)    // 新欄位：加班類型
 
   // TS-04: 覆核鎖定
   locked Boolean @default(false)
 
   // TS-05: 計時器運行狀態
   isRunning Boolean @default(false)
+
+  // TS-06: 排序（同日同任務多筆排序）
+  sortOrder Int @default(0)
 
   task Task? @relation(fields: [taskId], references: [id])
   user User  @relation(fields: [userId], references: [id])
@@ -463,6 +473,7 @@ model TimeEntry {
   @@index([userId])
   @@index([date])
   @@index([userId, isRunning])
+  @@index([userId, date])
   @@map("time_entries")
 }
 
@@ -474,14 +485,30 @@ model TimeEntryTemplate {
   id        String   @id @default(cuid())
   name      String
   userId    String
-  entries   String   // JSON array of { hours, category, taskId?, description? }
+  entries   String   // JSON array (保留向下相容)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  items TimeEntryTemplateItem[]
+  user  User @relation(fields: [userId], references: [id])
 
   @@index([userId])
   @@map("time_entry_templates")
+}
+
+model TimeEntryTemplateItem {
+  id          String       @id @default(cuid())
+  templateId  String
+  taskId      String?
+  hours       Float
+  category    TimeCategory @default(PLANNED_TASK)
+  description String?
+  sortOrder   Int          @default(0)
+
+  template TimeEntryTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId])
+  @@map("time_entry_template_items")
 }
 
 // ═══════════════════════════════════════
