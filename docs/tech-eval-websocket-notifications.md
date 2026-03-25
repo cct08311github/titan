@@ -3,6 +3,7 @@
 > Issue: #406
 > Date: 2026-03-25
 > Status: Evaluation
+> **Decision: DEFERRED** — v1.0 維持 polling，5 人團隊規模不需 WebSocket。SSE 為 Phase 2 首選方案。
 
 ## 1. 背景
 

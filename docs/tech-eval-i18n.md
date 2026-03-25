@@ -3,6 +3,7 @@
 > Issue: #408
 > Date: 2026-03-25
 > Status: Evaluation + Foundation Implementation
+> **Decision: APPROVED** — 採用 next-intl，基礎架構已實作（PR #473），繁中為主語系。
 
 ## 1. 背景
 

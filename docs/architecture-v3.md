@@ -1612,8 +1612,8 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: postgresql://titan:${DB_PASSWORD}@db:5432/titan
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
-      NEXTAUTH_URL: http://内網IP:3000
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_URL: http://内網IP:3000
       NODE_ENV: production
     depends_on:
       db:
@@ -1692,7 +1692,7 @@ docker load < postgres.tar.gz
 # 建立環境變數檔案
 cat > /opt/titan/.env << 'EOF'
 DB_PASSWORD=<強密碼>
-NEXTAUTH_SECRET=<隨機32字元>
+AUTH_SECRET=<隨機32字元>
 EOF
 
 # 啟動

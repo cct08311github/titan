@@ -25,13 +25,16 @@ TITAN 是為銀行內部 IT 團隊（1 主管 + 4 工程師）打造的一體化
 
 | 層級 | 技術 |
 |------|------|
-| 前端 | Next.js 15.5 (App Router)、React 19、TypeScript |
-| UI | Tailwind CSS、shadcn/ui、Geist 字體、明亮主題 |
+| 前端 | Next.js 15.5 (App Router)、React 19、TypeScript 5 |
+| UI | Tailwind CSS 3.4、shadcn/ui、Geist 字體、明亮主題 |
 | 後端 | Next.js API Routes、Service Layer Pattern |
-| ORM | Prisma 5 (18 models、12 enums) |
+| ORM | Prisma 5.22 (18 models、12 enums) |
 | 資料庫 | PostgreSQL 16 |
-| 認證 | Auth.js v5 (JWT/JWE)、RBAC (Manager/Engineer) |
-| 測試 | Jest (~440 tests)、Playwright E2E (~180 tests)、600+ total |
+| 快取 | Redis 7 (rate limiting、session、JWT blacklist) |
+| 認證 | Auth.js v5 (next-auth 5.0.0-beta.30)、JWT/JWE、RBAC (Manager/Engineer) |
+| 驗證 | Zod 4 shared schemas、server + client 雙層驗證 |
+| i18n | next-intl 基礎架構（繁中為主） |
+| 測試 | Jest 30 (~460 tests)、Playwright 1.58 E2E (~190 tests)、650+ total |
 | 部署 | Docker Compose、Nginx 反向代理 |
 
 ## 安全架構
@@ -46,7 +49,7 @@ Edge Runtime    → JWT/JWE 驗證（middleware.ts）
 Node.js Runtime → CSRF Origin 驗證
                 → JWT Blacklist（suspended user）
                 → Session Timeout（30 min server-side）
-                → Rate Limiting（100 req/60s per user）
+                → Rate Limiting（GET 100/60s, mutating 20/60s per user）
                 → RBAC 權限檢查（withAuth / withManager）
                 → Audit Log（自動記錄所有寫入操作）
 
@@ -191,7 +194,7 @@ titan/
 
 | Resource | 端點 | 方法 |
 |----------|------|------|
-| 認證 | `/api/auth/*` | NextAuth |
+| 認證 | `/api/auth/*` | Auth.js v5 |
 | 任務 | `/api/tasks` | GET, POST, PUT, DELETE |
 | 子任務 | `/api/subtasks` | GET, POST, PUT, DELETE |
 | 使用者 | `/api/users` | GET, POST, PUT |

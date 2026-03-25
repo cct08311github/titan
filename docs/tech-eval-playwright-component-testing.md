@@ -3,6 +3,7 @@
 > Issue: #409
 > Date: 2026-03-25
 > Status: Evaluation
+> **Decision: DEFERRED** — Jest + RTL 已覆蓋元件測試需求，Playwright CT 待 Phase 2 評估。
 
 ## 1. 現況
 

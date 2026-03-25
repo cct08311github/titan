@@ -271,7 +271,7 @@ The dual-layer session management (JWT absolute expiry + server-side idle timeou
 
 **Edge JWT check (`lib/auth-depth.ts`):**
 - Extracts token from `Authorization: Bearer` header or `next-auth.session-token` / `__Secure-next-auth.session-token` cookies
-- Verifies signature using `NEXTAUTH_SECRET` with HS256 algorithm
+- Verifies signature using `AUTH_SECRET` (or legacy `NEXTAUTH_SECRET`) with HS256 algorithm
 - Returns 401 for: missing secret, missing token, invalid/expired JWT
 - Logs all blocked requests with URL and error code
 

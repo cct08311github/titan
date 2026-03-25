@@ -3,6 +3,7 @@
 > Issue: #400
 > Date: 2026-03-25
 > Status: Evaluation
+> **Decision: REJECTED** — 維持 REST API Routes，已有完整 56 個 route handlers + Zod 驗證。tRPC 遷移成本過高，Server Actions 適用於簡單表單但不適合取代 REST。
 
 ## 1. 背景
 

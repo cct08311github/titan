@@ -235,7 +235,7 @@ For each valid row, the service sequentially awaits `prisma.user.findUnique` (as
 
 ---
 
-#### CR-14 — `docker-compose.dev.yml` hardcodes a weak `NEXTAUTH_SECRET` (UNCHANGED)
+#### CR-14 — `docker-compose.dev.yml` hardcodes a weak `NEXTAUTH_SECRET` (UNCHANGED — migrated to AUTH_SECRET)
 
 **File:** `docker-compose.dev.yml` line 41
 
@@ -245,7 +245,7 @@ NEXTAUTH_SECRET: dev_secret_change_in_production
 
 This is a committed, publicly known secret. While named as a dev secret, it is routinely copy-pasted into staging environments. The new Edge JWT layer (`auth-depth.ts`) signs tokens with this same secret, making it security-relevant at the cryptographic level.
 
-**Fix:** Replace with `NEXTAUTH_SECRET: CHANGE_ME_generate_with_openssl_rand_hex_32` and add a startup assertion that rejects the placeholder value.
+**Fix:** Replace with `AUTH_SECRET: CHANGE_ME_generate_with_openssl_rand_hex_32` and add a startup assertion that rejects the placeholder value. Note: Auth.js v5 uses `AUTH_SECRET` (env-validator.ts accepts both `AUTH_SECRET` and legacy `NEXTAUTH_SECRET`).
 
 ---
 
