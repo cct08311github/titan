@@ -111,6 +111,38 @@ git commit -m "test(visual): rebuild snapshots for light theme"
 
 ---
 
+## 資料庫 Migration
+
+本專案使用 Prisma Migrate 進行 schema 版本控制（取代 `prisma db push`）。
+
+### 開發環境
+
+```bash
+# 建立新 migration（修改 schema.prisma 後執行）
+npm run db:migrate
+
+# 這會：
+# 1. 比對 schema 變更
+# 2. 產生 SQL migration 檔案到 prisma/migrations/
+# 3. 套用 migration 到開發資料庫
+# 4. 重新產生 Prisma Client
+```
+
+### 生產環境部署
+
+```bash
+# 僅套用既有 migration（不建立新 migration）
+npm run db:migrate:deploy
+```
+
+### 注意事項
+
+- `prisma/migrations/` 目錄必須納入版本控制
+- 切勿手動修改已部署的 migration 檔案
+- 開發環境如需重置：`npx prisma migrate reset`（會清除所有資料）
+
+---
+
 ## Mock 範例
 
 ```typescript

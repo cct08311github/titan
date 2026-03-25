@@ -88,8 +88,11 @@ npm install
 # 3. 啟動 Docker（PostgreSQL + Next.js）
 docker compose -f docker-compose.dev.yml up -d
 
-# 4. 初始化資料庫
-DATABASE_URL="postgresql://titan:titan_dev_password@localhost:5433/titan_dev" npx prisma db push
+# 4. 初始化資料庫（使用 migrate 進行版本控制）
+DATABASE_URL="postgresql://titan:titan_dev_password@localhost:5433/titan_dev" npx prisma migrate dev
+
+# 4b. 生產環境部署 migration（不建立新 migration，僅套用既有）
+# DATABASE_URL="..." npx prisma migrate deploy
 
 # 5. 產生 Prisma Client
 docker compose -f docker-compose.dev.yml exec titan-app npx prisma generate
