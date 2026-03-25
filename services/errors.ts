@@ -25,3 +25,10 @@ export class ForbiddenError extends Error {
     this.name = "ForbiddenError";
   }
 }
+
+export class ConflictError extends Error {
+  constructor(message: string = "資源衝突") {
+    super(message);
+    this.name = "ConflictError";
+  }
+}
