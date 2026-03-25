@@ -189,12 +189,12 @@ export default function KanbanPage() {
   return (
     <div className="flex flex-col h-full gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">看板</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">共 {tasks.length} 項任務</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">看板</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">共 {tasks.length} 項任務</p>
         </div>
-        <button className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90">
+        <button className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 w-full sm:w-auto">
           <Plus className="h-3.5 w-3.5" />
           新增任務
         </button>
@@ -301,7 +301,13 @@ export default function KanbanPage() {
           />
         </div>
       ) : (
-        <div className="flex-1 flex gap-3 overflow-x-auto pb-4 min-h-0" tabIndex={0} role="region" aria-label="看板欄位">
+        {/* Desktop: horizontal scroll board / Mobile: vertical stack */}
+        <div
+          className="flex-1 flex flex-col md:flex-row gap-3 overflow-y-auto md:overflow-x-auto md:overflow-y-hidden pb-4 min-h-0"
+          tabIndex={0}
+          role="region"
+          aria-label="看板欄位"
+        >
           {COLUMNS.map(({ status, label, color }) => {
             const colTasks = tasksByStatus(status);
             const isOver = dragOver === status;
@@ -309,7 +315,9 @@ export default function KanbanPage() {
               <div
                 key={status}
                 className={cn(
-                  "flex flex-col w-72 flex-shrink-0 rounded-xl border transition-colors",
+                  "flex flex-col rounded-xl border transition-colors",
+                  // Mobile: full width, no shrink constraint; Desktop: fixed 288px column
+                  "w-full md:w-72 md:flex-shrink-0",
                   columnBorder[status],
                   isOver && "ring-1 ring-ring"
                 )}
@@ -327,10 +335,12 @@ export default function KanbanPage() {
                       {colTasks.length}
                     </span>
                   </div>
+                  {/* Mobile: status move buttons for touch */}
+                  <span className="md:hidden text-[10px] text-muted-foreground">{colTasks.length} 項</span>
                 </div>
 
-                {/* Cards */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[120px]">
+                {/* Cards — on mobile, limit max-height to keep columns scannable */}
+                <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[80px] max-h-[50vh] md:max-h-none md:min-h-[120px]">
                   {colTasks.map((task) => (
                     <div
                       key={task.id}
@@ -380,7 +390,7 @@ export default function KanbanPage() {
                   {colTasks.length === 0 && (
                     <div
                       className={cn(
-                        "flex items-center justify-center h-20 rounded-lg border border-dashed text-xs text-muted-foreground transition-colors",
+                        "flex items-center justify-center h-16 md:h-20 rounded-lg border border-dashed text-xs text-muted-foreground transition-colors",
                         isOver ? "border-ring bg-accent/30 text-foreground" : "border-border"
                       )}
                     >

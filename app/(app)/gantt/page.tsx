@@ -310,22 +310,22 @@ export default function GanttPage() {
 
   return (
     <div className="flex flex-col h-full gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
+      {/* Header — stacks vertically on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">甘特圖</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">甘特圖</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
             {plan ? plan.title : `${year} 年度計畫`}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Assignee filter */}
           <select
             aria-label="篩選負責人"
             value={assigneeFilter}
             onChange={(e) => setAssigneeFilter(e.target.value)}
-            className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+            className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer flex-1 sm:flex-none min-w-0"
           >
             <option value="">全部成員</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}

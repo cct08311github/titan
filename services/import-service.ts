@@ -24,6 +24,30 @@ export interface ParsedRow {
   estimatedHours?: number;
 }
 
+// ─── KPI Import Types ────────────────────────────────────────────────────────
+
+const VALID_KPI_STATUSES = ["DRAFT", "ACTIVE", "ACHIEVED", "MISSED", "CANCELLED"] as const;
+
+export interface ParsedKPIRow {
+  code: string;
+  title: string;
+  description?: string;
+  year: number;
+  target: number;
+  actual?: number;
+  weight?: number;
+  status?: string;
+}
+
+// ─── Plan Import Types ───────────────────────────────────────────────────────
+
+export interface ParsedPlanRow {
+  year: number;
+  title: string;
+  description?: string;
+  implementationPlan?: string;
+}
+
 export interface RowValidationError {
   rowIndex: number;
   message: string;
@@ -222,5 +246,204 @@ export class ImportService {
     });
 
     return { created: result.count, errors };
+  }
+
+  // ─── KPI Import ──────────────────────────────────────────────────────────────
+
+  /**
+   * Parses an xlsx Buffer into KPI rows.
+   * Expected headers: code | title | description | year | target | actual | weight | status
+   */
+  async parseKPIExcel(buffer: Buffer): Promise<ParsedKPIRow[]> {
+    const rawRows = await this.parseGenericRows(buffer);
+    return rawRows.map((r) => ({
+      code: String(r["code"] ?? "").trim(),
+      title: String(r["title"] ?? "").trim(),
+      description: r["description"] ? String(r["description"]).trim() : undefined,
+      year: Number(r["year"]) || new Date().getFullYear(),
+      target: Number(r["target"]) || 0,
+      actual: r["actual"] !== undefined && r["actual"] !== "" ? Number(r["actual"]) : undefined,
+      weight: r["weight"] !== undefined && r["weight"] !== "" ? Number(r["weight"]) : undefined,
+      status: r["status"] ? String(r["status"]).trim() : undefined,
+    }));
+  }
+
+  /**
+   * Validates and imports KPI rows into the database.
+   */
+  async importKPIs(rows: ParsedKPIRow[], creatorId: string): Promise<ImportResult> {
+    const errors: RowValidationError[] = [];
+
+    rows.forEach((row, i) => {
+      if (!row.code) {
+        errors.push({ rowIndex: i, message: "code 為必填欄位" });
+      }
+      if (!row.title) {
+        errors.push({ rowIndex: i, message: "title 為必填欄位" });
+      }
+      if (!row.year || row.year < 2000 || row.year > 2100) {
+        errors.push({ rowIndex: i, message: "year 無效（需介於 2000-2100）" });
+      }
+      if (row.target <= 0) {
+        errors.push({ rowIndex: i, message: "target 必須大於 0" });
+      }
+      if (row.status && !(VALID_KPI_STATUSES as readonly string[]).includes(row.status)) {
+        errors.push({
+          rowIndex: i,
+          message: `status 無效：${row.status}（允許值：${VALID_KPI_STATUSES.join(", ")}）`,
+        });
+      }
+    });
+
+    const invalidIndices = new Set(errors.map((e) => e.rowIndex));
+    const validRows = rows.filter((_, i) => !invalidIndices.has(i));
+
+    if (validRows.length === 0) {
+      return { created: 0, errors };
+    }
+
+    const kpiData = validRows.map((row) => ({
+      code: row.code,
+      title: row.title,
+      description: row.description ?? null,
+      year: row.year,
+      target: row.target,
+      actual: row.actual ?? 0,
+      weight: row.weight ?? 1,
+      status: (row.status ?? "ACTIVE") as "DRAFT" | "ACTIVE" | "ACHIEVED" | "MISSED" | "CANCELLED",
+      createdBy: creatorId,
+    }));
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      return tx.kPI.createMany({ data: kpiData, skipDuplicates: true });
+    });
+
+    return { created: result.count, errors };
+  }
+
+  // ─── Plan Import ─────────────────────────────────────────────────────────────
+
+  /**
+   * Parses an xlsx Buffer into Plan rows.
+   * Expected headers: year | title | description | implementationPlan
+   */
+  async parsePlanExcel(buffer: Buffer): Promise<ParsedPlanRow[]> {
+    const rawRows = await this.parseGenericRows(buffer);
+    return rawRows.map((r) => ({
+      year: Number(r["year"]) || new Date().getFullYear(),
+      title: String(r["title"] ?? "").trim(),
+      description: r["description"] ? String(r["description"]).trim() : undefined,
+      implementationPlan: r["implementationPlan"]
+        ? String(r["implementationPlan"]).trim()
+        : undefined,
+    }));
+  }
+
+  /**
+   * Validates and imports Plan rows into the database.
+   */
+  async importPlans(rows: ParsedPlanRow[], creatorId: string): Promise<ImportResult> {
+    const errors: RowValidationError[] = [];
+
+    rows.forEach((row, i) => {
+      if (!row.title) {
+        errors.push({ rowIndex: i, message: "title 為必填欄位" });
+      }
+      if (!row.year || row.year < 2000 || row.year > 2100) {
+        errors.push({ rowIndex: i, message: "year 無效（需介於 2000-2100）" });
+      }
+    });
+
+    const invalidIndices = new Set(errors.map((e) => e.rowIndex));
+    const validRows = rows.filter((_, i) => !invalidIndices.has(i));
+
+    if (validRows.length === 0) {
+      return { created: 0, errors };
+    }
+
+    const planData = validRows.map((row) => ({
+      year: row.year,
+      title: row.title,
+      description: row.description ?? null,
+      implementationPlan: row.implementationPlan ?? null,
+      createdBy: creatorId,
+    }));
+
+    // Use individual creates to handle unique constraint on year gracefully
+    let created = 0;
+    for (const data of planData) {
+      try {
+        await this.prisma.annualPlan.create({ data });
+        created++;
+      } catch (err) {
+        // Unique constraint violation on year — skip duplicate
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("Unique constraint")) {
+          errors.push({
+            rowIndex: planData.indexOf(data),
+            message: `年度 ${data.year} 的計畫已存在`,
+          });
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    return { created, errors };
+  }
+
+  // ─── Generic Row Parser ────────────────────────────────────────────────────
+
+  /**
+   * Parses an xlsx buffer into an array of key-value objects using header row.
+   * Shared by all import methods.
+   */
+  private async parseGenericRows(buffer: Buffer): Promise<Record<string, unknown>[]> {
+    const isXlsx =
+      buffer.length >= 4 &&
+      buffer[0] === 0x50 &&
+      buffer[1] === 0x4b &&
+      buffer[2] === 0x03 &&
+      buffer[3] === 0x04;
+
+    if (!isXlsx) {
+      throw new Error("無效的 Excel 檔案格式：必須為 .xlsx 檔案");
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      // @ts-expect-error ExcelJS types expect old Buffer, but new Node Buffer<ArrayBufferLike> is compatible
+      await workbook.xlsx.load(buffer);
+    } catch {
+      throw new Error("無效的 Excel 檔案格式");
+    }
+
+    const worksheet = workbook.worksheets[0];
+    if (!worksheet || worksheet.rowCount === 0) {
+      throw new Error("無效的 Excel 檔案格式：工作表為空");
+    }
+
+    const headerRow = worksheet.getRow(1);
+    const headers: string[] = [];
+    headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+      headers[colNumber - 1] = String(cell.value ?? "").trim();
+    });
+
+    if (headers.length === 0) {
+      throw new Error("無效的 Excel 檔案格式：工作表為空");
+    }
+
+    const rows: Record<string, unknown>[] = [];
+    worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+      if (rowNumber === 1) return;
+      const r: Record<string, unknown> = {};
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const header = headers[colNumber - 1];
+        if (header) r[header] = cell.value;
+      });
+      rows.push(r);
+    });
+
+    return rows;
   }
 }
