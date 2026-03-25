@@ -3,7 +3,7 @@
  *
  * Layer 1 (this file, Edge runtime): JWT verification + CSP nonce + request ID injection.
  *   - Applies to all /api/* routes except /api/auth/*
- *   - Uses NEXTAUTH_SECRET to verify the JWT signature and expiry
+ *   - Uses AUTH_SECRET (or NEXTAUTH_SECRET) to verify the JWT signature and expiry
  *   - Blocks unauthenticated, expired, or tampered tokens with HTTP 401
  *   - Logs every blocked request via the structured logger
  *   - 生成每請求唯一 nonce，寫入 Content-Security-Policy 與 x-csp-nonce header

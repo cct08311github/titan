@@ -1,9 +1,9 @@
 /**
  * Edge JWT verification for defense-in-depth auth — Issue #129
  *
- * Layer 1 (Edge): lightweight JWT check in middleware.ts using NEXTAUTH_SECRET.
+ * Layer 1 (Edge): lightweight JWT check in middleware.ts using AUTH_SECRET.
  * Layer 2 (Node.js): existing withAuth / withManager wrappers on route handlers
- *   continue to validate the full DB-backed next-auth session. They are NOT removed.
+ *   continue to validate the full DB-backed Auth.js session. They are NOT removed.
  *
  * This module exports checkEdgeJwt(), which is called by middleware.ts for all
  * /api/* routes (except /api/auth/*). It extracts the JWT from:
@@ -18,6 +18,10 @@ import { jwtVerify, jwtDecrypt } from "jose";
 import { logger } from "@/lib/logger";
 
 const SESSION_COOKIE_NAMES = [
+  // Auth.js v5 cookie names
+  "authjs.session-token",
+  "__Secure-authjs.session-token",
+  // Legacy next-auth v4 cookie names (transition period)
   "next-auth.session-token",
   "__Secure-next-auth.session-token",
 ];
@@ -51,11 +55,11 @@ function extractToken(req: NextRequest): string | null {
  * for JWE (A256GCM) encryption. For JWS fallback we use the raw secret.
  */
 async function getDerivedEncryptionKey(): Promise<CryptoKey | null> {
-  const secret = process.env.NEXTAUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) return null;
 
   const enc = new TextEncoder();
-  // NextAuth v4 derives key via HKDF: SHA-256, salt="", info="NextAuth.js Generated Encryption Key"
+  // Auth.js derives key via HKDF: SHA-256, salt="", info="NextAuth.js Generated Encryption Key"
   const keyMaterial = await crypto.subtle.importKey(
     "raw", enc.encode(secret), "HKDF", false, ["deriveKey"]
   );
@@ -69,7 +73,7 @@ async function getDerivedEncryptionKey(): Promise<CryptoKey | null> {
 }
 
 function getRawSecretKey(): Uint8Array | null {
-  const secret = process.env.NEXTAUTH_SECRET;
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) return null;
   return new TextEncoder().encode(secret);
 }
@@ -85,7 +89,7 @@ export async function checkEdgeJwt(req: NextRequest): Promise<NextResponse | nul
 
   const rawKey = getRawSecretKey();
   if (!rawKey) {
-    logger.warn({ url }, "[middleware] NEXTAUTH_SECRET not set — blocking request");
+    logger.warn({ url }, "[middleware] AUTH_SECRET not set — blocking request");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

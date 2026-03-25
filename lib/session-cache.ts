@@ -1,26 +1,28 @@
 /**
  * Request-level session cache — Issue #166
  *
- * Prevents redundant getServerSession() calls when multiple security
+ * Prevents redundant auth() calls when multiple security
  * middleware wrappers (withRateLimit, withAuditLog, withSessionTimeout,
  * withJwtBlacklist) all need the session for the same request.
  *
  * Uses a WeakMap so entries are automatically garbage-collected when
  * the Request object is no longer referenced.
+ *
+ * Updated for Auth.js v5 (Issue #200): uses auth() instead of getServerSession().
  */
 
-import { getServerSession } from "next-auth";
+import { auth } from "@/auth";
 import type { NextRequest } from "next/server";
 
-// Session type returned by next-auth getServerSession.
+// Session type returned by auth().
 // We use `unknown` here to avoid importing next-auth internals; callers
 // can cast to their specific session shape.
-export type CachedSession = Awaited<ReturnType<typeof getServerSession>>;
+export type CachedSession = Awaited<ReturnType<typeof auth>>;
 
 const _cache = new WeakMap<NextRequest, CachedSession>();
 
 /**
- * Returns the session for this request, fetching it from next-auth only
+ * Returns the session for this request, fetching it from auth() only
  * on the first call per request object.  Subsequent calls return the
  * cached value without hitting the database again.
  */
@@ -28,7 +30,7 @@ export async function getCachedSession(req: NextRequest): Promise<CachedSession>
   if (_cache.has(req)) {
     return _cache.get(req)!;
   }
-  const session = await getServerSession();
+  const session = await auth();
   _cache.set(req, session);
   return session;
 }

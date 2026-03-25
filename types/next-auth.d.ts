@@ -1,4 +1,9 @@
-import "next-auth";
+/**
+ * Auth.js v5 type augmentation — Issue #200
+ *
+ * Extends the default Session and User types with TITAN-specific fields.
+ */
+import { type DefaultSession } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
@@ -9,12 +14,13 @@ declare module "next-auth" {
       image?: string | null;
       role: string;
       mustChangePassword?: boolean;
-    };
+    } & DefaultSession["user"];
   }
 
   interface User {
     id: string;
     role: string;
+    mustChangePassword?: boolean;
   }
 }
 
@@ -23,5 +29,6 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     mustChangePassword?: boolean;
+    sessionId?: string;
   }
 }
