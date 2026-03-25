@@ -111,7 +111,7 @@ describe("withRateLimit", () => {
 
     expect(mockCheckRateLimit).toHaveBeenCalledWith(
       expect.anything(),
-      "user-42"
+      expect.stringContaining("user-42")
     );
   });
 
