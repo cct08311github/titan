@@ -78,7 +78,9 @@ Node.js Runtime → CSRF Origin 驗證
 - Node.js 20+
 - Git
 
-### 開發環境
+### 開發環境（推薦：使用 start-dev.sh）
+
+最簡單的啟動方式：一鍵啟動 PostgreSQL + Redis + Next.js：
 
 ```bash
 # 1. Clone
@@ -88,35 +90,44 @@ cd titan
 # 2. 安裝依賴
 npm install
 
-# 3. 啟動 Docker（PostgreSQL + Next.js）
+# 3. 一鍵啟動開發環境（Docker DB + Redis + Next.js dev server）
+./scripts/start-dev.sh
+```
+
+`start-dev.sh` 會自動：
+1. 啟動 PostgreSQL + Redis Docker 容器
+2. 等待服務就緒
+3. 產生 Prisma Client 並推送 schema
+4. 自動 seed 資料庫（如果是空的）
+5. 啟動 Next.js dev server 於 http://localhost:3100
+
+環境變數已配置於 `.env.development`，無需手動設定。
+
+### 手動啟動（進階）
+
+```bash
+# 1. 啟動 Docker（PostgreSQL + Redis）
 docker compose -f docker-compose.dev.yml up -d
 
-# 4. 初始化資料庫（使用 migrate 進行版本控制）
+# 2. 初始化資料庫（使用 migrate 進行版本控制）
 DATABASE_URL="postgresql://titan:titan_dev_password@localhost:5433/titan_dev" npx prisma migrate dev
 
-# 4b. 生產環境部署 migration（不建立新 migration，僅套用既有）
-# DATABASE_URL="..." npx prisma migrate deploy
+# 3. 產生 Prisma Client
+npx prisma generate
 
-# 5. 產生 Prisma Client
-docker compose -f docker-compose.dev.yml exec titan-app npx prisma generate
+# 4. Seed 資料庫
+DATABASE_URL="postgresql://titan:titan_dev_password@localhost:5433/titan_dev" npx prisma db seed
 
-# 6. 建立種子帳號
-docker compose -f docker-compose.dev.yml exec titan-db psql -U titan -d titan_dev -c "
-INSERT INTO users (id, name, email, password, role, \"isActive\", \"createdAt\", \"updatedAt\")
-VALUES ('admin-001', '主管', 'admin@titan.local',
-  '\$2a\$10\$2bHYZk6wD77JuR1H3mdnZuucHr2hqJLqmu4KGWGwDv7LMmRBPKNcy',
-  'MANAGER', true, NOW(), NOW())
-ON CONFLICT (email) DO NOTHING;"
-
-# 7. 開啟瀏覽器
-open http://localhost:3100
+# 5. 啟動 Next.js dev server
+npx next dev -p 3100
 ```
 
 ### 測試帳號
 
 | 角色 | Email | 密碼 |
 |------|-------|------|
-| 主管 | `admin@titan.local` | `Titan@2026` |
+| 主管 | `admin` | `Titan@2026Dev!` |
+| 工程師 | `eng01` ~ `eng04` | `Titan@2026Dev!` |
 
 ### 執行測試
 
@@ -174,6 +185,8 @@ titan/
 │   ├── integration/        # Integration 測試
 │   └── pages/              # 前端頁面測試
 ├── e2e/                    # Playwright E2E 測試
+├── scripts/
+│   └── start-dev.sh        # 一鍵啟動開發環境
 ├── docs/                   # 專案文件
 │   ├── architecture-v3.md  # 系統架構文件
 │   ├── roi-analysis.md     # ROI 分析
