@@ -15,9 +15,31 @@ import {
   createApiRateLimiter,
   checkRateLimit,
 } from "@/lib/rate-limiter";
+import { AuditService } from "@/services/audit-service";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 // ── Module-level API rate limiter (singleton, in-memory fallback) ──────────
 const apiLimiter = createApiRateLimiter({ useMemory: true });
+
+// ── Audit service singleton ───────────────────────────────────────────────
+const auditService = new AuditService(prisma);
+
+/** HTTP methods that represent mutating operations */
+const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+/**
+ * Extract a resource type from the URL path.
+ * e.g. /api/tasks/123 → "tasks", /api/kpi → "kpi"
+ */
+function extractResourceType(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  // Expected pattern: ["api", "resource", ...rest]
+  if (segments.length >= 2 && segments[0] === "api") {
+    return segments[1];
+  }
+  return "unknown";
+}
 
 export type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -26,6 +48,9 @@ export type RouteContext = { params: Promise<Record<string, string>> };
  *
  * Maps custom error types to HTTP status codes and returns a consistent
  * JSON shape: { ok, data?, error?, message? }
+ *
+ * After a successful POST/PUT/PATCH/DELETE, automatically logs an audit
+ * entry via AuditService (fire-and-forget — never blocks the response).
  *
  * Usage (simple, non-dynamic route):
  *   export const GET = apiHandler(async (req) => {
@@ -57,7 +82,36 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
           "unknown";
         await checkRateLimit(apiLimiter, rateLimitKey);
 
-        return await fn(req, context);
+        const response = await fn(req, context);
+
+        // ── Auto-inject audit logging for mutating operations ──────────
+        if (MUTATING_METHODS.has(req.method) && response.status >= 200 && response.status < 300) {
+          // Fire-and-forget: audit logging must never block the response
+          const url = new URL(req.url);
+          const resourceType = extractResourceType(url.pathname);
+          const ipAddress =
+            req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            req.headers.get("x-real-ip") ||
+            null;
+
+          // Extract userId from session (non-blocking)
+          auth()
+            .then((session) => {
+              const userId = session?.user?.id ?? null;
+              return auditService.log({
+                userId,
+                action: `${req.method}_${resourceType.toUpperCase()}`,
+                resourceType,
+                detail: `${req.method} ${url.pathname}`,
+                ipAddress,
+              });
+            })
+            .catch((auditErr) => {
+              logger.warn({ err: auditErr }, "[apiHandler] Audit log write failed (non-blocking)");
+            });
+        }
+
+        return response;
       } catch (err) {
         if (err instanceof CsrfError) {
           return error("ForbiddenError", err.message, 403);
