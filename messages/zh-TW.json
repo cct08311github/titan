@@ -1,0 +1,122 @@
+{
+  "Common": {
+    "loading": "載入中...",
+    "error": "發生錯誤",
+    "retry": "重試",
+    "save": "儲存",
+    "cancel": "取消",
+    "delete": "刪除",
+    "confirm": "確認",
+    "create": "建立",
+    "edit": "編輯",
+    "search": "搜尋",
+    "noData": "暫無資料",
+    "networkError": "網路錯誤：無法連線至伺服器",
+    "permissionDenied": "權限不足：您沒有存取此資源的權限",
+    "rateLimited": "請求過於頻繁，請稍後重試",
+    "serverError": "伺服器回應錯誤"
+  },
+  "Auth": {
+    "login": "登入",
+    "logout": "登出",
+    "username": "帳號",
+    "password": "密碼",
+    "changePassword": "變更密碼",
+    "loginFailed": "登入失敗",
+    "sessionExpired": "連線逾時，請重新登入",
+    "accountLocked": "帳號已鎖定"
+  },
+  "Dashboard": {
+    "title": "儀表板",
+    "managerView": "主管視角 — 團隊整體狀況",
+    "engineerView": "工程師視角 — 我的工作狀況",
+    "todayTasks": "今日待辦",
+    "recentItems": "最近 5 項",
+    "noPendingTasks": "沒有待辦任務",
+    "noPendingDescription": "目前沒有進行中或待辦的任務",
+    "kpiTitle": "KPI 達成狀況",
+    "noKpi": "尚無 KPI",
+    "noKpiDescription": "本年度尚未建立 KPI 指標",
+    "weeklyCompleted": "本週完成任務",
+    "weeklyHours": "本週總工時 (h)",
+    "overdueTasks": "逾期任務",
+    "unplannedRate": "本月計畫外比例",
+    "teamWorkload": "團隊工時分佈（本月）",
+    "utilizationAnalysis": "投入率分析（計畫任務 vs 加入任務）",
+    "plannedUtilization": "計畫內投入",
+    "unplannedUtilization": "計畫外投入",
+    "myTasks": "我的任務（待辦 + 進行中）",
+    "weeklyProgress": "本週工時進度",
+    "noTeamData": "尚無團隊數據",
+    "noTeamDataDescription": "目前沒有任務完成紀錄與工時資料。當團隊成員開始記錄工時與完成任務後，此處將自動顯示團隊整體狀況。"
+  },
+  "Task": {
+    "title": "任務",
+    "create": "建立任務",
+    "backlog": "待排",
+    "todo": "待辦",
+    "inProgress": "進行中",
+    "review": "檢閱",
+    "done": "完成",
+    "priority": "優先級",
+    "urgent": "緊急",
+    "high": "高",
+    "medium": "中",
+    "low": "低",
+    "dueDate": "截止日",
+    "noDueDate": "無截止日",
+    "overdue": "逾期",
+    "overdueBy": "逾期 {days} 天",
+    "dueToday": "今天截止",
+    "dueTomorrow": "明天截止",
+    "dueInDays": "{days} 天後截止"
+  },
+  "Plan": {
+    "title": "年度計畫",
+    "create": "建立計畫",
+    "goal": "月度目標",
+    "createGoal": "建立目標"
+  },
+  "KPI": {
+    "title": "KPI",
+    "create": "建立 KPI",
+    "onTrack": "進行中",
+    "atRisk": "風險",
+    "behind": "落後",
+    "achieved": "達成",
+    "target": "目標值",
+    "actual": "實際值",
+    "achievementRate": "達成率"
+  },
+  "Timesheet": {
+    "title": "工時",
+    "create": "記錄工時",
+    "date": "日期",
+    "hours": "時數",
+    "category": "類別",
+    "planned": "計畫任務",
+    "added": "加入任務",
+    "incident": "事件處理",
+    "support": "支援",
+    "admin": "行政",
+    "learning": "學習"
+  },
+  "Report": {
+    "title": "報表",
+    "weekly": "週報",
+    "monthly": "月報",
+    "workload": "工作負載",
+    "export": "匯出"
+  },
+  "Admin": {
+    "title": "系統管理",
+    "users": "使用者管理",
+    "notifications": "通知管理"
+  },
+  "Error": {
+    "pageError": "此頁面發生錯誤",
+    "pageErrorDescription": "很抱歉，載入此頁面時發生問題。錯誤已自動回報。",
+    "notFound": "找不到頁面",
+    "notFoundDescription": "您要找的頁面不存在或已移除。"
+  }
+}
