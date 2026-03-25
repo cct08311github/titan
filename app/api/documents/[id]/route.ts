@@ -34,7 +34,7 @@ export const PUT = withAuth(async (
   const doc = await documentService.updateDocument(id, {
     title,
     content,
-    parentId: parentId === undefined ? undefined : (parentId || undefined),
+    parentId: parentId ?? undefined,
     updatedBy: session.user.id,
   });
 
