@@ -16,9 +16,30 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
+    if (!username.trim()) {
+      setError("請輸入帳號");
+      setLoading(false);
+      return;
+    }
+    if (!password) {
+      setError("請輸入密碼");
+      setLoading(false);
+      return;
+    }
+
     const result = await signIn("credentials", { username, password, redirect: false });
-    if (result?.error) { setError("帳號或密碼錯誤，請重新輸入"); setLoading(false); }
-    else { router.push("/dashboard"); }
+    if (result?.error) {
+      // Provide more specific guidance based on error context
+      if (result.error === "CredentialsSignin") {
+        setError("帳號或密碼不正確，請確認後重試。連續多次失敗將暂時鎖定帳號。");
+      } else {
+        setError("登入失敗，請稍後再試或聯繫系統管理員。");
+      }
+      setLoading(false);
+    } else {
+      router.push("/dashboard");
+    }
   }
 
   return (

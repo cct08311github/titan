@@ -106,7 +106,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       tasks,
     });
 
-  // ── kpi ───────────────────────────────────────────────────────────────────
+  // ── kpi ─────────────────────────────────────────────────────────────────
   } else if (type === "kpi") {
     const year = searchParams.get("year")
       ? parseInt(searchParams.get("year")!)
@@ -202,7 +202,9 @@ export const GET = withAuth(async (req: NextRequest) => {
       result.rows as Record<string, unknown>[],
       result.columns,
     );
-    return new NextResponse(csvString, {
+    // Prepend UTF-8 BOM so Excel on Windows displays CJK characters correctly
+    const csvWithBom = "\uFEFF" + csvString;
+    return new NextResponse(csvWithBom, {
       status: 200,
       headers: {
         "Content-Type": "text/csv; charset=utf-8",

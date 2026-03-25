@@ -24,7 +24,9 @@ type DocDetail = {
 
 type ViewMode = "editor" | "outline";
 
-const OUTLINE_URL = process.env.NEXT_PUBLIC_OUTLINE_URL || "/outline";
+const OUTLINE_URL = process.env.NEXT_PUBLIC_OUTLINE_URL || "";
+/** Outline is considered available if the env var is set to a non-empty value */
+const OUTLINE_AVAILABLE = OUTLINE_URL.length > 0;
 
 export default function KnowledgePage() {
   const [docs, setDocs] = useState<DocNode[]>([]);
@@ -146,33 +148,35 @@ export default function KnowledgePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View mode toggle */}
-          <div className="flex items-center bg-muted rounded-lg p-0.5">
-            <button
-              onClick={() => setViewMode("editor")}
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
-                viewMode === "editor"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <FileEdit className="h-3.5 w-3.5" />
-              文件編輯器
-            </button>
-            <button
-              onClick={() => setViewMode("outline")}
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
-                viewMode === "outline"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Globe className="h-3.5 w-3.5" />
-              Outline Wiki
-            </button>
-          </div>
+          {/* View mode toggle — only show if Outline is available */}
+          {OUTLINE_AVAILABLE && (
+            <div className="flex items-center bg-muted rounded-lg p-0.5">
+              <button
+                onClick={() => setViewMode("editor")}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
+                  viewMode === "editor"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <FileEdit className="h-3.5 w-3.5" />
+                文件編輯器
+              </button>
+              <button
+                onClick={() => setViewMode("outline")}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
+                  viewMode === "outline"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Outline Wiki
+              </button>
+            </div>
+          )}
 
           {viewMode === "editor" && (
             <button
@@ -184,7 +188,7 @@ export default function KnowledgePage() {
             </button>
           )}
 
-          {viewMode === "outline" && (
+          {viewMode === "outline" && OUTLINE_AVAILABLE && (
             <a
               href={OUTLINE_URL}
               target="_blank"
@@ -199,7 +203,7 @@ export default function KnowledgePage() {
       </div>
 
       {/* Outline iframe view */}
-      {viewMode === "outline" && (
+      {viewMode === "outline" && OUTLINE_AVAILABLE && (
         <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden">
           <iframe
             src={OUTLINE_URL}
