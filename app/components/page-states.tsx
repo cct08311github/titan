@@ -35,7 +35,7 @@ export function PageError({ message = "載入失敗，請稍後再試", onRetry,
 }
 
 /** Reusable skeleton pulse bar */
-function SkeletonBar({ className }: { className?: string }) {
+export function SkeletonBar({ className }: { className?: string }) {
   return <div className={cn("animate-pulse rounded bg-muted", className)} />;
 }
 
@@ -89,6 +89,147 @@ export function TabSkeleton({ tabs = 3, className }: { tabs?: number; className?
         ))}
       </div>
       <FormSkeleton fields={3} />
+    </div>
+  );
+}
+
+/** Generic page skeleton: title + subtitle + rows of content bars */
+export function PageSkeleton({ rows = 6, className }: { rows?: number; className?: string }) {
+  return (
+    <div className={cn("space-y-6", className)}>
+      <div className="space-y-2">
+        <SkeletonBar className="h-6 w-40" />
+        <SkeletonBar className="h-4 w-64" />
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: rows }).map((_, i) => (
+          <SkeletonBar key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Dashboard skeleton: stat cards + chart area */
+export function DashboardSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("max-w-4xl mx-auto space-y-6", className)}>
+      <div className="space-y-2">
+        <SkeletonBar className="h-6 w-32" />
+        <SkeletonBar className="h-4 w-56" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-xl p-4 space-y-2">
+            <SkeletonBar className="h-3 w-16" />
+            <SkeletonBar className="h-8 w-20" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-card rounded-xl p-5 space-y-3">
+        <SkeletonBar className="h-4 w-40" />
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-1">
+            <div className="flex justify-between">
+              <SkeletonBar className="h-3 w-20" />
+              <SkeletonBar className="h-3 w-12" />
+            </div>
+            <SkeletonBar className="h-2 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Kanban skeleton: 5 columns with card placeholders */
+export function KanbanSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <SkeletonBar className="h-6 w-20" />
+          <SkeletonBar className="h-4 w-32" />
+        </div>
+        <SkeletonBar className="h-9 w-24" />
+      </div>
+      <div className="flex gap-3 overflow-hidden">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} data-testid="kanban-col-skeleton" className="w-72 flex-shrink-0 rounded-xl border border-border p-2 space-y-2">
+            <SkeletonBar className="h-8 w-full rounded-t-xl" />
+            {Array.from({ length: 2 + (i % 2) }).map((_, j) => (
+              <div key={j} className="bg-card rounded-lg p-3 space-y-2">
+                <SkeletonBar className="h-4 w-full" />
+                <SkeletonBar className="h-3 w-2/3" />
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Timesheet skeleton: week header + grid rows */
+export function TimesheetSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="flex items-center justify-between">
+        <SkeletonBar className="h-6 w-32" />
+        <div className="flex gap-2">
+          <SkeletonBar className="h-9 w-9" />
+          <SkeletonBar className="h-9 w-40" />
+          <SkeletonBar className="h-9 w-9" />
+        </div>
+      </div>
+      <div className="bg-card rounded-xl p-4 space-y-3">
+        <div className="flex gap-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SkeletonBar key={i} className="h-8 flex-1" />
+          ))}
+        </div>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex gap-2">
+            <SkeletonBar className="h-10 w-32 flex-shrink-0" />
+            {Array.from({ length: 5 }).map((_, j) => (
+              <SkeletonBar key={j} className="h-10 flex-1" />
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Report skeleton: tabs + stat rows + chart placeholder */
+export function ReportSkeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="space-y-1">
+        <SkeletonBar className="h-6 w-24" />
+        <SkeletonBar className="h-4 w-48" />
+      </div>
+      <div className="flex gap-1 border-b border-border pb-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonBar key={i} className="h-8 w-20" />
+        ))}
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-xl p-4 space-y-2">
+            <SkeletonBar className="h-3 w-16" />
+            <SkeletonBar className="h-6 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-card rounded-xl p-5 space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex justify-between py-2 border-b border-border/50">
+            <SkeletonBar className="h-4 w-32" />
+            <SkeletonBar className="h-4 w-16" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
