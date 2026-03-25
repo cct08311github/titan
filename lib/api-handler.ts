@@ -10,7 +10,14 @@ import type { ApiResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
 import { requestLogger } from "@/lib/request-logger";
 import { validateCsrf, CsrfError } from "@/lib/csrf";
-import { RateLimitError } from "@/lib/rate-limiter";
+import {
+  RateLimitError,
+  createApiRateLimiter,
+  checkRateLimit,
+} from "@/lib/rate-limiter";
+
+// ── Module-level API rate limiter (singleton, in-memory fallback) ──────────
+const apiLimiter = createApiRateLimiter({ useMemory: true });
 
 export type RouteContext = { params: Promise<Record<string, string>> };
 
@@ -42,13 +49,23 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
     return requestLogger(req, async () => {
       try {
         validateCsrf(req);
+
+        // Rate limit by IP (or forwarded IP) — applies to ALL API routes
+        const rateLimitKey =
+          req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+          req.headers.get("x-real-ip") ||
+          "unknown";
+        await checkRateLimit(apiLimiter, rateLimitKey);
+
         return await fn(req, context);
       } catch (err) {
         if (err instanceof CsrfError) {
           return error("ForbiddenError", err.message, 403);
         }
         if (err instanceof RateLimitError) {
-          return error("RateLimitError", err.message, 429);
+          const res = error("RateLimitError", err.message, 429);
+          res.headers.set("Retry-After", String(err.retryAfter));
+          return res;
         }
         if (err instanceof ValidationError) {
           return error("ValidationError", err.message, 400);
