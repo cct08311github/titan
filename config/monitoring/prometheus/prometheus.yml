@@ -78,3 +78,41 @@ scrape_configs:
       - targets: ['outline:3000']
         labels:
           type: 'application'
+
+  # ── Plane 服務監控（Issue #262）─────────────────────────
+  # Plane API — Django REST API 主服務
+  - job_name: 'plane-api'
+    metrics_path: '/api/v1/health'
+    static_configs:
+      - targets: ['plane-api:8000']
+        labels:
+          type: 'application'
+          app: 'plane'
+          component: 'api'
+
+  # Plane Web — Next.js 前端
+  - job_name: 'plane-web'
+    static_configs:
+      - targets: ['plane-web:3000']
+        labels:
+          type: 'application'
+          app: 'plane'
+          component: 'web'
+
+  # Plane Worker — Celery 背景任務
+  - job_name: 'plane-worker'
+    static_configs:
+      - targets: ['plane-worker:8000']
+        labels:
+          type: 'application'
+          app: 'plane'
+          component: 'worker'
+
+  # Plane RabbitMQ — 訊息佇列（Management API 提供 Prometheus 指標）
+  - job_name: 'plane-rabbitmq'
+    static_configs:
+      - targets: ['plane-mq:15692']
+        labels:
+          type: 'message-queue'
+          app: 'plane'
+          component: 'rabbitmq'
