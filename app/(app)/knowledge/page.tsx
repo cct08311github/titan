@@ -87,7 +87,8 @@ export default function KnowledgePage() {
         body: JSON.stringify({ title: editTitle, content: editContent }),
       });
       if (res.ok) {
-        const updated = await res.json();
+        const body = await res.json();
+        const updated = body?.data ?? body;
         setDocDetail(updated);
         setDirty(false);
         setDocs((prev) =>
@@ -108,9 +109,13 @@ export default function KnowledgePage() {
       body: JSON.stringify({ parentId, title: title.trim(), content: "" }),
     });
     if (res.ok) {
-      const doc = await res.json();
+      const body = await res.json();
+      const doc = body?.data ?? body;
       await loadDocs();
       setSelectedId(doc.id);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      alert(err?.message ?? "文件建立失敗");
     }
   }
 
