@@ -405,12 +405,74 @@ docker-compose logs > /tmp/titan_incident_$(date +%Y%m%d_%H%M%S).log
 
 ---
 
-## 8. DR 計畫維護
+## 8. HA 選項：PostgreSQL Primary-Replica
+
+> 參考 Issue #198、`docs/pg-replication.md`、`docker-compose.replication.yml`
+
+### 8.1 架構概述
+
+TITAN 支援 PostgreSQL Streaming Replication，提供讀寫分離與快速故障切換能力：
+
+```
+titan-postgres (Primary, RW)
+        │  WAL Streaming
+        ▼
+titan-postgres-replica (Standby, RO)
+```
+
+### 8.2 DR 效益
+
+| 指標 | 無 Replica | 啟用 Replica |
+|------|-----------|-------------|
+| RPO | 4 小時（依備份週期） | 近乎 0（WAL 即時串流） |
+| RTO | 30-90 分鐘（需還原備份） | 5-15 分鐘（Promote replica） |
+| 讀取負載 | 集中於 Primary | 分散至 Replica |
+
+### 8.3 故障切換步驟
+
+當 Primary 不可用時，將 Replica 提升為新 Primary：
+
+```bash
+# Step 1: 確認 Primary 確實不可用
+docker exec titan-postgres pg_isready || echo "Primary is DOWN"
+
+# Step 2: Promote Replica
+docker exec titan-postgres-replica pg_ctl promote -D /var/lib/postgresql/data
+
+# Step 3: 更新應用程式連線指向新 Primary
+# 修改 .env 中 DATABASE_URL 指向 replica 的 IP/hostname
+
+# Step 4: 重啟應用服務
+docker compose restart app
+
+# Step 5: 驗證
+docker exec titan-postgres-replica psql -U titan -d titan -c "SELECT pg_is_in_recovery();"
+# 預期回傳 false（已不再是 standby）
+```
+
+### 8.4 啟用方式
+
+詳見 `docs/pg-replication.md` 與 `docker-compose.replication.yml`。
+
+啟用指令：
+```bash
+docker compose -f docker-compose.yml -f docker-compose.replication.yml up -d
+```
+
+### 8.5 自動 Failover（docker-compose.failover.yml）
+
+進階方案使用 `docker-compose.failover.yml` 搭配 health check 自動偵測並切換，
+詳見 `docs/pg-failover.md`。
+
+---
+
+## 9. DR 計畫維護
 
 - **每半年複審**：IT 主管與相關工程師確認步驟仍然有效
 - **架構變更時**：任何影響備份或復原路徑的架構變更，必須同步更新本文件
 - **演練後**：若演練發現步驟有誤，立即更新並通知所有相關人員
 - **版本控制**：本文件納入 Git 管理，所有變更須有 commit 記錄
+- **Replica 啟用後**：更新 DR 演練步驟，納入 failover 切換練習
 
 ---
 

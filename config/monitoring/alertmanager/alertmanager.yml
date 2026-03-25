@@ -60,6 +60,45 @@ receivers:
         send_resolved: true
         max_alerts: 20
 
+  # ══════════════════════════════════════════════════════════════
+  # Slack 通知範例（取消註解並填入實際 Webhook URL 即可啟用）
+  # 申請 Slack Incoming Webhook：
+  #   https://api.slack.com/messaging/webhooks
+  # ══════════════════════════════════════════════════════════════
+  # - name: critical-slack
+  #   slack_configs:
+  #     - api_url: '${SLACK_WEBHOOK_URL}'
+  #       channel: '#titan-alerts'
+  #       title: '[TITAN 緊急] {{ .GroupLabels.alertname }}'
+  #       text: |
+  #         *狀態*: {{ .Status | toUpper }}
+  #         *告警*: {{ .GroupLabels.alertname }}
+  #         *實例*: {{ .GroupLabels.instance }}
+  #         *摘要*: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+  #       color: '{{ if eq .Status "firing" }}danger{{ else }}good{{ end }}'
+  #       send_resolved: true
+  #
+  # - name: warning-slack
+  #   slack_configs:
+  #     - api_url: '${SLACK_WEBHOOK_URL}'
+  #       channel: '#titan-alerts'
+  #       title: '[TITAN 警告] {{ .GroupLabels.alertname }}'
+  #       text: |
+  #         *狀態*: {{ .Status | toUpper }}
+  #         *告警*: {{ .GroupLabels.alertname }}
+  #         *摘要*: {{ range .Alerts }}{{ .Annotations.summary }}{{ end }}
+  #       send_resolved: true
+  #
+  # ══════════════════════════════════════════════════════════════
+  # LINE Notify 範例（台灣銀行常用，取消註解即可啟用）
+  # 申請 LINE Notify Token：https://notify-bot.line.me/
+  # ══════════════════════════════════════════════════════════════
+  # - name: critical-line
+  #   webhook_configs:
+  #     - url: 'http://host.docker.internal:8089/line-notify'
+  #       send_resolved: true
+  #       # 需搭配 LINE Notify proxy 服務將 Alertmanager payload 轉為 LINE 格式
+
 inhibit_rules:
   - source_matchers:
       - severity = "critical"
