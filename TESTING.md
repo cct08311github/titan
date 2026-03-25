@@ -50,6 +50,67 @@ npx playwright test
 npx playwright test --update-snapshots
 ```
 
+## Visual Regression 截圖基準
+
+### 重要：主題變更後必須重建截圖
+
+TITAN 前端在 PR #231 中從深色主題改為明亮主題。所有 visual regression 截圖基準
+（`e2e/visual.spec.ts-snapshots/`）必須在主題變更後重建。
+
+### 何時需要重建截圖
+
+- 全域主題/色彩系統變更後
+- 共用 Layout（Sidebar、Topbar）結構調整後
+- 全域字型或間距系統變更後
+- Playwright 或瀏覽器版本升級後（渲染差異）
+
+### 重建步驟
+
+```bash
+# Step 1: 確保 Docker 環境啟動
+docker compose -f docker-compose.dev.yml up -d
+
+# Step 2: 刪除舊截圖（避免殘留不一致）
+rm -rf e2e/visual.spec.ts-snapshots/
+
+# Step 3: 重建所有截圖基準
+npx playwright test visual.spec.ts --update-snapshots
+
+# Step 4: 確認新截圖正確（人工目視檢查）
+# 開啟 e2e/visual.spec.ts-snapshots/ 目錄逐一確認
+
+# Step 5: 確認所有 visual regression 測試通過
+npx playwright test visual.spec.ts
+
+# Step 6: Commit 新截圖
+git add e2e/visual.spec.ts-snapshots/
+git commit -m "test(visual): rebuild snapshots for light theme"
+```
+
+### 截圖清單（11 個測試）
+
+| 截圖檔名 | 頁面 | 角色 |
+|----------|------|------|
+| dashboard.png | /dashboard | Manager |
+| dashboard-engineer.png | /dashboard | Engineer |
+| login.png | /login | 未登入 |
+| kanban.png | /kanban | Manager |
+| kanban-engineer.png | /kanban | Engineer |
+| kpi.png | /kpi | Manager |
+| gantt.png | /gantt | Manager |
+| knowledge.png | /knowledge | Manager |
+| plans.png | /plans | Manager |
+| reports.png | /reports | Manager |
+| timesheet.png | /timesheet | Manager |
+
+### 注意事項
+
+- 截圖依平台與瀏覽器不同（如 `dashboard-chromium-darwin.png`）
+- CI 環境可能需要另外產生 Linux 版截圖
+- `maxDiffPixelRatio: 0.02`（允許 2% 差異），可在 `e2e/visual.spec.ts` 調整
+
+---
+
 ## Mock 範例
 
 ```typescript
