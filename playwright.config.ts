@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Playwright E2E configuration — unified for Docker and local environments.
@@ -27,5 +27,11 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
+    {
+      name: 'mobile',
+      use: {
+        ...devices['iPhone 12'],
+      },
+    },
   ],
 });
