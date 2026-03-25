@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Target, ClipboardList, Clock, BarChart3, Users } from "lucide-react";
+import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle } from "lucide-react";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -49,6 +49,118 @@ interface Task {
   status: string;
   priority: string;
   dueDate: string | null;
+}
+
+// ── Today's Tasks Card ──────────────────────────────────────────────────────
+
+function dueCountdownText(dueDate: string): { text: string; urgent: boolean } {
+  const now = new Date();
+  const due = new Date(dueDate);
+  const diffMs = due.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) return { text: `逾期 ${Math.abs(diffDays)} 天`, urgent: true };
+  if (diffDays === 0) return { text: "今天截止", urgent: true };
+  if (diffDays === 1) return { text: "明天截止", urgent: true };
+  if (diffDays <= 3) return { text: `${diffDays} 天後截止`, urgent: true };
+  if (diffDays <= 7) return { text: `${diffDays} 天後截止`, urgent: false };
+  return { text: `${diffDays} 天後截止`, urgent: false };
+}
+
+function TodayTasksCard() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function fetchTodayTasks() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS");
+      if (!res.ok) throw new Error("無法載入待辦任務");
+      const data = await res.json();
+      const all: Task[] = Array.isArray(data) ? data : data.tasks ?? [];
+      // Sort by dueDate (closest first), tasks without dueDate go last
+      const withDue = all
+        .filter((t) => t.dueDate)
+        .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+      const withoutDue = all.filter((t) => !t.dueDate);
+      setTasks([...withDue, ...withoutDue].slice(0, 5));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchTodayTasks(); }, []);
+
+  if (loading) return <PageLoading message="載入待辦..." className="py-8" />;
+  if (error) return <PageError message={error} onRetry={fetchTodayTasks} className="py-8" />;
+  if (tasks.length === 0) return (
+    <PageEmpty
+      icon={<CalendarClock className="h-8 w-8" />}
+      title="沒有待辦任務"
+      description="目前沒有進行中或待辦的任務"
+      className="py-8"
+    />
+  );
+
+  const PRIORITY_DOT: Record<string, string> = {
+    URGENT: "bg-danger",
+    HIGH: "bg-warning",
+    MEDIUM: "bg-yellow-400",
+    LOW: "bg-muted-foreground",
+  };
+  const STATUS_LABEL: Record<string, string> = {
+    TODO: "待辦",
+    IN_PROGRESS: "進行中",
+  };
+
+  return (
+    <div className="bg-card rounded-xl shadow-card p-5">
+      <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
+        <CalendarClock className="h-4 w-4 text-primary" />
+        今日待辦
+        <span className="text-xs text-muted-foreground font-normal">（最近 5 項）</span>
+      </h2>
+      <div className="space-y-2">
+        {tasks.map((t) => {
+          const countdown = t.dueDate ? dueCountdownText(t.dueDate) : null;
+          return (
+            <div
+              key={t.id}
+              className="flex items-center gap-3 p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
+            >
+              <span
+                className={cn(
+                  "w-2 h-2 rounded-full flex-shrink-0",
+                  PRIORITY_DOT[t.priority] ?? "bg-muted-foreground"
+                )}
+              />
+              <span className="flex-1 text-sm text-foreground truncate">{t.title}</span>
+              <span className="text-[11px] text-muted-foreground flex-shrink-0">
+                {STATUS_LABEL[t.status] ?? t.status}
+              </span>
+              {countdown ? (
+                <span
+                  className={cn(
+                    "text-[11px] tabular-nums flex-shrink-0 flex items-center gap-1",
+                    countdown.urgent ? "text-danger font-medium" : "text-muted-foreground"
+                  )}
+                >
+                  {countdown.urgent && <AlertTriangle className="h-3 w-3" />}
+                  {countdown.text}
+                </span>
+              ) : (
+                <span className="text-[11px] text-muted-foreground flex-shrink-0">無截止日</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ── KPI Achievement Section ─────────────────────────────────────────────────
@@ -586,6 +698,13 @@ export default function DashboardPage() {
         <ManagerDashboard />
       ) : (
         <EngineerDashboard />
+      )}
+
+      {/* ── Today's Tasks Card (both views) ── */}
+      {status !== "loading" && (
+        <div className="mt-8">
+          <TodayTasksCard />
+        </div>
       )}
 
       {/* ── KPI Achievement Cards ── */}
