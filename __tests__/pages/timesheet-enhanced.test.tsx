@@ -165,7 +165,7 @@ describe("Timesheet Enhanced — Timer Widget", () => {
     const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
     await act(async () => { render(<TimesheetPage />); });
     await waitFor(() => {
-      expect(screen.getByTestId("timer-widget")).toBeInTheDocument();
+      expect(screen.getByTestId("timesheet-timer")).toBeInTheDocument();
     });
   });
 });
