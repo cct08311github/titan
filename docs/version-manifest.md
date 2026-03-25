@@ -23,7 +23,7 @@
 
 | 映像名稱 | 版本 Tag | SHA256 摘要 | 壓縮大小 | 用途 |
 |---------|---------|------------|---------|------|
-| `outlinewiki/outline` | `0.80.2` | `sha256:（需從 Docker Hub 取得）` | ~350 MB | 知識管理 Wiki |
+| `outlinewiki/outline` | `1.6.1` | `sha256:（需從 Docker Hub 取得）` | ~350 MB | 知識管理 Wiki |
 | `gethomepage/homepage` | `v0.9.13` | `sha256:（需從 Docker Hub 取得）` | ~120 MB | 統一入口儀表板 |
 | `louislam/uptime-kuma` | `1.23.13` | `sha256:（需從 Docker Hub 取得）` | ~180 MB | 服務監控告警 |
 
@@ -53,7 +53,7 @@
 
 ```bash
 # Outline
-docker pull outlinewiki/outline:0.80.2
+docker pull outlinewiki/outline:1.6.1
 # Docker Hub: https://hub.docker.com/r/outlinewiki/outline/tags
 
 # Homepage
@@ -89,15 +89,15 @@ docker pull nginx:1.25-alpine
 
 ```bash
 # 拉取映像後取得摘要
-docker pull outlinewiki/outline:0.80.2
-docker inspect --format='{{index .RepoDigests 0}}' outlinewiki/outline:0.80.2
+docker pull outlinewiki/outline:1.6.1
+docker inspect --format='{{index .RepoDigests 0}}' outlinewiki/outline:1.6.1
 
 # 或使用 skopeo（推薦，不需拉取完整映像）
-skopeo inspect docker://outlinewiki/outline:0.80.2 | jq '.Digest'
+skopeo inspect docker://outlinewiki/outline:1.6.1 | jq '.Digest'
 
 # 批次取得所有映像摘要
 for image in \
-  "outlinewiki/outline:0.80.2" \
+  "outlinewiki/outline:1.6.1" \
   "gethomepage/homepage:v0.9.13" \
   "louislam/uptime-kuma:1.23.13" \
   "postgres:16-alpine" \
@@ -120,7 +120,7 @@ done
 # 步驟 1：在可連網的機器上拉取並儲存所有映像
 
 IMAGES=(
-  "outlinewiki/outline:0.80.2"
+  "outlinewiki/outline:1.6.1"
   "gethomepage/homepage:v0.9.13"
   "louislam/uptime-kuma:1.23.13"
   "postgres:16-alpine"
@@ -194,11 +194,11 @@ docker run -d -p 5000:5000 --restart=always \
   --name titan-registry registry:2
 
 # 推送映像至本地 Registry
-docker tag outlinewiki/outline:0.80.2 localhost:5000/outline:0.80.2
-docker push localhost:5000/outline:0.80.2
+docker tag outlinewiki/outline:1.6.1 localhost:5000/outline:1.6.1
+docker push localhost:5000/outline:1.6.1
 
 # 在 docker-compose.yml 中改用本地 Registry
-# image: localhost:5000/outline:0.80.2
+# image: localhost:5000/outline:1.6.1
 ```
 
 ---
@@ -228,11 +228,11 @@ docker push localhost:5000/outline:0.80.2
 
 ```bash
 # 使用 Trivy 掃描已知 CVE（在有網路的環境執行）
-trivy image outlinewiki/outline:0.80.2
+trivy image outlinewiki/outline:1.6.1
 trivy image postgres:16-alpine
 
 # 儲存掃描報告
-trivy image --format json --output outline-0.80.2-scan.json outlinewiki/outline:0.80.2
+trivy image --format json --output outline-1.6.1-scan.json outlinewiki/outline:1.6.1
 ```
 
 ---
@@ -242,6 +242,7 @@ trivy image --format json --output outline-0.80.2-scan.json outlinewiki/outline:
 | 版本 | 日期 | 變更內容 | 變更者 |
 |------|------|---------|-------|
 | v1.0 | 2026-03-23 | 初始版本建立，記錄 MVP 所有映像 | cct |
+| v1.1 | 2026-03-25 | Outline 從 0.80.2 升級至 1.6.1 (Issue #255) | claude |
 
 ---
 
