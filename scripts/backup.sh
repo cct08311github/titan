@@ -91,6 +91,40 @@ container_running() {
   docker inspect -f '{{.State.Running}}' "${name}" 2>/dev/null | grep -q "^true$"
 }
 
+# 檢查磁碟空間
+# 回傳值：0=充足, 1=已中止（<5% 可用）
+# 副作用：<10% 時輸出警告
+check_disk_space() {
+  local target_dir="$1"
+  local warn_threshold="${DISK_WARN_PERCENT:-10}"   # 低於此百分比發出警告
+  local abort_threshold="${DISK_ABORT_PERCENT:-5}"   # 低於此百分比中止備份
+
+  # 取得掛載點可用百分比（相容 Linux / macOS）
+  local avail_pct
+  avail_pct=$(df -P "${target_dir}" 2>/dev/null \
+    | awk 'NR==2 { gsub(/%/, "", $5); print 100 - $5 }')
+
+  if [[ -z "${avail_pct}" ]]; then
+    log_warn "無法取得磁碟空間資訊，跳過磁碟檢查"
+    return 0
+  fi
+
+  local used_pct=$(( 100 - avail_pct ))
+  log_info "磁碟空間檢查：${target_dir} — 已使用 ${used_pct}%，可用 ${avail_pct}%"
+
+  if [[ ${avail_pct} -lt ${abort_threshold} ]]; then
+    log_error "磁碟可用空間不足 ${abort_threshold}%（目前可用 ${avail_pct}%），中止備份！"
+    log_error "請清理磁碟空間後再執行備份，或調整 DISK_ABORT_PERCENT 環境變數"
+    return 1
+  fi
+
+  if [[ ${avail_pct} -lt ${warn_threshold} ]]; then
+    log_warn "磁碟可用空間低於 ${warn_threshold}%（目前可用 ${avail_pct}%），建議儘快清理"
+  fi
+
+  return 0
+}
+
 # ── 前置檢查 ─────────────────────────────────────────────────────────────────
 
 preflight_check() {
@@ -100,6 +134,12 @@ preflight_check() {
   # 必要指令
   require_cmd docker
   require_cmd gzip
+
+  # 磁碟空間檢查（<10% 警告，<5% 中止）
+  check_disk_space "${BACKUP_ROOT}" || {
+    log_error "前置檢查失敗：磁碟空間不足"
+    exit 1
+  }
 
   # 建立目錄
   mkdir -p "${BACKUP_DIR}"/{postgres,redis,minio,outline,homepage,configs}
