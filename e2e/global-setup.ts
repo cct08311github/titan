@@ -2,7 +2,7 @@ import { chromium, FullConfig } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
-const BASE_URL = 'http://localhost:3100';
+const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3100';
 
 export const MANAGER_STATE_FILE = path.join(__dirname, '.auth/manager.json');
 export const ENGINEER_STATE_FILE = path.join(__dirname, '.auth/engineer.json');
