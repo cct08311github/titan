@@ -66,11 +66,12 @@ export default function KnowledgePage() {
     setLoadingDetail(true);
     fetch(`/api/documents/${selectedId}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
+      .then((raw) => {
+        const d = raw?.data ?? raw;
         if (d) {
           setDocDetail(d);
-          setEditTitle(d.title);
-          setEditContent(d.content);
+          setEditTitle(d.title ?? "");
+          setEditContent(d.content ?? "");
           setDirty(false);
         }
       })

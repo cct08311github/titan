@@ -194,7 +194,20 @@ export default function KanbanPage() {
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">看板</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">共 {tasks.length} 項任務</p>
         </div>
-        <button className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 w-full sm:w-auto">
+        <button
+          onClick={async () => {
+            const title = prompt("任務標題：");
+            if (!title?.trim()) return;
+            const res = await fetch("/api/tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: title.trim(), status: "BACKLOG", priority: "P2", category: "PLANNED" }),
+            });
+            if (res.ok) fetchTasks();
+            else { const err = await res.json().catch(() => ({})); alert(err?.message ?? "建立失敗"); }
+          }}
+          className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 w-full sm:w-auto"
+        >
           <Plus className="h-3.5 w-3.5" />
           新增任務
         </button>

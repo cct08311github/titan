@@ -291,7 +291,8 @@ export default function GanttPage() {
       if (assigneeFilter) params.set("assignee", assigneeFilter);
       const res = await fetch(`/api/tasks/gantt?${params}`);
       if (!res.ok) throw new Error("甘特圖資料載入失敗");
-      setData(await res.json());
+      const body = await res.json();
+      setData(body?.data ?? body);
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -302,7 +303,7 @@ export default function GanttPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    fetch("/api/users").then((r) => r.json()).then((d) => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then((raw) => { const d = raw?.data ?? raw; setUsers(Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : []); }).catch(() => {});
   }, []);
 
   const plan = data?.annualPlan;
