@@ -69,7 +69,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "密碼", type: "password" },
       },
       async authorize(credentials, request) {
-        if (!credentials?.username || !credentials?.password) return null;
+        console.log("[auth-debug] authorize called with:", JSON.stringify({ username: credentials?.username, hasPassword: !!credentials?.password }));
+        if (!credentials?.username || !credentials?.password) { console.log("[auth-debug] missing credentials"); return null; }
 
         const username = credentials.username as string;
         const password = credentials.password as string;
@@ -91,14 +92,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         // 2. Enforce IP+username rate limit (5 attempts/min)
-        try {
-          await checkRateLimit(loginRateLimiter, rateLimitKey);
-        } catch {
-          logger.warn(
-            { username, ip },
-            "[auth] Login rate limit exceeded"
-          );
-          return null;
+        // Skip rate limiting in development to avoid lockout during testing
+        if (process.env.NODE_ENV !== "development") {
+          try {
+            await checkRateLimit(loginRateLimiter, rateLimitKey);
+          } catch {
+            logger.warn(
+              { username, ip },
+              "[auth] Login rate limit exceeded"
+            );
+            return null;
+          }
         }
 
         // 3. Look up user
