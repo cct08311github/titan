@@ -124,7 +124,7 @@ services:
   # ── 知識庫：Outline ──────────────────────────────────────
   # 團隊知識庫與文件協作平台
   outline:
-    image: outlinewiki/outline:0.80.2
+    image: outlinewiki/outline:1.6.1
     container_name: titan-outline
     restart: unless-stopped
     # 安全強化：使用 non-root 使用者執行
