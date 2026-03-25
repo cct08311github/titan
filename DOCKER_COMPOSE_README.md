@@ -18,19 +18,33 @@ cp .env.example .env
 ```
 
 ### 2. 啟動服務
+
 ```bash
-docker-compose up -d
+# 僅核心服務（postgres, redis, minio, outline, homepage, titan-app）
+docker compose up -d
+
+# 核心 + 監控（Prometheus, Grafana, Alertmanager, exporters, Uptime Kuma）
+docker compose --profile monitoring up -d
+
+# 核心 + 監控 + 日誌聚合（Loki + Promtail）
+docker compose --profile monitoring --profile logging up -d
+
+# 核心 + 資料庫複製（Primary-Replica + Failover Monitor）
+docker compose --profile replication up -d
+
+# 全部服務
+docker compose --profile monitoring --profile logging --profile replication up -d
 ```
 
 ### 3. 驗證服務狀態
 ```bash
-docker-compose ps
-docker-compose logs -f
+docker compose ps
+docker compose logs -f
 ```
 
 ### 4. 停止服務
 ```bash
-docker-compose down
+docker compose down
 ```
 
 ## 私有 Registry 策略
