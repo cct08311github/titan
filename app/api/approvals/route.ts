@@ -1,3 +1,7 @@
+// PHASE 2 STUB — Basic CRUD only, no workflow engine
+// Approval state transitions, escalation, and notifications are not implemented.
+// See Issue #382 for the full approval workflow design.
+
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withManager } from "@/lib/auth-middleware";
