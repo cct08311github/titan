@@ -1,0 +1,51 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "cct08311github"
+    labels:
+      - "dependencies"
+    # Group minor/patch updates to reduce PR noise
+    groups:
+      production-deps:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "@playwright/*"
+          - "jest*"
+        update-types:
+          - "minor"
+          - "patch"
+      dev-deps:
+        patterns:
+          - "@types/*"
+          - "eslint*"
+          - "prettier*"
+          - "@playwright/*"
+          - "jest*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignore major version bumps for critical packages (manual review)
+    ignore:
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "next-auth"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "ci"
