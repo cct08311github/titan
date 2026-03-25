@@ -25,13 +25,13 @@ TITAN 是為銀行內部 IT 團隊（1 主管 + 4 工程師）打造的一體化
 
 | 層級 | 技術 |
 |------|------|
-| 前端 | Next.js 15 (App Router)、React 19、TypeScript |
+| 前端 | Next.js 15.5 (App Router)、React 19、TypeScript |
 | UI | Tailwind CSS、shadcn/ui、Geist 字體、明亮主題 |
 | 後端 | Next.js API Routes、Service Layer Pattern |
 | ORM | Prisma 5 (18 models、12 enums) |
 | 資料庫 | PostgreSQL 16 |
-| 認證 | NextAuth v4 (JWT/JWE)、RBAC (Manager/Engineer) |
-| 測試 | Jest (~930 tests)、Playwright E2E (~40 tests) |
+| 認證 | Auth.js v5 (JWT/JWE)、RBAC (Manager/Engineer) |
+| 測試 | Jest (~440 tests)、Playwright E2E (~180 tests)、600+ total |
 | 部署 | Docker Compose、Nginx 反向代理 |
 
 ## 安全架構
