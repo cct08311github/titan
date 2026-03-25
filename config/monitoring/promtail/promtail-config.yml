@@ -1,0 +1,105 @@
+# ═══════════════════════════════════════════════════════════
+# Promtail 配置 — TITAN 日誌收集器
+# Issue #265
+#
+# 收集來源：
+#   1. Docker 容器日誌（/var/lib/docker/containers/）
+#   2. 系統日誌（/var/log/syslog）
+#
+# 標籤策略：
+#   - container_name：容器名稱（如 titan-app、titan-postgres）
+#   - job：依服務分組（titan-app、database、monitoring 等）
+#   - level：日誌等級（從 Pino JSON 或 syslog 解析）
+# ═══════════════════════════════════════════════════════════
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: titan
+    batchwait: 1s
+    batchsize: 1048576          # 1MB
+
+scrape_configs:
+
+  # ── Docker 容器日誌 ──────────────────────────────────────
+  - job_name: docker
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*-json.log
+
+    pipeline_stages:
+      # Step 1: 解析 Docker JSON log 格式
+      - docker: {}
+
+      # Step 2: 從容器標籤提取 container_name
+      - regex:
+          expression: '/var/lib/docker/containers/(?P<container_id>[a-f0-9]+)/'
+          source: filename
+
+      # Step 3: 嘗試解析 Pino JSON 日誌（TITAN Next.js 使用 Pino）
+      - match:
+          selector: '{job="docker"}'
+          stages:
+            - json:
+                expressions:
+                  level: level
+                  msg: msg
+                  time: time
+            - labels:
+                level:
+
+      # Step 4: 靜態標籤 — 依容器名稱分組
+      - match:
+          selector: '{container_name=~"titan-app.*"}'
+          stages:
+            - static_labels:
+                service: titan-app
+      - match:
+          selector: '{container_name=~"titan-postgres.*"}'
+          stages:
+            - static_labels:
+                service: database
+      - match:
+          selector: '{container_name=~"titan-redis.*"}'
+          stages:
+            - static_labels:
+                service: cache
+      - match:
+          selector: '{container_name=~"titan-loki.*|titan-promtail.*|titan-prometheus.*|titan-grafana.*"}'
+          stages:
+            - static_labels:
+                service: monitoring
+      - match:
+          selector: '{container_name=~"titan-outline.*"}'
+          stages:
+            - static_labels:
+                service: outline
+      - match:
+          selector: '{container_name=~"titan-nginx.*"}'
+          stages:
+            - static_labels:
+                service: nginx
+
+  # ── 系統日誌（選用）──────────────────────────────────────
+  - job_name: syslog
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: syslog
+          __path__: /var/log/syslog
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\S+ \S+ \S+) (?P<hostname>\S+) (?P<process>\S+): (?P<message>.*)'
+      - labels:
+          hostname:
+          process:
