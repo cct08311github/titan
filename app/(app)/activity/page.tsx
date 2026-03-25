@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Activity, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { PageError, PageEmpty, ListSkeleton } from "@/app/components/page-states";
 import { formatRelative } from "@/lib/format";
 
 interface ActivityItem {
@@ -90,7 +90,7 @@ export default function ActivityPage() {
 
       {/* Content */}
       {loading ? (
-        <PageLoading message="載入動態..." />
+        <ListSkeleton rows={8} />
       ) : fetchError ? (
         <PageError message={fetchError} onRetry={fetchActivity} />
       ) : items.length === 0 ? (
