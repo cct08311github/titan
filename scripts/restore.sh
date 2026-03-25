@@ -334,11 +334,16 @@ restore_minio() {
   while IFS= read -r archive; do
     local bucket
     bucket=$(basename "${archive}" .tar.gz)
+    # 驗證 bucket 名稱不含路徑分隔符或特殊字元
+    if [[ "${bucket}" =~ [/\\] || "${bucket}" == ".." || "${bucket}" == "." ]]; then
+      log_warn "  bucket 名稱不安全，已跳過：${bucket}"
+      continue
+    fi
     log_info "  還原 bucket：${bucket}"
 
-    # 解壓到臨時目錄
-    local tmp_dir="/tmp/titan-minio-restore-${bucket}"
-    mkdir -p "${tmp_dir}"
+    # 解壓到安全臨時目錄（mktemp 防止 symlink 攻擊）
+    local tmp_dir
+    tmp_dir="$(mktemp -d "/tmp/titan-minio-restore-XXXXXXXXXX")"
     tar -xzf "${archive}" -C "${tmp_dir}" 2>/dev/null || {
       log_warn "  bucket ${bucket} 解壓失敗"
       rm -rf "${tmp_dir}"
@@ -391,8 +396,8 @@ restore_outline() {
   fi
 
   log_info "  解壓 Outline 資料..."
-  local tmp_dir="/tmp/titan-outline-restore-$$"
-  mkdir -p "${tmp_dir}"
+  local tmp_dir
+  tmp_dir="$(mktemp -d "/tmp/titan-outline-restore-XXXXXXXXXX")"
   tar -xzf "${outline_archive}" -C "${tmp_dir}" 2>/dev/null
 
   if [[ -d "${tmp_dir}/data" ]]; then
@@ -567,6 +572,12 @@ main() {
     exit 1
   fi
 
+  # 驗證 timestamp 格式，防止路徑遍歷攻擊
+  if [[ ! "${timestamp}" =~ ^[0-9]{8}_[0-9]{6}$ ]]; then
+    log_error "時間戳格式無效（必須為 YYYYMMDD_HHMMSS，僅允許數字和底線）"
+    exit 1
+  fi
+
   # 驗證服務名稱
   case "${service}" in
     postgres|redis|minio|outline|homepage|configs|all) ;;
@@ -577,8 +588,16 @@ main() {
       ;;
   esac
 
-  # 確認備份目錄存在
+  # 確認備份目錄存在，並驗證路徑未逃逸出 BACKUP_ROOT
   local backup_dir="${BACKUP_ROOT}/daily/${timestamp}"
+  local resolved_backup_dir
+  resolved_backup_dir="$(realpath "${backup_dir}" 2>/dev/null || echo "")"
+  local resolved_backup_root
+  resolved_backup_root="$(realpath "${BACKUP_ROOT}" 2>/dev/null || echo "${BACKUP_ROOT}")"
+  if [[ -z "${resolved_backup_dir}" || "${resolved_backup_dir}" != "${resolved_backup_root}"/* ]]; then
+    log_error "備份路徑驗證失敗：路徑超出允許範圍"
+    exit 1
+  fi
   if [[ ! -d "${backup_dir}" ]]; then
     log_error "備份目錄不存在：${backup_dir}"
     log_error "請使用 --list 查看可用的備份"
