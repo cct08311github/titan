@@ -4,7 +4,7 @@ const DAYS_AHEAD = 7;
 
 export type NotificationInput = {
   userId: string;
-  type: "TASK_DUE_SOON" | "MILESTONE_DUE" | "TASK_OVERDUE";
+  type: "TASK_DUE_SOON" | "MILESTONE_DUE" | "TASK_OVERDUE" | "TIMESHEET_REMINDER";
   title: string;
   body: string;
   relatedId: string;
@@ -20,6 +20,18 @@ export class NotificationService {
     return d;
   }
 
+  private getWeekBounds(refDate: Date): { weekStart: Date; weekEnd: Date } {
+    const day = refDate.getDay();
+    const diffToMon = day === 0 ? -6 : 1 - day;
+    const weekStart = new Date(refDate);
+    weekStart.setDate(refDate.getDate() + diffToMon);
+    weekStart.setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+    return { weekStart, weekEnd };
+  }
+
   /**
    * Returns existing unread notification keys (userId:type:relatedId)
    * to allow duplicate detection without re-querying inside loops.
@@ -28,7 +40,7 @@ export class NotificationService {
     const existing = await this.prisma.notification.findMany({
       where: {
         isRead: false,
-        type: { in: ["TASK_DUE_SOON", "MILESTONE_DUE", "TASK_OVERDUE"] },
+        type: { in: ["TASK_DUE_SOON", "MILESTONE_DUE", "TASK_OVERDUE", "TIMESHEET_REMINDER"] },
       },
       select: { userId: true, type: true, relatedId: true },
     });
@@ -213,6 +225,67 @@ export class NotificationService {
   }
 
   /**
+   * Builds notification payloads for engineers with < 35 hours logged this week.
+   * Intended to run every Friday at 16:00 via cron, but can be triggered anytime.
+   * Only generates reminders on Fridays (day === 5) to avoid noise.
+   */
+  async buildTimesheetReminders(
+    now: Date,
+    existingKeys: Set<string>
+  ): Promise<NotificationInput[]> {
+    const WEEKLY_THRESHOLD = 35;
+
+    // Only generate on Fridays
+    if (now.getDay() !== 5) return [];
+
+    const { weekStart, weekEnd } = this.getWeekBounds(now);
+    const weekKey = `${weekStart.toISOString().slice(0, 10)}`;
+
+    // Get all active engineers
+    const engineers = await this.prisma.user.findMany({
+      where: { isActive: true, role: "ENGINEER" },
+      select: { id: true, name: true },
+    });
+
+    if (engineers.length === 0) return [];
+
+    // Get total hours per user for this week
+    const timeEntries = await this.prisma.timeEntry.findMany({
+      where: {
+        userId: { in: engineers.map((e) => e.id) },
+        date: { gte: weekStart, lte: weekEnd },
+      },
+      select: { userId: true, hours: true },
+    });
+
+    const hoursByUser = timeEntries.reduce((acc, e) => {
+      acc[e.userId] = (acc[e.userId] ?? 0) + e.hours;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const result: NotificationInput[] = [];
+    for (const eng of engineers) {
+      const totalHours = hoursByUser[eng.id] ?? 0;
+      if (totalHours >= WEEKLY_THRESHOLD) continue;
+
+      const key = `${eng.id}:TIMESHEET_REMINDER:${weekKey}`;
+      if (existingKeys.has(key)) continue;
+
+      result.push({
+        userId: eng.id,
+        type: "TIMESHEET_REMINDER",
+        title: "工時填報提醒",
+        body: `本週已填報 ${totalHours.toFixed(1)} 小時，低於 ${WEEKLY_THRESHOLD} 小時門檻，請於下班前補齊。`,
+        relatedId: weekKey,
+        relatedType: "TimeEntry",
+      });
+      existingKeys.add(key);
+    }
+
+    return result;
+  }
+
+  /**
    * Full pipeline: build all notification payloads and persist them.
    * Returns counts for observability.
    */
@@ -221,16 +294,18 @@ export class NotificationService {
     dueSoonTasks: number;
     dueSoonMilestones: number;
     overdueTasks: number;
+    timesheetReminders: number;
   }> {
     const existingKeys = await this.getExistingKeys();
 
-    const [dueSoonTaskItems, milestoneItems, overdueItems] = await Promise.all([
+    const [dueSoonTaskItems, milestoneItems, overdueItems, timesheetItems] = await Promise.all([
       this.buildDueSoonTaskNotifications(now, existingKeys),
       this.buildDueSoonMilestoneNotifications(now, existingKeys),
       this.buildOverdueTaskNotifications(now, existingKeys),
+      this.buildTimesheetReminders(now, existingKeys),
     ]);
 
-    const toCreate = [...dueSoonTaskItems, ...milestoneItems, ...overdueItems];
+    const toCreate = [...dueSoonTaskItems, ...milestoneItems, ...overdueItems, ...timesheetItems];
 
     let created = 0;
     if (toCreate.length > 0) {
@@ -245,6 +320,7 @@ export class NotificationService {
       dueSoonTasks: dueSoonTaskItems.length,
       dueSoonMilestones: milestoneItems.length,
       overdueTasks: overdueItems.length,
+      timesheetReminders: timesheetItems.length,
     };
   }
 }

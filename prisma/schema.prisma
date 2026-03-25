@@ -461,6 +461,7 @@ enum NotificationType {
   MILESTONE_DUE
   BACKUP_ACTIVATED
   TASK_CHANGED
+  TIMESHEET_REMINDER
 }
 
 model Notification {
