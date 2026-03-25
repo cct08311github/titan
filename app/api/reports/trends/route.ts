@@ -3,9 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/rbac";
 
 /**
- * GET /api/reports/trends?metric=kpi|workload|delays&years=2025,2026
+ * GET /api/reports/trends?metric=kpi|kpi-achievement|workload|delays&years=2025,2026
  *
  * Returns monthly aggregated data for cross-year comparison.
+ *
+ * Issue #422: Enhanced with:
+ * - metric=kpi-achievement: per-KPI achievement trend with individual breakdown
+ * - Year-over-year comparison table in response
  */
 export async function GET(req: NextRequest) {
   const session = await requireAuth();
@@ -22,24 +26,69 @@ export async function GET(req: NextRequest) {
 
   const results: Record<number, Array<{ month: number; value: number }>> = {};
 
+  // Per-KPI achievement breakdown (for kpi and kpi-achievement metrics)
+  let kpiAchievement: Record<number, Array<{
+    code: string;
+    title: string;
+    target: number;
+    actual: number;
+    achievementRate: number;
+    status: string;
+  }>> | undefined;
+
+  // Year-over-year comparison table
+  let yearOverYear: Array<{
+    year: number;
+    avgAchievementRate: number;
+    totalKpis: number;
+    achievedCount: number;
+    missedCount: number;
+    activeCount: number;
+  }> | undefined;
+
   for (const year of years) {
     const startDate = new Date(year, 0, 1);
     const endDate = new Date(year + 1, 0, 1);
 
-    if (metric === "kpi") {
+    if (metric === "kpi" || metric === "kpi-achievement") {
       // KPI achievement rate by month (average across all KPIs)
       const kpis = await prisma.kPI.findMany({
         where: { year },
-        select: { target: true, actual: true },
+        select: { code: true, title: true, target: true, actual: true, status: true, weight: true },
       });
+
       const avgRate = kpis.length > 0
         ? kpis.reduce((sum, k) => sum + (k.target > 0 ? (k.actual / k.target) * 100 : 0), 0) / kpis.length
         : 0;
-      // For KPI we return a single annual value per month placeholder
+
+      // Monthly trend: for KPI we return the annual average as a constant per month
+      // (KPIs are annual targets, not monthly)
       results[year] = Array.from({ length: 12 }, (_, i) => ({
         month: i + 1,
         value: Math.round(avgRate * 10) / 10,
       }));
+
+      // Per-KPI breakdown
+      if (!kpiAchievement) kpiAchievement = {};
+      kpiAchievement[year] = kpis.map((k) => ({
+        code: k.code,
+        title: k.title,
+        target: k.target,
+        actual: k.actual,
+        achievementRate: k.target > 0 ? Math.round((k.actual / k.target) * 1000) / 10 : 0,
+        status: k.status,
+      }));
+
+      // Year-over-year summary
+      if (!yearOverYear) yearOverYear = [];
+      yearOverYear.push({
+        year,
+        avgAchievementRate: Math.round(avgRate * 10) / 10,
+        totalKpis: kpis.length,
+        achievedCount: kpis.filter((k) => k.status === "ACHIEVED").length,
+        missedCount: kpis.filter((k) => k.status === "MISSED").length,
+        activeCount: kpis.filter((k) => k.status === "ACTIVE").length,
+      });
     } else if (metric === "workload") {
       // Monthly hours by category (planned vs unplanned ratio)
       const entries = await prisma.timeEntry.findMany({
@@ -62,6 +111,19 @@ export async function GET(req: NextRequest) {
           ? Math.round((byMonth[i + 1].unplanned / byMonth[i + 1].total) * 1000) / 10
           : 0,
       }));
+
+      // Workload year-over-year
+      if (!yearOverYear) yearOverYear = [];
+      const totalHours = Object.values(byMonth).reduce((s, m) => s + m.total, 0);
+      const totalUnplanned = Object.values(byMonth).reduce((s, m) => s + m.unplanned, 0);
+      yearOverYear.push({
+        year,
+        avgAchievementRate: totalHours > 0 ? Math.round((totalUnplanned / totalHours) * 1000) / 10 : 0,
+        totalKpis: 0,
+        achievedCount: 0,
+        missedCount: 0,
+        activeCount: 0,
+      });
     } else if (metric === "delays") {
       // Monthly delay count
       const tasks = await prisma.task.findMany({
@@ -84,10 +146,28 @@ export async function GET(req: NextRequest) {
         month: i + 1,
         value: byMonth[i + 1],
       }));
+
+      // Delays year-over-year
+      if (!yearOverYear) yearOverYear = [];
+      const totalDelays = Object.values(byMonth).reduce((s, v) => s + v, 0);
+      yearOverYear.push({
+        year,
+        avgAchievementRate: 0,
+        totalKpis: 0,
+        achievedCount: 0,
+        missedCount: totalDelays,
+        activeCount: 0,
+      });
     } else {
       return NextResponse.json({ error: `Unknown metric: ${metric}` }, { status: 400 });
     }
   }
 
-  return NextResponse.json({ metric, years, data: results });
+  return NextResponse.json({
+    metric,
+    years,
+    data: results,
+    ...(kpiAchievement && { kpiAchievement }),
+    ...(yearOverYear && { yearOverYear }),
+  });
 }
