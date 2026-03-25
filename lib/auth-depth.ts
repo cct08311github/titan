@@ -50,26 +50,29 @@ function extractToken(req: NextRequest): string | null {
 }
 
 /**
- * Derives the encryption key from NEXTAUTH_SECRET.
- * NextAuth v4 uses HKDF to derive a 32-byte key from the secret
- * for JWE (A256GCM) encryption. For JWS fallback we use the raw secret.
+ * Derives the encryption key from AUTH_SECRET.
+ * Auth.js v5 uses HKDF to derive a 64-byte key from the secret
+ * for JWE (A256CBC-HS512) encryption. For JWS fallback we use the raw secret.
+ *
+ * Key differences from v4:
+ *   - info string: "Auth.js Generated Encryption Key" (was "NextAuth.js ...")
+ *   - algorithm: A256CBC-HS512 requires 64 bytes (was A256GCM / 32 bytes)
  */
-async function getDerivedEncryptionKey(): Promise<CryptoKey | null> {
+async function getDerivedEncryptionKey(): Promise<Uint8Array | null> {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) return null;
 
   const enc = new TextEncoder();
-  // Auth.js derives key via HKDF: SHA-256, salt="", info="NextAuth.js Generated Encryption Key"
   const keyMaterial = await crypto.subtle.importKey(
-    "raw", enc.encode(secret), "HKDF", false, ["deriveKey"]
+    "raw", enc.encode(secret), "HKDF", false, ["deriveBits"]
   );
-  return crypto.subtle.deriveKey(
-    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode("NextAuth.js Generated Encryption Key") },
+  // Auth.js v5: HKDF SHA-256, salt="", info="Auth.js Generated Encryption Key", 512 bits (64 bytes)
+  const derivedBits = await crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode("Auth.js Generated Encryption Key") },
     keyMaterial,
-    { name: "AES-GCM", length: 256 },
-    true,
-    ["decrypt"]
+    512 // 64 bytes for A256CBC-HS512
   );
+  return new Uint8Array(derivedBits);
 }
 
 function getRawSecretKey(): Uint8Array | null {
@@ -106,14 +109,14 @@ export async function checkEdgeJwt(req: NextRequest): Promise<NextResponse | nul
     const header = JSON.parse(atob(headerB64));
 
     if (header.enc) {
-      // JWE token — decrypt using HKDF-derived key
+      // JWE token — decrypt using HKDF-derived key (Auth.js v5: A256CBC-HS512)
       const encKey = await getDerivedEncryptionKey();
       if (!encKey) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      // Export the CryptoKey to raw bytes for jose
-      const keyBytes = new Uint8Array(await crypto.subtle.exportKey("raw", encKey));
-      await jwtDecrypt(token, keyBytes);
+      await jwtDecrypt(token, encKey, {
+        contentEncryptionAlgorithms: ["A256CBC-HS512"],
+      });
     } else {
       // JWS token — verify signature with raw secret
       await jwtVerify(token, rawKey, { algorithms: ["HS256"] });
