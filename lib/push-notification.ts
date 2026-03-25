@@ -1,3 +1,7 @@
+// PHASE 2 STUB — Not connected to any real push service
+// This entire module is a placeholder. No notifications are delivered.
+// See Issue #379 for production integration plan.
+
 /**
  * Push Notification Service — DISABLED / Stub Implementation
  *
