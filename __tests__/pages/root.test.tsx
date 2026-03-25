@@ -33,7 +33,7 @@ describe("Root Page (app/page.tsx)", () => {
     const { default: RootPage } = await import("@/app/page");
     // Server Component — just call it directly to trigger redirect
     try {
-      RootPage({} as never);
+      RootPage();
     } catch {
       // redirect() may throw in some environments — that is expected
     }
@@ -45,7 +45,7 @@ describe("Root Page (app/page.tsx)", () => {
     // The component should not return renderable JSX
     let result: unknown;
     try {
-      result = RootPage({} as never);
+      result = RootPage();
     } catch {
       result = undefined;
     }
@@ -55,7 +55,7 @@ describe("Root Page (app/page.tsx)", () => {
 
   it("redirect target is exactly /dashboard (not /login or /home)", async () => {
     const { default: RootPage } = await import("@/app/page");
-    try { RootPage({} as never); } catch { /* expected */ }
+    try { RootPage(); } catch { /* expected */ }
     // Must redirect to /dashboard specifically
     expect(mockRedirect).not.toHaveBeenCalledWith("/login");
     expect(mockRedirect).not.toHaveBeenCalledWith("/home");
@@ -64,7 +64,7 @@ describe("Root Page (app/page.tsx)", () => {
 
   it("redirect is called exactly once per render", async () => {
     const { default: RootPage } = await import("@/app/page");
-    try { RootPage({} as never); } catch { /* expected */ }
+    try { RootPage(); } catch { /* expected */ }
     expect(mockRedirect).toHaveBeenCalledTimes(1);
   });
 });

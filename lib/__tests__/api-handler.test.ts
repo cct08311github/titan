@@ -54,7 +54,7 @@ describe("apiHandler", () => {
   });
 
   test("returns 200 with data on success", async () => {
-    const handler = apiHandler(async () => success({ id: 1 }));
+    const handler = apiHandler(async (_req: NextRequest) => success({ id: 1 }));
     const res = await handler(req);
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -63,7 +63,7 @@ describe("apiHandler", () => {
   });
 
   test("returns 400 with details on ValidationError", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new ValidationError("invalid input");
     });
     const res = await handler(req);
@@ -75,7 +75,7 @@ describe("apiHandler", () => {
   });
 
   test("returns 401 on UnauthorizedError", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new UnauthorizedError();
     });
     const res = await handler(req);
@@ -86,7 +86,7 @@ describe("apiHandler", () => {
   });
 
   test("returns 403 on ForbiddenError", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new ForbiddenError();
     });
     const res = await handler(req);
@@ -97,7 +97,7 @@ describe("apiHandler", () => {
   });
 
   test("returns 404 on NotFoundError", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new NotFoundError("resource not found");
     });
     const res = await handler(req);
@@ -109,7 +109,7 @@ describe("apiHandler", () => {
   });
 
   test("returns 500 on unexpected error", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new Error("something broke");
     });
     const res = await handler(req);
@@ -120,7 +120,7 @@ describe("apiHandler", () => {
   });
 
   test("response format is { ok, data, error, message }", async () => {
-    const handler = apiHandler(async () => success({ value: 42 }));
+    const handler = apiHandler(async (_req: NextRequest) => success({ value: 42 }));
     const res = await handler(req);
     const body = await res.json();
     expect(body).toHaveProperty("ok");
@@ -133,7 +133,7 @@ describe("apiHandler", () => {
   test("logs error details for 500 errors", async () => {
     // apiHandler now uses pino logger.error instead of console.error
     const loggerSpy = jest.spyOn(logger, "error").mockImplementation(() => {});
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new Error("db crash");
     });
     await handler(req);
@@ -147,7 +147,7 @@ describe("apiHandler", () => {
   });
 
   test("does not expose stack trace in response", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       throw new Error("internal");
     });
     const res = await handler(req);
@@ -157,7 +157,7 @@ describe("apiHandler", () => {
   });
 
   test("handles async handler correctly", async () => {
-    const handler = apiHandler(async () => {
+    const handler = apiHandler(async (_req: NextRequest) => {
       await Promise.resolve();
       return success({ async: true });
     });
