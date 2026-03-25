@@ -61,7 +61,11 @@ export default function TimesheetPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    // Default to list view on mobile for better readability
+    if (typeof window !== "undefined" && window.innerWidth < 640) return "list";
+    return "grid";
+  });
   const [tasks, setTasks] = useState<{ id: string; title: string }[]>([]);
 
   // Load users
