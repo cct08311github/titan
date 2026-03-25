@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { MANAGER_STATE_FILE } from './helpers/auth';
 
@@ -15,7 +16,7 @@ const KNOWN_VIOLATIONS = new Set<string>([
 ]);
 
 /** Run axe scan and assert no NEW violations beyond the known list. */
-async function assertNoNewViolations(page: Parameters<typeof AxeBuilder>[0]['page'], label: string) {
+async function assertNoNewViolations(page: Page, label: string) {
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa'])
     .exclude('[aria-hidden="true"]')

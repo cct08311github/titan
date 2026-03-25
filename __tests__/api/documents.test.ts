@@ -38,7 +38,7 @@ describe("GET /api/documents", () => {
 
   it("returns document list when authenticated", async () => {
     const { GET } = await import("@/app/api/documents/route");
-    const res = await GET(createMockRequest("/api/documents"));
+    const res = await (GET as Function)(createMockRequest("/api/documents"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data[0].id).toBe("doc-1");
@@ -47,14 +47,14 @@ describe("GET /api/documents", () => {
   it("returns 401 when no session", async () => {
     mockGetServerSession.mockResolvedValue(null);
     const { GET } = await import("@/app/api/documents/route");
-    const res = await GET(createMockRequest("/api/documents"));
+    const res = await (GET as Function)(createMockRequest("/api/documents"));
     expect(res.status).toBe(401);
   });
 
   it("returns 500 on database error", async () => {
     mockDocument.findMany.mockRejectedValue(new Error("DB"));
     const { GET } = await import("@/app/api/documents/route");
-    const res = await GET(createMockRequest("/api/documents"));
+    const res = await (GET as Function)(createMockRequest("/api/documents"));
     expect(res.status).toBe(500);
   });
 });

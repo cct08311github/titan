@@ -82,7 +82,7 @@ describe("PATCH /api/notifications/[id]/read", () => {
 
   it("marks notification as read", async () => {
     const { PATCH } = await import("@/app/api/notifications/[id]/read/route");
-    const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: { id: "notif-1" } });
+    const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: Promise.resolve({ id: "notif-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.isRead).toBe(true);
@@ -91,21 +91,21 @@ describe("PATCH /api/notifications/[id]/read", () => {
   it("returns 404 when notification not found", async () => {
     mockNotification.findUnique.mockResolvedValue(null);
     const { PATCH } = await import("@/app/api/notifications/[id]/read/route");
-    const res = await PATCH(createMockRequest("/api/notifications/x/read", { method: "PATCH" }), { params: { id: "x" } });
+    const res = await PATCH(createMockRequest("/api/notifications/x/read", { method: "PATCH" }), { params: Promise.resolve({ id: "x" }) });
     expect(res.status).toBe(404);
   });
 
   it("returns 404 when notification belongs to different user", async () => {
     mockNotification.findUnique.mockResolvedValue({ ...MOCK_NOTIF, userId: "other" });
     const { PATCH } = await import("@/app/api/notifications/[id]/read/route");
-    const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: { id: "notif-1" } });
+    const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: Promise.resolve({ id: "notif-1" }) });
     expect(res.status).toBe(404);
   });
 
   it("returns 401 when no session", async () => {
     mockGetServerSession.mockResolvedValue(null);
     const { PATCH } = await import("@/app/api/notifications/[id]/read/route");
-    const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: { id: "notif-1" } });
+    const res = await PATCH(createMockRequest("/api/notifications/notif-1/read", { method: "PATCH" }), { params: Promise.resolve({ id: "notif-1" }) });
     expect(res.status).toBe(401);
   });
 });

@@ -118,7 +118,7 @@ describe("GET /api/kpi/[id]", () => {
 
   it("returns kpi by id", async () => {
     const { GET } = await import("@/app/api/kpi/[id]/route");
-    const res = await GET(createMockRequest("/api/kpi/kpi-1"), { params: { id: "kpi-1" } });
+    const res = await GET(createMockRequest("/api/kpi/kpi-1"), { params: Promise.resolve({ id: "kpi-1" }) });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.data.id).toBe("kpi-1");
@@ -127,14 +127,14 @@ describe("GET /api/kpi/[id]", () => {
   it("returns 404 when not found", async () => {
     mockKPI.findUnique.mockResolvedValue(null);
     const { GET } = await import("@/app/api/kpi/[id]/route");
-    const res = await GET(createMockRequest("/api/kpi/x"), { params: { id: "x" } });
+    const res = await GET(createMockRequest("/api/kpi/x"), { params: Promise.resolve({ id: "x" }) });
     expect(res.status).toBe(404);
   });
 
   it("returns 401 when no session", async () => {
     mockGetServerSession.mockResolvedValue(null);
     const { GET } = await import("@/app/api/kpi/[id]/route");
-    const res = await GET(createMockRequest("/api/kpi/kpi-1"), { params: { id: "kpi-1" } });
+    const res = await GET(createMockRequest("/api/kpi/kpi-1"), { params: Promise.resolve({ id: "kpi-1" }) });
     expect(res.status).toBe(401);
   });
 });
@@ -148,14 +148,14 @@ describe("PUT /api/kpi/[id]", () => {
 
   it("updates KPI as manager", async () => {
     const { PUT } = await import("@/app/api/kpi/[id]/route");
-    const res = await PUT(createMockRequest("/api/kpi/kpi-1", { method: "PUT", body: { actual: 90 } }), { params: { id: "kpi-1" } });
+    const res = await PUT(createMockRequest("/api/kpi/kpi-1", { method: "PUT", body: { actual: 90 } }), { params: Promise.resolve({ id: "kpi-1" }) });
     expect(res.status).toBe(200);
   });
 
   it("returns 403 for non-manager", async () => {
     mockGetServerSession.mockResolvedValue(MEMBER);
     const { PUT } = await import("@/app/api/kpi/[id]/route");
-    const res = await PUT(createMockRequest("/api/kpi/kpi-1", { method: "PUT", body: { actual: 90 } }), { params: { id: "kpi-1" } });
+    const res = await PUT(createMockRequest("/api/kpi/kpi-1", { method: "PUT", body: { actual: 90 } }), { params: Promise.resolve({ id: "kpi-1" }) });
     expect(res.status).toBe(403);
   });
 });

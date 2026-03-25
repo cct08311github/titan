@@ -42,7 +42,7 @@ describe("ExportService", () => {
 
     // Parse with exceljs to verify content
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(buffer as Buffer);
     const worksheet = workbook.worksheets[0];
 
     // First row should be headers
