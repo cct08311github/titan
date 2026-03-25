@@ -69,6 +69,7 @@ export default function PlansPage() {
   const [newPlanYear, setNewPlanYear] = useState(new Date().getFullYear().toString());
   const [newPlanTitle, setNewPlanTitle] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
+  const [planError, setPlanError] = useState("");
 
   // Create goal form
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -76,6 +77,7 @@ export default function PlansPage() {
   const [newGoalMonth, setNewGoalMonth] = useState("1");
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [creatingGoal, setCreatingGoal] = useState(false);
+  const [goalError, setGoalError] = useState("");
 
   // Copy template form
   const [showCopyForm, setShowCopyForm] = useState(false);
@@ -115,6 +117,7 @@ export default function PlansPage() {
   async function createPlan() {
     if (!newPlanTitle.trim() || !newPlanYear) return;
     setCreatingPlan(true);
+    setPlanError("");
     try {
       const res = await fetch("/api/plans", {
         method: "POST",
@@ -124,10 +127,11 @@ export default function PlansPage() {
       if (res.ok) {
         setNewPlanTitle("");
         setShowPlanForm(false);
+        setPlanError("");
         fetchPlans();
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? errBody?.error ?? "建立失敗");
+        setPlanError(errBody?.message ?? errBody?.error ?? "建立失敗，請再試一次");
       }
     } finally {
       setCreatingPlan(false);
@@ -137,6 +141,7 @@ export default function PlansPage() {
   async function createGoal() {
     if (!newGoalTitle.trim() || !newGoalPlanId) return;
     setCreatingGoal(true);
+    setGoalError("");
     try {
       const res = await fetch("/api/goals", {
         method: "POST",
@@ -146,10 +151,11 @@ export default function PlansPage() {
       if (res.ok) {
         setNewGoalTitle("");
         setShowGoalForm(false);
+        setGoalError("");
         fetchPlans();
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? errBody?.error ?? "月度目標建立失敗");
+        setGoalError(errBody?.message ?? errBody?.error ?? "月度目標建立失敗，請再試一次");
       }
     } finally {
       setCreatingGoal(false);
@@ -172,7 +178,7 @@ export default function PlansPage() {
         fetchPlans();
       } else {
         const errBody = await res.json().catch(() => ({}));
-        setCopyError(errBody?.error ?? "複製失敗，請再試一次");
+        setCopyError(errBody?.message ?? errBody?.error ?? "複製失敗，請再試一次");
       }
     } finally {
       setCopyingTemplate(false);
@@ -205,7 +211,7 @@ export default function PlansPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowGoalForm(true)}
+            onClick={() => { setShowGoalForm(true); setGoalError(""); }}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -219,7 +225,7 @@ export default function PlansPage() {
             從上年複製
           </button>
           <button
-            onClick={() => setShowPlanForm(true)}
+            onClick={() => { setShowPlanForm(true); setPlanError(""); }}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md transition-colors"
           >
             <Target className="h-3.5 w-3.5" />
@@ -262,6 +268,9 @@ export default function PlansPage() {
               {creatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
           </div>
+          {planError && (
+            <p className="text-xs text-danger">{planError}</p>
+          )}
         </div>
       )}
 
@@ -356,6 +365,9 @@ export default function PlansPage() {
               {creatingGoal ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
           </div>
+          {goalError && (
+            <p className="text-xs text-danger">{goalError}</p>
+          )}
         </div>
       )}
 
