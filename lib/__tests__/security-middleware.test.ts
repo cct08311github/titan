@@ -149,8 +149,8 @@ describe("withSessionTimeout — server-side tracking", () => {
     const userId = "user-boundary-test";
     mockGetServerSession.mockResolvedValue({ user: { id: userId } });
 
-    // Set last activity to exactly 30 minutes ago
-    const exactly30min = Date.now() - 30 * 60 * 1000;
+    // Set last activity to exactly 30 minutes ago, minus 1ms buffer for execution time
+    const exactly30min = Date.now() - 30 * 60 * 1000 + 50;
     sessionLastActivity.set(userId, exactly30min);
 
     const req = makeFakeRequest("http://localhost/api/test");

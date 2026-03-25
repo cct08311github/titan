@@ -14,10 +14,9 @@
 import { auth } from "@/auth";
 import type { NextRequest } from "next/server";
 
-// Session type returned by auth().
-// We use `unknown` here to avoid importing next-auth internals; callers
-// can cast to their specific session shape.
-export type CachedSession = Awaited<ReturnType<typeof auth>>;
+// Session type — explicitly typed to avoid auth() overload resolution issues
+import type { Session } from "next-auth";
+export type CachedSession = Session | null;
 
 const _cache = new WeakMap<NextRequest, CachedSession>();
 
