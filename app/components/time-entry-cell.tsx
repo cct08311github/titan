@@ -8,6 +8,9 @@ export type TimeEntry = {
   taskId: string | null;
   date: string;
   hours: number;
+  startTime?: string | null;
+  endTime?: string | null;
+  isRunning?: boolean;
   category: string;
   description: string | null;
 };

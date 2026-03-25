@@ -4,6 +4,7 @@ import {
   UnauthorizedError,
   ForbiddenError,
   NotFoundError,
+  ConflictError,
 } from "@/services/errors";
 import { success, error } from "@/lib/api-response";
 import type { ApiResponse } from "@/lib/api-response";
@@ -142,6 +143,9 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
         }
         if (err instanceof NotFoundError) {
           return error("NotFoundError", err.message, 404);
+        }
+        if (err instanceof ConflictError) {
+          return error("ConflictError", err.message, 409);
         }
         // Unexpected error — log details server-side, never expose internals
         logger.error({ err }, "[apiHandler] Unexpected error");
