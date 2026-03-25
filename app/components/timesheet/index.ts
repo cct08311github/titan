@@ -1,7 +1,10 @@
 export { useTimesheet } from "./use-timesheet";
+export { useTimer } from "./use-timer";
+export { useWeekNavigation } from "./use-week-navigation";
 export { TimesheetGrid } from "./timesheet-grid";
 export { TimesheetCell } from "./timesheet-cell";
 export { TimesheetToolbar } from "./timesheet-toolbar";
 export { TimesheetTimer } from "./timesheet-timer";
+export { TemplateSelector } from "./template-selector";
 export type { TimeEntry, TaskRow, TaskOption, OvertimeType, TimerState } from "./use-timesheet";
 export type { ViewMode } from "./timesheet-toolbar";
