@@ -130,7 +130,15 @@ export class ReportService {
         status: "DONE",
         updatedAt: { gte: weekStart, lte: weekEnd },
       },
-      include: { primaryAssignee: { select: { id: true, name: true } } },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        priority: true,
+        category: true,
+        updatedAt: true,
+        primaryAssignee: { select: { id: true, name: true } },
+      },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -140,7 +148,12 @@ export class ReportService {
 
     const timeEntries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,
-      include: { user: { select: { id: true, name: true } } },
+      select: {
+        hours: true,
+        category: true,
+        userId: true,
+        user: { select: { id: true, name: true } },
+      },
     });
 
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
@@ -152,7 +165,14 @@ export class ReportService {
         status: { notIn: ["DONE"] },
         dueDate: { lt: new Date() },
       },
-      include: { primaryAssignee: { select: { id: true, name: true } } },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        priority: true,
+        dueDate: true,
+        primaryAssignee: { select: { id: true, name: true } },
+      },
       orderBy: { dueDate: "asc" },
       take: 10,
     });
@@ -206,7 +226,15 @@ export class ReportService {
           { status: { notIn: ["DONE"] }, dueDate: null },
         ],
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        priority: true,
+        category: true,
+        dueDate: true,
+        updatedAt: true,
+        progressPct: true,
         primaryAssignee: { select: { id: true, name: true } },
         monthlyGoal: { select: { id: true, title: true, month: true } },
       },
@@ -224,7 +252,12 @@ export class ReportService {
 
     const timeEntries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,
-      include: { user: { select: { id: true, name: true } } },
+      select: {
+        hours: true,
+        category: true,
+        userId: true,
+        user: { select: { id: true, name: true } },
+      },
     });
 
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
@@ -318,7 +351,10 @@ export class ReportService {
 
     const timeEntries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,
-      include: {
+      select: {
+        hours: true,
+        category: true,
+        userId: true,
         user: { select: { id: true, name: true } },
         task: { select: { id: true, title: true, category: true } },
       },
@@ -374,7 +410,13 @@ export class ReportService {
         category: { in: ["ADDED", "INCIDENT", "SUPPORT"] },
         createdAt: { gte: startDate, lte: endDate },
       },
-      include: {
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        category: true,
+        addedSource: true,
+        createdAt: true,
         primaryAssignee: { select: { id: true, name: true } },
       },
     });

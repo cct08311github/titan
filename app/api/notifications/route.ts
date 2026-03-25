@@ -12,6 +12,16 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   const notifications = await prisma.notification.findMany({
     where: { userId: session.user.id },
+    select: {
+      id: true,
+      type: true,
+      title: true,
+      body: true,
+      isRead: true,
+      relatedId: true,
+      relatedType: true,
+      createdAt: true,
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
   });

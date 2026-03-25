@@ -35,7 +35,15 @@ export const GET = withAuth(async (req: NextRequest) => {
 
     const completedTasks = await prisma.task.findMany({
       where: { ...userFilter, status: "DONE", updatedAt: { gte: weekStart, lte: weekEnd } },
-      include: { primaryAssignee: { select: { id: true, name: true } } },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        priority: true,
+        category: true,
+        updatedAt: true,
+        primaryAssignee: { select: { id: true, name: true } },
+      },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -43,7 +51,10 @@ export const GET = withAuth(async (req: NextRequest) => {
       ? { date: { gte: weekStart, lte: weekEnd } }
       : { userId: session.user.id, date: { gte: weekStart, lte: weekEnd } };
 
-    const timeEntries = await prisma.timeEntry.findMany({ where: timeEntryFilter });
+    const timeEntries = await prisma.timeEntry.findMany({
+      where: timeEntryFilter,
+      select: { hours: true, category: true },
+    });
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
     const hoursByCategory = timeEntries.reduce((acc, e) => {
       acc[e.category] = (acc[e.category] ?? 0) + e.hours;
