@@ -23,6 +23,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkEdgeJwt } from "@/lib/auth-depth";
 
+/** CSP nonce header 名稱 — middleware 設定與 Server Components 讀取必須一致 */
+const CSP_NONCE_HEADER = "x-csp-nonce";
+
 /** 建構帶有動態 nonce 的 CSP header 值 */
 function buildCspWithNonce(nonce: string): string {
   return [
@@ -53,18 +56,24 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   // Skip auth routes — next-auth handles its own sign-in / callback / CSRF flows
   if (pathname.startsWith("/api/auth/")) {
-    const res = NextResponse.next();
+    const reqHeaders = new Headers(req.headers);
+    reqHeaders.set(CSP_NONCE_HEADER, nonce);
+    reqHeaders.set("x-request-id", requestId);
+    const res = NextResponse.next({ request: { headers: reqHeaders } });
     res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
-    res.headers.set("x-csp-nonce", nonce);
+    res.headers.set(CSP_NONCE_HEADER, nonce);
     res.headers.set("x-request-id", requestId);
     return res;
   }
 
   // Skip the change-password page itself to avoid redirect loops
   if (pathname === "/change-password") {
-    const res = NextResponse.next();
+    const reqHeaders = new Headers(req.headers);
+    reqHeaders.set(CSP_NONCE_HEADER, nonce);
+    reqHeaders.set("x-request-id", requestId);
+    const res = NextResponse.next({ request: { headers: reqHeaders } });
     res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
-    res.headers.set("x-csp-nonce", nonce);
+    res.headers.set(CSP_NONCE_HEADER, nonce);
     res.headers.set("x-request-id", requestId);
     return res;
   }
@@ -87,12 +96,12 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   // 所有通過驗證的請求：注入 nonce-based CSP、x-csp-nonce、x-request-id
   // Route handlers 可透過 headers() 讀取 'x-request-id' 做跨層追蹤
   const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-csp-nonce", nonce);
+  requestHeaders.set(CSP_NONCE_HEADER, nonce);
   requestHeaders.set("x-request-id", requestId);
 
   const res = NextResponse.next({ request: { headers: requestHeaders } });
   res.headers.set("Content-Security-Policy", buildCspWithNonce(nonce));
-  res.headers.set("x-csp-nonce", nonce);
+  res.headers.set(CSP_NONCE_HEADER, nonce);
   res.headers.set("x-request-id", requestId);
   return res;
 }
