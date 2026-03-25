@@ -18,8 +18,9 @@ import { getClientIp } from "@/lib/get-client-ip";
 const auditService = new AuditService(prisma);
 
 export async function POST(req: NextRequest) {
-  const session = await getCachedSession(req);
-  const userId = (session?.user as { id?: string } | undefined)?.id;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const session = await getCachedSession(req) as any;
+  const userId = session?.user?.id as string | undefined;
 
   if (!userId) {
     return error("UnauthorizedError", "請先登入", 401);

@@ -56,6 +56,7 @@ export class ImportService {
 
     const workbook = new ExcelJS.Workbook();
     try {
+      // @ts-expect-error ExcelJS types expect old Buffer, but new Node Buffer<ArrayBufferLike> is compatible
       await workbook.xlsx.load(buffer);
     } catch {
       throw new Error("無效的 Excel 檔案格式");
