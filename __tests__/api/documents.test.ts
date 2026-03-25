@@ -6,7 +6,7 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockDocument = { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockDocument = { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn().mockResolvedValue(0), findUnique: jest.fn() };
 
 jest.mock("@/lib/prisma", () => ({ prisma: { document: mockDocument } }));
 
@@ -37,11 +37,12 @@ describe("GET /api/documents", () => {
   });
 
   it("returns document list when authenticated", async () => {
+    mockDocument.count.mockResolvedValue(1);
     const { GET } = await import("@/app/api/documents/route");
     const res = await (GET as Function)(createMockRequest("/api/documents"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("doc-1");
+    expect(body.data.items[0].id).toBe("doc-1");
   });
 
   it("returns 401 when no session", async () => {

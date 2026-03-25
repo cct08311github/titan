@@ -368,6 +368,7 @@ describe("DELETE /api/documents/[id] — audit DELETE_DOCUMENT", () => {
   });
 
   it("creates audit log after deleting a document", async () => {
+    mockDocument.findUnique.mockResolvedValue({ id: "doc-1", title: "Test" });
     mockDocument.delete.mockResolvedValue({ id: "doc-1" });
 
     const { DELETE } = await import("@/app/api/documents/[id]/route");

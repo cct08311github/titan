@@ -22,12 +22,13 @@ describe("TaskService", () => {
       ];
       (prisma.task.findMany as jest.Mock).mockResolvedValue(mockTasks);
 
+      (prisma.task.count as jest.Mock).mockResolvedValue(2);
       const result = await service.listTasks({});
 
       expect(prisma.task.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ where: {} })
       );
-      expect(result).toEqual(mockTasks);
+      expect(result).toEqual({ tasks: mockTasks, total: 2 });
     });
 
     test("listTasks filters by assignee", async () => {

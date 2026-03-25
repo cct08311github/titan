@@ -260,6 +260,9 @@ describe("B5: KPIService — calculateAchievement with edge cases", () => {
   it("calculates weighted average achievement correctly", async () => {
     (prisma.kPI.findUnique as jest.Mock).mockResolvedValue({
       id: "kpi-1",
+      autoCalc: true,
+      target: 100,
+      actual: 0,
       taskLinks: [
         { weight: 2, task: { progressPct: 80, status: "IN_PROGRESS" } },
         { weight: 1, task: { progressPct: 50, status: "TODO" } },
@@ -269,7 +272,7 @@ describe("B5: KPIService — calculateAchievement with edge cases", () => {
 
     await service.calculateAchievement("kpi-1");
 
-    // (80*2 + 50*1) / (2+1) = 210/3 = 70
+    // (80/100*2 + 50/100*1) / (2+1) * 100 = (1.6+0.5)/3 * 100 = 70
     expect(prisma.kPI.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { actual: 70 } })
     );

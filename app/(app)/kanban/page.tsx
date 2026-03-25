@@ -301,6 +301,7 @@ export default function KanbanPage() {
           />
         </div>
       ) : (
+        <>
         {/* Desktop: horizontal scroll board / Mobile: vertical stack */}
         <div
           className="flex-1 flex flex-col md:flex-row gap-3 overflow-y-auto md:overflow-x-auto md:overflow-y-hidden pb-4 min-h-0"
@@ -402,6 +403,7 @@ export default function KanbanPage() {
             );
           })}
         </div>
+        </>
       )}
 
       {/* Task detail modal */}

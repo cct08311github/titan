@@ -56,8 +56,9 @@ describe("D1: TaskService — graceful handling of missing relation fields", () 
       },
     ]);
 
-    const tasks = await service.listTasks({});
-    expect(tasks[0].monthlyGoal).toBeNull();
+    (prisma.task.count as jest.Mock).mockResolvedValue(1);
+    const result = await service.listTasks({});
+    expect(result.tasks[0].monthlyGoal).toBeNull();
     // must not throw
   });
 });
@@ -199,7 +200,7 @@ describe("D5: API response always includes success wrapper fields", () => {
   const mockGetServerSession = jest.fn();
 
   const mockKPI = { findMany: jest.fn() };
-  const mockTask = { findMany: jest.fn() };
+  const mockTask = { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 
   jest.mock("@/lib/prisma", () => ({
     prisma: {
@@ -244,11 +245,12 @@ describe("D5: API response always includes success wrapper fields", () => {
 
   it("GET /api/tasks response has data array even if DB returns empty list", async () => {
     mockTask.findMany.mockResolvedValue([]);
+    mockTask.count.mockResolvedValue(0);
     const { GET } = await import("@/app/api/tasks/route");
     const res = await GET(createMockRequest("/api/tasks"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("data");
-    expect(Array.isArray(body.data)).toBe(true);
+    expect(Array.isArray(body.data.items)).toBe(true);
   });
 });
