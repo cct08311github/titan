@@ -13,6 +13,9 @@ interface Notification {
   createdAt: string;
 }
 
+/** Polling interval for notification refresh (ms). */
+const NOTIFICATION_POLL_INTERVAL_MS = 60_000;
+
 const TYPE_LABELS: Record<string, string> = {
   TASK_ASSIGNED: "任務指派",
   TASK_DUE_SOON: "即將到期",
@@ -89,7 +92,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
+    const interval = setInterval(fetchNotifications, NOTIFICATION_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 

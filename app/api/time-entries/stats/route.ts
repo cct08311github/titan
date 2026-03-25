@@ -35,7 +35,10 @@ export const GET = withAuth(async (req: NextRequest) => {
     if (endDate) (where.date as Record<string, unknown>).lte = new Date(endDate);
   }
 
-  const entries = await prisma.timeEntry.findMany({ where });
+  const entries = await prisma.timeEntry.findMany({
+    where,
+    select: { hours: true, category: true },
+  });
 
   const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
 

@@ -1,5 +1,6 @@
 import { PrismaClient, KPIStatus } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
+import { calculateAchievement as calcAchievement } from "../lib/kpi-calculator";
 
 export interface ListKPIsFilter {
   year?: number;
@@ -156,20 +157,11 @@ export class KPIService {
 
     if (!kpi) throw new NotFoundError(`KPI not found: ${kpiId}`);
 
-    const links = kpi.taskLinks;
-    let actual = 0;
-    if (links.length > 0) {
-      const totalWeight = links.reduce((sum, l) => sum + l.weight, 0);
-      const weightedSum = links.reduce(
-        (sum, l) => sum + l.task.progressPct * l.weight,
-        0
-      );
-      actual = totalWeight > 0 ? weightedSum / totalWeight : 0;
-    }
+    const achievement = calcAchievement(kpi);
 
     return this.prisma.kPI.update({
       where: { id: kpiId },
-      data: { actual },
+      data: { actual: achievement },
     });
   }
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { formatDateTime } from "@/lib/format";
 import {
   Database,
   Shield,
@@ -324,7 +325,7 @@ function AuditLogSection() {
                 {pagedLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-accent/20 transition-colors">
                     <td className="px-4 py-2 text-xs tabular-nums text-muted-foreground whitespace-nowrap">
-                      {new Date(log.createdAt).toLocaleString("zh-TW")}
+                      {formatDateTime(log.createdAt)}
                     </td>
                     <td className="px-4 py-2">
                       <span className={cn(

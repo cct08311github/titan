@@ -6,6 +6,7 @@ import { Target, ClipboardList, Clock, BarChart3, Users } from "lucide-react";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { formatDate } from "@/lib/format";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -533,7 +534,7 @@ function EngineerDashboard() {
                         : "text-muted-foreground"
                     )}
                   >
-                    {new Date(t.dueDate).toLocaleDateString("zh-TW")}
+                    {formatDate(t.dueDate)}
                   </span>
                 )}
               </div>
@@ -551,7 +552,7 @@ function EngineerDashboard() {
               <div key={t.id} className="flex items-center justify-between text-sm">
                 <span className="text-foreground truncate">{t.title}</span>
                 <span className="text-danger tabular-nums text-xs flex-shrink-0 ml-2">
-                  {t.dueDate ? new Date(t.dueDate).toLocaleDateString("zh-TW") : ""}
+                  {t.dueDate ? formatDate(t.dueDate) : ""}
                 </span>
               </div>
             ))}
