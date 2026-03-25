@@ -66,12 +66,12 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
         <thead>
           <tr className="border-b border-border">
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">日期</th>
-            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">開始</th>
-            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">結束</th>
+            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground hidden sm:table-cell">開始</th>
+            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground hidden sm:table-cell">結束</th>
             <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">工時</th>
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">任務</th>
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">分類</th>
-            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">備註</th>
+            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">備註</th>
             {onDelete && (
               <th className="text-center px-3 py-2.5 text-xs font-medium text-muted-foreground w-16">操作</th>
             )}
@@ -90,10 +90,10 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
                 <td className="px-3 py-2 text-xs text-foreground whitespace-nowrap">
                   {formatDate(entry.date)}
                 </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums" data-testid="start-time">
+                <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums hidden sm:table-cell" data-testid="start-time">
                   {formatTime(entry.startTime)}
                 </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums" data-testid="end-time">
+                <td className="px-3 py-2 text-xs text-muted-foreground tabular-nums hidden sm:table-cell" data-testid="end-time">
                   {formatTime(entry.endTime)}
                 </td>
                 <td className="px-3 py-2 text-right text-xs font-medium text-foreground tabular-nums">
@@ -107,7 +107,7 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
                     {getCategoryLabel(entry.category)}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-xs text-muted-foreground max-w-[200px] truncate" title={entry.description ?? ""}>
+                <td className="px-3 py-2 text-xs text-muted-foreground max-w-[200px] truncate hidden md:table-cell" title={entry.description ?? ""}>
                   {entry.description ?? "—"}
                 </td>
                 {onDelete && (
