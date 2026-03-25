@@ -97,12 +97,9 @@ describe("Timesheet Page", () => {
       render(<TimesheetPage />);
     });
     await waitFor(() => {
-      // 空資料時應顯示引導訊息
-      expect(screen.getByText("本週尚無工時記錄")).toBeInTheDocument();
-      expect(screen.getByText("點擊格子可輸入工時")).toBeInTheDocument();
+      // 空資料時仍顯示 grid（讓使用者可以點擊格子輸入），但有引導提示
+      expect(screen.getByText(/點擊格子可輸入工時/)).toBeInTheDocument();
     });
-    // 空資料時不應渲染 TimesheetGrid
-    expect(screen.queryByTestId("timesheet-grid")).not.toBeInTheDocument();
   });
 
   it("renders without crash when hours fields are null in time entries", async () => {
