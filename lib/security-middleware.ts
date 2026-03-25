@@ -86,7 +86,7 @@ async function getSessionUserId(req: NextRequest): Promise<string | null> {
   if (override) return override;
 
   const session = await getCachedSession(req);
-  return (session?.user as { id?: string } | undefined)?.id ?? null;
+  return ((session as { user?: { id?: string } } | null)?.user)?.id ?? null;
 }
 
 /** Derive resourceType from URL path (e.g. /api/tasks/123 → "tasks"). */

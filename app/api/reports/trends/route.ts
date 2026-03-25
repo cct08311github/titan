@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 
 /**
  * GET /api/reports/trends?metric=kpi|workload|delays&years=2025,2026
@@ -8,8 +8,8 @@ import { requireAuth } from "@/lib/auth-middleware";
  * Returns monthly aggregated data for cross-year comparison.
  */
 export async function GET(req: NextRequest) {
-  const session = await requireAuth(req);
-  if (session instanceof NextResponse) return session;
+  const session = await requireAuth();
+  // requireAuth throws UnauthorizedError if no session — caught by apiHandler
 
   const { searchParams } = new URL(req.url);
   const metric = searchParams.get("metric") ?? "kpi";
