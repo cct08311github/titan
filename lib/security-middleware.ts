@@ -40,27 +40,55 @@ export { JwtBlacklist } from "@/lib/jwt-blacklist";
 // Shared API rate limiter singleton (in-memory; swapped for Redis in prod)
 // ---------------------------------------------------------------------------
 
-let _apiLimiter: ReturnType<typeof createApiRateLimiter> | null = null;
+let _apiReadLimiter: ReturnType<typeof createApiRateLimiter> | null = null;
+let _apiMutateLimiter: ReturnType<typeof createApiRateLimiter> | null = null;
 
-/** Returns (creating once) the shared API rate limiter instance. */
-export function getApiRateLimiter(opts: ApiRateLimiterOptions = {}) {
-  if (!_apiLimiter) {
-    // Issue #178: use Redis when available
+/**
+ * Returns the shared API rate limiter for GET requests (100 req/60s).
+ */
+export function getApiReadLimiter(opts: ApiRateLimiterOptions = {}) {
+  if (!_apiReadLimiter) {
     const redis = getRedisClient();
-    _apiLimiter = createApiRateLimiter({
+    _apiReadLimiter = createApiRateLimiter({
       ...opts,
+      points: 100,
+      duration: 60,
       redisClient: redis ?? undefined,
       useMemory: !redis,
     });
   }
-  return _apiLimiter;
+  return _apiReadLimiter;
 }
 
-/** Replace the singleton — used in tests to inject a custom limiter. */
+/**
+ * Returns the shared API rate limiter for mutating requests (20 req/60s).
+ * POST/PUT/PATCH/DELETE have a stricter limit to protect write operations.
+ */
+export function getApiMutateLimiter(opts: ApiRateLimiterOptions = {}) {
+  if (!_apiMutateLimiter) {
+    const redis = getRedisClient();
+    _apiMutateLimiter = createApiRateLimiter({
+      ...opts,
+      points: 20,
+      duration: 60,
+      redisClient: redis ?? undefined,
+      useMemory: !redis,
+    });
+  }
+  return _apiMutateLimiter;
+}
+
+/** @deprecated Use getApiReadLimiter or getApiMutateLimiter instead. */
+export function getApiRateLimiter(opts: ApiRateLimiterOptions = {}) {
+  return getApiReadLimiter(opts);
+}
+
+/** Replace the singletons — used in tests to inject custom limiters. */
 export function setApiRateLimiter(
   limiter: ReturnType<typeof createApiRateLimiter> | null
 ) {
-  _apiLimiter = limiter;
+  _apiReadLimiter = limiter;
+  _apiMutateLimiter = limiter;
 }
 
 // ---------------------------------------------------------------------------
@@ -127,8 +155,13 @@ export function withRateLimit<T extends AnyHandler>(fn: T): T {
 
     const userId = await getSessionUserId(req);
     if (userId) {
-      const limiter = getApiRateLimiter({ useMemory: true });
-      await checkRateLimit(limiter, userId);
+      // Differentiated rate limits: mutating ops = 20/60s, reads = 100/60s
+      const method = req.method?.toUpperCase() ?? "GET";
+      const isMutating = MUTATING_METHODS.has(method);
+      const limiter = isMutating
+        ? getApiMutateLimiter()
+        : getApiReadLimiter();
+      await checkRateLimit(limiter, `${userId}:${isMutating ? "write" : "read"}`);
     }
 
     return fn(req, context);

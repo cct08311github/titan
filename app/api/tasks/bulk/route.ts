@@ -51,9 +51,12 @@ export const PATCH = withAuth(async (req: NextRequest) => {
   if (updates.priority !== undefined) data.priority = updates.priority;
   if (updates.primaryAssigneeId !== undefined) data.primaryAssigneeId = updates.primaryAssigneeId;
 
-  const result = await prisma.task.updateMany({
-    where: { id: { in: taskIds } },
-    data,
+  // Wrap ownership check + update in a transaction for atomicity
+  const result = await prisma.$transaction(async (tx) => {
+    return tx.task.updateMany({
+      where: { id: { in: taskIds } },
+      data,
+    });
   });
 
   return success({ updated: result.count });

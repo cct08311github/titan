@@ -15,7 +15,7 @@ import { logger } from "@/lib/logger";
 import { getRedisClient } from "@/lib/redis";
 import { JwtBlacklist } from "@/lib/jwt-blacklist";
 
-const REDIS_PREFIX = "active_sessions:";
+const REDIS_PREFIX = "titan:sessions:";
 const SESSION_TTL = 8 * 60 * 60; // 8 hours (matches JWT maxAge)
 
 /** Maximum concurrent sessions per user — configurable via env */

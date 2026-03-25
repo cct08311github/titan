@@ -107,7 +107,17 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
               });
             })
             .catch((auditErr) => {
-              logger.warn({ err: auditErr }, "[apiHandler] Audit log write failed (non-blocking)");
+              // Error-level logging for audit failures — these indicate data integrity risks
+              logger.error(
+                {
+                  err: auditErr,
+                  method: req.method,
+                  pathname: url.pathname,
+                  resourceType,
+                  ipAddress,
+                },
+                "[apiHandler] Audit log write failed (fire-and-forget) — investigate if recurring"
+              );
             });
         }
 
