@@ -254,21 +254,21 @@ export default function TimesheetPage() {
             <PageLoading message="載入工時..." className="py-12" />
           ) : loadError ? (
             <PageError message={loadError} onRetry={loadEntries} className="py-12" />
-          ) : entries.length === 0 ? (
-            <PageEmpty
-              icon={<Clock className="h-8 w-8" />}
-              title="本週尚無工時記錄"
-              description="點擊格子可輸入工時"
-              className="py-10"
-            />
           ) : (
-            <TimesheetGrid
-              weekStart={weekStart}
-              taskRows={taskRows}
-              entries={entries}
-              onCellSave={handleCellSave}
-              onCellDelete={handleCellDelete}
-            />
+            <>
+              {entries.length === 0 && (
+                <div className="text-center py-3 text-xs text-muted-foreground border-b border-border">
+                  點擊格子可輸入工時與分類。綠色 = 正常，橘色 = 超時（&gt;8h）。
+                </div>
+              )}
+              <TimesheetGrid
+                weekStart={weekStart}
+                taskRows={taskRows}
+                entries={entries}
+                onCellSave={handleCellSave}
+                onCellDelete={handleCellDelete}
+              />
+            </>
           )}
         </div>
 
