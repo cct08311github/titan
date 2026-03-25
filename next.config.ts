@@ -32,7 +32,6 @@ const CSP_STATIC = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
-  turbopack: {},
 
   async headers() {
     return [
