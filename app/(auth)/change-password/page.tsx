@@ -33,7 +33,7 @@ export default function ChangePasswordPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "密碼變更失敗");
+        setError(data.message || data.error || "密碼變更失敗");
         setLoading(false);
         return;
       }
