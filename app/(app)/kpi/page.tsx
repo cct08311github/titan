@@ -151,7 +151,8 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
         setBannerError(data.error ?? "建立失敗");
         return;
       }
-      const kpi = await res.json();
+      const body = await res.json();
+      const kpi = body?.data ?? body;
       onCreated(kpi);
     } finally {
       setSubmitting(false);

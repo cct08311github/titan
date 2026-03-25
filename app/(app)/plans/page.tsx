@@ -104,8 +104,8 @@ export default function PlansPage() {
     try {
       const res = await fetch(`/api/goals/${goalId}`);
       if (res.ok) {
-        const data = await res.json();
-        setSelectedGoal(data);
+        const body = await res.json();
+        setSelectedGoal(body?.data ?? body);
       }
     } finally {
       setGoalLoading(false);
@@ -125,6 +125,9 @@ export default function PlansPage() {
         setNewPlanTitle("");
         setShowPlanForm(false);
         fetchPlans();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err?.message ?? err?.error ?? "建立失敗");
       }
     } finally {
       setCreatingPlan(false);
