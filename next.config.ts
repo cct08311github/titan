@@ -7,28 +7,11 @@ import type { NextConfig } from "next";
  * - poweredByHeader: false — hide X-Powered-By (security)
  * - Security headers — defense-in-depth (supplements Nginx headers)
  *
- * CSP 策略說明（Issue #190）：
- * - next.config.ts 的 headers() 為靜態設定，無法注入動態 nonce
- * - 動態 nonce 由 middleware.ts 負責生成並寫入 Content-Security-Policy 回應 header
- * - 此處 CSP 作為 fallback，覆蓋 middleware matcher 未涵蓋的靜態路由
- * - unsafe-eval 已完全移除；unsafe-inline 在 style-src 保留（Phase 2 再移除）
+ * CSP 策略說明（Issue #190, #579, #594）：
+ * - CSP 完全由 middleware.ts 動態生成（含 nonce）
+ * - next.config.ts 不再設定 CSP header，避免覆蓋 middleware 的 nonce-based CSP
+ * - 其他安全 headers 仍由此處靜態設定
  */
-
-/** CSP fallback（靜態路由用；動態路由由 middleware.ts 以 nonce 覆蓋） */
-const isDev = process.env.NODE_ENV === "development";
-const CSP_STATIC = [
-  "default-src 'self'",
-  isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' wss: ws:",
-  "worker-src 'self' blob:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-].join("; ");
 
 const nextConfig: NextConfig = {
   output: "standalone",
@@ -47,8 +30,9 @@ const nextConfig: NextConfig = {
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=(), usb=()",
           },
-          // CSP fallback（middleware.ts 對保護路由動態覆蓋為 nonce-based CSP）
-          { key: "Content-Security-Policy", value: CSP_STATIC },
+          // CSP is handled exclusively by middleware.ts with per-request nonce.
+          // Do NOT add a Content-Security-Policy header here — it would override
+          // the middleware's nonce-based CSP in production.
         ],
       },
     ];
