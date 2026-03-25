@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { success } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
+import { calculateAchievement, calculateAvgAchievement } from "@/lib/kpi-calculator";
 
 export const GET = withAuth(async (req: NextRequest) => {
 
@@ -24,30 +25,18 @@ export const GET = withAuth(async (req: NextRequest) => {
     orderBy: { code: "asc" },
   });
 
-  const kpisWithAchievement = kpis.map((kpi) => {
-    let achievementRate = 0;
-    if (kpi.autoCalc && kpi.taskLinks.length > 0) {
-      const totalWeight = kpi.taskLinks.reduce((sum, l) => sum + l.weight, 0);
-      const weighted = kpi.taskLinks.reduce((sum, l) => {
-        const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
-        return sum + (prog * l.weight) / 100;
-      }, 0);
-      achievementRate = totalWeight > 0 ? (weighted / totalWeight) * kpi.target : 0;
-    } else {
-      achievementRate = kpi.target > 0 ? (kpi.actual / kpi.target) * 100 : 0;
-    }
-    return { ...kpi, achievementRate: Math.min(achievementRate, 100) };
-  });
+  const kpisWithAchievement = kpis.map((kpi) => ({
+    ...kpi,
+    achievementRate: calculateAchievement(kpi),
+  }));
 
-  const avgAchievement =
-    kpisWithAchievement.length > 0
-      ? kpisWithAchievement.reduce((s, k) => s + k.achievementRate, 0) / kpisWithAchievement.length
-      : 0;
+  const rates = kpisWithAchievement.map((k) => k.achievementRate);
+  const avgAchievement = calculateAvgAchievement(rates);
 
   return success({
     year,
     kpis: kpisWithAchievement,
-    avgAchievement: Math.round(avgAchievement * 10) / 10,
+    avgAchievement,
     achievedCount: kpisWithAchievement.filter((k) => k.achievementRate >= 100).length,
     totalCount: kpisWithAchievement.length,
   });
