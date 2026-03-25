@@ -147,6 +147,9 @@ export default function PlansPage() {
         setNewGoalTitle("");
         setShowGoalForm(false);
         fetchPlans();
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        alert(errBody?.message ?? errBody?.error ?? "月度目標建立失敗");
       }
     } finally {
       setCreatingGoal(false);
