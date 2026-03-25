@@ -11,8 +11,6 @@ export const GET = withAuth(async (req: NextRequest) => {
   const year = searchParams.get("year")
     ? parseInt(searchParams.get("year")!)
     : new Date().getFullYear();
-
-  const data = await reportService.getKPIReport(year);
-
+  const data = await reportService.getKPIReport({ year });
   return success(data);
 });

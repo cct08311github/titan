@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TimesheetGrid, type TaskRow } from "@/app/components/timesheet-grid";
@@ -44,6 +45,9 @@ const FREE_ROW: TaskRow = { taskId: null, label: "自由工時（無任務）" }
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function TimesheetPage() {
+  const { data: session } = useSession();
+  const isManager = session?.user?.role === "MANAGER";
+
   const [weekStart, setWeekStart] = useState<Date>(() => getMondayOfWeek(new Date()));
   const [userFilter, setUserFilter] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -54,13 +58,14 @@ export default function TimesheetPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
 
-  // Load users
+  // Load users — only managers need the user list for the picker
   useEffect(() => {
+    if (!isManager) return;
     fetch("/api/users")
       .then((r) => r.json())
       .then((d) => setUsers(Array.isArray(d) ? d : []))
       .catch(() => {});
-  }, []);
+  }, [isManager]);
 
   // Load entries for the week
   const loadEntries = useCallback(async () => {
@@ -189,16 +194,18 @@ export default function TimesheetPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* User filter */}
-          <select
-            aria-label="篩選使用者"
-            value={userFilter}
-            onChange={(e) => setUserFilter(e.target.value)}
-            className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-          >
-            <option value="">我的工時</option>
-            {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-          </select>
+          {/* User filter — only visible to MANAGER */}
+          {isManager && (
+            <select
+              aria-label="篩選使用者"
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+              className="bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+            >
+              <option value="">我的工時</option>
+              {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+            </select>
+          )}
 
           {/* Week navigation */}
           <div className="flex items-center gap-1 bg-background border border-border rounded-md">

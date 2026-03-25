@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Target } from "lucide-react";
+import Link from "next/link";
+import { Target, ClipboardList, Clock } from "lucide-react";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -352,7 +353,6 @@ function EngineerDashboard() {
   if (error) return <PageError message={error} onRetry={load} />;
 
   const weeklyPct = Math.min(((weekly?.totalHours ?? 0) / 40) * 100, 100);
-  const today = new Date().toDateString();
   const overdue = tasks.filter(
     (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "DONE"
   );
@@ -390,24 +390,59 @@ function EngineerDashboard() {
       </div>
 
       {/* ── Weekly hours bar ── */}
-      <div className="bg-card rounded-xl shadow-card p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium">本週工時進度</h2>
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {safeFixed(weekly?.totalHours, 1)} / 40 h
-          </span>
+      {(weekly?.totalHours ?? 0) === 0 ? (
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <h2 className="text-sm font-medium mb-4">本週工時進度</h2>
+          <PageEmpty
+            icon={<Clock className="h-8 w-8" />}
+            title="本週尚未填報工時"
+            description="前往工時表填報本週工作時數"
+            action={
+              <Link
+                href="/timesheet"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Clock className="h-3.5 w-3.5" />
+                前往工時表
+              </Link>
+            }
+            className="py-6"
+          />
         </div>
-        <ProgressBar
-          pct={weeklyPct}
-          color={weeklyPct >= 90 ? "bg-success" : weeklyPct >= 60 ? "bg-primary" : "bg-warning"}
-        />
-      </div>
+      ) : (
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-medium">本週工時進度</h2>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {safeFixed(weekly?.totalHours, 1)} / 40 h
+            </span>
+          </div>
+          <ProgressBar
+            pct={weeklyPct}
+            color={weeklyPct >= 90 ? "bg-success" : weeklyPct >= 60 ? "bg-primary" : "bg-warning"}
+          />
+        </div>
+      )}
 
       {/* ── My tasks today ── */}
       <div className="bg-card rounded-xl shadow-card p-5">
         <h2 className="text-sm font-medium mb-4">我的任務（待辦 + 進行中）</h2>
         {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">目前沒有待處理的任務</p>
+          <PageEmpty
+            icon={<ClipboardList className="h-8 w-8" />}
+            title="尚無任務"
+            description="目前沒有待處理的任務，前往看板建立第一個任務"
+            action={
+              <Link
+                href="/kanban"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <ClipboardList className="h-3.5 w-3.5" />
+                前往看板
+              </Link>
+            }
+            className="py-8"
+          />
         ) : (
           <div className="space-y-2">
             {tasks.map((t) => (
