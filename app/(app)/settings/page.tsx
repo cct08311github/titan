@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { User, Bell, Lock, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PageLoading, PageError } from "@/app/components/page-states";
+import { PageError, TabSkeleton } from "@/app/components/page-states";
 
 interface UserProfile {
   id: string;
@@ -118,7 +118,7 @@ export default function SettingsPage() {
     { id: "security", label: "安全設定", icon: Lock },
   ];
 
-  if (loading) return <PageLoading message="載入設定..." />;
+  if (loading) return <TabSkeleton tabs={3} />;
   if (fetchError) return <PageError message={fetchError} onRetry={fetchProfile} />;
 
   return (

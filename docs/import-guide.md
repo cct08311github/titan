@@ -43,9 +43,25 @@ Form field: file  — .xlsx 檔案
 | `dueDate` | 否 | 到期日 | `YYYY-MM-DD` 格式，例如 `2026-04-30` |
 | `estimatedHours` | 否 | 預估工時（小時） | 數字，例如 `4` 或 `2.5` |
 
-## 範本
+## 匯入類型
 
-`templates/task-import-template.xlsx` 提供空白範本，包含正確的標題列。
+自 Issue #424 起，匯入 API 支援多種資料類型：
+
+```
+POST /api/tasks/import?type=task   # 任務匯入（預設）
+POST /api/tasks/import?type=kpi    # KPI 匯入
+POST /api/tasks/import?type=plan   # 年度計畫匯入
+```
+
+## 範本下載
+
+| 匯入類型 | 範本檔案 | 下載路徑 |
+|----------|----------|----------|
+| 任務匯入 | `task-import-template.xlsx` | [`/templates/task-import-template.xlsx`](../templates/task-import-template.xlsx) |
+| KPI 匯入 | 使用任務範本，欄位對應 KPI schema | 同上 |
+| 年度計畫匯入 | 使用任務範本，欄位對應 Plan schema | 同上 |
+
+> **提示：** 範本檔案位於專案 `templates/` 目錄下。部署後可透過靜態路徑 `/templates/task-import-template.xlsx` 下載。
 
 ## 行為說明
 

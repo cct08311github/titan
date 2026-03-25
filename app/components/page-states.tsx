@@ -34,6 +34,65 @@ export function PageError({ message = "載入失敗，請稍後再試", onRetry,
   );
 }
 
+/** Reusable skeleton pulse bar */
+function SkeletonBar({ className }: { className?: string }) {
+  return <div className={cn("animate-pulse rounded bg-muted", className)} />;
+}
+
+/** Loading skeleton for list-style pages (Activity Feed, etc.) */
+export function ListSkeleton({ rows = 6, className }: { rows?: number; className?: string }) {
+  return (
+    <div className={cn("space-y-3", className)}>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-start gap-3 px-4 py-3">
+          <SkeletonBar className="mt-1.5 h-2 w-2 rounded-full flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+              <SkeletonBar className="h-4 w-16" />
+              <SkeletonBar className="h-4 w-12" />
+              <SkeletonBar className="h-4 w-32" />
+            </div>
+            <SkeletonBar className="h-3 w-24" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Loading skeleton for form/settings pages */
+export function FormSkeleton({ fields = 4, className }: { fields?: number; className?: string }) {
+  return (
+    <div className={cn("max-w-lg space-y-6", className)}>
+      {Array.from({ length: fields }).map((_, i) => (
+        <div key={i} className="space-y-2">
+          <SkeletonBar className="h-4 w-20" />
+          <SkeletonBar className="h-10 w-full" />
+        </div>
+      ))}
+      <SkeletonBar className="h-10 w-28" />
+    </div>
+  );
+}
+
+/** Loading skeleton for tab navigation pages */
+export function TabSkeleton({ tabs = 3, className }: { tabs?: number; className?: string }) {
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="space-y-1">
+        <SkeletonBar className="h-6 w-32" />
+        <SkeletonBar className="h-4 w-56" />
+      </div>
+      <div className="flex gap-1 border-b border-border pb-2">
+        {Array.from({ length: tabs }).map((_, i) => (
+          <SkeletonBar key={i} className="h-8 w-24" />
+        ))}
+      </div>
+      <FormSkeleton fields={3} />
+    </div>
+  );
+}
+
 interface EmptyProps { icon?: React.ReactNode; title?: string; description?: string; action?: React.ReactNode; className?: string; }
 export function PageEmpty({ icon, title = "尚無資料", description, action, className }: EmptyProps) {
   return (
