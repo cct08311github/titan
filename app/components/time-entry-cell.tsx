@@ -11,6 +11,7 @@ export type TimeEntry = {
   startTime?: string | null;
   endTime?: string | null;
   isRunning?: boolean;
+  overtime?: boolean;
   category: string;
   description: string | null;
 };
@@ -43,6 +44,7 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
   const [hours, setHours] = useState(entry?.hours?.toString() ?? "");
   const [category, setCategory] = useState(entry?.category ?? "PLANNED_TASK");
   const [description, setDescription] = useState(entry?.description ?? "");
+  const [overtime, setOvertime] = useState(entry?.overtime ?? false);
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -52,6 +54,7 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
       setHours(entry?.hours?.toString() ?? "");
       setCategory(entry?.category ?? "PLANNED_TASK");
       setDescription(entry?.description ?? "");
+      setOvertime(entry?.overtime ?? false);
     }
   }, [entry, open]);
 
@@ -139,7 +142,14 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
         )}
       >
         {entry && entry.hours > 0 ? (
-          <span className="tabular-nums">{entry.hours}h</span>
+          <span className="tabular-nums inline-flex items-center gap-1">
+            {entry.hours}h
+            {entry.overtime && (
+              <span className="inline-block px-1 py-0.5 text-[10px] font-bold leading-none bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded">
+                OT
+              </span>
+            )}
+          </span>
         ) : (
           <span>+</span>
         )}
@@ -194,6 +204,19 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
               className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder="可選備註..."
             />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id={`overtime-${entry?.id ?? 'new'}-${date}`}
+              checked={overtime}
+              onChange={(e) => setOvertime(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-border text-amber-500 focus:ring-amber-500/50"
+            />
+            <label htmlFor={`overtime-${entry?.id ?? 'new'}-${date}`} className="text-xs text-muted-foreground cursor-pointer">
+              加班
+            </label>
           </div>
 
           <div className="flex items-center gap-2 pt-1">
