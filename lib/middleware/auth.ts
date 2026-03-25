@@ -34,16 +34,26 @@ export async function checkAuth(
     return null; // allow — CSP/correlation still applied by caller
   }
 
-  const jwtResult = await checkEdgeJwt(req);
-  if (jwtResult !== null) {
-    // Page routes: redirect to /login instead of returning 401 JSON
-    if (!pathname.startsWith("/api/")) {
+  // Page routes: skip Edge JWT check, let auth() in the page handle it.
+  // Auth.js v5 uses A256CBC-HS512 JWE which requires a different HKDF derivation
+  // than our Edge-compatible checkEdgeJwt(). API routes still get Edge JWT protection.
+  if (!pathname.startsWith("/api/")) {
+    // Check if session cookie exists at all (quick presence check, not cryptographic)
+    const cookieHeader = req.headers.get("cookie") ?? "";
+    const hasSession = cookieHeader.includes("authjs.session-token");
+    if (!hasSession) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       const redirectRes = NextResponse.redirect(loginUrl);
       redirectRes.headers.set("x-request-id", requestId);
       return redirectRes;
     }
+    return null; // has session cookie — let the page's auth() verify it
+  }
+
+  // API routes: Edge JWT verification (defense-in-depth)
+  const jwtResult = await checkEdgeJwt(req);
+  if (jwtResult !== null) {
     jwtResult.headers.set("x-request-id", requestId);
     return jwtResult; // 401 response for API routes
   }
