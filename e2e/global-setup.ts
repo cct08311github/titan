@@ -16,10 +16,15 @@ async function loginAndSave(
   const page = await browser.newPage();
 
   await page.goto(`${BASE_URL}/login`);
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
 
-  await page.fill('#username', email);
-  await page.fill('#password', password);
+  // 等待 React 水合完成
+  await page.waitForSelector('button[type="submit"]', { state: 'visible', timeout: 10000 });
+
+  await page.locator('#username').click();
+  await page.locator('#username').fill(email);
+  await page.locator('#password').click();
+  await page.locator('#password').fill(password);
   await page.click('button[type="submit"]');
 
   await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 20000 });
@@ -37,8 +42,8 @@ export default async function globalSetup(_config: FullConfig) {
   }
 
   // Login sequentially to avoid rate limiter
-  await loginAndSave('admin@titan.local', 'Titan@2026!x', MANAGER_STATE_FILE);
+  await loginAndSave('admin@titan.local', 'Admin@2026!x', MANAGER_STATE_FILE);
   // Small delay between logins to avoid rate limiting
   await new Promise((r) => setTimeout(r, 500));
-  await loginAndSave('eng-a@titan.local', 'Titan@2026!x', ENGINEER_STATE_FILE);
+  await loginAndSave('eng-a@titan.local', 'Admin@2026!x', ENGINEER_STATE_FILE);
 }
