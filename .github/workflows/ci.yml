@@ -89,11 +89,33 @@ jobs:
 
       - run: npm ci
 
-      - name: Security audit (moderate+)
-        run: npm audit --audit-level=moderate
+      - name: Security audit — FAIL on high severity
+        run: npm audit --audit-level=high
+
+      - name: Security audit — warn on moderate
+        run: npm audit --audit-level=moderate || true
 
       - name: Check for outdated critical packages
         run: npm outdated --long || true
+
+  codeql-analysis:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
 
   e2e:
     runs-on: ubuntu-latest
