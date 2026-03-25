@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Kanban, Loader2 } from "lucide-react";
+import { Plus, Kanban, Loader2, CheckSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskCard, type TaskCardData } from "@/app/components/task-card";
 import { TaskFilters, type TaskFilters as FiltersType } from "@/app/components/task-filters";
@@ -34,6 +34,21 @@ const columnHeaderBg: Record<TaskStatus, string> = {
   DONE: "bg-emerald-500/10",
 };
 
+const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
+  { value: "BACKLOG", label: "待辦清單" },
+  { value: "TODO", label: "待處理" },
+  { value: "IN_PROGRESS", label: "進行中" },
+  { value: "REVIEW", label: "審核中" },
+  { value: "DONE", label: "已完成" },
+];
+
+const PRIORITY_OPTIONS = [
+  { value: "P0", label: "P0" },
+  { value: "P1", label: "P1" },
+  { value: "P2", label: "P2" },
+  { value: "P3", label: "P3" },
+];
+
 export default function KanbanPage() {
   const [tasks, setTasks] = useState<TaskCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +58,11 @@ export default function KanbanPage() {
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [movingTask, setMovingTask] = useState<string | null>(null);
+
+  // Bulk selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -66,6 +86,18 @@ export default function KanbanPage() {
   }, [filters]);
 
   useEffect(() => { fetchTasks(); }, [fetchTasks]);
+
+  // Fetch users for assignee picker
+  useEffect(() => {
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((json) => {
+        const data = json?.data ?? json;
+        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        setUsers(list.map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })));
+      })
+      .catch(() => {});
+  }, []);
 
   async function moveTask(taskId: string, newStatus: TaskStatus) {
     const task = tasks.find((t) => t.id === taskId);
@@ -113,7 +145,46 @@ export default function KanbanPage() {
     setDraggingId(null);
   }
 
+  // Bulk selection helpers
+  function toggleSelect(taskId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  async function executeBulkAction(updates: Record<string, unknown>) {
+    if (selectedIds.size === 0) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: [...selectedIds],
+          updates,
+        }),
+      });
+      if (res.ok) {
+        clearSelection();
+        await fetchTasks();
+      }
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   const tasksByStatus = (status: TaskStatus) => tasks.filter((t) => t.status === status);
+  const hasSelection = selectedIds.size > 0;
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -133,6 +204,84 @@ export default function KanbanPage() {
       <div className="flex-shrink-0">
         <TaskFilters filters={filters} onChange={setFilters} />
       </div>
+
+      {/* Bulk action bar */}
+      {hasSelection && (
+        <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <CheckSquare className="h-4 w-4" />
+            已選取 {selectedIds.size} 項
+          </div>
+
+          <div className="h-4 w-px bg-border" />
+
+          {/* Change status */}
+          <select
+            className="text-sm border border-border rounded-md px-2 py-1 bg-background"
+            defaultValue=""
+            disabled={bulkLoading}
+            onChange={(e) => {
+              if (e.target.value) {
+                executeBulkAction({ status: e.target.value });
+                e.target.value = "";
+              }
+            }}
+          >
+            <option value="" disabled>變更狀態</option>
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
+          {/* Change priority */}
+          <select
+            className="text-sm border border-border rounded-md px-2 py-1 bg-background"
+            defaultValue=""
+            disabled={bulkLoading}
+            onChange={(e) => {
+              if (e.target.value) {
+                executeBulkAction({ priority: e.target.value });
+                e.target.value = "";
+              }
+            }}
+          >
+            <option value="" disabled>變更優先度</option>
+            {PRIORITY_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+
+          {/* Change assignee */}
+          <select
+            className="text-sm border border-border rounded-md px-2 py-1 bg-background"
+            defaultValue=""
+            disabled={bulkLoading}
+            onChange={(e) => {
+              if (e.target.value) {
+                const val = e.target.value === "__unassign__" ? null : e.target.value;
+                executeBulkAction({ primaryAssigneeId: val });
+                e.target.value = "";
+              }
+            }}
+          >
+            <option value="" disabled>變更負責人</option>
+            <option value="__unassign__">取消指派</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+
+          {bulkLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+
+          <button
+            onClick={clearSelection}
+            className="ml-auto p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="取消選取"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Board */}
       {loading ? (
@@ -189,15 +338,37 @@ export default function KanbanPage() {
                       onDragStart={(e) => handleDragStart(e, task.id)}
                       onDragEnd={handleDragEnd}
                       className={cn(
-                        "transition-opacity",
+                        "transition-opacity relative group",
                         draggingId === task.id && "opacity-40"
                       )}
                     >
-                      <TaskCard
-                        task={task}
-                        onClick={() => setSelectedTaskId(task.id)}
-                        isDragging={draggingId === task.id}
-                      />
+                      {/* Checkbox for bulk selection */}
+                      <div
+                        className={cn(
+                          "absolute top-2 left-2 z-10",
+                          hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                          "transition-opacity"
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(task.id)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            toggleSelect(task.id);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-4 w-4 rounded border-border text-primary cursor-pointer"
+                          aria-label={`選取 ${task.title}`}
+                        />
+                      </div>
+                      <div className={cn(selectedIds.has(task.id) && "ring-2 ring-primary/40 rounded-xl")}>
+                        <TaskCard
+                          task={task}
+                          onClick={() => setSelectedTaskId(task.id)}
+                          isDragging={draggingId === task.id}
+                        />
+                      </div>
                       {movingTask === task.id && (
                         <div className="flex justify-center py-1">
                           <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
