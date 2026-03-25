@@ -27,7 +27,7 @@ titan/
 │   │
 │   ├── ── 品質與合規 ──
 │   ├── code-review-v3.md        # Code Review 報告（最新版）
-│   ├── qa-report-v3.md          # QA 測試報告（最新版）
+│   ├── qa-report-v4.md          # QA 測試報告（最新版，v4）
 │   ├── spec-compliance-report-v3.md # 規格合規報告（最新版）
 │   ├── audit-plan.md            # 稽核計畫
 │   ├── defect-tracking.md       # 缺陷追蹤
