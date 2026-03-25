@@ -80,7 +80,7 @@ describe("TaskCard", () => {
     const task = { ...baseTask, priority: "P0" as const };
     const { container } = render(<TaskCard task={task} />);
     const card = container.firstChild as HTMLElement;
-    expect(card.className).toContain("border-l-red-500");
+    expect(card.className).toContain("border-l-danger");
   });
 
   it("shows primary assignee initial when no avatar", () => {

@@ -5,6 +5,11 @@ import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+// Mock next/navigation
+jest.mock("next/navigation", () => ({
+  usePathname: jest.fn(() => "/dashboard"),
+}));
+
 // Mock next-auth/react
 jest.mock("next-auth/react", () => ({
   useSession: jest.fn(() => ({
