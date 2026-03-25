@@ -8,9 +8,31 @@ import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
+import { ForbiddenError, NotFoundError } from "@/services/errors";
 
 const taskService = new TaskService(prisma);
 const auditService = new AuditService(prisma);
+
+/**
+ * ENGINEER 只能修改自己被指派的任務（primaryAssignee 或 backupAssignee）。
+ * MANAGER 可修改任何任務。
+ */
+async function enforceTaskOwnership(userId: string, role: string, taskId: string): Promise<void> {
+  if (role === "MANAGER") return;
+
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    select: { primaryAssigneeId: true, backupAssigneeId: true },
+  });
+
+  if (!task) {
+    throw new NotFoundError("任務不存在");
+  }
+
+  if (task.primaryAssigneeId !== userId && task.backupAssigneeId !== userId) {
+    throw new ForbiddenError("僅能修改自己被指派的任務");
+  }
+}
 
 export const GET = withAuth(async (
   req: NextRequest,
@@ -25,7 +47,9 @@ export const PUT = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireAuth();
   const { id } = await context.params;
+  await enforceTaskOwnership(session.user.id, session.user.role, id);
   const raw = await req.json();
   const body = validateBody(updateTaskSchema, raw);
   const task = await taskService.updateTask(id, body);
@@ -58,6 +82,7 @@ export const PATCH = withAuth(async (
 ) => {
   const session = await requireAuth();
   const { id } = await context.params;
+  await enforceTaskOwnership(session.user.id, session.user.role, id);
   const raw = await req.json();
   const { status } = validateBody(updateTaskStatusSchema, raw);
   const task = await taskService.updateTaskStatus(id, status, session.user.id);
