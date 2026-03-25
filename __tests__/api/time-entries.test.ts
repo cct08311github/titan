@@ -7,8 +7,9 @@
 import { createMockRequest } from "../utils/test-utils";
 
 const mockTimeEntry = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockAuditLog = { create: jest.fn() };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { timeEntry: mockTimeEntry } }));
+jest.mock("@/lib/prisma", () => ({ prisma: { timeEntry: mockTimeEntry, auditLog: mockAuditLog } }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
