@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Save, Plus, BookOpen, ExternalLink, FileEdit, Globe } from "lucide-react";
+import { Loader2, Save, Plus, BookOpen, ExternalLink, FileEdit, Globe, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DocumentTree, type DocNode } from "@/app/components/document-tree";
 import { MarkdownEditor } from "@/app/components/markdown-editor";
@@ -24,7 +24,8 @@ type DocDetail = {
 
 type ViewMode = "editor" | "outline";
 
-const OUTLINE_URL = process.env.NEXT_PUBLIC_OUTLINE_URL || "/outline";
+const OUTLINE_URL = process.env.NEXT_PUBLIC_OUTLINE_URL;
+const isOutlineConfigured = Boolean(OUTLINE_URL);
 
 export default function KnowledgePage() {
   const [docs, setDocs] = useState<DocNode[]>([]);
@@ -146,7 +147,7 @@ export default function KnowledgePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* View mode toggle */}
+          {/* View mode toggle — only show Outline tab when configured */}
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             <button
               onClick={() => setViewMode("editor")}
@@ -160,18 +161,20 @@ export default function KnowledgePage() {
               <FileEdit className="h-3.5 w-3.5" />
               文件編輯器
             </button>
-            <button
-              onClick={() => setViewMode("outline")}
-              className={cn(
-                "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
-                viewMode === "outline"
-                  ? "bg-card text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              <Globe className="h-3.5 w-3.5" />
-              Outline Wiki
-            </button>
+            {isOutlineConfigured && (
+              <button
+                onClick={() => setViewMode("outline")}
+                className={cn(
+                  "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md transition-colors",
+                  viewMode === "outline"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Outline Wiki
+              </button>
+            )}
           </div>
 
           {viewMode === "editor" && (
@@ -184,7 +187,7 @@ export default function KnowledgePage() {
             </button>
           )}
 
-          {viewMode === "outline" && (
+          {viewMode === "outline" && isOutlineConfigured && (
             <a
               href={OUTLINE_URL}
               target="_blank"
@@ -199,7 +202,7 @@ export default function KnowledgePage() {
       </div>
 
       {/* Outline iframe view */}
-      {viewMode === "outline" && (
+      {viewMode === "outline" && isOutlineConfigured && (
         <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden">
           <iframe
             src={OUTLINE_URL}
@@ -207,6 +210,25 @@ export default function KnowledgePage() {
             className="w-full h-full border-0"
             sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
           />
+        </div>
+      )}
+
+      {/* Outline not configured fallback */}
+      {viewMode === "outline" && !isOutlineConfigured && (
+        <div className="flex-1 min-h-0 border border-border rounded-xl flex items-center justify-center">
+          <div className="text-center max-w-sm">
+            <AlertCircle className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+            <h2 className="text-base font-medium text-foreground mb-1">Outline wiki 未部署</h2>
+            <p className="text-sm text-muted-foreground">
+              請設定 <code className="text-xs bg-muted px-1.5 py-0.5 rounded">NEXT_PUBLIC_OUTLINE_URL</code> 環境變數以啟用 Outline 整合。
+            </p>
+            <button
+              onClick={() => setViewMode("editor")}
+              className="mt-4 text-sm font-medium px-4 py-2 bg-accent hover:bg-accent/80 text-accent-foreground rounded-md transition-colors"
+            >
+              切換至文件編輯器
+            </button>
+          </div>
         </div>
       )}
 
