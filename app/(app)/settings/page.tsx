@@ -103,7 +103,7 @@ export default function SettingsPage() {
     const res = await fetch(`/api/users/${profile.id}/notification-preferences`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type, enabled }),
+      body: JSON.stringify({ preferences: [{ type, enabled }] }),
     });
     if (res.ok) {
       setPrefs((prev) =>

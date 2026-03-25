@@ -12,9 +12,9 @@ import { TimeCategoryEnum } from "./enums";
 export const createTimeEntrySchema = z.object({
   date: z.string().date(),
   hours: z.number().min(0).max(24),
-  taskId: z.string().optional(),
+  taskId: z.string().nullish(),
   category: TimeCategoryEnum.optional().default("PLANNED_TASK"),
-  description: z.string().optional(),
+  description: z.string().nullish(),
 });
 
 export const updateTimeEntrySchema = z.object({

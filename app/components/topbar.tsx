@@ -6,7 +6,7 @@ import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
 import Link from "next/link";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
-  Clock, BarChart2, Target, Crosshair,
+  Clock, BarChart2, Target, Crosshair, Activity, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -16,6 +16,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "儀表板", "/kanban": "看板", "/gantt": "甘特圖",
   "/plans": "年度計畫", "/kpi": "KPI", "/knowledge": "知識庫",
   "/timesheet": "工時紀錄", "/reports": "報表",
+  "/activity": "團隊動態", "/settings": "個人設定",
 };
 
 function ThemeToggle() {
@@ -43,6 +44,8 @@ const MOBILE_NAV = [
   { href: "/knowledge", label: "知識庫", icon: BookOpen },
   { href: "/timesheet", label: "工時紀錄", icon: Clock },
   { href: "/reports", label: "報表", icon: BarChart2 },
+  { href: "/activity", label: "團隊動態", icon: Activity },
+  { href: "/settings", label: "個人設定", icon: Settings },
 ];
 
 export function Topbar() {
