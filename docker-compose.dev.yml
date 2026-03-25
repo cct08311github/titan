@@ -50,7 +50,7 @@ services:
       titan-redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://titan:titan_dev_password@titan-db:5432/titan_dev
+      DATABASE_URL: postgresql://titan:titan_dev_password@titan-db:5432/titan_dev?connection_limit=10
       REDIS_URL: redis://titan-redis:6379
       NEXTAUTH_URL: http://mac-mini.tailde842d.ts.net:3100
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?請在 .env 設定 NEXTAUTH_SECRET（openssl rand -hex 32）}
