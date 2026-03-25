@@ -69,7 +69,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "密碼", type: "password" },
       },
       async authorize(credentials, request) {
-        if (!credentials?.username || !credentials?.password) return null;
+        if (!credentials?.username || !credentials?.password) {
+          return null;
+        }
 
         const username = credentials.username as string;
         const password = credentials.password as string;

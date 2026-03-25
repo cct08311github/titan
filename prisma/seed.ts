@@ -4,12 +4,12 @@ import { hash } from "bcryptjs";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 開始建立種子資料...");
+  console.log("開始建立種子資料...");
 
-  // ── 建立使用者 ──────────────────────────────────────
+  // ── 建立使用者 ─────────────────────────────────────────
   // Issue #180: passwords must meet policy (12+ chars, upper+lower+digit+special)
-  const adminPassword = await hash("Admin@2026!x", 12);
-  const engPassword = await hash("Engineer@2026!", 12);
+  const adminPassword = await hash("Titan@2026Dev!", 12);
+  const engPassword = await hash("Titan@2026Dev!", 12);
 
   const admin = await prisma.user.upsert({
     where: { email: "admin" },
@@ -66,7 +66,7 @@ async function main() {
       update: {},
       create: {
         email: "eng04",
-        name: "陳美玲",
+        name: "陳美玖",
         password: engPassword,
         role: Role.ENGINEER,
         mustChangePassword: false,
@@ -76,9 +76,9 @@ async function main() {
   ]);
 
   const allUsers = [admin, ...engineers];
-  console.log(`✅ 建立使用者：1 位主管 + ${engineers.length} 位工程師`);
+  console.log(`建立使用者：1 位主管 + ${engineers.length} 位工程師`);
 
-  // ── 建立 3 個年度計畫 ──────────────────────────────────
+  // ── 建立 3 個年度計畫 ───────────────────────────────────
   const plan2026 = await prisma.annualPlan.upsert({
     where: { year: 2026 },
     update: {},
@@ -115,9 +115,9 @@ async function main() {
     },
   });
 
-  console.log("✅ 建立 3 個年度計畫");
+  console.log("建立 3 個年度計畫");
 
-  // ── 建立里程碑 ──────────────────────────────────────
+  // ── 建立里程碑 ─────────────────────────────────────────
   await prisma.milestone.createMany({
     skipDuplicates: true,
     data: [
@@ -130,7 +130,7 @@ async function main() {
     ],
   });
 
-  // ── 建立月度目標 ──────────────────────────────────────
+  // ── 建立月度目標 ─────────────────────────────────────────
   const marchGoal = await prisma.monthlyGoal.upsert({
     where: { annualPlanId_month_title: { annualPlanId: plan2026.id, month: 3, title: "核心交換機韌體升級" } },
     update: {},
@@ -155,9 +155,9 @@ async function main() {
     create: { annualPlanId: plan2026.id, month: 6, title: "備援系統演練", description: "執行資料庫 failover 與系統備援切換演練" },
   });
 
-  console.log("✅ 建立里程碑、月度目標");
+  console.log("建立里程碑、月度目標");
 
-  // ── 建立 20 個範例任務 ──────────────────────────────────
+  // ── 建立 20 個範例任務 ───────────────────────────────────
   const taskData = [
     // March tasks (marchGoal)
     { monthlyGoalId: marchGoal.id, title: "核心交換機 A 韌體升級前評估", description: "評估韌體升級風險，制定回滾計畫", category: TaskCategory.PLANNED, primaryAssigneeId: engineers[0].id, backupAssigneeId: engineers[1].id, creatorId: admin.id, status: TaskStatus.DONE, priority: Priority.P1, dueDate: new Date("2026-03-10"), startDate: new Date("2026-03-03"), estimatedHours: 8, actualHours: 6, progressPct: 100, tags: ["網路", "交換機", "評估"] },
@@ -187,9 +187,9 @@ async function main() {
   ];
 
   await prisma.task.createMany({ skipDuplicates: false, data: taskData });
-  console.log(`✅ 建立 ${taskData.length} 個範例任務`);
+  console.log(`建立 ${taskData.length} 個範例任務`);
 
-  // ── 建立 5 個 KPI ──────────────────────────────────────
+  // ── 建立 5 個 KPI ─────────────────────────────────────────
   const kpiData = [
     { year: 2026, code: "KPI-2026-01", title: "系統可用性", description: "核心系統月均可用率 ≥ 99.5%", target: 99.5, actual: 99.8, weight: 2, createdBy: admin.id },
     { year: 2026, code: "KPI-2026-02", title: "資安事件回應時間", description: "P0 事件平均回應時間 ≤ 30 分鐘", target: 30, actual: 25, weight: 2, createdBy: admin.id },
@@ -205,9 +205,9 @@ async function main() {
       create: kpi,
     });
   }
-  console.log(`✅ 建立 ${kpiData.length} 個 KPI`);
+  console.log(`建立 ${kpiData.length} 個 KPI`);
 
-  // ── 建立工時紀錄 ──────────────────────────────────────
+  // ── 建立工時紀錄 ─────────────────────────────────────────
   const timeEntryData: Array<{
     userId: string;
     date: Date;
@@ -257,23 +257,23 @@ async function main() {
   }
 
   await prisma.timeEntry.createMany({ skipDuplicates: false, data: timeEntryData });
-  console.log(`✅ 建立 ${timeEntryData.length} 筆工時紀錄`);
+  console.log(`建立 ${timeEntryData.length} 筆工時紀錄`);
 
-  // ── 完成 ──────────────────────────────────────────────
-  console.log("\n🎉 種子資料建立完成！");
+  // ── 完成 ────────────────────────────────────────────────
+  console.log("\n種子資料建立完成！");
   console.log(`  使用者：1 位主管 + 4 位工程師`);
   console.log(`  計畫：3 個年度計畫`);
   console.log(`  任務：${taskData.length} 個`);
   console.log(`  KPI：${kpiData.length} 個`);
   console.log(`  工時：${timeEntryData.length} 筆`);
   console.log("\n登入帳號：");
-  console.log("  主管：admin / Admin@2026!x");
-  console.log("  工程師：eng01 ~ eng04 / Engineer@2026!");
+  console.log("  主管：admin / Titan@2026Dev!");
+  console.log("  工程師：eng01 ~ eng04 / Titan@2026Dev!");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ 種子資料建立失敗：", e);
+    console.error("種子資料建立失敗：", e);
     process.exit(1);
   })
   .finally(async () => {
