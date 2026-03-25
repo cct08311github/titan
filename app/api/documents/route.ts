@@ -5,25 +5,36 @@ import { createDocumentSchema } from "@/validators/document-validators";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { parsePagination, buildPaginationMeta } from "@/lib/pagination";
 
-export const GET = withAuth(async () => {
-  const docs = await prisma.document.findMany({
-    select: {
-      id: true,
-      parentId: true,
-      title: true,
-      slug: true,
-      version: true,
-      createdAt: true,
-      updatedAt: true,
-      creator: { select: { id: true, name: true } },
-      updater: { select: { id: true, name: true } },
-      _count: { select: { children: true } },
-    },
-    orderBy: [{ parentId: "asc" }, { title: "asc" }],
-  });
+export const GET = withAuth(async (req: NextRequest) => {
+  const { searchParams } = new URL(req.url);
+  const { page, limit, skip } = parsePagination(searchParams);
 
-  return success(docs);
+  const select = {
+    id: true,
+    parentId: true,
+    title: true,
+    slug: true,
+    version: true,
+    createdAt: true,
+    updatedAt: true,
+    creator: { select: { id: true, name: true } },
+    updater: { select: { id: true, name: true } },
+    _count: { select: { children: true } },
+  } as const;
+
+  const [docs, total] = await Promise.all([
+    prisma.document.findMany({
+      select,
+      orderBy: [{ parentId: "asc" }, { title: "asc" }],
+      skip,
+      take: limit,
+    }),
+    prisma.document.count(),
+  ]);
+
+  return success({ items: docs, pagination: buildPaginationMeta(total, { page, limit, skip }) });
 });
 
 export const POST = withAuth(async (req: NextRequest) => {

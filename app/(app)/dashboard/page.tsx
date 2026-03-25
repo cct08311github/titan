@@ -396,7 +396,9 @@ function EngineerDashboard() {
         fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS").then((r) => { if (!r.ok) throw new Error("任務載入失敗"); return r.json(); }),
         fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
       ]);
-      setTasks(Array.isArray(taskRes) ? taskRes : taskRes.tasks ?? []);
+      // Support paginated response { data: { items, pagination } } and legacy formats
+      const taskPayload = taskRes?.data ?? taskRes;
+      setTasks(Array.isArray(taskPayload) ? taskPayload : Array.isArray(taskPayload?.items) ? taskPayload.items : []);
       setWeekly(wr);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");

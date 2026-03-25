@@ -54,8 +54,10 @@ export default function KanbanPage() {
       if (filters.category) params.set("category", filters.category);
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
-      const data = await res.json();
-      setTasks(Array.isArray(data) ? data : []);
+      const json = await res.json();
+      // Support paginated response { data: { items, pagination } } and legacy array
+      const payload = json?.data ?? json;
+      setTasks(Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : []);
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
