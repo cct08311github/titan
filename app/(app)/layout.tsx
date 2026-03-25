@@ -1,6 +1,7 @@
 import { Sidebar } from "@/app/components/sidebar";
 import { Topbar } from "@/app/components/topbar";
 import { CommandPalette } from "@/app/components/command-palette";
+import { FeedbackButton } from "@/app/components/feedback-button";
 import { NextAuthSessionProvider } from "@/app/components/session-provider";
 import { PasswordChangeGuard } from "@/app/components/password-change-guard";
 
@@ -19,6 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <CommandPalette />
+        <FeedbackButton />
       </PasswordChangeGuard>
     </NextAuthSessionProvider>
   );
