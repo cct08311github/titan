@@ -19,6 +19,7 @@ export interface UpdateDocumentInput {
   title?: string;
   content?: string;
   slug?: string;
+  parentId?: string | null;
   updatedBy: string;
 }
 
@@ -111,6 +112,7 @@ export class DocumentService {
           updates.version = existing.version + 1;
         }
         if (input.slug !== undefined) updates.slug = input.slug;
+        if (input.parentId !== undefined) updates.parentId = input.parentId;
 
         return tx.document.update({
           where: { id },
