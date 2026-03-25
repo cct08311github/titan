@@ -69,8 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "密碼", type: "password" },
       },
       async authorize(credentials, request) {
-        console.log("[auth-debug] authorize called with:", JSON.stringify({ username: credentials?.username, hasPassword: !!credentials?.password }));
-        if (!credentials?.username || !credentials?.password) { console.log("[auth-debug] missing credentials"); return null; }
+        if (!credentials?.username || !credentials?.password) return null;
 
         const username = credentials.username as string;
         const password = credentials.password as string;
