@@ -50,15 +50,23 @@ function extractToken(req: NextRequest): string | null {
 }
 
 /**
+ * Default cookie name used by Auth.js v5 as HKDF salt.
+ * Must match the sessionToken cookie name configured in auth.ts.
+ */
+const DEFAULT_SESSION_COOKIE = "authjs.session-token";
+
+/**
  * Derives the encryption key from AUTH_SECRET.
  * Auth.js v5 uses HKDF to derive a 64-byte key from the secret
  * for JWE (A256CBC-HS512) encryption. For JWS fallback we use the raw secret.
  *
- * Key differences from v4:
- *   - info string: "Auth.js Generated Encryption Key" (was "NextAuth.js ...")
- *   - algorithm: A256CBC-HS512 requires 64 bytes (was A256GCM / 32 bytes)
+ * Verified against @auth/core/jwt.js getDerivedEncryptionKey():
+ *   hkdf("sha256", secret, salt, `Auth.js Generated Encryption Key (${salt})`, 64)
+ * where salt = cookie name (e.g. "authjs.session-token").
  */
-async function getDerivedEncryptionKey(): Promise<Uint8Array | null> {
+async function getDerivedEncryptionKey(
+  salt: string = DEFAULT_SESSION_COOKIE
+): Promise<Uint8Array | null> {
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) return null;
 
@@ -66,9 +74,14 @@ async function getDerivedEncryptionKey(): Promise<Uint8Array | null> {
   const keyMaterial = await crypto.subtle.importKey(
     "raw", enc.encode(secret), "HKDF", false, ["deriveBits"]
   );
-  // Auth.js v5: HKDF SHA-256, salt="", info="Auth.js Generated Encryption Key", 512 bits (64 bytes)
+  // Auth.js v5: HKDF SHA-256, salt=cookieName, info="Auth.js Generated Encryption Key ({cookieName})", 512 bits
   const derivedBits = await crypto.subtle.deriveBits(
-    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: enc.encode("Auth.js Generated Encryption Key") },
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: enc.encode(salt),
+      info: enc.encode(`Auth.js Generated Encryption Key (${salt})`),
+    },
     keyMaterial,
     512 // 64 bytes for A256CBC-HS512
   );
