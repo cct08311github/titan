@@ -1,10 +1,21 @@
-# TITAN 容器平台 — 生產就緒版本
-# 任務: T06 — OS 基線與 Harden 設定
-# 任務: T07 — Container Platform Setup / T09 — 資料庫與儲存規劃
+# TITAN 容器平台 — 生產就緒版本（profiles 整合）
+# Issue #407: 將多個 compose 檔案整合為單一檔案，以 profiles 管理選用服務
+#
+# Profiles:
+#   (default)    — 核心服務：postgres, redis, minio, outline, homepage, titan-app
+#   monitoring   — Prometheus, Grafana, Alertmanager, node-exporter, cAdvisor, exporters, uptime-kuma
+#   logging      — Loki + Promtail（需搭配 monitoring profile 使用 Grafana）
+#   replication  — PostgreSQL primary-replica streaming replication + failover monitor
+#
+# 使用方式：
+#   docker compose up -d                                  # 僅核心服務
+#   docker compose --profile monitoring up -d             # 核心 + 監控
+#   docker compose --profile monitoring --profile logging up -d  # 核心 + 監控 + 日誌
+#   docker compose --profile replication up -d            # 核心 + DB 複製
+#   docker compose --profile monitoring --profile logging --profile replication up -d  # 全部
+#
 # 所有映像版本均固定，適用於隔離網路（air-gapped）部署
 # 若需更新版本，請同步更新 .env.example 中的備註
-
-version: '3.8'
 
 # ═══════════════════════════════════════════════════════════
 # 安全強化：預設不使用 root 使用者執行容器
@@ -15,14 +26,15 @@ version: '3.8'
 # ═══════════════════════════════════════════════════════════
 services:
 
+  # ══════════════════════════════════════════════════════════
+  # DEFAULT PROFILE — 核心服務（無需指定 profile）
+  # ══════════════════════════════════════════════════════════
+
   # ── 資料層：PostgreSQL 16 ────────────────────────────────
-  # 共用資料庫，供 Outline 及未來服務使用
-  # 版本固定：postgres:16-alpine（隔離網路相容）
   postgres:
     image: postgres:16-alpine
     container_name: titan-postgres
     restart: unless-stopped
-    # 安全強化：使用最小權限的 postgres 使用者
     user: postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-titan}
@@ -31,12 +43,8 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./scripts/init:/docker-entrypoint-initdb.d:ro
-    # 安全強化：移除外部端口，僅允許內部網路訪問
-    # ports:
-    #   - "${POSTGRES_PORT:-5432}:5432"
     networks:
       - titan-internal
-    # 安全強化：Resource limits（銀行業資安要求）
     deploy:
       resources:
         limits:
@@ -53,7 +61,6 @@ services:
       start_period: 30s
 
   # ── 快取層：Redis 7 ──────────────────────────────────────
-  # 快取與非同步任務佇列（供 Outline 使用）
   redis:
     image: redis:7-alpine
     container_name: titan-redis
@@ -68,16 +75,11 @@ services:
       --save 900 1
       --save 300 10
       --save 60 10000
-    # 安全強化：使用 redis 使用者執行
     user: redis
     volumes:
       - redis-data:/data
-    # 安全強化：移除外部端口，僅允許內部網路訪問
-    # ports:
-    #   - "${REDIS_PORT:-6379}:6379"
     networks:
       - titan-internal
-    # 安全強化：Resource limits
     deploy:
       resources:
         limits:
@@ -94,27 +96,19 @@ services:
       start_period: 10s
 
   # ── 物件儲存：MinIO ──────────────────────────────────────
-  # S3 相容物件儲存，供 Outline 附件使用
-  # 版本固定：RELEASE.2024-01-01T00-00-00Z（適合隔離網路）
   minio:
     image: minio/minio:RELEASE.2024-01-01T00-00-00Z
     container_name: titan-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
-    # 安全強化：使用 minio 使用者執行
     user: minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD is required}
     volumes:
       - minio-data:/data
-    # 安全強化：移除外部端口，僅允許內部網路訪問（外部存取透過 Nginx Proxy）
-    # ports:
-    #   - "${MINIO_API_PORT:-9000}:9000"
-    #   - "${MINIO_CONSOLE_PORT:-9001}:9001"
     networks:
       - titan-internal
-    # 安全強化：Resource limits
     deploy:
       resources:
         limits:
@@ -131,26 +125,20 @@ services:
       start_period: 30s
 
   # ── 知識庫：Outline ──────────────────────────────────────
-  # 團隊知識庫與文件協作平台
   outline:
     image: outlinewiki/outline:1.6.1
     container_name: titan-outline
     restart: unless-stopped
-    # 安全強化：使用 non-root 使用者執行
     user: outline
     environment:
-      # 應用程式設定
       SECRET_KEY: ${OUTLINE_SECRET_KEY:?OUTLINE_SECRET_KEY is required}
       UTILS_SECRET: ${OUTLINE_UTILS_SECRET:?OUTLINE_UTILS_SECRET is required}
       URL: ${OUTLINE_URL:-http://localhost:3001}
       PORT: 3000
-      # 資料庫連線
       DATABASE_URL: postgres://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-titan}
       DATABASE_CONNECTION_POOL_MIN: 1
       DATABASE_CONNECTION_POOL_MAX: 5
-      # Redis 連線
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      # 物件儲存（MinIO S3 相容）
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
       AWS_REGION: ${MINIO_REGION:-us-east-1}
@@ -158,32 +146,26 @@ services:
       AWS_S3_UPLOAD_BUCKET_NAME: ${OUTLINE_S3_BUCKET:-outline}
       AWS_S3_FORCE_PATH_STYLE: "true"
       AWS_S3_ACL: private
-      # 認證設定（預設使用 email/密碼）
       OIDC_CLIENT_ID: ${OIDC_CLIENT_ID:-}
       OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
       OIDC_AUTH_URI: ${OIDC_AUTH_URI:-}
       OIDC_TOKEN_URI: ${OIDC_TOKEN_URI:-}
       OIDC_USERINFO_URI: ${OIDC_USERINFO_URI:-}
       OIDC_USERNAME_CLAIM: ${OIDC_USERNAME_CLAIM:-email}
-      # 郵件設定（選用，SMTP）
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@titan.local}
       SMTP_SECURE: ${SMTP_SECURE:-false}
-      # 其他設定
       NODE_ENV: production
-      ENABLE_UPDATES: "false"       # 隔離網路不自動更新
+      ENABLE_UPDATES: "false"
       WEB_CONCURRENCY: 1
       MAXIMUM_IMPORT_SIZE: 5120000
       LOG_LEVEL: ${OUTLINE_LOG_LEVEL:-info}
       FORCE_HTTPS: "false"
     volumes:
       - outline-data:/var/lib/outline/data
-    # 安全強化：移除外部端口，僅允許內部網路訪問
-    # ports:
-    #   - "${OUTLINE_PORT:-3001}:3000"
     networks:
       - titan-internal
     depends_on:
@@ -193,7 +175,6 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
-    # 安全強化：Resource limits
     deploy:
       resources:
         limits:
@@ -209,22 +190,18 @@ services:
       retries: 5
       start_period: 60s
 
-  # ── 統一儀表板：Homepage ─────────────────────────────────
-  # 集中呈現所有 TITAN 服務連結與狀態
   # ── Docker Socket Proxy（Issue #183）──────────────────────
-  # 安全強化：Homepage 不再直接掛載 Docker socket
-  # 僅暴露容器狀態查詢（GET /containers），阻擋所有寫入操作
   docker-socket-proxy:
     image: tecnativa/docker-socket-proxy:0.2
     container_name: titan-docker-proxy
     restart: unless-stopped
     environment:
-      CONTAINERS: 1     # allow GET /containers
+      CONTAINERS: 1
       SERVICES: 0
       TASKS: 0
       NETWORKS: 0
       NODES: 0
-      POST: 0           # block all POST (no container create/start/stop)
+      POST: 0
       BUILD: 0
       COMMIT: 0
       CONFIGS: 0
@@ -247,6 +224,7 @@ services:
           cpus: '0.25'
           memory: 64M
 
+  # ── 統一儀表板：Homepage ─────────────────────────────────
   homepage:
     image: gethomepage/homepage:v0.9.13
     container_name: titan-homepage
@@ -257,9 +235,7 @@ services:
       HOMEPAGE_ALLOWED_HOSTS: ${HOMEPAGE_ALLOWED_HOSTS:-localhost}
       DOCKER_HOST: tcp://docker-socket-proxy:2375
     volumes:
-      - ./config/homepage:/app/config      # 服務設定檔
-      # Issue #183: Docker socket 不再直接掛載，改用 socket proxy
-    # 安全強化：保留外部端口供外部存取
+      - ./config/homepage:/app/config
     ports:
       - "${HOMEPAGE_PORT:-3000}:3000"
     networks:
@@ -269,7 +245,6 @@ services:
       - outline
       - minio
       - docker-socket-proxy
-    # 安全強化：Resource limits
     deploy:
       resources:
         limits:
@@ -285,31 +260,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # ── 監控儀表板：Uptime Kuma ──────────────────────────────
-  # 服務可用性監控與狀態頁面
-  # 版本固定：louislam/uptime-kuma:1.23.13
-  uptime-kuma:
-    image: louislam/uptime-kuma:1.23.13
-    container_name: titan-uptime-kuma
-    restart: unless-stopped
-    environment:
-      DOCKER_HOST: tcp://docker-socket-proxy:2375
-    volumes:
-      - uptime-kuma-data:/app/data
-      # Issue #183: Docker socket 移除，改用 socket proxy
-    ports:
-      - "${UPTIME_KUMA_PORT:-3002}:3001"
-    networks:
-      - titan-internal
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/entry-page || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
   # ── TITAN Next.js App（Issue #185）────────────────────────
-  # IT 團隊工作管理系統主應用
   titan-app:
     build:
       context: .
@@ -322,14 +273,11 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-titan}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-titan}?connection_limit=10
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       NEXTAUTH_URL: ${TITAN_URL:-https://titan.bank.local/titan}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       NODE_ENV: production
-    # 安全強化：移除外部端口，僅透過 Nginx 反向代理存取
-    # ports:
-    #   - "3000:3000"
     networks:
       - titan-internal
     deploy:
@@ -344,36 +292,391 @@ services:
       retries: 3
       start_period: 30s
 
-  # ── 專案管理：Plane ──────────────────────────────────────
-  # ⚠️  Plane 採用獨立 docker-compose 部署，請參閱下列文件：
-  #     - 部署指南：docs/plane-setup.md
-  #     - 環境變數：config/plane/.env.example
-  #     - 快速啟動：config/plane/README.md
-  #
-  # Plane 架構包含以下容器（透過獨立 compose 管理）：
-  #   plane-proxy   — Nginx 反向代理（對外入口，:8082）
-  #   plane-web     — Next.js 前端（makeplane/plane-frontend）
-  #   plane-api     — Django REST API（makeplane/plane-backend）
-  #   plane-worker  — Celery 非同步 Worker（makeplane/plane-backend）
-  #   plane-beat    — Celery Beat 排程（makeplane/plane-backend）
-  #   plane-migrator— 資料庫 Migration（初始化時執行）
-  #
-  # 整合 TITAN 基礎設施：
-  #   - 資料庫：使用 titan-postgres（需建立 plane_db）
-  #   - 快取：使用 titan-redis（DB 1，避免與 Outline 的 DB 0 衝突）
-  #   - 物件儲存：使用 titan-minio（bucket: plane-uploads）
-  #   - 網路：加入 titan-internal（必要時由獨立 compose 掛載 external network）
-  #
-  # 啟動方式：
-  #   docker compose -f /opt/titan/plane-docker-compose.yml \
-  #     --env-file config/plane/.env up -d
-  #
-  # 存取入口：http://<SERVER_IP>:${PLANE_PORT:-8082}
+  # ══════════════════════════════════════════════════════════
+  # MONITORING PROFILE — docker compose --profile monitoring up -d
+  # ══════════════════════════════════════════════════════════
+
+  # ── Prometheus ─────────────────────────────────────────────
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v2.48.1
+    container_name: titan-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=10GB'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./config/monitoring/prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - titan-internal
+    depends_on:
+      - node-exporter
+      - cadvisor
+      - postgres-exporter
+      - redis-exporter
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── node-exporter ──────────────────────────────────────────
+  node-exporter:
+    profiles: ["monitoring"]
+    image: prom/node-exporter:v1.7.0
+    container_name: titan-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "${NODE_EXPORTER_PORT:-9100}:9100"
+    networks:
+      - titan-internal
+    pid: host
+    environment:
+      NODE_EXPORTER_DISABLE_CHMOD: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── cAdvisor ────────────────────────────────────────────────
+  cadvisor:
+    profiles: ["monitoring"]
+    image: gcr.io/cadvisor/cadvisor:v0.47.2
+    container_name: titan-cadvisor
+    restart: unless-stopped
+    command:
+      - '--housekeeping_interval=30s'
+      - '--docker_only=true'
+      - '--disable_metrics=percpu,sched,tcp,udp,disk,diskIO,hugetlb,referenced_memory,cpu_topology,resctrl'
+      - '--store_container_labels=false'
+      - '--docker_root_dir=/var/lib/docker'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /sys:/sys:ro
+      - /dev/mapper/:/dev/mapper:ro
+    ports:
+      - "${CADVISOR_PORT:-8080}:8080"
+    networks:
+      - titan-internal
+    pid: host
+    environment:
+      CADVISOR_DISABLE_CHROOT: "true"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── postgres-exporter ────────────────────────────────────────
+  postgres-exporter:
+    profiles: ["monitoring"]
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: titan-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-titan}?sslmode=disable"
+    volumes:
+      - ./config/monitoring/postgres-queries.yaml:/config/queries.yaml:ro
+    ports:
+      - "${POSTGRES_EXPORTER_PORT:-9187}:9187"
+    networks:
+      - titan-internal
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── redis-exporter ─────────────────────────────────────────
+  redis-exporter:
+    profiles: ["monitoring"]
+    image: oliver006/redis_exporter:v1.54.0
+    container_name: titan-redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: "${REDIS_PASSWORD}"
+    ports:
+      - "${REDIS_EXPORTER_PORT:-9121}:9121"
+    networks:
+      - titan-internal
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Alertmanager ────────────────────────────────────────────
+  alertmanager:
+    profiles: ["monitoring"]
+    image: prom/alertmanager:v0.26.0
+    container_name: titan-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - ./config/monitoring/alertmanager:/etc/alertmanager:ro
+      - alertmanager-data:/alertmanager
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    networks:
+      - titan-internal
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ── Grafana ────────────────────────────────────────────────
+  grafana:
+    profiles: ["monitoring"]
+    image: grafana/grafana:10.2.3
+    container_name: titan-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme_grafana_password}
+      GF_SERVER_ROOT_URL: ${GRAFANA_URL:-http://localhost:3030}
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+      GF_LOG_MODE: console
+      GF_LOG_LEVEL: info
+    volumes:
+      - ./config/monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./config/monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3030}:3000"
+    networks:
+      - titan-internal
+    depends_on:
+      - prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Uptime Kuma（監控 profile）──────────────────────────────
+  uptime-kuma:
+    profiles: ["monitoring"]
+    image: louislam/uptime-kuma:1.23.13
+    container_name: titan-uptime-kuma
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Taipei
+    volumes:
+      - ./config/monitoring/uptime-kuma:/app/data
+    ports:
+      - "${UPTIME_KUMA_PORT:-3031}:3001"
+    networks:
+      - titan-internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ══════════════════════════════════════════════════════════
+  # LOGGING PROFILE — docker compose --profile logging up -d
+  # ══════════════════════════════════════════════════════════
+
+  # ── Loki ──────────────────────────────────────────────────
+  loki:
+    profiles: ["logging"]
+    image: grafana/loki:2.9.4
+    container_name: titan-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./config/monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "${LOKI_PORT:-3100}:3100"
+    networks:
+      - titan-internal
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # ── Promtail ──────────────────────────────────────────────
+  promtail:
+    profiles: ["logging"]
+    image: grafana/promtail:2.9.4
+    container_name: titan-promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/promtail-config.yml
+    volumes:
+      - ./config/monitoring/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - promtail-positions:/tmp/positions
+    networks:
+      - titan-internal
+    depends_on:
+      loki:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+  # ══════════════════════════════════════════════════════════
+  # REPLICATION PROFILE — docker compose --profile replication up -d
+  # ══════════════════════════════════════════════════════════
+
+  # ── PostgreSQL Replica（Streaming Standby, 唯讀）──────────
+  postgres-replica:
+    profiles: ["replication"]
+    image: postgres:16-alpine
+    container_name: titan-postgres-replica
+    restart: unless-stopped
+    user: postgres
+    entrypoint: ["/bin/bash", "/opt/titan/replica-init.sh"]
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      PRIMARY_HOST: titan-postgres
+      PRIMARY_PORT: "5432"
+      REPLICATION_USER: ${REPLICATION_USER:-replicator}
+      REPLICATION_PASSWORD: ${REPLICATION_PASSWORD:?REPLICATION_PASSWORD is required}
+      REPLICATION_SLOT: ${REPLICATION_SLOT:-titan_replica_slot}
+      POSTGRES_USER: ${POSTGRES_USER:-titan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-titan}
+    volumes:
+      - postgres-replica-data:/var/lib/postgresql/data
+      - ./config/postgres/replica-init.sh:/opt/titan/replica-init.sh:ro
+    networks:
+      - titan-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - |
+          pg_isready -U ${POSTGRES_USER:-titan} -d ${POSTGRES_DB:-titan} &&
+          psql -U ${POSTGRES_USER:-titan} -d ${POSTGRES_DB:-titan} -tAc "SELECT pg_is_in_recovery();" | grep -q 't'
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ── Failover Monitor ──────────────────────────────────────
+  pg-monitor:
+    profiles: ["replication"]
+    image: postgres:16-alpine
+    container_name: titan-pg-monitor
+    restart: unless-stopped
+    user: postgres
+    entrypoint: ["/bin/bash", "/opt/titan/pg-failover.sh", "--auto"]
+    environment:
+      PRIMARY_HOST: titan-postgres
+      REPLICA_HOST: titan-postgres-replica
+      PG_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-titan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-titan}
+      FAILOVER_CHECK_INTERVAL: ${FAILOVER_CHECK_INTERVAL:-10}
+      FAILOVER_FAILURE_THRESHOLD: ${FAILOVER_FAILURE_THRESHOLD:-3}
+      FAILOVER_CHECK_TIMEOUT: ${FAILOVER_CHECK_TIMEOUT:-5}
+    volumes:
+      - ./scripts/pg-failover.sh:/opt/titan/pg-failover.sh:ro
+      - pg-monitor-logs:/var/log/titan
+    networks:
+      - titan-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-replica:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 32M
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - |
+          pg_isready -h titan-postgres -U ${POSTGRES_USER:-titan} -d ${POSTGRES_DB:-titan} 2>/dev/null ||
+          pg_isready -h titan-postgres-replica -U ${POSTGRES_USER:-titan} -d ${POSTGRES_DB:-titan} 2>/dev/null
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ══════════════════════════════════════════════════════════
+  # Plane 專案管理 — 採用獨立 docker-compose 部署
+  # 請參閱：docs/plane-setup.md、config/plane/README.md
+  # ══════════════════════════════════════════════════════════
 
 # ═══════════════════════════════════════════════════════════
 # 具名 Volume（持久化資料）
 # ═══════════════════════════════════════════════════════════
 volumes:
+  # Default profile
   postgres-data:
     name: titan-postgres-data
   redis-data:
@@ -382,21 +685,34 @@ volumes:
     name: titan-minio-data
   outline-data:
     name: titan-outline-data
-  uptime-kuma-data:
-    name: titan-uptime-kuma-data
+  # Monitoring profile
+  prometheus-data:
+    name: titan-prometheus-data
+  alertmanager-data:
+    name: titan-alertmanager-data
+  grafana-data:
+    name: titan-grafana-data
+  # Logging profile
+  loki-data:
+    name: titan-loki-data
+  promtail-positions:
+    name: titan-promtail-positions
+  # Replication profile
+  postgres-replica-data:
+    name: titan-postgres-replica-data
+  postgres-wal-archive:
+    name: titan-postgres-wal-archive
+  pg-monitor-logs:
+    name: titan-pg-monitor-logs
 
 # ═══════════════════════════════════════════════════════════
 # 網路設定：強化隔離
 # ═══════════════════════════════════════════════════════════
 networks:
-  # 內部網路：僅允許服務間通訊，不對外開放（Issue #186）
-  # internal: true 阻止容器直接訪問外部網路
-  # DNS 解析由 Docker 內建 DNS (127.0.0.11) 提供，不需外部 DNS
   titan-internal:
     name: titan-internal
     driver: bridge
     internal: true
-  # 外部網路：允許對外服務（Homepage）
   titan-external:
     name: titan-external
     driver: bridge
