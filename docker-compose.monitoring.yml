@@ -204,7 +204,7 @@ services:
   # ── 服務可達性監控：Uptime Kuma ──────────────────────────
   # HTTP/TCP/Ping/DNS 等主動式健康檢查
   uptime-kuma:
-    image: louislam/uptime-kuma:1.23.12
+    image: louislam/uptime-kuma:1.23.13
     container_name: titan-uptime-kuma
     restart: unless-stopped
     environment:
