@@ -53,6 +53,8 @@ model User {
   notificationPreferences  NotificationPreference[]
   passwordResetTokens      PasswordResetToken[]
   createdTemplates         TaskTemplate[]        @relation("TemplateCreator")
+  approvalRequests         ApprovalRequest[]    @relation("ApprovalRequester")
+  approvalReviews          ApprovalRequest[]    @relation("ApprovalApprover")
 
   @@map("users")
 }
@@ -595,4 +597,46 @@ model AuditLog {
   @@index([userId])
   @@index([resourceType, resourceId])
   @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════
+// 審批請求 (Issue #382)
+// ═══════════════════════════════════════
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalType {
+  TASK_STATUS_CHANGE
+  DELIVERABLE_ACCEPTANCE
+  PLAN_MODIFICATION
+}
+
+/// 審批請求 — 用於追蹤需要 Manager 核可的操作
+model ApprovalRequest {
+  id          String         @id @default(cuid())
+  requesterId String        // 發起審批的使用者
+  approverId  String?       // 指定的審批者（Manager）；null = 任意 Manager
+  type        ApprovalType  // 審批類型
+  status      ApprovalStatus @default(PENDING)
+  resourceId  String        // 關聯資源 ID（如 Task ID、Deliverable ID）
+  resourceType String       // 關聯資源類型（如 "Task", "Deliverable"）
+  reason      String?       // 申請理由
+  reviewNote  String?       // 審批備註（核准/駁回原因）
+  reviewedAt  DateTime?     // 審批時間
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  requester User  @relation("ApprovalRequester", fields: [requesterId], references: [id])
+  approver  User? @relation("ApprovalApprover", fields: [approverId], references: [id])
+
+  @@index([requesterId])
+  @@index([approverId])
+  @@index([status])
+  @@index([resourceType, resourceId])
+  @@map("approval_requests")
 }
