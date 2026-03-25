@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { User, Bell, Lock, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData, extractItems } from "@/lib/api-client";
 import { PageError, TabSkeleton } from "@/app/components/page-states";
 
 interface UserProfile {
@@ -50,23 +51,22 @@ export default function SettingsPage() {
     try {
       const res = await fetch("/api/auth/session");
       if (!res.ok) throw new Error("無法取得使用者資訊");
-      const session = await res.json();
-      const userId = session?.user?.id;
+      const sessionBody = await res.json();
+      const userId = sessionBody?.user?.id;
       if (!userId) throw new Error("未登入");
 
       const userRes = await fetch(`/api/users/${userId}`);
       if (!userRes.ok) throw new Error("無法取得使用者資料");
-      const userJson = await userRes.json();
-      const userData = userJson?.data ?? userJson;
+      const userBody = await userRes.json();
+      const userData = extractData<UserProfile>(userBody);
       setProfile(userData);
-      setName(userData.name ?? "");
+      setName(userData?.name ?? "");
 
       // Fetch notification preferences
       const prefRes = await fetch(`/api/users/${userId}/notification-preferences`);
       if (prefRes.ok) {
-        const prefJson = await prefRes.json();
-        const prefData = prefJson?.data ?? prefJson;
-        setPrefs(Array.isArray(prefData) ? prefData : []);
+        const prefBody = await prefRes.json();
+        setPrefs(extractItems<NotificationPref>(prefBody));
       }
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");

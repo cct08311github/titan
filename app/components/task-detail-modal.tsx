@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractData, extractItems } from "@/lib/api-client";
 import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, initialForm } from "./task-detail/index";
 import type { TaskForm } from "./task-detail/index";
 
@@ -60,7 +61,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
     try {
       const res = await fetch(`/api/tasks/${taskId}`);
       if (res.ok) {
-        const data: TaskDetail = await res.json();
+        const body = await res.json();
+        const data = extractData<TaskDetail>(body);
         setTask(data);
         setForm({
           title: data.title,
@@ -82,8 +84,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
 
   useEffect(() => {
     loadTask();
-    fetch("/api/users").then((r) => r.json()).then((d) => setUsers(Array.isArray(d) ? d : [])).catch(() => {});
-    fetch("/api/goals").then((r) => r.json()).then((d) => setGoals(Array.isArray(d) ? d : [])).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
+    fetch("/api/goals").then((r) => r.json()).then((body) => setGoals(extractItems<MonthlyGoal>(body))).catch(() => {});
   }, [loadTask]);
 
   async function save() {

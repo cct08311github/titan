@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractItems, extractData } from "@/lib/api-client";
 import { TimesheetGrid, type TaskRow } from "@/app/components/timesheet-grid";
 import { TimeSummary } from "@/app/components/time-summary";
 import { type TimeEntry } from "@/app/components/time-entry-cell";
@@ -61,7 +62,7 @@ export default function TimesheetPage() {
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
-      .then((raw) => { const d = raw?.data ?? raw; setUsers(Array.isArray(d) ? d : Array.isArray(d?.items) ? d.items : []); })
+      .then((body) => setUsers(extractItems<User>(body)))
       .catch(() => {});
   }, []);
 
@@ -76,8 +77,8 @@ export default function TimesheetPage() {
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(`/api/time-entries?${params}`);
       if (!res.ok) throw new Error("工時資料載入失敗");
-      const data: (TimeEntry & { task?: { id: string; title: string } | null })[] =
-        await res.json();
+      const body = await res.json();
+      const data = extractItems<TimeEntry & { task?: { id: string; title: string } | null }>(body);
       setEntries(data);
 
       // Build task rows from entries + a free row
@@ -114,7 +115,7 @@ export default function TimesheetPage() {
       });
       if (userFilter) params.set("userId", userFilter);
       const res = await fetch(`/api/time-entries/stats?${params}`);
-      if (res.ok) { const b = await res.json(); setStats(b?.data ?? b); }
+      if (res.ok) { const b = await res.json(); setStats(extractData<StatsData>(b)); }
     } finally {
       setStatsLoading(false);
     }
@@ -138,7 +139,7 @@ export default function TimesheetPage() {
         body: JSON.stringify({ date, hours, category, description }),
       });
       if (res.ok) {
-        const ub = await res.json(); const updated: TimeEntry = ub?.data ?? ub;
+        const ub = await res.json(); const updated = extractData<TimeEntry>(ub);
         setEntries((prev) => prev.map((e) => e.id === existingId ? updated : e));
       }
     } else {
@@ -148,7 +149,7 @@ export default function TimesheetPage() {
         body: JSON.stringify({ taskId, date, hours, category, description }),
       });
       if (res.ok) {
-        const cb = await res.json(); const created: TimeEntry = cb?.data ?? cb;
+        const cb = await res.json(); const created = extractData<TimeEntry>(cb);
         setEntries((prev) => [...prev, created]);
         // Add task row if new task
         if (taskId && !taskRows.find((r) => r.taskId === taskId)) {

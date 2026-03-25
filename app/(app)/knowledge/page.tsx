@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, Save, Plus, BookOpen, ExternalLink, FileEdit, Globe, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractItems, extractData } from "@/lib/api-client";
 import { DocumentTree, type DocNode } from "@/app/components/document-tree";
 import { MarkdownEditor } from "@/app/components/markdown-editor";
 import { DocumentSearch } from "@/app/components/document-search";
@@ -47,10 +48,8 @@ export default function KnowledgePage() {
     try {
       const res = await fetch("/api/documents");
       if (!res.ok) throw new Error("文件載入失敗");
-      const json = await res.json();
-      // Support paginated response { data: { items, pagination } } and legacy array
-      const payload = json?.data ?? json;
-      setDocs(Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : []);
+      const body = await res.json();
+      setDocs(extractItems<DocNode>(body));
     } catch (e) {
       setDocsError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -67,7 +66,7 @@ export default function KnowledgePage() {
     fetch(`/api/documents/${selectedId}`)
       .then((r) => r.ok ? r.json() : null)
       .then((raw) => {
-        const d = raw?.data ?? raw;
+        const d = raw ? extractData<DocDetail>(raw) : null;
         if (d) {
           setDocDetail(d);
           setEditTitle(d.title ?? "");
@@ -89,7 +88,7 @@ export default function KnowledgePage() {
       });
       if (res.ok) {
         const body = await res.json();
-        const updated = body?.data ?? body;
+        const updated = extractData<DocDetail>(body);
         setDocDetail(updated);
         setDirty(false);
         setDocs((prev) =>
@@ -111,12 +110,12 @@ export default function KnowledgePage() {
     });
     if (res.ok) {
       const body = await res.json();
-      const doc = body?.data ?? body;
+      const doc = extractData<{ id: string }>(body);
       await loadDocs();
       setSelectedId(doc.id);
     } else {
-      const err = await res.json().catch(() => ({}));
-      alert(err?.message ?? "文件建立失敗");
+      const errBody = await res.json().catch(() => ({}));
+      alert(errBody?.message ?? "文件建立失敗");
     }
   }
 

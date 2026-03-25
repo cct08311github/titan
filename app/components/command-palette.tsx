@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { extractData } from "@/lib/api-client";
 import {
   Search,
   ClipboardList,
@@ -158,8 +159,9 @@ export function CommandPalette() {
           setSearchResults([]);
           return;
         }
-        const json: ApiSearchResponse = await res.json();
-        if (!json.ok || !json.data) {
+        const body = await res.json();
+        const json = { ...body, data: extractData<ApiSearchResponse["data"]>(body) };
+        if (!json.data) {
           setSearchResults([]);
           return;
         }

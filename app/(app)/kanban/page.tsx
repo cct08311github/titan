@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Kanban, Loader2, CheckSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractItems } from "@/lib/api-client";
 import { TaskCard, type TaskCardData } from "@/app/components/task-card";
 import { TaskFilters, type TaskFilters as FiltersType } from "@/app/components/task-filters";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
@@ -74,10 +75,8 @@ export default function KanbanPage() {
       if (filters.category) params.set("category", filters.category);
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
-      const json = await res.json();
-      // Support paginated response { data: { items, pagination } } and legacy array
-      const payload = json?.data ?? json;
-      setTasks(Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : []);
+      const body = await res.json();
+      setTasks(extractItems<TaskCardData>(body));
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -91,10 +90,9 @@ export default function KanbanPage() {
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
-      .then((json) => {
-        const data = json?.data ?? json;
-        const list = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-        setUsers(list.map((u: { id: string; name: string }) => ({ id: u.id, name: u.name })));
+      .then((body) => {
+        const list = extractItems<{ id: string; name: string }>(body);
+        setUsers(list.map((u) => ({ id: u.id, name: u.name })));
       })
       .catch(() => {});
   }, []);
@@ -204,7 +202,7 @@ export default function KanbanPage() {
               body: JSON.stringify({ title: title.trim(), status: "BACKLOG", priority: "P2", category: "PLANNED" }),
             });
             if (res.ok) fetchTasks();
-            else { const err = await res.json().catch(() => ({})); alert(err?.message ?? "建立失敗"); }
+            else { const errBody = await res.json().catch(() => ({})); alert(errBody?.message ?? errBody?.error ?? "建立失敗"); }
           }}
           className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 w-full sm:w-auto"
         >

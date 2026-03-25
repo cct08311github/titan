@@ -7,6 +7,7 @@ import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { formatDate } from "@/lib/format";
+import { extractItems, extractData } from "@/lib/api-client";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,32 +52,6 @@ interface Task {
   dueDate: string | null;
 }
 
-// ── Defensive data extractor ───────────────────────────────────────────────
-
-/**
- * Safely extract an array of items from various API response formats:
- * - Direct array: [item, ...]
- * - Paginated: { data: { items: [...], pagination: {...} } }
- * - Legacy object: { tasks: [...] } or { items: [...] }
- */
-function extractItems<T>(data: unknown, legacyKey?: string): T[] {
-  if (Array.isArray(data)) return data;
-  if (data && typeof data === "object") {
-    const obj = data as Record<string, unknown>;
-    // Paginated: { data: { items: [...] } }
-    if (obj.data && typeof obj.data === "object") {
-      const inner = obj.data as Record<string, unknown>;
-      if (Array.isArray(inner.items)) return inner.items as T[];
-      if (Array.isArray(inner)) return inner as T[];
-    }
-    // Legacy key (e.g. "tasks")
-    if (legacyKey && Array.isArray(obj[legacyKey])) return obj[legacyKey] as T[];
-    // Generic items
-    if (Array.isArray(obj.items)) return obj.items as T[];
-  }
-  return [];
-}
-
 // ── Today's Tasks Card ──────────────────────────────────────────────────────
 
 function dueCountdownText(dueDate: string): { text: string; urgent: boolean } {
@@ -104,8 +79,8 @@ function TodayTasksCard() {
     try {
       const res = await fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS");
       if (!res.ok) throw new Error("無法載入待辦任務");
-      const data = await res.json();
-      const all: Task[] = extractItems<Task>(data, "tasks");
+      const body = await res.json();
+      const all: Task[] = extractItems<Task>(body);
       // Sort by dueDate (closest first), tasks without dueDate go last
       const withDue = all
         .filter((t) => t.dueDate)
@@ -215,12 +190,13 @@ function KPIAchievementSection() {
     try {
       const res = await fetch(`/api/kpi?year=${new Date().getFullYear()}`);
       if (!res.ok) throw new Error("無法載入 KPI");
-      const data: Array<{
+      const body = await res.json();
+      const data = extractItems<{
         id: string; code: string; title: string; target: number; actual: number; status: string;
         taskLinks: Array<{ weight: number; task: { status: string; progressPct: number } }>;
         autoCalc: boolean;
-      }> = await res.json();
-      const mapped: KPIAchievement[] = (Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []).map((k) => {
+      }>(body);
+      const mapped: KPIAchievement[] = data.map((k) => {
         let rate = 0;
         if (k.autoCalc && k.taskLinks.length > 0) {
           const totalW = k.taskLinks.reduce((s, l) => s + l.weight, 0);
@@ -348,14 +324,13 @@ function ManagerDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [wlRaw, wr] = await Promise.all([
+      const [wlRaw, wrRaw] = await Promise.all([
         fetch("/api/reports/workload").then((r) => { if (!r.ok) throw new Error("工作負載載入失敗"); return r.json(); }),
         fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
       ]);
-      // Defensive: handle paginated or direct response
-      const wl: WorkloadData = wlRaw?.data ?? wlRaw;
+      const wl = extractData<WorkloadData>(wlRaw);
       setWorkload(wl && typeof wl === "object" ? wl : null);
-      const weeklyData: WeeklyData = wr?.data ?? wr;
+      const weeklyData = extractData<WeeklyData>(wrRaw);
       setWeekly(weeklyData && typeof weeklyData === "object" ? weeklyData : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
@@ -533,13 +508,12 @@ function EngineerDashboard() {
     setLoading(true);
     setError(null);
     try {
-      const [taskRes, wr] = await Promise.all([
+      const [taskBody, wrBody] = await Promise.all([
         fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS").then((r) => { if (!r.ok) throw new Error("任務載入失敗"); return r.json(); }),
         fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
       ]);
-      // Defensive: support paginated response { data: { items, pagination } } and legacy formats
-      setTasks(extractItems<Task>(taskRes, "tasks"));
-      const weeklyData: WeeklyData = wr?.data ?? wr;
+      setTasks(extractItems<Task>(taskBody));
+      const weeklyData = extractData<WeeklyData>(wrBody);
       setWeekly(weeklyData && typeof weeklyData === "object" ? weeklyData : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");

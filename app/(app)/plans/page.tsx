@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Loader2, ChevronRight, X, Target, Copy } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractItems, extractData } from "@/lib/api-client";
 import { PlanTree } from "@/app/components/plan-tree";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageEmpty } from "@/app/components/page-states";
@@ -88,9 +89,8 @@ export default function PlansPage() {
     try {
       const res = await fetch("/api/plans");
       if (res.ok) {
-        const data = await res.json();
-        const items = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-        setPlans(items);
+        const body = await res.json();
+        setPlans(extractItems<AnnualPlan>(body));
       }
     } finally {
       setLoading(false);
@@ -105,7 +105,7 @@ export default function PlansPage() {
       const res = await fetch(`/api/goals/${goalId}`);
       if (res.ok) {
         const body = await res.json();
-        setSelectedGoal(body?.data ?? body);
+        setSelectedGoal(extractData<MonthlyGoal>(body));
       }
     } finally {
       setGoalLoading(false);
@@ -126,8 +126,8 @@ export default function PlansPage() {
         setShowPlanForm(false);
         fetchPlans();
       } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err?.message ?? err?.error ?? "建立失敗");
+        const errBody = await res.json().catch(() => ({}));
+        alert(errBody?.message ?? errBody?.error ?? "建立失敗");
       }
     } finally {
       setCreatingPlan(false);
@@ -168,8 +168,8 @@ export default function PlansPage() {
         setShowCopyForm(false);
         fetchPlans();
       } else {
-        const data = await res.json().catch(() => ({}));
-        setCopyError(data?.error ?? "複製失敗，請再試一次");
+        const errBody = await res.json().catch(() => ({}));
+        setCopyError(errBody?.error ?? "複製失敗，請再試一次");
       }
     } finally {
       setCopyingTemplate(false);
