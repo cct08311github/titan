@@ -9,18 +9,16 @@ const reportService = new ReportService(prisma);
 
 export const GET = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
-
   const { searchParams } = new URL(req.url);
   const dateParam = searchParams.get("date");
+  const userIdParam = searchParams.get("userId");
   const refDate = dateParam ? new Date(dateParam) : new Date();
-
   const isManager = session.user.role === "MANAGER";
 
   const data = await reportService.getWeeklyReport({
+    dateRange: { start: refDate, end: refDate },
+    userId: userIdParam ?? (isManager ? undefined : session.user.id),
     isManager,
-    userId: session.user.id,
-    refDate,
   });
-
   return success(data);
 });

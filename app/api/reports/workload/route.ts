@@ -9,26 +9,21 @@ const reportService = new ReportService(prisma);
 
 export const GET = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
-
   const { searchParams } = new URL(req.url);
   const startParam = searchParams.get("startDate");
   const endParam = searchParams.get("endDate");
+  const userIdParam = searchParams.get("userId");
+  const categoryParam = searchParams.get("category");
   const now = new Date();
-
-  const startDate = startParam
-    ? new Date(startParam)
-    : new Date(now.getFullYear(), now.getMonth(), 1);
-  const endDate = endParam
-    ? new Date(endParam)
-    : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
+  const startDate = startParam ? new Date(startParam) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const endDate = endParam ? new Date(endParam) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
   const isManager = session.user.role === "MANAGER";
 
   const data = await reportService.getWorkloadReport({
+    dateRange: { start: startDate, end: endDate },
+    userId: userIdParam ?? (isManager ? undefined : session.user.id),
     isManager,
-    userId: session.user.id,
-    dateRange: { startDate, endDate },
+    category: categoryParam ?? undefined,
   });
-
   return success(data);
 });
