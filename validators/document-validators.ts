@@ -8,7 +8,7 @@ export const createDocumentSchema = z.object({
 
 export const updateDocumentSchema = z.object({
   title: z.string().min(1).optional(),
-  content: z.string().nullish(),
+  content: z.string().optional(),
   parentId: z.string().nullish(),
 });
 
