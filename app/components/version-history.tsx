@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { History, ChevronDown, ChevronUp, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatShortDateTime } from "@/lib/format";
 
 type DocVersion = {
   id: string;
@@ -76,9 +77,7 @@ export function VersionHistory({ documentId, currentVersion, onRestore }: Versio
                   <span className="text-xs text-muted-foreground ml-2">{v.creator.name}</span>
                 </div>
                 <span className="text-xs text-muted-foreground flex-shrink-0">
-                  {new Date(v.createdAt).toLocaleDateString("zh-TW", {
-                    month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-                  })}
+                  {formatShortDateTime(v.createdAt)}
                 </span>
                 {expandedId === v.id
                   ? <ChevronUp className="h-3 w-3 text-muted-foreground" />

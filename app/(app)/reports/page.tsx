@@ -5,6 +5,7 @@ import { Download, RefreshCw, BarChart3, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { safeFixed, safePct } from "@/lib/safe-number";
+import { formatDate } from "@/lib/format";
 
 function PrintButton() {
   return (
@@ -107,8 +108,8 @@ function WeeklyReport() {
   if (error) return <PageError message={error} onRetry={load} />;
   if (!data || !data.period) return <PageEmpty title="無週報資料" description="本週尚無相關數據" />;
 
-  const start = new Date(data.period.start).toLocaleDateString("zh-TW");
-  const end = new Date(data.period.end).toLocaleDateString("zh-TW");
+  const start = formatDate(data.period.start);
+  const end = formatDate(data.period.end);
 
   return (
     <div className="space-y-6">
@@ -176,7 +177,7 @@ function WeeklyReport() {
               <div key={t.id} className="flex items-center justify-between text-sm">
                 <span className="text-foreground truncate">{t.title}</span>
                 <span className="text-xs text-danger flex-shrink-0 ml-2 tabular-nums">
-                  {new Date(t.dueDate).toLocaleDateString("zh-TW")}
+                  {formatDate(t.dueDate)}
                 </span>
               </div>
             ))}
@@ -788,7 +789,7 @@ export default function ReportsPage() {
       {/* Print header — only visible when printing */}
       <div className="print-header hidden">
         <h1>TITAN — {activeTab === "weekly" ? "週報" : activeTab === "monthly" ? "月報" : activeTab === "kpi" ? "KPI 報表" : "計畫外負荷"}</h1>
-        <p>列印日期：{new Date().toLocaleDateString("zh-TW")}</p>
+        <p>列印日期：{formatDate(new Date())}</p>
       </div>
 
       <div className="flex items-center justify-between mb-6">

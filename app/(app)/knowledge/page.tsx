@@ -8,6 +8,7 @@ import { MarkdownEditor } from "@/app/components/markdown-editor";
 import { DocumentSearch } from "@/app/components/document-search";
 import { VersionHistory } from "@/app/components/version-history";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { formatDate } from "@/lib/format";
 
 type DocDetail = {
   id: string;
@@ -299,7 +300,7 @@ export default function KnowledgePage() {
                   </span>
                   <span className="text-xs text-muted-foreground">
                     最後更新：{docDetail.updater.name}
-                    　{new Date(docDetail.updatedAt).toLocaleDateString("zh-TW")}
+                    　{formatDate(docDetail.updatedAt)}
                   </span>
                   <span className="text-xs text-muted-foreground/60 ml-auto">v{docDetail.version}</span>
                 </div>
