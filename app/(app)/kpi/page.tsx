@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { FormError, FormBanner } from "@/app/components/form-error";
 import { safeFixed, safePct } from "@/lib/safe-number";
+import { calculateAchievement } from "@/lib/kpi-calculator";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -41,17 +42,7 @@ interface KPI {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function achievementRate(kpi: KPI): number {
-  if (kpi.autoCalc && kpi.taskLinks.length > 0) {
-    const totalWeight = kpi.taskLinks.reduce((s, l) => s + l.weight, 0);
-    const weighted = kpi.taskLinks.reduce((s, l) => {
-      const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
-      return s + (prog * l.weight) / 100;
-    }, 0);
-    return totalWeight > 0
-      ? Math.min((weighted / totalWeight) * kpi.target, 100)
-      : 0;
-  }
-  return kpi.target > 0 ? Math.min((kpi.actual / kpi.target) * 100, 100) : 0;
+  return calculateAchievement(kpi);
 }
 
 function ProgressBar({ pct, color = "bg-primary" }: { pct: number; color?: string }) {

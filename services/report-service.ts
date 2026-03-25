@@ -1,4 +1,5 @@
 import { PrismaClient, Prisma } from "@prisma/client";
+import { calculateAchievement, calculateAvgAchievement } from "@/lib/kpi-calculator";
 
 // ── Filter types ────────────────────────────────────────────────────────────
 
@@ -280,28 +281,14 @@ export class ReportService {
       orderBy: { code: "asc" },
     });
 
-    const kpisWithAchievement = kpis.map((kpi) => {
-      let achievementRate = 0;
-      if (kpi.autoCalc && kpi.taskLinks.length > 0) {
-        const totalWeight = kpi.taskLinks.reduce((sum, l) => sum + l.weight, 0);
-        const weighted = kpi.taskLinks.reduce((sum, l) => {
-          const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
-          return sum + (prog * l.weight) / 100;
-        }, 0);
-        achievementRate =
-          totalWeight > 0 ? (weighted / totalWeight) * kpi.target : 0;
-      } else {
-        achievementRate =
-          kpi.target > 0 ? (kpi.actual / kpi.target) * 100 : 0;
-      }
-      return { ...kpi, achievementRate: Math.min(achievementRate, 100) };
-    });
+    const kpisWithAchievement = kpis.map((kpi) => ({
+      ...kpi,
+      achievementRate: calculateAchievement(kpi),
+    }));
 
-    const avgAchievement =
-      kpisWithAchievement.length > 0
-        ? kpisWithAchievement.reduce((s, k) => s + k.achievementRate, 0) /
-          kpisWithAchievement.length
-        : 0;
+    const avgAchievement = calculateAvgAchievement(
+      kpisWithAchievement.map((k) => k.achievementRate)
+    );
 
     return {
       year: targetYear,
