@@ -293,7 +293,7 @@ services:
 
   # ── Plane Nginx Proxy ──────────────────────────────────────
   plane-proxy:
-    image: nginx:alpine
+    image: nginx:1.27-alpine
     container_name: titan-plane-proxy
     restart: unless-stopped
     volumes:
