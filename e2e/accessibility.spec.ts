@@ -5,6 +5,11 @@ import { MANAGER_STATE_FILE } from './helpers/auth';
 
 /**
  * Accessibility tests using axe-core for WCAG 2 AA compliance.
+ * Issue #611 — Extended to cover all 14 app pages.
+ *
+ * Pages covered: Dashboard, Login, Kanban, KPI, Gantt, Knowledge,
+ * Plans, Reports, Timesheet, Admin, Activity, Settings,
+ * Change Password, Reset Password
  *
  * Known existing violations (to be fixed as separate issues):
  * - scrollable-region-focusable: kanban/scroll areas in Dashboard
@@ -145,5 +150,59 @@ test.describe('Accessibility 測試', () => {
     await assertNoNewViolations(page, 'Timesheet');
 
     await context.close();
+  });
+
+  // ── Issue #611: 補充缺少的頁面覆蓋 ──────────────────────────────────
+
+  test('Admin 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/admin', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Admin');
+
+    await context.close();
+  });
+
+  test('Activity 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/activity', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Activity');
+
+    await context.close();
+  });
+
+  test('Settings 頁面 axe accessibility 掃描（記錄違規）', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+
+    await page.goto('/settings', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Settings');
+
+    await context.close();
+  });
+
+  test('Change Password 頁面 axe accessibility 掃描（記錄違規）', async ({ page }) => {
+    await page.goto('/change-password', { waitUntil: 'domcontentloaded' });
+    // Wait for form to be interactive
+    await page.waitForSelector('form, h1, main', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Change Password');
+  });
+
+  test('Reset Password 頁面 axe accessibility 掃描（記錄違規）', async ({ page }) => {
+    await page.goto('/reset-password', { waitUntil: 'domcontentloaded' });
+    // Wait for form to be interactive
+    await page.waitForSelector('form, h1, main', { state: 'visible', timeout: 15000 });
+
+    await assertNoNewViolations(page, 'Reset Password');
   });
 });
