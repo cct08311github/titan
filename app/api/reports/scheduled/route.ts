@@ -22,8 +22,29 @@ const reportService = new ReportService(prisma);
  * Requires MANAGER role (cron should authenticate as a service account with MANAGER role).
  */
 export const POST = withManager(async (_req: NextRequest) => {
-  // Generate report for previous week (use last Friday as reference)
   const now = new Date();
+
+  // Same-day idempotency guard: if a scheduled report notification already
+  // exists for today, return early instead of regenerating.
+  const todayKey = `report-scheduled-${now.toISOString().slice(0, 10)}`;
+  const existingToday = await prisma.notification.count({
+    where: {
+      type: "TASK_CHANGED",
+      relatedId: { startsWith: "report-" },
+      createdAt: {
+        gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+      },
+    },
+  });
+  if (existingToday > 0) {
+    return success({
+      idempotent: true,
+      message: `今日 (${todayKey}) 已產生過排程報表，跳過重複產生`,
+      notified: 0,
+    });
+  }
+
+  // Generate report for previous week (use last Friday as reference)
   const lastFriday = new Date(now);
   const dayOfWeek = now.getDay();
   const daysBack = dayOfWeek === 0 ? 2 : dayOfWeek === 1 ? 3 : dayOfWeek + 2;

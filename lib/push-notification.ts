@@ -1,15 +1,18 @@
 /**
- * Push Notification Service — Stub Implementation
+ * Push Notification Service — DISABLED / Stub Implementation
  *
+ * Status: DISABLED — no production push provider configured.
  * Issue #379: 行信 API 推播通知進度追蹤
  *
  * v1.0: Stub that logs push requests. No actual external API call.
+ *       Push notifications are NOT delivered to end users.
  * v2.0: Integrate with bank's internal messaging API (行信系統).
  *
  * Design notes:
  * - Interface defined for future provider swapping
  * - Stub logs to server console for development visibility
  * - All methods return predictable results for testing
+ * - isAvailable() returns false — callers should check before relying on delivery
  */
 
 import { logger } from "@/lib/logger";
@@ -50,9 +53,13 @@ export interface PushNotificationProvider {
  * Stub provider that logs push notifications without sending them.
  * Replace with BankPushProvider in v2.0 when 行信 API credentials are available.
  */
+/**
+ * @disabled This provider does NOT send real notifications.
+ * All calls are logged but no messages are delivered.
+ */
 export class StubPushProvider implements PushNotificationProvider {
   send(recipients: PushRecipient[], message: PushMessage): Promise<PushResult> {
-    logger.info("[PushNotification] Stub send", {
+    logger.warn("[PushNotification] STUB — notification NOT delivered (push is disabled)", {
       recipientCount: recipients.length,
       recipientIds: recipients.map((r) => r.userId),
       title: message.title,

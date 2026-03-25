@@ -48,13 +48,22 @@ export const POST = withManager(async (req: NextRequest) => {
     return error("NotFoundError", `來源年度 ${sourceYear} 沒有 KPI 資料`, 404);
   }
 
-  // Check if target year already has KPIs (prevent accidental overwrite)
-  const existingCount = await prisma.kPI.count({
+  // Idempotency check: if target year already has KPIs, return existing data
+  // instead of throwing an error (safe for re-calls)
+  const existingKpis = await prisma.kPI.findMany({
     where: { year: targetYear },
+    orderBy: { code: "asc" },
   });
-  if (existingCount > 0) {
-    throw new ValidationError(
-      `目標年度 ${targetYear} 已有 ${existingCount} 筆 KPI，請先清除或選擇其他年度`
+  if (existingKpis.length > 0) {
+    return success(
+      {
+        sourceYear,
+        targetYear,
+        copiedCount: existingKpis.length,
+        kpis: existingKpis,
+        idempotent: true,
+      },
+      200
     );
   }
 
