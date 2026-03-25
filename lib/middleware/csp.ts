@@ -20,11 +20,13 @@ export function generateNonce(): string {
 /** Build a CSP header value with the given nonce */
 export function buildCspWithNonce(nonce: string): string {
   const isDev = process.env.NODE_ENV === "development";
+  // Both dev and prod use nonce. Dev additionally needs 'unsafe-eval' for HMR.
+  const scriptSrc = isDev
+    ? `script-src 'self' 'nonce-${nonce}' 'unsafe-eval'`  // Dev: nonce + unsafe-eval for HMR
+    : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
   return [
     "default-src 'self'",
-    isDev
-      ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"  // Dev: Next.js HMR needs inline scripts
-      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
