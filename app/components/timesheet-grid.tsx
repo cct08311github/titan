@@ -117,8 +117,30 @@ export function TimesheetGrid({ weekStart, taskRows, entries, onCellSave, onCell
             </td>
             {dailyTotals.map((total, i) => (
               <td key={i} className="px-2 py-2.5 text-center">
-                <span className={cn("text-xs font-semibold tabular-nums", total > 8 ? "text-amber-500" : total > 0 ? "text-emerald-500" : "text-muted-foreground/40")}>
+                <span
+                  className={cn(
+                    "text-xs font-semibold tabular-nums",
+                    total > 12
+                      ? "text-red-500"
+                      : total > 10
+                        ? "text-orange-500"
+                        : total > 8
+                          ? "text-amber-500"
+                          : total > 0
+                            ? "text-emerald-500"
+                            : "text-muted-foreground/40"
+                  )}
+                  title={
+                    total > 12
+                      ? "超時警告：超過 12 小時"
+                      : total > 10
+                        ? "超時警告：超過 10 小時"
+                        : undefined
+                  }
+                >
                   {total > 0 ? safeFixed(total, 1) : "—"}
+                  {total > 12 && " ⚠"}
+                  {total > 10 && total <= 12 && " ⚡"}
                 </span>
               </td>
             ))}

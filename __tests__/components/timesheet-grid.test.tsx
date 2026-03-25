@@ -76,4 +76,51 @@ describe("TimesheetGrid", () => {
     render(<TimesheetGrid {...defaultProps} taskRows={[]} />);
     expect(screen.queryByTestId("time-entry-cell")).not.toBeInTheDocument();
   });
+
+  describe("daily limit warnings", () => {
+    it("shows orange warning when daily total > 10h", () => {
+      const highEntries = [
+        { id: "e1", taskId: "task-1", date: "2024-01-15T00:00:00Z", hours: 8, category: "PLANNED_TASK", description: null },
+        { id: "e2", taskId: null, date: "2024-01-15T00:00:00Z", hours: 3, category: "ADMIN", description: null },
+      ];
+      const { container } = render(
+        <TimesheetGrid {...defaultProps} entries={highEntries} />
+      );
+      // 11h total on Monday - should have orange text and lightning emoji
+      const footerSpans = container.querySelectorAll("tfoot span");
+      const mondaySpan = Array.from(footerSpans).find((s) =>
+        s.textContent?.includes("11.0")
+      );
+      expect(mondaySpan).toBeTruthy();
+      expect(mondaySpan?.className).toContain("text-orange-500");
+    });
+
+    it("shows red warning when daily total > 12h", () => {
+      const veryHighEntries = [
+        { id: "e1", taskId: "task-1", date: "2024-01-15T00:00:00Z", hours: 8, category: "PLANNED_TASK", description: null },
+        { id: "e2", taskId: null, date: "2024-01-15T00:00:00Z", hours: 5, category: "ADMIN", description: null },
+      ];
+      const { container } = render(
+        <TimesheetGrid {...defaultProps} entries={veryHighEntries} />
+      );
+      // 13h total on Monday - should have red text and warning emoji
+      const footerSpans = container.querySelectorAll("tfoot span");
+      const mondaySpan = Array.from(footerSpans).find((s) =>
+        s.textContent?.includes("13.0")
+      );
+      expect(mondaySpan).toBeTruthy();
+      expect(mondaySpan?.className).toContain("text-red-500");
+    });
+
+    it("shows green for normal daily total <= 8h", () => {
+      const { container } = render(<TimesheetGrid {...defaultProps} />);
+      // Monday has 4h - should be green
+      const footerSpans = container.querySelectorAll("tfoot span");
+      const mondaySpan = Array.from(footerSpans).find((s) =>
+        s.textContent?.includes("4.0")
+      );
+      expect(mondaySpan).toBeTruthy();
+      expect(mondaySpan?.className).toContain("text-emerald-500");
+    });
+  });
 });
