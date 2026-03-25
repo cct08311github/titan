@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: TITAN Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    isDefault: false
+    editable: false
+    jsonData:
+      maxLines: 1000
+      derivedFields:
+        # 從日誌中提取 traceID 並連結至 Prometheus（若有 trace 資訊）
+        - datasourceUid: prometheus
+          matcherRegex: '"traceId":"(\w+)"'
+          name: TraceID
+          url: '$${__value.raw}'

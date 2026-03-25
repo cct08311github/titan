@@ -1,0 +1,63 @@
+# ═══════════════════════════════════════════════════════════
+# Loki 配置 — TITAN 日誌聚合
+# Issue #265
+#
+# 設計考量：
+#   - 單節點部署（適合銀行內網小規模環境）
+#   - 本地 filesystem 儲存（無需外部 S3）
+#   - 保留 15 天日誌（與 Prometheus 指標保留期一致）
+#   - 適合 air-gapped 環境，無需外部連線
+# ═══════════════════════════════════════════════════════════
+
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: "2024-01-01"
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+storage_config:
+  tsdb_shipper:
+    active_index_directory: /loki/tsdb-index
+    cache_location: /loki/tsdb-cache
+
+limits_config:
+  retention_period: 360h         # 15 天保留
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h  # 拒絕超過 7 天的舊日誌
+  max_query_series: 5000
+  max_query_parallelism: 2
+  ingestion_rate_mb: 10
+  ingestion_burst_size_mb: 20
+
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+
+analytics:
+  reporting_enabled: false       # air-gapped 環境不回報遙測
