@@ -216,6 +216,18 @@ titan/
 | [支援計畫](docs/support-plan.md) | L1/L2 支援架構 |
 | [測試指南](TESTING.md) | 測試架構與執行指令 |
 
+## Database Connection Pooling
+
+TITAN 使用 Prisma 的 `connection_limit` 參數控制資料庫連線池上限。預設設為 **10**，適合 5 人團隊的銀行內網環境。
+
+```
+DATABASE_URL=postgresql://user:password@host:5432/db?connection_limit=10
+```
+
+- `connection_limit=10`：每個 Prisma Client 實例最多持有 10 條連線
+- 若部署多個 replica，總連線數 = replica 數 × connection_limit
+- PostgreSQL 預設 `max_connections=100`，建議保留餘裕給管理工具與監控
+
 ## 設計原則
 
 1. **簡約** — 乾淨清爽的 UI，明亮專業風格
