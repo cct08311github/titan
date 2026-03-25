@@ -18,5 +18,6 @@ import { withAuth } from "@/lib/auth-middleware";
 const OUTLINE_URL = process.env.OUTLINE_INTERNAL_URL || "/outline";
 
 export const GET = withAuth(async (_req: NextRequest) => {
-  return NextResponse.redirect(new URL(OUTLINE_URL, _req.url));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return NextResponse.redirect(new URL(OUTLINE_URL, _req.url)) as any;
 });

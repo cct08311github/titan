@@ -4,10 +4,13 @@ import { ForbiddenError } from "./errors";
 export interface LogAuditInput {
   userId: string | null;
   action: string;
-  resourceType: string;
+  resourceType?: string;
   resourceId?: string | null;
   detail?: string | null;
+  details?: string | null;
   ipAddress?: string | null;
+  targetId?: string | null;
+  targetType?: string | null;
 }
 
 export interface QueryAuditLogsInput {
@@ -31,7 +34,7 @@ export class AuditService {
       data: {
         userId: input.userId ?? null,
         action: input.action,
-        resourceType: input.resourceType,
+        resourceType: input.resourceType ?? input.targetType ?? "unknown",
         resourceId: input.resourceId ?? null,
         detail: input.detail ?? null,
         ipAddress: input.ipAddress ?? null,
