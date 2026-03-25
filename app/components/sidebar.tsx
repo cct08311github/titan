@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
-  Activity,
+  Activity, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,12 @@ const navGroups = [
       { href: "/timesheet", label: "工時紀錄", icon: Clock },
       { href: "/reports", label: "報表", icon: BarChart2 },
       { href: "/activity", label: "團隊動態", icon: Activity },
+    ],
+  },
+  {
+    label: "帳號",
+    items: [
+      { href: "/settings", label: "個人設定", icon: Settings },
     ],
   },
 ];
