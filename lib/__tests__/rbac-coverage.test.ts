@@ -144,6 +144,8 @@ describe("documents DELETE /api/documents/[id]", () => {
   test("returns 200 for MANAGER", async () => {
     const { prisma } = await import("@/lib/prisma");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma.document.findUnique as any).mockResolvedValue({ id: "doc-1", title: "Test" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (prisma.document.delete as any).mockResolvedValue({});
     mockGetServerSession.mockResolvedValue(makeManagerSession());
     const req = makeRequest("http://localhost/api/documents/1", "DELETE");

@@ -128,8 +128,8 @@ describe("Dashboard Extended — Role-based rendering", () => {
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
       expect(screen.getByText("我的任務（待辦 + 進行中）")).toBeInTheDocument();
-      expect(screen.getByText("Task One")).toBeInTheDocument();
-      expect(screen.getByText("Task Two")).toBeInTheDocument();
+      expect(screen.getAllByText("Task One").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Task Two").length).toBeGreaterThan(0);
     });
   });
 
@@ -147,7 +147,7 @@ describe("Dashboard Extended — Role-based rendering", () => {
     setupFetch();
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("逾期任務")).toBeInTheDocument();
+      expect(screen.getAllByText("逾期任務").length).toBeGreaterThan(0);
     });
   });
 });
@@ -172,8 +172,8 @@ describe("Dashboard Extended — KPI section", () => {
     setupFetch();
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("進行中")).toBeInTheDocument(); // ON_TRACK
-      expect(screen.getByText("風險")).toBeInTheDocument();   // AT_RISK
+      expect(screen.getAllByText("進行中").length).toBeGreaterThan(0); // ON_TRACK
+      expect(screen.getAllByText("風險").length).toBeGreaterThan(0);   // AT_RISK
     });
   });
 });

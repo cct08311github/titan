@@ -10,7 +10,7 @@
 import { createMockRequest } from "../utils/test-utils";
 
 // ── Mock Prisma ────────────────────────────────────────────────────────────
-const mockTask = { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn() };
+const mockTask = { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 const mockUser = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() };
 const mockKPI = { findMany: jest.fn(), create: jest.fn() };
 const mockTimeEntry = { findMany: jest.fn(), create: jest.fn() };
@@ -87,22 +87,24 @@ describe("C1: Manager receives all tasks without scope restriction", () => {
   });
 
   it("GET /api/tasks returns 200 with multiple tasks for manager", async () => {
+    mockTask.count.mockResolvedValue(2);
     const { GET } = await import("@/app/api/tasks/route");
     const res = await GET(createMockRequest("/api/tasks"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data).toHaveLength(2);
+    expect(body.data.items).toHaveLength(2);
   });
 
   it("manager can filter by any assignee userId", async () => {
     mockTask.findMany.mockResolvedValue([TASK_2]);
+    mockTask.count.mockResolvedValue(1);
     const { GET } = await import("@/app/api/tasks/route");
     const res = await GET(
       createMockRequest("/api/tasks", { searchParams: { assignee: "other-user" } })
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("t-2");
+    expect(body.data.items[0].id).toBe("t-2");
   });
 });
 

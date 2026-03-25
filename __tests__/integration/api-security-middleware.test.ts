@@ -16,6 +16,7 @@ const mockTask = {
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 const mockUser = {
   findMany: jest.fn(),
@@ -135,12 +136,13 @@ describe("A1: GET /api/tasks — withAuth middleware", () => {
   });
 
   it("authenticated engineer receives task list with status 200", async () => {
+    mockTask.count.mockResolvedValue(1);
     const { GET } = await import("@/app/api/tasks/route");
     const res = await GET(createMockRequest("/api/tasks"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(Array.isArray(body.data)).toBe(true);
-    expect(body.data[0].id).toBe("task-1");
+    expect(body.data.items).toHaveLength(1);
+    expect(body.data.items[0].id).toBe("task-1");
   });
 
   it("unauthenticated request blocked with 401", async () => {

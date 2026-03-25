@@ -16,6 +16,7 @@ const mockTask = {
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
 };
 const mockTaskChange = { create: jest.fn() };
 const mockTaskActivity = { create: jest.fn() };
@@ -69,12 +70,13 @@ describe("GET /api/tasks", () => {
   });
 
   it("returns task list when authenticated", async () => {
+    mockTask.count.mockResolvedValue(1);
     const { GET } = await import("@/app/api/tasks/route");
     const req = createMockRequest("/api/tasks");
     const res = await GET(req);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("task-1");
+    expect(body.data.items[0].id).toBe("task-1");
   });
 
   it("returns 401 when no session", async () => {
@@ -193,7 +195,7 @@ describe("PUT /api/tasks/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(MEMBER_SESSION);
-    mockTask.findUnique.mockResolvedValue(MOCK_TASK);
+    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, primaryAssigneeId: "user-1", backupAssigneeId: null });
     mockTask.update.mockResolvedValue({ ...MOCK_TASK, title: "Updated" });
     mockTaskChange.create.mockResolvedValue({});
     // $transaction used by ChangeTrackingService.detectDelay/detectScopeChange
@@ -233,7 +235,7 @@ describe("PUT /api/tasks/[id]", () => {
   });
 
   it("creates TaskChange when dueDate changes", async () => {
-    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, dueDate: new Date("2024-01-01T00:00:00.000Z") });
+    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, primaryAssigneeId: "user-1", backupAssigneeId: null, dueDate: new Date("2024-01-01T00:00:00.000Z") });
     mockTaskChange.create.mockResolvedValue({});
     mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
       return fn({ task: mockTask, taskActivity: mockTaskActivity, taskChange: mockTaskChange });
@@ -289,6 +291,7 @@ describe("PATCH /api/tasks/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(MEMBER_SESSION);
+    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, primaryAssigneeId: "user-1", backupAssigneeId: null });
     mockTask.update.mockResolvedValue({ ...MOCK_TASK, status: "DONE" });
     mockTaskActivity.create.mockResolvedValue({});
     // $transaction receives a callback; simulate calling it with a tx proxy

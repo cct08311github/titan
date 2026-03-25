@@ -6,9 +6,10 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockSubTask = { create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockSubTask = { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() };
+const mockTask = { update: jest.fn() };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { subTask: mockSubTask } }));
+jest.mock("@/lib/prisma", () => ({ prisma: { subTask: mockSubTask, task: mockTask } }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
@@ -65,6 +66,8 @@ describe("PATCH/DELETE /api/subtasks/[id]", () => {
     mockGetServerSession.mockResolvedValue(SESSION);
     mockSubTask.update.mockResolvedValue({ ...MOCK_SUBTASK, done: true });
     mockSubTask.delete.mockResolvedValue(MOCK_SUBTASK);
+    mockSubTask.findUnique.mockResolvedValue({ taskId: "task-1" });
+    mockSubTask.findMany.mockResolvedValue([]);
   });
 
   it("PATCH updates subtask done status", async () => {

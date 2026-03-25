@@ -146,7 +146,7 @@ export default function ActivityPage() {
                     </div>
 
                     {/* Detail */}
-                    {item.detail && typeof item.detail === "string" && (
+                    {typeof item.detail === "string" && item.detail && (
                       <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {item.detail}
                       </p>

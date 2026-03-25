@@ -18,10 +18,8 @@ import { apiHandler, RouteContext } from "@/lib/api-handler";
 import type { ApiResponse } from "@/lib/api-response";
 
 /** Route handler that accepts a request and optional route context. */
-type RouteHandler = (
-  req: NextRequest,
-  context?: RouteContext
-) => Promise<NextResponse<ApiResponse>>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteHandler = (req: NextRequest, context?: any) => Promise<NextResponse<ApiResponse>>;
 
 /**
  * Wraps a route handler with requireAuth check + unified error handling.

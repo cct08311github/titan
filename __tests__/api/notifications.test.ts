@@ -37,7 +37,7 @@ describe("GET /api/notifications", () => {
     const res = await GET(createMockRequest("/api/notifications"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.notifications).toHaveLength(1);
+    expect(body.data.items).toHaveLength(1);
     expect(body.data.unreadCount).toBe(1);
   });
 

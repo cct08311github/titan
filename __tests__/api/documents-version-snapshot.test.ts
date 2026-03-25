@@ -14,10 +14,15 @@ const mockDocumentVersion = {
   create: jest.fn(),
 };
 
+const mockTransaction = jest.fn().mockImplementation((cb: (tx: unknown) => unknown) =>
+  cb({ document: mockDocument, documentVersion: mockDocumentVersion })
+);
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     document: mockDocument,
     documentVersion: mockDocumentVersion,
+    $transaction: mockTransaction,
   },
 }));
 

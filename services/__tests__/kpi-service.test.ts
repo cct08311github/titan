@@ -258,6 +258,8 @@ describe("KPIService", () => {
       const mockKPI = {
         id: "kpi-1",
         autoCalc: true,
+        target: 100,
+        actual: 0,
         taskLinks: [
           { task: { progressPct: 100, status: "DONE" }, weight: 1 },
           { task: { progressPct: 50, status: "IN_PROGRESS" }, weight: 1 },
@@ -300,6 +302,9 @@ describe("KPIService", () => {
     test("calculates weighted average correctly", async () => {
       const mockKPI = {
         id: "kpi-1",
+        autoCalc: true,
+        target: 100,
+        actual: 0,
         taskLinks: [
           { task: { progressPct: 100, status: "DONE" }, weight: 2 },
           { task: { progressPct: 0, status: "TODO" }, weight: 1 },
