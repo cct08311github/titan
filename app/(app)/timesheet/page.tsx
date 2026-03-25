@@ -73,6 +73,10 @@ export default function TimesheetPage() {
         onCopyPreviousWeek={ts.copyPreviousWeek}
         onRefresh={ts.refresh}
         loading={ts.loading}
+        weekStart={ts.weekStart}
+        entries={ts.entries}
+        daysCount={ts.daysCount}
+        getDateStr={ts.getDateStr}
       />
 
       {/* Manager user filter */}
