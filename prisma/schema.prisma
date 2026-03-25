@@ -442,12 +442,26 @@ model TimeEntry {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
+  // TS-01: 計時器時間欄位
+  startTime DateTime?
+  endTime   DateTime?
+
+  // TS-03: 加班標記
+  overtime Boolean @default(false)
+
+  // TS-04: 覆核鎖定
+  locked Boolean @default(false)
+
+  // TS-05: 計時器運行狀態
+  isRunning Boolean @default(false)
+
   task Task? @relation(fields: [taskId], references: [id])
   user User  @relation(fields: [userId], references: [id])
 
   @@index([taskId])
   @@index([userId])
   @@index([date])
+  @@index([userId, isRunning])
   @@map("time_entries")
 }
 

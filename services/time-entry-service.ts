@@ -25,6 +25,13 @@ export interface UpdateTimeEntryInput {
   date?: Date | string;
 }
 
+export interface StartTimerInput {
+  userId: string;
+  taskId?: string | null;
+  category: TimeCategory | string;
+  description?: string | null;
+}
+
 export interface TimeEntryStats {
   totalHours: number;
   byCategory: Record<string, number>;
@@ -34,6 +41,28 @@ export interface TimeEntryStats {
 export type CallerRole = string;
 
 const READ_ALL_ROLES = new Set(["MANAGER", "ADMIN"]);
+
+/**
+ * TS-02: Calculate hours from startTime/endTime, rounded up to nearest 0.25h.
+ *
+ * Returns null if either argument is null/undefined (fallback to manual hours).
+ * Throws if end is before start.
+ */
+export function calculateHours(
+  start: Date | null | undefined,
+  end: Date | null | undefined
+): number | null {
+  if (start == null || end == null) return null;
+
+  const diffMs = end.getTime() - start.getTime();
+  if (diffMs < 0) {
+    throw new ValidationError("結束時間不能早於開始時間");
+  }
+  if (diffMs === 0) return 0;
+
+  const diffMinutes = diffMs / (1000 * 60);
+  return Math.ceil(diffMinutes / 15) * 0.25;
+}
 
 export class TimeEntryService {
   constructor(private readonly prisma: PrismaClient) {}
@@ -122,6 +151,8 @@ export class TimeEntryService {
    * IDOR rules:
    * - All roles (including MANAGER): must own the entry to write.
    *   → Single query fetches the entry; ownership check in the same round-trip.
+   *
+   * TS-04: Locked entries cannot be updated.
    */
   async updateTimeEntry(
     id: string,
@@ -131,6 +162,11 @@ export class TimeEntryService {
   ) {
     const existing = await this.prisma.timeEntry.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
+
+    // TS-04: Locked entries cannot be modified
+    if ((existing as Record<string, unknown>).locked) {
+      throw new ForbiddenError("已鎖定的時間記錄無法修改");
+    }
 
     // Write is always restricted to the owner regardless of role.
     if (existing.userId !== callerId) {
@@ -158,16 +194,98 @@ export class TimeEntryService {
    *
    * IDOR rules:
    * - All roles (including MANAGER): must own the entry to delete.
+   *
+   * TS-04: Locked entries cannot be deleted.
    */
   async deleteTimeEntry(id: string, callerId: string, callerRole: CallerRole) {
     const existing = await this.prisma.timeEntry.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
+
+    // TS-04: Locked entries cannot be deleted
+    if ((existing as Record<string, unknown>).locked) {
+      throw new ForbiddenError("已鎖定的時間記錄無法刪除");
+    }
 
     if (existing.userId !== callerId) {
       throw new ForbiddenError("只能刪除自己的時間記錄");
     }
 
     return this.prisma.timeEntry.delete({ where: { id } });
+  }
+
+  /**
+   * TS-05: Start a timer for the user.
+   * Creates a new entry with isRunning=true, startTime=now.
+   * Throws if user already has a running timer.
+   */
+  async startTimer(input: StartTimerInput) {
+    // Check for existing running timer
+    const running = await this.prisma.timeEntry.findFirst({
+      where: { userId: input.userId, isRunning: true },
+    });
+    if (running) {
+      throw new ValidationError("已有計時器正在運行，請先停止後再啟動新的");
+    }
+
+    const now = new Date();
+    return this.prisma.timeEntry.create({
+      data: {
+        userId: input.userId,
+        taskId: input.taskId ?? null,
+        category: (input.category as TimeCategory) ?? "PLANNED_TASK",
+        description: input.description ?? null,
+        date: now,
+        hours: 0,
+        startTime: now,
+        isRunning: true,
+      },
+      include: {
+        task: { select: { id: true, title: true } },
+        user: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  /**
+   * TS-05: Stop the running timer for the user.
+   * Sets endTime=now, calculates hours, sets isRunning=false.
+   */
+  async stopTimer(userId: string) {
+    const running = await this.prisma.timeEntry.findFirst({
+      where: { userId, isRunning: true },
+    });
+    if (!running) {
+      throw new NotFoundError("沒有正在運行的計時器");
+    }
+
+    const endTime = new Date();
+    const hours = calculateHours(running.startTime, endTime) ?? 0;
+
+    return this.prisma.timeEntry.update({
+      where: { id: running.id },
+      data: {
+        endTime,
+        hours,
+        isRunning: false,
+      },
+      include: {
+        task: { select: { id: true, title: true } },
+        user: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  /**
+   * TS-05: Get the running timer for a user.
+   */
+  async getRunningTimer(userId: string) {
+    return this.prisma.timeEntry.findFirst({
+      where: { userId, isRunning: true },
+      include: {
+        task: { select: { id: true, title: true } },
+        user: { select: { id: true, name: true } },
+      },
+    });
   }
 
   async getStats(
