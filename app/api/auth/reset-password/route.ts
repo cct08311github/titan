@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     prisma.passwordHistory.create({
       data: {
         userId: user.id,
-        hashedPassword,
+        hash: hashedPassword,
       },
     }),
   ]);
