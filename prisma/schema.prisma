@@ -55,6 +55,7 @@ model User {
   createdTemplates         TaskTemplate[]        @relation("TemplateCreator")
   approvalRequests         ApprovalRequest[]    @relation("ApprovalRequester")
   approvalReviews          ApprovalRequest[]    @relation("ApprovalApprover")
+  timeEntryTemplates       TimeEntryTemplate[]
 
   @@map("users")
 }
@@ -439,6 +440,7 @@ model TimeEntry {
   hours       Float
   category    TimeCategory @default(PLANNED_TASK)
   description String?
+  locked      Boolean      @default(false)  // TS-24: Manager review lock
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -463,6 +465,24 @@ model TimeEntry {
   @@index([date])
   @@index([userId, isRunning])
   @@map("time_entries")
+}
+
+// ═══════════════════════════════════════
+// 工時模板 (TS-30)
+// ═══════════════════════════════════════
+
+model TimeEntryTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  userId    String
+  entries   String   // JSON array of { hours, category, taskId?, description? }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("time_entry_templates")
 }
 
 // ═══════════════════════════════════════

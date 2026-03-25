@@ -33,6 +33,11 @@ export const PUT = withAuth(async (
     throw new ForbiddenError("只能修改自己的時間記錄");
   }
 
+  // TS-24: Locked entries cannot be modified
+  if ((existing as Record<string, unknown>).locked) {
+    throw new ForbiddenError("此工時記錄已被主管鎖定，無法修改");
+  }
+
   const raw = await req.json();
   const { taskId, date, hours, category, description } = validateBody(updateTimeEntrySchema, raw);
 
@@ -90,6 +95,11 @@ export const DELETE = withAuth(async (
   // IDOR: all roles (including MANAGER) may only delete their own entries.
   if (existing.userId !== callerId) {
     throw new ForbiddenError("只能刪除自己的時間記錄");
+  }
+
+  // TS-24: Locked entries cannot be deleted
+  if ((existing as Record<string, unknown>).locked) {
+    throw new ForbiddenError("此工時記錄已被主管鎖定，無法刪除");
   }
 
   await prisma.timeEntry.delete({ where: { id } });
