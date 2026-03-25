@@ -15,9 +15,10 @@ import type { NextConfig } from "next";
  */
 
 /** CSP fallback（靜態路由用；動態路由由 middleware.ts 以 nonce 覆蓋） */
+const isDev = process.env.NODE_ENV === "development";
 const CSP_STATIC = [
   "default-src 'self'",
-  "script-src 'self'",
+  isDev ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'" : "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
