@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Grid3X3, List, Copy, FileDown, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TemplateSelector } from "./template-selector";
+import { OvertimeBadge } from "./overtime-badge";
+import { type TimeEntry } from "./use-timesheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +21,11 @@ type TimesheetToolbarProps = {
   onCopyPreviousWeek: () => Promise<boolean>;
   onRefresh: () => void;
   loading?: boolean;
+  // Template props (Item 6)
+  weekStart?: Date;
+  entries?: TimeEntry[];
+  daysCount?: number;
+  getDateStr?: (offset: number) => string;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -32,6 +40,10 @@ export function TimesheetToolbar({
   onCopyPreviousWeek,
   onRefresh,
   loading,
+  weekStart,
+  entries,
+  daysCount,
+  getDateStr,
 }: TimesheetToolbarProps) {
   const [copying, setCopying] = useState(false);
   const [copyResult, setCopyResult] = useState<"success" | "error" | null>(null);
@@ -144,6 +156,20 @@ export function TimesheetToolbar({
           <Copy className="h-3.5 w-3.5" />
           {copyResult === "success" ? "已複製" : copyResult === "error" ? "複製失敗" : "複製上週"}
         </button>
+
+        {/* Template selector (Item 6) */}
+        {weekStart && entries && daysCount && getDateStr && (
+          <TemplateSelector
+            weekStart={weekStart}
+            entries={entries}
+            daysCount={daysCount}
+            getDateStr={getDateStr}
+            onRefresh={onRefresh}
+          />
+        )}
+
+        {/* Overtime badge (Item 9) */}
+        {weekStart && <OvertimeBadge weekStart={weekStart} />}
 
         {/* Color legend */}
         <div className="flex items-center gap-3 ml-auto text-[10px] text-muted-foreground/50">
