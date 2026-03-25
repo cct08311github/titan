@@ -61,9 +61,11 @@ export function NotificationBell() {
     try {
       const res = await fetch("/api/notifications?limit=15");
       if (res.ok) {
-        const data = await res.json();
-        setNotifications(data.notifications ?? []);
-        setUnreadCount(data.unreadCount ?? 0);
+        const json = await res.json();
+        // Support paginated response { data: { items, unreadCount, pagination } }
+        const payload = json?.data ?? json;
+        setNotifications(payload?.items ?? payload?.notifications ?? []);
+        setUnreadCount(payload?.unreadCount ?? 0);
       }
     } finally {
       setLoading(false);

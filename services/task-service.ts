@@ -9,6 +9,8 @@ export interface ListTasksFilter {
   priority?: Priority | string;
   category?: TaskCategory | string;
   monthlyGoalId?: string;
+  skip?: number;
+  take?: number;
 }
 
 export interface CreateTaskInput {
@@ -72,19 +74,26 @@ export class TaskService {
     if (filter.category) where.category = filter.category;
     if (filter.monthlyGoalId) where.monthlyGoalId = filter.monthlyGoalId;
 
-    return this.prisma.task.findMany({
-      where,
-      include: {
-        primaryAssignee: { select: { id: true, name: true, avatar: true } },
-        backupAssignee: { select: { id: true, name: true, avatar: true } },
-        creator: { select: { id: true, name: true } },
-        monthlyGoal: { select: { id: true, title: true, month: true } },
-        subTasks: { orderBy: { order: "asc" } },
-        deliverables: true,
-        _count: { select: { subTasks: true, comments: true } },
-      },
-      orderBy: [{ priority: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
-    });
+    const [tasks, total] = await Promise.all([
+      this.prisma.task.findMany({
+        where,
+        include: {
+          primaryAssignee: { select: { id: true, name: true, avatar: true } },
+          backupAssignee: { select: { id: true, name: true, avatar: true } },
+          creator: { select: { id: true, name: true } },
+          monthlyGoal: { select: { id: true, title: true, month: true } },
+          subTasks: { orderBy: { order: "asc" } },
+          deliverables: true,
+          _count: { select: { subTasks: true, comments: true } },
+        },
+        orderBy: [{ priority: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
+        ...(filter.skip !== undefined && { skip: filter.skip }),
+        ...(filter.take !== undefined && { take: filter.take }),
+      }),
+      this.prisma.task.count({ where }),
+    ]);
+
+    return { tasks, total };
   }
 
   async getTask(id: string) {

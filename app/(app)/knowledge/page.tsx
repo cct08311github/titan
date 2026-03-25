@@ -47,7 +47,9 @@ export default function KnowledgePage() {
       const res = await fetch("/api/documents");
       if (!res.ok) throw new Error("文件載入失敗");
       const json = await res.json();
-      setDocs(Array.isArray(json) ? json : []);
+      // Support paginated response { data: { items, pagination } } and legacy array
+      const payload = json?.data ?? json;
+      setDocs(Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : []);
     } catch (e) {
       setDocsError(e instanceof Error ? e.message : "載入失敗");
     } finally {

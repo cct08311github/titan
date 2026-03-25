@@ -7,6 +7,7 @@ import { createTaskSchema } from "@/validators/task-validators";
 import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
+import { parsePagination, buildPaginationMeta } from "@/lib/pagination";
 
 const taskService = new TaskService(prisma);
 
@@ -20,15 +21,19 @@ export const GET = withAuth(async (req: NextRequest) => {
     assignee = session.user.id;
   }
 
-  const tasks = await taskService.listTasks({
+  const { page, limit, skip } = parsePagination(searchParams);
+
+  const { tasks, total } = await taskService.listTasks({
     assignee,
     status: (searchParams.get("status") as TaskStatus) ?? undefined,
     priority: (searchParams.get("priority") as Priority) ?? undefined,
     category: (searchParams.get("category") as TaskCategory) ?? undefined,
     monthlyGoalId: searchParams.get("monthlyGoalId") ?? undefined,
+    skip,
+    take: limit,
   });
 
-  return success(tasks);
+  return success({ items: tasks, pagination: buildPaginationMeta(total, { page, limit, skip }) });
 });
 
 export const POST = withAuth(async (req: NextRequest) => {
