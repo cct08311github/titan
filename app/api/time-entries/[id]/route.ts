@@ -1,3 +1,10 @@
+/**
+ * PUT / DELETE /api/time-entries/[id]
+ *
+ * Updated to include explicit audit trail logging (TS-08).
+ * Every update/delete records the action, old values, and who did it.
+ */
+
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TimeCategory } from "@prisma/client";
@@ -44,6 +51,26 @@ export const PUT = withAuth(async (
     },
   });
 
+  // TS-08: Explicit audit trail for time entry updates
+  await prisma.auditLog.create({
+    data: {
+      userId: callerId,
+      action: "UPDATE_TIME_ENTRY",
+      resourceType: "TimeEntry",
+      resourceId: id,
+      detail: JSON.stringify({
+        oldValues: {
+          hours: existing.hours,
+          category: existing.category,
+          description: existing.description,
+          date: existing.date,
+          taskId: existing.taskId,
+        },
+        newValues: updates,
+      }),
+    },
+  });
+
   return success(entry);
 });
 
@@ -66,5 +93,25 @@ export const DELETE = withAuth(async (
   }
 
   await prisma.timeEntry.delete({ where: { id } });
+
+  // TS-08: Explicit audit trail for time entry deletions
+  await prisma.auditLog.create({
+    data: {
+      userId: callerId,
+      action: "DELETE_TIME_ENTRY",
+      resourceType: "TimeEntry",
+      resourceId: id,
+      detail: JSON.stringify({
+        deletedEntry: {
+          hours: existing.hours,
+          category: existing.category,
+          description: existing.description,
+          date: existing.date,
+          taskId: existing.taskId,
+        },
+      }),
+    },
+  });
+
   return success({ success: true });
 });
