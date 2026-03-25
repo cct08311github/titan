@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
 export type TimeEntry = {
@@ -34,9 +34,11 @@ type TimeEntryCellProps = {
   date: string;
   onSave: (taskId: string | null, date: string, hours: number, category: string, description: string, existingId?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  /** TS-21: Keyboard navigation callback — called on Tab/Shift+Tab to move between cells */
+  onNavigate?: (direction: "next" | "prev") => void;
 };
 
-export function TimeEntryCell({ entry, taskId, date, onSave, onDelete }: TimeEntryCellProps) {
+export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigate }: TimeEntryCellProps) {
   const [open, setOpen] = useState(false);
   const [hours, setHours] = useState(entry?.hours?.toString() ?? "");
   const [category, setCategory] = useState(entry?.category ?? "PLANNED_TASK");
@@ -86,11 +88,49 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete }: TimeEnt
     }
   }
 
+  /**
+   * TS-21: Handle keyboard events on the cell button.
+   * Enter opens the editor popover.
+   */
+  const handleButtonKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        setOpen(true);
+      }
+    },
+    []
+  );
+
+  /**
+   * TS-21: Handle keyboard events inside the editor popover.
+   * - Escape closes the editor
+   * - Tab navigates to the next cell
+   * - Shift+Tab navigates to the previous cell
+   * - Enter saves (handled by individual inputs)
+   */
+  const handleEditorKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        setOpen(false);
+        onNavigate?.(e.shiftKey ? "prev" : "next");
+      }
+    },
+    [onNavigate]
+  );
+
   return (
     <div ref={ref} className="relative">
       {/* Cell display */}
       <button
         onClick={() => setOpen((v) => !v)}
+        onKeyDown={handleButtonKeyDown}
         className={cn(
           "w-full min-h-[36px] rounded-md border text-xs transition-all",
           entry && entry.hours > 0
@@ -107,7 +147,10 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete }: TimeEnt
 
       {/* Popover editor */}
       {open && (
-        <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-50 w-56 bg-card border border-border rounded-xl shadow-2xl p-3 space-y-2.5">
+        <div
+          className="absolute top-full mt-1 left-1/2 -translate-x-1/2 z-50 w-56 bg-card border border-border rounded-xl shadow-2xl p-3 space-y-2.5"
+          onKeyDown={handleEditorKeyDown}
+        >
           <div>
             <label className="block text-xs text-muted-foreground mb-1">工時（小時）</label>
             <input
@@ -118,7 +161,9 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete }: TimeEnt
               autoFocus
               value={hours}
               onChange={(e) => setHours(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+              }}
               className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder="0"
             />
@@ -143,7 +188,9 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete }: TimeEnt
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSave()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+              }}
               className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
               placeholder="可選備註..."
             />
