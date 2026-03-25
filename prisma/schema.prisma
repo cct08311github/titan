@@ -440,7 +440,6 @@ model TimeEntry {
   hours       Float
   category    TimeCategory @default(PLANNED_TASK)
   description String?
-  locked      Boolean      @default(false)  // TS-24: Manager review lock
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
