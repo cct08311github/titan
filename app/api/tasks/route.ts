@@ -25,7 +25,9 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   const { tasks, total } = await taskService.listTasks({
     assignee,
-    status: (searchParams.get("status") as TaskStatus) ?? undefined,
+    status: searchParams.get("status")?.includes(",")
+      ? searchParams.get("status")!.split(",") as TaskStatus[]
+      : (searchParams.get("status") as TaskStatus) ?? undefined,
     priority: (searchParams.get("priority") as Priority) ?? undefined,
     category: (searchParams.get("category") as TaskCategory) ?? undefined,
     monthlyGoalId: searchParams.get("monthlyGoalId") ?? undefined,

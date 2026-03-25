@@ -29,6 +29,8 @@ services:
     image: redis:7-alpine
     container_name: titan-redis-dev
     restart: unless-stopped
+    ports:
+      - "6379:6379"   # Expose to host for local dev
     command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -36,33 +38,10 @@ services:
       timeout: 5s
       retries: 3
 
-  # ── Next.js Dev Server ─────────────────────────────────
-  titan-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: deps   # deps stage for dev
-    container_name: titan-app-dev
-    restart: unless-stopped
-    depends_on:
-      titan-db:
-        condition: service_healthy
-      titan-redis:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://titan:titan_dev_password@titan-db:5432/titan_dev?connection_limit=10
-      REDIS_URL: redis://titan-redis:6379
-      NEXTAUTH_URL: http://mac-mini.tailde842d.ts.net:3100
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?請在 .env 設定 NEXTAUTH_SECRET（openssl rand -hex 32）}
-      NODE_ENV: development
-      PRISMA_QUERY_ENGINE_LIBRARY: /app/node_modules/.prisma/client/libquery_engine-linux-musl-arm64-openssl-3.0.x.so.node
-    ports:
-      - "3100:3000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/.next
-    command: npm run dev
+  # NOTE: Next.js dev server runs on the HOST (not in Docker)
+  # to avoid Prisma engine binary mismatch issues on ARM Mac.
+  # Start with: npm run dev -- -p 3100
+  # Or use the start-dev.sh script.
 
 volumes:
   titan-db-data:

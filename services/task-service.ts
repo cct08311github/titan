@@ -5,7 +5,7 @@ import { AuditService } from "./audit-service";
 
 export interface ListTasksFilter {
   assignee?: string;
-  status?: TaskStatus | string;
+  status?: TaskStatus | TaskStatus[] | string;
   priority?: Priority | string;
   category?: TaskCategory | string;
   monthlyGoalId?: string;
@@ -69,7 +69,9 @@ export class TaskService {
         { backupAssigneeId: filter.assignee },
       ];
     }
-    if (filter.status) where.status = filter.status;
+    if (filter.status) {
+      where.status = Array.isArray(filter.status) ? { in: filter.status } : filter.status;
+    }
     if (filter.priority) where.priority = filter.priority;
     if (filter.category) where.category = filter.category;
     if (filter.monthlyGoalId) where.monthlyGoalId = filter.monthlyGoalId;
