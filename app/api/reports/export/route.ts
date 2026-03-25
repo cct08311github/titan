@@ -12,7 +12,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
 
   const type = searchParams.get("type") ?? "weekly";   // weekly | monthly | kpi | workload
-  const format = searchParams.get("format") ?? "xlsx"; // xlsx | pdf
+  const format = searchParams.get("format") ?? "xlsx"; // xlsx | pdf | csv
 
   const isManager = session.user.role === "MANAGER";
 
@@ -197,6 +197,20 @@ export const GET = withAuth(async (req: NextRequest) => {
   }
 
   // ── Render format ──────────────────────────────────────────────────────────
+  if (format === "csv") {
+    const csvString = generateCsv(
+      result.rows as Record<string, unknown>[],
+      result.columns,
+    );
+    return new NextResponse(csvString, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="${type}-report.csv"`,
+      },
+    });
+  }
+
   if (format === "pdf") {
     const html = exportService.generatePDF(
       result.rows as Record<string, unknown>[],
@@ -224,3 +238,32 @@ export const GET = withAuth(async (req: NextRequest) => {
     },
   });
 });
+
+// ── CSV helper ──────────────────────────────────────────────────────────────
+
+interface CsvColumn {
+  header: string;
+  key: string;
+}
+
+/**
+ * Generate a RFC 4180 CSV string from rows and column definitions.
+ * Handles quoting for values containing commas, quotes, or newlines.
+ */
+function generateCsv(rows: Record<string, unknown>[], columns: CsvColumn[]): string {
+  const escapeCsvField = (value: unknown): string => {
+    const str = value == null ? "" : String(value);
+    // Quote fields that contain comma, double-quote, or newline
+    if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const headerLine = columns.map((c) => escapeCsvField(c.header)).join(",");
+  const dataLines = rows.map((row) =>
+    columns.map((c) => escapeCsvField(row[c.key])).join(",")
+  );
+
+  return [headerLine, ...dataLines].join("\r\n");
+}
