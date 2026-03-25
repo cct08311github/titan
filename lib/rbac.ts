@@ -13,7 +13,7 @@
  *   VIEW_OWN  — access only own data (default for ENGINEER)
  */
 
-import { getServerSession } from "next-auth";
+import { auth } from "@/auth";
 import { UnauthorizedError, ForbiddenError } from "@/services/errors";
 import { prisma } from "@/lib/prisma";
 
@@ -37,7 +37,7 @@ export interface AuthSession {
  * Throws UnauthorizedError (→ 401) if not authenticated.
  */
 export async function requireAuth(): Promise<AuthSession> {
-  const session = await getServerSession();
+  const session = await auth();
   if (!session || !session.user) {
     throw new UnauthorizedError("未授權");
   }
@@ -89,7 +89,7 @@ export async function requireOwnerOrManager(resourceOwnerId: string): Promise<Au
  * Returns true/false without throwing — callers decide how to respond.
  */
 export async function checkPermission(userId: string, scope: PermissionScope): Promise<boolean> {
-  const session = await getServerSession();
+  const session = await auth();
   if (!session || !session.user) {
     return false;
   }
