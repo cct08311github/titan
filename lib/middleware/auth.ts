@@ -51,11 +51,15 @@ export async function checkAuth(
     return null; // has session cookie — let the page's auth() verify it
   }
 
-  // API routes: Edge JWT verification (defense-in-depth)
-  const jwtResult = await checkEdgeJwt(req);
-  if (jwtResult !== null) {
-    jwtResult.headers.set("x-request-id", requestId);
-    return jwtResult; // 401 response for API routes
+  // API routes: cookie presence check (same as page routes)
+  // NOTE: Edge JWT verification (checkEdgeJwt) is temporarily disabled because
+  // Auth.js v5 uses A256CBC-HS512 JWE which our HKDF derivation doesn't support yet.
+  // Layer 2 auth (withAuth/withManager using auth()) still protects all API routes.
+  // TODO: Update checkEdgeJwt to support Auth.js v5 JWE format, then re-enable.
+  const cookieHeader = req.headers.get("cookie") ?? "";
+  const hasSessionApi = cookieHeader.includes("authjs.session-token");
+  if (!hasSessionApi) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   return null; // authenticated — proceed
