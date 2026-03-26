@@ -14,7 +14,7 @@ import { useWeekNavigation, getSundayOfWeek } from "./use-week-navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type OvertimeType = "NONE" | "WEEKDAY" | "HOLIDAY";
+export type OvertimeType = "NONE" | "WEEKDAY" | "REST_DAY" | "HOLIDAY";
 
 export type TimeEntry = {
   id: string;

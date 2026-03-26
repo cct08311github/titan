@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 
+export type OvertimeType = "NONE" | "WEEKDAY" | "REST_DAY" | "HOLIDAY";
+
 export type TimeEntry = {
   id: string;
   taskId: string | null;
@@ -12,9 +14,17 @@ export type TimeEntry = {
   endTime?: string | null;
   isRunning?: boolean;
   overtime?: boolean;
+  overtimeType?: OvertimeType;
   category: string;
   description: string | null;
 };
+
+const OVERTIME_OPTIONS: { value: OvertimeType; label: string }[] = [
+  { value: "NONE", label: "非加班" },
+  { value: "WEEKDAY", label: "平日加班" },
+  { value: "REST_DAY", label: "休息日加班" },
+  { value: "HOLIDAY", label: "國定假日加班" },
+];
 
 const CATEGORIES = [
   { value: "PLANNED_TASK", label: "原始規劃", color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
@@ -44,7 +54,7 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
   const [hours, setHours] = useState(entry?.hours?.toString() ?? "");
   const [category, setCategory] = useState(entry?.category ?? "PLANNED_TASK");
   const [description, setDescription] = useState(entry?.description ?? "");
-  const [overtime, setOvertime] = useState(entry?.overtime ?? false);
+  const [overtimeType, setOvertimeType] = useState<OvertimeType>(entry?.overtimeType ?? "NONE");
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -54,7 +64,7 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
       setHours(entry?.hours?.toString() ?? "");
       setCategory(entry?.category ?? "PLANNED_TASK");
       setDescription(entry?.description ?? "");
-      setOvertime(entry?.overtime ?? false);
+      setOvertimeType(entry?.overtimeType ?? "NONE");
     }
   }, [entry, open]);
 
@@ -144,9 +154,14 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
         {entry && entry.hours > 0 ? (
           <span className="tabular-nums inline-flex items-center gap-1">
             {entry.hours}h
-            {entry.overtime && (
-              <span className="inline-block px-1 py-0.5 text-[10px] font-bold leading-none bg-amber-500/30 text-amber-400 border border-amber-500/40 rounded">
-                OT
+            {entry.overtimeType && entry.overtimeType !== "NONE" && (
+              <span className={cn(
+                "inline-block px-1 py-0.5 text-[10px] font-bold leading-none border rounded",
+                entry.overtimeType === "WEEKDAY" ? "bg-amber-500/30 text-amber-400 border-amber-500/40" :
+                entry.overtimeType === "REST_DAY" ? "bg-orange-500/30 text-orange-400 border-orange-500/40" :
+                "bg-red-500/30 text-red-400 border-red-500/40"
+              )}>
+                {entry.overtimeType === "WEEKDAY" ? "OT" : entry.overtimeType === "REST_DAY" ? "休" : "假"}
               </span>
             )}
           </span>
@@ -206,17 +221,20 @@ export function TimeEntryCell({ entry, taskId, date, onSave, onDelete, onNavigat
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id={`overtime-${entry?.id ?? 'new'}-${date}`}
-              checked={overtime}
-              onChange={(e) => setOvertime(e.target.checked)}
-              className="h-3.5 w-3.5 rounded border-border text-amber-500 focus:ring-amber-500/50"
-            />
-            <label htmlFor={`overtime-${entry?.id ?? 'new'}-${date}`} className="text-xs text-muted-foreground cursor-pointer">
-              加班
-            </label>
+          <div>
+            <label className="block text-xs text-muted-foreground mb-1">加班類型</label>
+            <select
+              value={overtimeType}
+              onChange={(e) => setOvertimeType(e.target.value as OvertimeType)}
+              className={cn(
+                "w-full bg-background border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer",
+                overtimeType !== "NONE" ? "border-amber-500/50 text-amber-400" : "border-border"
+              )}
+            >
+              {OVERTIME_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="flex items-center gap-2 pt-1">
