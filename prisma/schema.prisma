@@ -60,6 +60,7 @@ model User {
   timeEntryTemplates       TimeEntryTemplate[]
   timesheetReviews         TimesheetApproval[]  @relation("TimesheetReviewer")
   assignedGoals            MonthlyGoal[]        @relation("GoalAssignee")
+  createdRecurringRules    RecurringRule[]       @relation("RecurringRuleCreator")
 
   @@map("users")
 }
@@ -351,8 +352,9 @@ model Task {
   taskChanges     TaskChange[]
   timeEntries     TimeEntry[]
   kpiLinks        KPITaskLink[]
-  deliverables    Deliverable[] @relation("TaskDeliverable")
-  incidentRecord  IncidentRecord?
+  deliverables   Deliverable[]   @relation("TaskDeliverable")
+  incidentRecord IncidentRecord?
+  changeRecord   ChangeRecord?
 
   @@index([annualPlanId])
   @@index([monthlyGoalId])
@@ -390,6 +392,58 @@ model IncidentRecord {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("incident_records")
+}
+
+// ═══════════════════════════════════════
+// 變更管理紀錄 (Issue #858)
+// ═══════════════════════════════════════
+
+enum CMChangeType {
+  NORMAL      // 需要 CAB 核准
+  STANDARD    // 預核准（照 SOP 執行）
+  EMERGENCY   // 緊急變更（事後補單）
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ChangeStatus {
+  DRAFT            // 草稿
+  PENDING_APPROVAL // 待核准
+  APPROVED         // 已核准待執行
+  IN_PROGRESS      // 執行中
+  VERIFYING        // 驗證中
+  COMPLETED        // 已完成
+  ROLLED_BACK      // 已回滾
+  CANCELLED        // 已取消
+}
+
+model ChangeRecord {
+  id               String       @id @default(cuid())
+  taskId           String       @unique
+  changeNumber     String       @unique  // 自動產生：CHG-YYYY-MMDD-NN
+  type             CMChangeType
+  riskLevel        RiskLevel
+  impactedSystems  String[]     // 受影響系統清單
+  scheduledStart   DateTime?    // 預定開始時間（停機窗口起）
+  scheduledEnd     DateTime?    // 預定結束時間（停機窗口迄）
+  actualStart      DateTime?    // 實際開始時間
+  actualEnd        DateTime?    // 實際結束時間
+  rollbackPlan     String?      // 回滾方案（Markdown）
+  verificationPlan String?      // 驗證計畫
+  status           ChangeStatus @default(DRAFT)
+  cabApprovedBy    String?      // CAB 核准人
+  cabApprovedAt    DateTime?    // CAB 核准時間
+  task             Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([status])
+  @@map("change_records")
 }
 
 // ═══════════════════════════════════════
@@ -824,10 +878,52 @@ model TaskTemplate {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  creator User @relation("TemplateCreator", fields: [creatorId], references: [id])
+  creator        User            @relation("TemplateCreator", fields: [creatorId], references: [id])
+  recurringRules RecurringRule[]
 
   @@index([creatorId])
   @@map("task_templates")
+}
+
+// ═══════════════════════════════════════
+// 定期排程規則 (Issue #862)
+// ═══════════════════════════════════════
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model RecurringRule {
+  id              String              @id @default(cuid())
+  templateId      String?             // 關聯 TaskTemplate（可選）
+  title           String              // Task 標題模板（支援 {date} 變數）
+  description     String?             // Task 描述模板
+  category        TaskCategory        @default(ADMIN)
+  priority        Priority            @default(P2)
+  assigneeId      String?             // 預設 assignee
+  frequency       RecurrenceFrequency
+  dayOfWeek       Int?                // WEEKLY/BIWEEKLY: 0=Sun..6=Sat
+  dayOfMonth      Int?                // MONTHLY: 1-31
+  monthOfYear     Int?                // YEARLY/QUARTERLY: 1-12
+  timeOfDay       String?             // "HH:MM"
+  estimatedHours  Float?
+  isActive        Boolean             @default(true)
+  lastGeneratedAt DateTime?
+  nextDueAt       DateTime?
+  creatorId       String
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  creator  User          @relation("RecurringRuleCreator", fields: [creatorId], references: [id])
+  template TaskTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([isActive, nextDueAt])
+  @@map("recurring_rules")
 }
 
 // ═══════════════════════════════════════
@@ -869,6 +965,7 @@ enum ApprovalType {
   TASK_STATUS_CHANGE
   DELIVERABLE_ACCEPTANCE
   PLAN_MODIFICATION
+  CHANGE_REQUEST
 }
 
 /// 審批請求 — 用於追蹤需要 Manager 核可的操作
