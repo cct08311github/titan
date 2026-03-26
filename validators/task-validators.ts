@@ -7,9 +7,11 @@
 
 export {
   createTaskSchema,
+  createTaskFullSchema,
   updateTaskSchema,
   updateTaskStatusSchema,
   type CreateTaskInput,
+  type CreateTaskFullInput,
   type UpdateTaskInput,
   type UpdateTaskStatusInput,
 } from "./shared/task";
