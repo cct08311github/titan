@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn, useSession } from "next-auth/react";
 import { PASSWORD_POLICY_DESCRIPTION } from "@/lib/password-policy";
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,8 +40,14 @@ export default function ChangePasswordPage() {
         return;
       }
 
-      // Success — redirect to dashboard
+      // Success — re-signin to refresh JWT session (clears mustChangePassword)
+      await signIn("credentials", {
+        username: session?.user?.email || "",
+        password: newPassword,
+        redirect: false,
+      });
       router.push("/dashboard");
+      router.refresh();
     } catch {
       setError("系統錯誤，請稍後再試");
       setLoading(false);
