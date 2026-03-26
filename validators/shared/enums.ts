@@ -68,7 +68,7 @@ export const TimesheetApprovalStatusEnum = z.enum([
 
 // ── User ────────────────────────────────────────────────────────────────────
 
-export const RoleEnum = z.enum(["MANAGER", "ENGINEER"]);
+export const RoleEnum = z.enum(["ADMIN", "MANAGER", "ENGINEER"]);
 
 // ── Inferred TypeScript types ───────────────────────────────────────────────
 
