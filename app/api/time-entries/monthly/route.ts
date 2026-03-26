@@ -35,9 +35,9 @@ export const GET = withManager(async (req: NextRequest) => {
   const startDate = new Date(year, mon - 1, 1);
   const endDate = new Date(year, mon, 0); // last day of month
 
-  // Get all active users
+  // Get active engineers only — managers' time is auto-approved (#928)
   const users = await prisma.user.findMany({
-    where: { isActive: true },
+    where: { isActive: true, role: "ENGINEER" },
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
   });

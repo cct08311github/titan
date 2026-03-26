@@ -73,6 +73,8 @@ export const POST = withAuth(async (req: NextRequest) => {
   }
 
   // Always create entries owned by the caller — ignores any userId in body.
+  // #928: Manager time entries auto-approve (no approval workflow needed)
+  const isManager = session.user.role === "MANAGER" || session.user.role === "ADMIN";
   const entry = await prisma.timeEntry.create({
     data: {
       taskId: taskId || null,
@@ -81,6 +83,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       hours,
       category: (category as TimeCategory) ?? "PLANNED_TASK",
       description: description || null,
+      ...(isManager ? { approvalStatus: "APPROVED", locked: true } : {}),
     },
     include: {
       task: { select: { id: true, title: true, category: true } },
