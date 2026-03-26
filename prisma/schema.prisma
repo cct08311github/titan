@@ -58,6 +58,7 @@ model User {
   approvalReviews          ApprovalRequest[]    @relation("ApprovalApprover")
   timeEntryTemplates       TimeEntryTemplate[]
   timesheetReviews         TimesheetApproval[]  @relation("TimesheetReviewer")
+  assignedGoals            MonthlyGoal[]        @relation("GoalAssignee")
 
   @@map("users")
 }
@@ -185,17 +186,21 @@ model MonthlyGoal {
   month        Int        // 1–12
   title        String
   description  String?
+  assigneeId   String?    // 負責人
   status       GoalStatus @default(NOT_STARTED)
   progressPct  Float      @default(0)
+  completedAt  DateTime?  // 標記完成時間
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
   annualPlan   AnnualPlan  @relation(fields: [annualPlanId], references: [id], onDelete: Cascade)
+  assignee     User?       @relation("GoalAssignee", fields: [assigneeId], references: [id])
   tasks        Task[]
   deliverables Deliverable[] @relation("MonthlyGoalDeliverable")
 
   @@unique([annualPlanId, month, title])
   @@index([annualPlanId])
+  @@index([assigneeId])
   @@map("monthly_goals")
 }
 
@@ -473,7 +478,8 @@ enum TimeCategory {
 enum OvertimeType {
   NONE      // 非加班
   WEEKDAY   // 平日加班
-  HOLIDAY   // 假日加班（國定假日/週末）
+  REST_DAY  // 休息日加班（週末）
+  HOLIDAY   // 國定假日加班
 }
 
 // Phase 2: 工時審核狀態
