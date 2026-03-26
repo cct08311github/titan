@@ -5,7 +5,7 @@ import { X, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, TaskIncidentSection, initialForm } from "./task-detail/index";
-import type { TaskForm } from "./task-detail/index";
+import type { TaskForm, FormErrors } from "./task-detail/index";
 
 type User = { id: string; name: string; avatar?: string | null };
 type MonthlyGoal = { id: string; title: string; month: number };
@@ -22,6 +22,7 @@ type TaskDetail = {
   monthlyGoalId?: string | null;
   dueDate?: string | null;
   estimatedHours?: number | null;
+  tags?: string[];
   subTasks: { id: string; title: string; done: boolean; order: number }[];
   deliverables: {
     id: string;
@@ -48,6 +49,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [users, setUsers] = useState<User[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [form, setForm] = useState<TaskForm>(initialForm);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const updateField = useCallback(
     <K extends keyof TaskForm>(field: K, value: TaskForm[K]) => {
@@ -75,6 +77,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           monthlyGoalId: data.monthlyGoalId ?? "",
           dueDate: data.dueDate ? data.dueDate.split("T")[0] : "",
           estimatedHours: data.estimatedHours?.toString() ?? "",
+          tags: data.tags ?? [],
         });
       }
     } finally {
@@ -88,7 +91,23 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
     fetch("/api/goals").then((r) => r.json()).then((body) => setGoals(extractItems<MonthlyGoal>(body))).catch(() => {});
   }, [loadTask]);
 
+  /** Client-side validation — Issue #804 (K-2) */
+  function validateForm(): FormErrors {
+    const errors: FormErrors = {};
+    if (!form.title.trim()) errors.title = "標題為必填";
+    else if (form.title.length > 200) errors.title = "標題不得超過 200 字元";
+    if (!form.primaryAssigneeId) errors.primaryAssigneeId = "指派人為必填";
+    if (!form.dueDate) errors.dueDate = "到期日為必填";
+    if (form.tags.length === 0) errors.tags = "至少需要一個標籤";
+    return errors;
+  }
+
   async function save() {
+    // Validate before save
+    const errors = validateForm();
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setSaving(true);
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
@@ -105,6 +124,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           monthlyGoalId: form.monthlyGoalId || null,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
           estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
+          tags: form.tags,
         }),
       });
       if (res.ok) {
@@ -167,6 +187,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
               onFieldChange={updateField}
               users={users}
               goals={goals}
+              errors={formErrors}
             />
 
             <TaskIncidentSection

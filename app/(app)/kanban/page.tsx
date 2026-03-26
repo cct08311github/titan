@@ -1,17 +1,33 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+/**
+ * Kanban Page — Issue #803 (K-1)
+ *
+ * Features:
+ * - Drag-and-drop between columns with optimistic update + rollback
+ * - Same-column reordering (position-based)
+ * - Custom column names (persisted in localStorage)
+ * - Keyboard navigation (Tab, Enter, Arrow keys)
+ * - Visual drag feedback (drop indicators, column highlight)
+ * - Activity log integration via API
+ */
+
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Kanban, Loader2, CheckSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
-import { TaskCard, type TaskCardData } from "@/app/components/task-card";
+import { type TaskCardData } from "@/app/components/task-card";
 import { TaskFilters, type TaskFilters as FiltersType } from "@/app/components/task-filters";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { KanbanColumn } from "@/app/components/kanban-column";
+import { calculatePosition } from "@/lib/utils/optimistic-update";
 
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 
-const COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
+const COLUMN_ORDER: TaskStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
+
+const DEFAULT_COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
   { status: "BACKLOG", label: "待辦清單", color: "text-muted-foreground" },
   { status: "TODO", label: "待處理", color: "text-blue-400" },
   { status: "IN_PROGRESS", label: "進行中", color: "text-yellow-400" },
@@ -50,8 +66,29 @@ const PRIORITY_OPTIONS = [
   { value: "P3", label: "P3" },
 ];
 
+const COLUMN_NAMES_KEY = "titan-kanban-column-names";
+
+function loadColumnNames(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const stored = localStorage.getItem(COLUMN_NAMES_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveColumnNames(names: Record<string, string>) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(COLUMN_NAMES_KEY, JSON.stringify(names));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 export default function KanbanPage() {
-  const [tasks, setTasks] = useState<TaskCardData[]>([]);
+  const [tasks, setTasks] = useState<(TaskCardData & { position?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [filters, setFilters] = useState<FiltersType>({ assignee: "", priority: "", category: "" });
@@ -59,11 +96,20 @@ export default function KanbanPage() {
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [movingTask, setMovingTask] = useState<string | null>(null);
+  const [columnNames, setColumnNames] = useState<Record<string, string>>({});
 
   // Bulk selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
+
+  // Snapshot for rollback
+  const tasksSnapshot = useRef<(TaskCardData & { position?: number })[]>([]);
+
+  // Load custom column names from localStorage
+  useEffect(() => {
+    setColumnNames(loadColumnNames());
+  }, []);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
@@ -76,7 +122,7 @@ export default function KanbanPage() {
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
       const body = await res.json();
-      setTasks(extractItems<TaskCardData>(body));
+      setTasks(extractItems<TaskCardData & { position?: number }>(body));
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -97,11 +143,47 @@ export default function KanbanPage() {
       .catch(() => {});
   }, []);
 
-  async function moveTask(taskId: string, newStatus: TaskStatus) {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task || task.status === newStatus) return;
+  // ── Column name management ──────────────────────────────────────────────
 
-    setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: newStatus } : t));
+  const handleColumnNameChange = useCallback((status: TaskStatus, name: string) => {
+    setColumnNames((prev) => {
+      const next = { ...prev, [status]: name };
+      saveColumnNames(next);
+      return next;
+    });
+  }, []);
+
+  // ── Move task between columns (optimistic) ─────────────────────────────
+
+  async function moveTask(taskId: string, newStatus: TaskStatus, targetIndex?: number) {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task || task.status === newStatus) {
+      // Same column reorder
+      if (task && targetIndex !== undefined) {
+        await reorderInColumn(taskId, task.status as TaskStatus, targetIndex);
+      }
+      return;
+    }
+
+    // Snapshot for rollback
+    tasksSnapshot.current = [...tasks];
+
+    // Calculate position for insertion
+    const columnTasks = tasks
+      .filter((t) => t.status === newStatus && t.id !== taskId)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+    const insertIdx = targetIndex ?? columnTasks.length;
+    const prevPos = insertIdx > 0 ? (columnTasks[insertIdx - 1]?.position ?? 0) : null;
+    const nextPos = insertIdx < columnTasks.length ? (columnTasks[insertIdx]?.position ?? 0) : null;
+    const newPosition = calculatePosition(prevPos, nextPos);
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus as TaskCardData["status"], position: newPosition } : t
+      )
+    );
     setMovingTask(taskId);
 
     try {
@@ -111,17 +193,67 @@ export default function KanbanPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) {
-        setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: task.status } : t));
+        // Rollback
+        setTasks(tasksSnapshot.current);
+      } else {
+        // Also update position via reorder API
+        await fetch("/api/tasks/reorder", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: [{ id: taskId, position: newPosition, status: newStatus }],
+          }),
+        });
       }
     } catch {
-      setTasks((prev) => prev.map((t) => t.id === taskId ? { ...t, status: task.status } : t));
+      setTasks(tasksSnapshot.current);
     } finally {
       setMovingTask(null);
     }
   }
 
+  // ── Reorder within same column ────────────────────────────────────────
+
+  async function reorderInColumn(taskId: string, status: TaskStatus, targetIndex: number) {
+    const columnTasks = tasks
+      .filter((t) => t.status === status)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+    const currentIndex = columnTasks.findIndex((t) => t.id === taskId);
+    if (currentIndex === targetIndex || currentIndex === -1) return;
+
+    // Calculate new position
+    const filtered = columnTasks.filter((t) => t.id !== taskId);
+    const prevPos = targetIndex > 0 ? (filtered[targetIndex - 1]?.position ?? 0) : null;
+    const nextPos = targetIndex < filtered.length ? (filtered[targetIndex]?.position ?? 0) : null;
+    const newPosition = calculatePosition(prevPos, nextPos);
+
+    // Snapshot for rollback
+    tasksSnapshot.current = [...tasks];
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, position: newPosition } : t))
+    );
+
+    try {
+      await fetch("/api/tasks/reorder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [{ id: taskId, position: newPosition }],
+        }),
+      });
+    } catch {
+      setTasks(tasksSnapshot.current);
+    }
+  }
+
+  // ── Drag & drop handlers ──────────────────────────────────────────────
+
   function handleDragStart(e: React.DragEvent, taskId: string) {
     e.dataTransfer.setData("taskId", taskId);
+    e.dataTransfer.effectAllowed = "move";
     setDraggingId(taskId);
   }
 
@@ -132,18 +264,72 @@ export default function KanbanPage() {
 
   function handleDragOver(e: React.DragEvent, status: TaskStatus) {
     e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
     setDragOver(status);
+  }
+
+  function handleDragLeave() {
+    setDragOver(null);
   }
 
   function handleDrop(e: React.DragEvent, status: TaskStatus) {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
-    if (taskId) moveTask(taskId, status);
+    if (taskId) {
+      // Calculate target index from drop position
+      const container = e.currentTarget as HTMLElement;
+      const cards = container.querySelectorAll("[data-task-id]");
+      let targetIdx = tasks.filter((t) => t.status === status).length;
+      for (let i = 0; i < cards.length; i++) {
+        const rect = cards[i].getBoundingClientRect();
+        if (e.clientY < rect.top + rect.height / 2) {
+          targetIdx = i;
+          break;
+        }
+      }
+      moveTask(taskId, status, targetIdx);
+    }
     setDragOver(null);
     setDraggingId(null);
   }
 
-  // Bulk selection helpers
+  // ── Keyboard navigation ───────────────────────────────────────────────
+
+  const handleKeyboardMove = useCallback(
+    (taskId: string, direction: "left" | "right") => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const currentIdx = COLUMN_ORDER.indexOf(task.status as TaskStatus);
+      const newIdx = direction === "left" ? currentIdx - 1 : currentIdx + 1;
+      if (newIdx < 0 || newIdx >= COLUMN_ORDER.length) return;
+
+      const newStatus = COLUMN_ORDER[newIdx];
+      moveTask(taskId, newStatus);
+    },
+    [tasks] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const handleKeyboardReorder = useCallback(
+    (taskId: string, direction: "up" | "down") => {
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      const columnTasks = tasks
+        .filter((t) => t.status === task.status)
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+      const currentIdx = columnTasks.findIndex((t) => t.id === taskId);
+      const newIdx = direction === "up" ? currentIdx - 1 : currentIdx + 1;
+      if (newIdx < 0 || newIdx >= columnTasks.length) return;
+
+      reorderInColumn(taskId, task.status as TaskStatus, newIdx);
+    },
+    [tasks] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // ── Bulk selection helpers ────────────────────────────────────────────
+
   function toggleSelect(taskId: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -181,7 +367,13 @@ export default function KanbanPage() {
     }
   }
 
-  const tasksByStatus = (status: TaskStatus) => tasks.filter((t) => t.status === status);
+  // ── Derived data ────────────────────────────────────────────────────────
+
+  const tasksByStatus = (status: TaskStatus) =>
+    tasks
+      .filter((t) => t.status === status)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
   const hasSelection = selectedIds.size > 0;
 
   return (
@@ -312,109 +504,40 @@ export default function KanbanPage() {
           />
         </div>
       ) : (
-        <>
-        {/* Desktop: horizontal scroll board / Mobile: vertical stack */}
         <div
           className="flex-1 flex flex-col md:flex-row gap-3 overflow-y-auto md:overflow-x-auto md:overflow-y-hidden pb-4 min-h-0"
-          tabIndex={0}
           role="region"
           aria-label="看板欄位"
         >
-          {COLUMNS.map(({ status, label, color }) => {
-            const colTasks = tasksByStatus(status);
-            const isOver = dragOver === status;
-            return (
-              <div
-                key={status}
-                className={cn(
-                  "flex flex-col rounded-xl border transition-colors",
-                  // Mobile: full width, no shrink constraint; Desktop: fixed 288px column
-                  "w-full md:w-72 md:flex-shrink-0",
-                  columnBorder[status],
-                  isOver && "ring-1 ring-ring"
-                )}
-                onDragOver={(e) => handleDragOver(e, status)}
-                onDragLeave={() => setDragOver(null)}
-                onDrop={(e) => handleDrop(e, status)}
-              >
-                {/* Column header */}
-                <div className={cn("flex items-center justify-between px-3 py-2.5 rounded-t-xl", columnHeaderBg[status])}>
-                  <div className="flex items-center gap-2">
-                    <span className={cn("text-xs font-semibold uppercase tracking-wider", color)}>
-                      {label}
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums bg-muted/60 px-1.5 py-0.5 rounded">
-                      {colTasks.length}
-                    </span>
-                  </div>
-                  {/* Mobile: status move buttons for touch */}
-                  <span className="md:hidden text-[10px] text-muted-foreground">{colTasks.length} 項</span>
-                </div>
-
-                {/* Cards — on mobile, limit max-height to keep columns scannable */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-[80px] max-h-[50vh] md:max-h-none md:min-h-[120px]">
-                  {colTasks.map((task) => (
-                    <div
-                      key={task.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, task.id)}
-                      onDragEnd={handleDragEnd}
-                      className={cn(
-                        "transition-opacity relative group",
-                        draggingId === task.id && "opacity-40"
-                      )}
-                    >
-                      {/* Checkbox for bulk selection */}
-                      <div
-                        className={cn(
-                          "absolute top-2 left-2 z-10",
-                          hasSelection ? "opacity-100" : "opacity-0 group-hover:opacity-100",
-                          "transition-opacity"
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(task.id)}
-                          onChange={(e) => {
-                            e.stopPropagation();
-                            toggleSelect(task.id);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="h-4 w-4 rounded border-border text-primary cursor-pointer"
-                          aria-label={`選取 ${task.title}`}
-                        />
-                      </div>
-                      <div className={cn(selectedIds.has(task.id) && "ring-2 ring-primary/40 rounded-xl")}>
-                        <TaskCard
-                          task={task}
-                          onClick={() => setSelectedTaskId(task.id)}
-                          isDragging={draggingId === task.id}
-                        />
-                      </div>
-                      {movingTask === task.id && (
-                        <div className="flex justify-center py-1">
-                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {colTasks.length === 0 && (
-                    <div
-                      className={cn(
-                        "flex items-center justify-center h-16 md:h-20 rounded-lg border border-dashed text-xs text-muted-foreground transition-colors",
-                        isOver ? "border-ring bg-accent/30 text-foreground" : "border-border"
-                      )}
-                    >
-                      {isOver ? "放置到此欄" : "尚無任務"}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          {DEFAULT_COLUMNS.map(({ status, label, color }) => (
+            <div key={status} className="group/col">
+              <KanbanColumn
+                status={status}
+                label={label}
+                color={color}
+                borderClass={columnBorder[status]}
+                headerBgClass={columnHeaderBg[status]}
+                tasks={tasksByStatus(status)}
+                draggingId={draggingId}
+                isDragOver={dragOver === status}
+                movingTaskId={movingTask}
+                selectedIds={selectedIds}
+                hasSelection={hasSelection}
+                customName={columnNames[status]}
+                onColumnNameChange={handleColumnNameChange}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onTaskClick={setSelectedTaskId}
+                onToggleSelect={toggleSelect}
+                onKeyboardMove={handleKeyboardMove}
+                onKeyboardReorder={handleKeyboardReorder}
+              />
+            </div>
+          ))}
         </div>
-        </>
       )}
 
       {/* Task detail modal */}
