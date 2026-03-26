@@ -83,7 +83,22 @@ export const updateTaskStatusSchema = z.object({
   status: TaskStatusEnum,
 });
 
+/** Gantt drag schema: update startDate/dueDate from drag interaction — Issue #844 (G-3) */
+export const updateTaskDatesSchema = z.object({
+  startDate: z.string().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
+}).refine(
+  (data) => {
+    if (data.startDate && data.dueDate) {
+      return new Date(data.startDate) <= new Date(data.dueDate);
+    }
+    return true;
+  },
+  { message: "開始日不可晚於到期日", path: ["startDate"] }
+);
+
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type CreateTaskFullInput = z.infer<typeof createTaskFullSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
 export type UpdateTaskStatusInput = z.infer<typeof updateTaskStatusSchema>;
+export type UpdateTaskDatesInput = z.infer<typeof updateTaskDatesSchema>;
