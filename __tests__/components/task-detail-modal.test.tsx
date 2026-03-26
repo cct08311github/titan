@@ -22,6 +22,9 @@ jest.mock("@/app/components/comment-list", () => ({
 jest.mock("@/lib/security/sanitize", () => ({
   sanitizeHtml: (html: string) => html,
 }));
+jest.mock("@/app/components/task-detail/task-change-management-section", () => ({
+  TaskChangeManagementSection: () => <div data-testid="change-management-section" />,
+}));
 
 const MOCK_TASK = {
   id: "task-1",

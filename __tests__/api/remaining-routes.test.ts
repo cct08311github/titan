@@ -17,6 +17,7 @@ import { createMockRequest } from "../utils/test-utils";
 // ── Prisma mock ──────────────────────────────────────────────────────────────
 const mockTask = { findMany: jest.fn() };
 const mockDocument = { findMany: jest.fn() };
+const mockTaskComment = { findMany: jest.fn() };
 const mockKPI = { findMany: jest.fn() };
 const mockUser = { findMany: jest.fn(), findUnique: jest.fn() };
 const mockTimeEntry = { findMany: jest.fn() };
@@ -36,6 +37,7 @@ jest.mock("@/lib/prisma", () => ({
   prisma: {
     task: mockTask,
     document: mockDocument,
+    taskComment: mockTaskComment,
     kPI: mockKPI,
     user: mockUser,
     timeEntry: mockTimeEntry,
@@ -112,8 +114,9 @@ describe("GET /api/search", () => {
     jest.clearAllMocks();
     jest.resetModules();
     mockGetServerSession.mockResolvedValue(MEMBER_SESSION);
-    mockTask.findMany.mockResolvedValue([{ id: "t1", title: "Deploy", status: "TODO", priority: "P1", dueDate: null }]);
+    mockTask.findMany.mockResolvedValue([{ id: "t1", title: "Deploy", status: "TODO", priority: "P1", dueDate: null, description: "Deploy app", updatedAt: new Date() }]);
     mockDocument.findMany.mockResolvedValue([]);
+    mockTaskComment.findMany.mockResolvedValue([]);
     mockKPI.findMany.mockResolvedValue([]);
     mockUser.findMany.mockResolvedValue([]);
   });
@@ -132,16 +135,20 @@ describe("GET /api/search", () => {
     expect(body.data.tasks[0].type).toBe("task");
   });
 
-  it("returns 400 when query is empty", async () => {
+  it("returns 200 with empty results when query is empty", async () => {
     const { GET } = await import("@/app/api/search/route");
     const res = await GET(createMockRequest("/api/search", { searchParams: { q: "" } }));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.tasks).toHaveLength(0);
   });
 
-  it("returns 400 when query param is missing", async () => {
+  it("returns 200 with empty results when query param is missing", async () => {
     const { GET } = await import("@/app/api/search/route");
     const res = await GET(createMockRequest("/api/search"));
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.data.tasks).toHaveLength(0);
   });
 
   it("returns 401 when unauthenticated", async () => {
