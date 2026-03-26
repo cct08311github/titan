@@ -201,6 +201,7 @@ model AnnualPlan {
   year               Int
   title              String
   description        String?
+  vision             String?   // 年度願景/使命描述
   implementationPlan String?   // 執行計畫說明（Markdown）
   progressPct        Float     @default(0)
   copiedFromYear     Int?
@@ -233,8 +234,9 @@ model MonthlyGoal {
   month        Int        // 1–12
   title        String
   description  String?
-  assigneeId   String?    // 負責人
-  status       GoalStatus @default(NOT_STARTED)
+  assigneeId         String?    // 負責人
+  retrospectiveNote  String?    // 月底復盤筆記
+  status             GoalStatus @default(NOT_STARTED)
   progressPct  Float      @default(0)
   completedAt  DateTime?  // 標記完成時間
   createdAt    DateTime   @default(now())

@@ -63,6 +63,7 @@ export const PUT = withManager(async (
       ...(body.status !== undefined && { status: body.status }),
       ...(body.progressPct !== undefined && { progressPct: body.progressPct }),
       ...(body.assigneeId !== undefined && { assigneeId: body.assigneeId || null }),
+      ...(body.retrospectiveNote !== undefined && { retrospectiveNote: body.retrospectiveNote }),
       ...(completedAt !== undefined && { completedAt }),
     },
     include: {
