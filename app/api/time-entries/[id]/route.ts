@@ -8,9 +8,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TimeCategory } from "@prisma/client";
-import { ForbiddenError, NotFoundError } from "@/services/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateTimeEntrySchema } from "@/validators/time-entry-validators";
+import { validateDailyLimit } from "@/validators/shared/time-entry";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
@@ -40,6 +41,24 @@ export const PUT = withAuth(async (
 
   const raw = await req.json();
   const { taskId, date, hours, category, description } = validateBody(updateTimeEntrySchema, raw);
+
+  // T-1: Enforce daily 24hr limit when hours change
+  if (hours !== undefined) {
+    const targetDate = date ? new Date(date) : existing.date;
+    const dayEntries = await prisma.timeEntry.findMany({
+      where: {
+        userId: callerId,
+        date: targetDate,
+        id: { not: id }, // exclude current entry
+      },
+      select: { hours: true },
+    });
+    const dayTotal = dayEntries.reduce((sum, e) => sum + e.hours, 0);
+    const limitError = validateDailyLimit(dayTotal, hours);
+    if (limitError) {
+      throw new ValidationError(limitError);
+    }
+  }
 
   const updates: Record<string, unknown> = {};
   if (taskId !== undefined) updates.taskId = taskId || null;
