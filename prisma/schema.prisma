@@ -107,28 +107,68 @@ enum KPIStatus {
   CANCELLED
 }
 
-model KPI {
-  id          String    @id @default(cuid())
-  year        Int
-  code        String    // e.g., "KPI-2026-01"
-  title       String
-  description String?
-  target      Float     // 目標值（如 95.0 代表 95%）
-  actual      Float     @default(0)
-  weight      Float     @default(1)
-  status      KPIStatus @default(ACTIVE)
-  autoCalc    Boolean   @default(false)
-  createdBy   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+enum KPIFrequency {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
 
-  creator      User          @relation("KPICreator", fields: [createdBy], references: [id])
+enum KPIVisibility {
+  ALL        // 全員可見
+  MANAGER    // 僅 Manager + Admin 可見
+}
+
+model KPI {
+  id             String        @id @default(cuid())
+  year           Int
+  code           String        // e.g., "KPI-2026-01"
+  title          String
+  description    String?
+  measureMethod  String?       // 衡量方式描述
+  target         Float         // 目標值（如 95.0 代表 95%）
+  actual         Float         @default(0)
+  weight         Float         @default(1) // 權重百分比 (0-100)
+  frequency      KPIFrequency  @default(MONTHLY)  // 填報頻率
+  minValue       Float?        // 值域最小值
+  maxValue       Float?        // 值域最大值
+  unit           String?       // 單位（%、次、小時等）
+  visibility     KPIVisibility @default(ALL)       // 可視權限
+  status         KPIStatus     @default(DRAFT)     // 預設草稿
+  autoCalc       Boolean       @default(false)
+  createdBy      String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  creator      User              @relation("KPICreator", fields: [createdBy], references: [id])
   taskLinks    KPITaskLink[]
-  deliverables Deliverable[] @relation("KPIDeliverable")
+  deliverables Deliverable[]     @relation("KPIDeliverable")
+  achievements KPIAchievement[]
 
   @@unique([year, code])
+  @@unique([year, title])
   @@index([createdBy])
+  @@index([status])
+  @@index([frequency])
   @@map("kpis")
+}
+
+// KPI 填報記錄 (KP-2: Issue #822)
+model KPIAchievement {
+  id          String   @id @default(cuid())
+  kpiId       String
+  period      String   // e.g., "2026-01", "2026-Q1", "2026"
+  actualValue Float
+  note        String?
+  reportedBy  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  kpi      KPI  @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  @@unique([kpiId, period])
+  @@index([kpiId])
+  @@index([reportedBy])
+  @@map("kpi_achievements")
 }
 
 model KPITaskLink {

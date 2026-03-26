@@ -51,6 +51,17 @@ export const KpiStatusEnum = z.enum([
   "CANCELLED",
 ]);
 
+export const KpiFrequencyEnum = z.enum([
+  "MONTHLY",
+  "QUARTERLY",
+  "YEARLY",
+]);
+
+export const KpiVisibilityEnum = z.enum([
+  "ALL",
+  "MANAGER",
+]);
+
 // ── Time Entry ──────────────────────────────────────────────────────────────
 
 export const TimeCategoryEnum = z.enum([
@@ -85,3 +96,5 @@ export type TimeCategory = z.infer<typeof TimeCategoryEnum>;
 export type TimesheetApprovalStatus = z.infer<typeof TimesheetApprovalStatusEnum>;
 export type Role = z.infer<typeof RoleEnum>;
 export type IncidentSeverity = z.infer<typeof IncidentSeverityEnum>;
+export type KpiFrequency = z.infer<typeof KpiFrequencyEnum>;
+export type KpiVisibility = z.infer<typeof KpiVisibilityEnum>;
