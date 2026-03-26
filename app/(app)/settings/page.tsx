@@ -5,6 +5,7 @@ import { User, Bell, Lock, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { PageError, TabSkeleton } from "@/app/components/page-states";
+import { NotificationPreferences } from "@/app/components/notification-preferences";
 
 interface UserProfile {
   id: string;
@@ -205,42 +206,13 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {activeTab === "notifications" && (
-          <div className="max-w-lg space-y-4">
-            <p className="text-sm text-muted-foreground">
-              選擇要接收的通知類型
-            </p>
-            <div className="space-y-2">
-              {Object.entries(NOTIFICATION_TYPE_LABELS).map(([type, label]) => {
-                const pref = prefs.find((p) => p.type === type);
-                const isEnabled = pref?.enabled ?? true;
-                return (
-                  <div
-                    key={type}
-                    className="flex items-center justify-between px-4 py-3 rounded-lg border border-border"
-                  >
-                    <span className="text-sm font-medium">{label}</span>
-                    <button
-                      onClick={() => togglePref(type, !isEnabled)}
-                      className={cn(
-                        "relative w-10 h-5 rounded-full transition-colors",
-                        isEnabled ? "bg-primary" : "bg-muted"
-                      )}
-                      role="switch"
-                      aria-checked={isEnabled}
-                      aria-label={`${label} 通知`}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-                          isEnabled && "translate-x-5"
-                        )}
-                      />
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
+        {activeTab === "notifications" && profile && (
+          <div className="max-w-lg">
+            <NotificationPreferences
+              userId={profile.id}
+              preferences={prefs}
+              onUpdate={togglePref}
+            />
           </div>
         )}
 

@@ -458,7 +458,38 @@ export class NotificationService {
   }
 
   /**
+   * Issue #846 (S-2): Load user notification preferences and build
+   * a lookup map. Types not in the map default to enabled.
+   */
+  private async loadPreferences(): Promise<Map<string, boolean>> {
+    const prefs = await this.prisma.notificationPreference.findMany({
+      select: { userId: true, type: true, enabled: true },
+    });
+    const map = new Map<string, boolean>();
+    for (const p of prefs) {
+      map.set(`${p.userId}:${p.type}`, p.enabled);
+    }
+    return map;
+  }
+
+  /**
+   * Filter notification payloads based on user preferences.
+   * If user has explicitly disabled a notification type, skip it.
+   * Defaults to enabled if no preference is set.
+   */
+  private filterByPreferences(
+    items: NotificationInput[],
+    prefMap: Map<string, boolean>
+  ): NotificationInput[] {
+    return items.filter((item) => {
+      const key = `${item.userId}:${item.type}`;
+      return prefMap.get(key) !== false; // default: enabled
+    });
+  }
+
+  /**
    * Full pipeline: build all notification payloads and persist them.
+   * Respects user notification preferences (Issue #846, S-2).
    * Returns counts for observability.
    */
   async generateAll(now: Date = new Date()): Promise<{
@@ -469,6 +500,7 @@ export class NotificationService {
     timesheetReminders: number;
   }> {
     const existingKeys = await this.getExistingKeys();
+    const prefMap = await this.loadPreferences();
 
     const [dueSoonTaskItems, milestoneItems, overdueItems, timesheetItems] = await Promise.all([
       this.buildDueSoonTaskNotifications(now, existingKeys),
@@ -477,7 +509,13 @@ export class NotificationService {
       this.buildTimesheetReminders(now, existingKeys),
     ]);
 
-    const toCreate = [...dueSoonTaskItems, ...milestoneItems, ...overdueItems, ...timesheetItems];
+    // Apply preference filtering — Issue #846 (S-2)
+    const filteredDueSoon = this.filterByPreferences(dueSoonTaskItems, prefMap);
+    const filteredMilestones = this.filterByPreferences(milestoneItems, prefMap);
+    const filteredOverdue = this.filterByPreferences(overdueItems, prefMap);
+    const filteredTimesheet = this.filterByPreferences(timesheetItems, prefMap);
+
+    const toCreate = [...filteredDueSoon, ...filteredMilestones, ...filteredOverdue, ...filteredTimesheet];
 
     let created = 0;
     if (toCreate.length > 0) {
@@ -489,10 +527,10 @@ export class NotificationService {
 
     return {
       created,
-      dueSoonTasks: dueSoonTaskItems.length,
-      dueSoonMilestones: milestoneItems.length,
-      overdueTasks: overdueItems.length,
-      timesheetReminders: timesheetItems.length,
+      dueSoonTasks: filteredDueSoon.length,
+      dueSoonMilestones: filteredMilestones.length,
+      overdueTasks: filteredOverdue.length,
+      timesheetReminders: filteredTimesheet.length,
     };
   }
 }
