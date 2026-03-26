@@ -88,6 +88,11 @@ describe("TaskDetailModal", () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument();
     });
+    // Click the X button — after adding tabs, the button index changed
+    // Find the close button by its position after Save and tab buttons
+    const buttons = screen.getAllByRole("button");
+    // Close button is after: 詳情 tab, 變更歷史 tab, Save button — so index 3
+    const closeBtn = buttons[3];
     // Click the X button — find it by looking for all buttons and picking the last one in the header
     const buttons = screen.getAllByRole("button");
     // The X button is after Save, tabs (詳情, 評論), so find by iterating from end

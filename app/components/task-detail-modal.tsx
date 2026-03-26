@@ -10,11 +10,13 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { X, Save, Loader2, History, FileText } from "lucide-react";
 import { X, Save, Loader2, MessageSquare, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, TaskIncidentSection, initialForm } from "./task-detail/index";
 import type { TaskForm } from "./task-detail/index";
+import { TaskChangeHistory } from "./task-change-history";
 import { MarkdownEditor } from "./markdown-editor";
 import { CommentList } from "./comment-list";
 import type { TaskForm, FormErrors } from "./task-detail/index";
@@ -55,6 +57,7 @@ interface TaskDetailModalProps {
   onUpdated?: () => void;
 }
 
+type ModalTab = "detail" | "history";
 type DetailTab = "detail" | "comments";
 
 export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalProps) {
@@ -64,6 +67,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [users, setUsers] = useState<User[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [form, setForm] = useState<TaskForm>(initialForm);
+  const [activeTab, setActiveTab] = useState<ModalTab>("detail");
   const [activeTab, setActiveTab] = useState<DetailTab>("detail");
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -178,6 +182,9 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
       <div className="bg-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card z-10 rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
+            {/* Tabs — Issue #806 (K-6) */}
           <div className="flex items-center gap-4">
             <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
             {/* Tabs — Issue #805 */}
@@ -195,6 +202,10 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                 詳情
               </button>
               <button
+                onClick={() => setActiveTab("history")}
+                className={cn(
+                  "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
+                  activeTab === "history"
                 onClick={() => setActiveTab("comments")}
                 className={cn(
                   "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
@@ -203,6 +214,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
               >
+                <History className="h-3 w-3" />
+                變更歷史
                 <MessageSquare className="h-3 w-3" />
                 評論
                 {commentCount > 0 && (
@@ -248,6 +261,17 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                   users={users}
                   goals={goals}
                 />
+
+                <TaskIncidentSection
+                  taskId={taskId}
+                  category={form.category}
+                />
+
+                <TaskSubtaskSection
+                  subtasks={task.subTasks}
+                  taskId={taskId}
+                />
+
             <TaskFormFields
               form={form}
               onFieldChange={updateField}
@@ -288,6 +312,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                 />
               </>
             ) : (
+              /* Change History tab — Issue #806 (K-6) */
+              <TaskChangeHistory taskId={taskId} />
               /* Comments tab — Issue #805 (K-3a) */
               <CommentList
                 taskId={taskId}
