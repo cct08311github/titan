@@ -14,6 +14,7 @@ declare module "next-auth" {
       image?: string | null;
       role: string;
       mustChangePassword?: boolean;
+      passwordChangedAt?: string | null; // Issue #834: password expiry tracking
     } & DefaultSession["user"];
   }
 
@@ -21,6 +22,7 @@ declare module "next-auth" {
     id: string;
     role: string;
     mustChangePassword?: boolean;
+    passwordChangedAt?: string; // Issue #834
   }
 }
 
@@ -29,6 +31,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     mustChangePassword?: boolean;
+    passwordChangedAt?: string | null; // Issue #834
     sessionId?: string;
   }
 }
