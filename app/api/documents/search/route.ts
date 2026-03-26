@@ -3,15 +3,22 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
+type SearchResult = {
+  id: string;
+  title: string;
+  slug: string;
+  parentId: string | null;
+  snippet: string;
+};
+
 export const GET = withAuth(async (req: NextRequest) => {
 
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim();
   if (!q) return success([]);
 
-  const results = await prisma.$queryRaw<
-    { id: string; title: string; slug: string; parentId: string | null; snippet: string }[]
-  >`
+  // Try PostgreSQL full-text search first (works well for English/space-delimited text)
+  const ftsResults = await prisma.$queryRaw<SearchResult[]>`
     SELECT
       id,
       title,
@@ -24,5 +31,38 @@ export const GET = withAuth(async (req: NextRequest) => {
     LIMIT 20
   `;
 
-  return success(results);
+  // If FTS returned results, use them
+  if (ftsResults.length > 0) {
+    return success(ftsResults);
+  }
+
+  // Fallback: ILIKE search for CJK text (Chinese/Japanese/Korean)
+  // PostgreSQL full-text search with 'simple' config tokenizes by whitespace,
+  // which doesn't work for CJK languages where words aren't space-separated.
+  const likeResults = await prisma.document.findMany({
+    where: {
+      OR: [
+        { title: { contains: q, mode: "insensitive" } },
+        { content: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      parentId: true,
+      content: true,
+    },
+    take: 20,
+  });
+
+  const mapped: SearchResult[] = likeResults.map((doc) => ({
+    id: doc.id,
+    title: doc.title,
+    slug: doc.slug,
+    parentId: doc.parentId,
+    snippet: doc.content.substring(0, 200),
+  }));
+
+  return success(mapped);
 });
