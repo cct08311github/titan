@@ -39,6 +39,7 @@ export const mockPrisma = {
   deliverable: createMockModel(),
   auditLog: createMockModel(),
   timeEntryTemplate: createMockModel(),
+  notificationLog: createMockModel(),
   monitoringAlert: createMockModel(),
   kPIHistory: createMockModel(),
   recurringRule: createMockModel(),
