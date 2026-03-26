@@ -338,6 +338,7 @@ model Task {
   addedDate         DateTime?
   addedReason       String?
   addedSource       String?
+  slaDeadline       DateTime?    // Issue #860: SLA 截止時間
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -755,6 +756,7 @@ enum NotificationType {
   TASK_CHANGED
   TIMESHEET_REMINDER
   TIMESHEET_REJECTED    // Phase 2: 工時被駁回通知
+  SLA_EXPIRING          // Issue #860: SLA 即將到期
 }
 
 model Notification {
