@@ -1,4 +1,4 @@
-import { PrismaClient, MilestoneStatus } from "@prisma/client";
+import { PrismaClient, MilestoneStatus, MilestoneType } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
 
 export interface ListMilestonesFilter {
@@ -9,6 +9,7 @@ export interface CreateMilestoneInput {
   annualPlanId: string;
   title: string;
   description?: string | null;
+  type?: MilestoneType | string;
   plannedStart?: Date | null;
   plannedEnd: Date;
   order?: number;
@@ -17,6 +18,7 @@ export interface CreateMilestoneInput {
 export interface UpdateMilestoneInput {
   title?: string;
   description?: string | null;
+  type?: MilestoneType | string;
   plannedStart?: Date | null;
   plannedEnd?: Date;
   actualStart?: Date | null;
@@ -70,6 +72,7 @@ export class MilestoneService {
         annualPlanId: input.annualPlanId,
         title: input.title,
         description: input.description ?? null,
+        type: (input.type ?? "CUSTOM") as MilestoneType,
         plannedStart: input.plannedStart ?? null,
         plannedEnd: input.plannedEnd,
         order: input.order ?? 0,
@@ -87,6 +90,7 @@ export class MilestoneService {
     const updates: Record<string, unknown> = {};
     if (input.title !== undefined) updates.title = input.title;
     if (input.description !== undefined) updates.description = input.description;
+    if (input.type !== undefined) updates.type = input.type;
     if (input.plannedStart !== undefined) updates.plannedStart = input.plannedStart;
     if (input.plannedEnd !== undefined) updates.plannedEnd = input.plannedEnd;
     if (input.actualStart !== undefined) updates.actualStart = input.actualStart;

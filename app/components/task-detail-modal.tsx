@@ -13,7 +13,7 @@ import { useState, useEffect, useCallback } from "react";
 import { X, Save, Loader2, History, MessageSquare, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
-import { TaskFormFields, TaskSubtaskSection, TaskAttachmentSection, TaskDeliverableSection, TaskIncidentSection, initialForm } from "./task-detail/index";
+import { TaskFormFields, TaskSubtaskSection, TaskAttachmentSection, TaskDeliverableSection, TaskIncidentSection, TaskDocumentSection, initialForm } from "./task-detail/index";
 import type { TaskForm, FormErrors } from "./task-detail/index";
 import { TaskChangeHistory } from "./task-change-history";
 import { MarkdownEditor } from "./markdown-editor";
@@ -291,6 +291,10 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                 <TaskAttachmentSection
                   taskId={taskId}
                   attachments={(task as unknown as { attachments?: { id: string; fileName: string; fileSize: number; mimeType: string; storagePath: string; uploaderId: string; createdAt: string; uploader?: { id: string; name: string } | null }[] }).attachments ?? []}
+                />
+
+                <TaskDocumentSection
+                  taskId={taskId}
                 />
 
                 <TaskDeliverableSection

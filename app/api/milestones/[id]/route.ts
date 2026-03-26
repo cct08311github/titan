@@ -29,6 +29,7 @@ export const PUT = withAuth(async (
   const milestone = await getService().updateMilestone(id, {
     title: data.title,
     description: data.description,
+    type: data.type,
     plannedStart: data.plannedStart,
     plannedEnd: data.plannedEnd,
     actualStart: data.actualStart,

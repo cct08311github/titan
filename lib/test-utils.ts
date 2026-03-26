@@ -36,6 +36,7 @@ export function createMockPrisma(): MockPrismaClient {
     milestone: createMockModel(),
     subTask: createMockModel(),
     taskComment: createMockModel(),
+    taskDocument: createMockModel(),
     permission: createMockModel(),
     notification: createMockModel(),
     deliverable: createMockModel(),
