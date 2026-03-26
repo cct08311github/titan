@@ -70,6 +70,7 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground hidden sm:table-cell">結束</th>
             <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">工時</th>
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">任務</th>
+            <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground hidden lg:table-cell">子任務</th>
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground">分類</th>
             <th className="text-left px-3 py-2.5 text-xs font-medium text-muted-foreground hidden md:table-cell">備註</th>
             {onDelete && (
@@ -102,6 +103,9 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
                 <td className="px-3 py-2 text-xs text-foreground max-w-[200px] truncate" title={task?.title ?? "自由工時"}>
                   {task?.title ?? "自由工時"}
                 </td>
+                <td className="px-3 py-2 text-xs text-muted-foreground max-w-[150px] truncate hidden lg:table-cell">
+                  {(entry as Record<string, unknown>).subTask ? ((entry as Record<string, unknown>).subTask as { title: string })?.title : "—"}
+                </td>
                 <td className="px-3 py-2">
                   <span className={cn("inline-block px-2 py-0.5 text-xs rounded-md border", getCategoryColor(entry.category))}>
                     {getCategoryLabel(entry.category)}
@@ -133,7 +137,7 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
             <td className="px-3 py-2.5 text-right text-xs font-bold text-foreground tabular-nums">
               {safeFixed(totalHours, 1)}h
             </td>
-            <td colSpan={onDelete ? 4 : 3} />
+            <td colSpan={onDelete ? 5 : 4} />
           </tr>
         </tfoot>
       </table>

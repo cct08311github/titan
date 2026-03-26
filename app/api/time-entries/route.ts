@@ -44,6 +44,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     where,
     include: {
       task: { select: { id: true, title: true, category: true } },
+      subTask: { select: { id: true, title: true } },  // Issue #933
     },
     orderBy: [{ date: "asc" }, { createdAt: "asc" }],
   });
@@ -55,7 +56,21 @@ export const POST = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
 
   const raw = await req.json();
-  const { taskId, date, hours, category, description } = validateBody(createTimeEntrySchema, raw);
+  const { taskId, date, hours, category, description, subTaskId } = validateBody(createTimeEntrySchema, raw);
+
+  // Issue #933: validate subTaskId belongs to the specified taskId
+  if (subTaskId) {
+    if (!taskId) {
+      throw new ValidationError("選擇子任務時必須先指定主任務");
+    }
+    const subTask = await prisma.subTask.findUnique({
+      where: { id: subTaskId },
+      select: { taskId: true },
+    });
+    if (!subTask || subTask.taskId !== taskId) {
+      throw new ValidationError("子任務不屬於所選主任務");
+    }
+  }
 
   // T-1: Enforce daily 24hr limit — sum existing entries for this date
   const targetDate = new Date(date);
@@ -78,6 +93,7 @@ export const POST = withAuth(async (req: NextRequest) => {
   const entry = await prisma.timeEntry.create({
     data: {
       taskId: taskId || null,
+      subTaskId: subTaskId || null,       // Issue #933
       userId: session.user.id,
       date: new Date(date),
       hours,
@@ -87,6 +103,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     },
     include: {
       task: { select: { id: true, title: true, category: true } },
+      subTask: { select: { id: true, title: true } },  // Issue #933
     },
   });
 

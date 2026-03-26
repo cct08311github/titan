@@ -19,6 +19,7 @@ export type OvertimeType = "NONE" | "WEEKDAY" | "REST_DAY" | "HOLIDAY";
 export type TimeEntry = {
   id: string;
   taskId: string | null;
+  subTaskId?: string | null;              // Issue #933
   date: string;
   hours: number;
   startTime?: string | null;
@@ -31,6 +32,12 @@ export type TimeEntry = {
   sortOrder?: number;
   locked?: boolean;
   task?: { id: string; title: string; category?: string } | null;
+  subTask?: { id: string; title: string } | null;  // Issue #933
+};
+
+export type SubTaskOption = {
+  id: string;
+  title: string;
 };
 
 export type TaskOption = {
@@ -67,6 +74,9 @@ export function useTimesheet(userFilter?: string) {
   const [tasks, setTasks] = useState<TaskOption[]>([]);
   const [stats, setStats] = useState<StatsData | null>(null);
 
+  // Issue #933: subtask cache keyed by taskId
+  const [subTasksMap, setSubTasksMap] = useState<Map<string, SubTaskOption[]>>(new Map());
+
   // Loading states
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -79,6 +89,23 @@ export function useTimesheet(userFilter?: string) {
       .then((body) => setTasks(extractItems<TaskOption>(body)))
       .catch(() => {});
   }, []);
+
+  // Issue #933: fetch subtasks for a task (cached)
+  const fetchSubTasks = useCallback(async (taskId: string): Promise<SubTaskOption[]> => {
+    const cached = subTasksMap.get(taskId);
+    if (cached) return cached;
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`);
+      if (!res.ok) return [];
+      const body = await res.json();
+      const task = extractData<{ subTasks?: SubTaskOption[] }>(body);
+      const subs = task?.subTasks ?? [];
+      setSubTasksMap((prev) => new Map(prev).set(taskId, subs));
+      return subs;
+    } catch {
+      return [];
+    }
+  }, [subTasksMap]);
 
   // Load entries for the week
   const loadEntries = useCallback(async () => {
@@ -152,10 +179,12 @@ export function useTimesheet(userFilter?: string) {
     category: string,
     description: string,
     overtimeType: OvertimeType,
-    existingId?: string
+    existingId?: string,
+    subTaskId?: string | null            // Issue #933
   ) {
     const payload = {
       taskId,
+      subTaskId: subTaskId ?? null,      // Issue #933
       date,
       hours,
       category,
@@ -294,6 +323,8 @@ export function useTimesheet(userFilter?: string) {
     taskRows,
     tasks,
     stats,
+    subTasksMap,                           // Issue #933
+    fetchSubTasks,                         // Issue #933
 
     // Loading
     loading,

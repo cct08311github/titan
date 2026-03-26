@@ -26,6 +26,7 @@ export const createTimeEntrySchema = z.object({
   date: z.string().date(),
   hours: hoursSchema,
   taskId: z.string().nullish(),
+  subTaskId: z.string().nullish(),          // Issue #933: optional subtask
   category: TimeCategoryEnum.optional().default("PLANNED_TASK"),
   description: z.string().nullish(),
 });
@@ -34,6 +35,7 @@ export const updateTimeEntrySchema = z.object({
   date: z.string().date().optional(),
   hours: hoursSchema.optional(),
   taskId: z.string().optional(),
+  subTaskId: z.string().nullish(),          // Issue #933: optional subtask
   category: TimeCategoryEnum.optional(),
   description: z.string().optional(),
 });

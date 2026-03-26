@@ -8,6 +8,7 @@ export type OvertimeType = "NONE" | "WEEKDAY" | "REST_DAY" | "HOLIDAY";
 export type TimeEntry = {
   id: string;
   taskId: string | null;
+  subTaskId?: string | null;              // Issue #933
   date: string;
   hours: number;
   startTime?: string | null;
@@ -17,6 +18,7 @@ export type TimeEntry = {
   overtimeType?: OvertimeType;
   category: string;
   description: string | null;
+  subTask?: { id: string; title: string } | null;  // Issue #933
 };
 
 const OVERTIME_OPTIONS: { value: OvertimeType; label: string }[] = [
@@ -42,6 +44,7 @@ function getCatStyle(cat: string) {
 type TimeEntryCellProps = {
   entry?: TimeEntry;
   taskId: string | null;
+  subTaskId?: string | null;              // Issue #933
   date: string;
   onSave: (taskId: string | null, date: string, hours: number, category: string, description: string, existingId?: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;

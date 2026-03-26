@@ -49,7 +49,22 @@ export const PUT = withAuth(async (
   }
 
   const raw = await req.json();
-  const { taskId, date, hours, category, description } = validateBody(updateTimeEntrySchema, raw);
+  const { taskId, date, hours, category, description, subTaskId } = validateBody(updateTimeEntrySchema, raw);
+
+  // Issue #933: validate subTaskId belongs to the resolved taskId
+  if (subTaskId) {
+    const resolvedTaskId = taskId !== undefined ? taskId : existing.taskId;
+    if (!resolvedTaskId) {
+      throw new ValidationError("選擇子任務時必須先指定主任務");
+    }
+    const subTask = await prisma.subTask.findUnique({
+      where: { id: subTaskId },
+      select: { taskId: true },
+    });
+    if (!subTask || subTask.taskId !== resolvedTaskId) {
+      throw new ValidationError("子任務不屬於所選主任務");
+    }
+  }
 
   // T-1: Enforce daily 24hr limit when hours change
   if (hours !== undefined) {
@@ -71,6 +86,7 @@ export const PUT = withAuth(async (
 
   const updates: Record<string, unknown> = {};
   if (taskId !== undefined) updates.taskId = taskId || null;
+  if (subTaskId !== undefined) updates.subTaskId = subTaskId || null;  // Issue #933
   if (date !== undefined) updates.date = new Date(date);
   if (hours !== undefined) updates.hours = hours;
   if (category !== undefined) updates.category = category as TimeCategory;
@@ -86,6 +102,7 @@ export const PUT = withAuth(async (
     data: updates,
     include: {
       task: { select: { id: true, title: true, category: true } },
+      subTask: { select: { id: true, title: true } },  // Issue #933
     },
   });
 
