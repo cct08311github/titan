@@ -17,7 +17,7 @@ import { Plus, Kanban, Loader2, CheckSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
 import { type TaskCardData } from "@/app/components/task-card";
-import { TaskFilters, type TaskFilters as FiltersType } from "@/app/components/task-filters";
+import { TaskFilters, type TaskFilters as FiltersType, emptyFilters, hasActiveFilters } from "@/app/components/task-filters";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { KanbanColumn } from "@/app/components/kanban-column";
@@ -91,7 +91,8 @@ export default function KanbanPage() {
   const [tasks, setTasks] = useState<(TaskCardData & { position?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<FiltersType>({ assignee: "", priority: "", category: "" });
+  const [allTasks, setAllTasks] = useState<(TaskCardData & { position?: number })[]>([]);
+  const [filters, setFilters] = useState<FiltersType>({ ...emptyFilters });
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -122,7 +123,29 @@ export default function KanbanPage() {
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
       const body = await res.json();
-      setTasks(extractItems<TaskCardData & { position?: number }>(body));
+      const fetched = extractItems<TaskCardData & { position?: number; tags?: string[]; dueDate?: string | null }>(body);
+      setAllTasks(fetched);
+
+      // Client-side AND filtering for tags and dueDate range
+      let filtered = fetched;
+      if (filters.tags.length > 0) {
+        filtered = filtered.filter((t) =>
+          filters.tags.every((tag) => (t as unknown as { tags?: string[] }).tags?.includes(tag))
+        );
+      }
+      if (filters.dueDateFrom) {
+        filtered = filtered.filter((t) => {
+          const due = (t as unknown as { dueDate?: string | null }).dueDate;
+          return due && due.split("T")[0] >= filters.dueDateFrom;
+        });
+      }
+      if (filters.dueDateTo) {
+        filtered = filtered.filter((t) => {
+          const due = (t as unknown as { dueDate?: string | null }).dueDate;
+          return due && due.split("T")[0] <= filters.dueDateTo;
+        });
+      }
+      setTasks(filtered);
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -405,7 +428,13 @@ export default function KanbanPage() {
 
       {/* Filters */}
       <div className="flex-shrink-0">
-        <TaskFilters filters={filters} onChange={setFilters} />
+        <TaskFilters
+          filters={filters}
+          onChange={setFilters}
+          totalCount={allTasks.length}
+          filteredCount={tasks.length}
+          syncUrl
+        />
       </div>
 
       {/* Bulk action bar */}
@@ -495,7 +524,7 @@ export default function KanbanPage() {
         <div className="flex-1">
           <PageError message={fetchError} onRetry={fetchTasks} />
         </div>
-      ) : tasks.length === 0 && !filters.assignee && !filters.priority && !filters.category ? (
+      ) : tasks.length === 0 && !hasActiveFilters(filters) ? (
         <div className="flex-1">
           <PageEmpty
             icon={<Kanban className="h-10 w-10" />}
