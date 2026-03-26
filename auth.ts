@@ -183,7 +183,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.role = (user as { id: string; role: string }).role;
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
-        token.passwordChangedAt = (user as { passwordChangedAt?: Date | null }).passwordChangedAt?.toISOString() ?? null;
+        token.passwordChangedAt = (user as { passwordChangedAt?: string | null }).passwordChangedAt ?? null;
         // Issue #184: generate session ID and register (invalidates previous session)
         const sessionId = crypto.randomUUID();
         token.sessionId = sessionId;
