@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle } from "lucide-react";
+import { OverdueAlert } from "@/app/components/overdue-alert";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -694,6 +695,13 @@ export default function DashboardPage() {
           {isManager ? "主管視角 — 團隊整體狀況" : "工程師視角 — 我的工作狀況"}
         </p>
       </div>
+
+      {/* ── Overdue Alert (Issue #809, top of dashboard) ── */}
+      {status !== "loading" && (
+        <div className="mb-6">
+          <OverdueAlert />
+        </div>
+      )}
 
       {status === "loading" ? (
         <PageLoading />
