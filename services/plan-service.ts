@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
+import { calculatePlanProgress } from "@/lib/progress-calc";
 
 /**
  * Shift a Date by a given number of years, preserving month/day.
@@ -42,7 +43,7 @@ export class PlanService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async listPlans(filter: ListPlansFilter) {
-    return this.prisma.annualPlan.findMany({
+    const plans = await this.prisma.annualPlan.findMany({
       where: filter.year ? { year: filter.year } : undefined,
       include: {
         creator: { select: { id: true, name: true } },
@@ -55,6 +56,12 @@ export class PlanService {
       },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
+
+    // Auto-compute progressPct from goal statuses
+    return plans.map((plan) => ({
+      ...plan,
+      progressPct: calculatePlanProgress(plan.monthlyGoals),
+    }));
   }
 
   async getPlan(id: string) {

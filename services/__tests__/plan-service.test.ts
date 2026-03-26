@@ -22,7 +22,8 @@ describe("PlanService", () => {
         where: expect.objectContaining({ year: 2026 }),
       })
     );
-    expect(result).toEqual(mockPlans);
+    // listPlans now auto-computes progressPct from goals
+    expect(result).toEqual(mockPlans.map((p) => ({ ...p, progressPct: 0 })));
   });
 
   test("getPlan returns with goals and milestones", async () => {
