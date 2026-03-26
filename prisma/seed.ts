@@ -266,8 +266,8 @@ async function main() {
   console.log(`  KPI：${kpiData.length} 個`);
   console.log(`  工時：${timeEntryData.length} 筆`);
   console.log("\n登入帳號：");
-  console.log("  主管：admin / Titan@2026Dev!");
-  console.log("  工程師：eng01 ~ eng04 / Titan@2026Dev!");
+  console.log("  主管：admin@titan.local / Admin@2026!x");
+  console.log("  工程師：eng-a ~ eng-d @titan.local / Admin@2026!x");
 }
 
 main()
