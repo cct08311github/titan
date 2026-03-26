@@ -9,6 +9,7 @@ export interface ListTasksFilter {
   status?: TaskStatus | TaskStatus[] | string;
   priority?: Priority | Priority[] | string;
   category?: TaskCategory | TaskCategory[] | string;
+  annualPlanId?: string; // Issue #835
   monthlyGoalId?: string;
   skip?: number;
   take?: number;
@@ -23,6 +24,7 @@ export interface CreateTaskInput {
   primaryAssigneeId?: string | null;
   backupAssigneeId?: string | null;
   creatorId: string;
+  annualPlanId?: string | null; // Issue #835
   monthlyGoalId?: string | null;
   dueDate?: Date | string | null;
   startDate?: Date | string | null;
@@ -40,6 +42,7 @@ export interface UpdateTaskInput {
   category?: string;
   primaryAssigneeId?: string | null;
   backupAssigneeId?: string | null;
+  annualPlanId?: string | null; // Issue #835
   monthlyGoalId?: string | null;
   dueDate?: Date | string | null;
   startDate?: Date | string | null;
@@ -79,6 +82,7 @@ export class TaskService {
     if (filter.category) {
       where.category = Array.isArray(filter.category) ? { in: filter.category } : filter.category;
     }
+    if (filter.annualPlanId) where.annualPlanId = filter.annualPlanId; // Issue #835
     if (filter.monthlyGoalId) where.monthlyGoalId = filter.monthlyGoalId;
 
     const [tasks, total] = await Promise.all([
@@ -88,6 +92,7 @@ export class TaskService {
           primaryAssignee: { select: { id: true, name: true, avatar: true } },
           backupAssignee: { select: { id: true, name: true, avatar: true } },
           creator: { select: { id: true, name: true } },
+          annualPlan: { select: { id: true, title: true, year: true } }, // Issue #835
           monthlyGoal: { select: { id: true, title: true, month: true } },
           subTasks: { orderBy: { order: "asc" } },
           deliverables: true,
@@ -159,6 +164,7 @@ export class TaskService {
         primaryAssigneeId: input.primaryAssigneeId ?? null,
         backupAssigneeId: input.backupAssigneeId ?? null,
         creatorId: input.creatorId,
+        annualPlanId: input.annualPlanId ?? null, // Issue #835
         monthlyGoalId: input.monthlyGoalId ?? null,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
         startDate: input.startDate ? new Date(input.startDate) : null,
@@ -191,6 +197,7 @@ export class TaskService {
     if (input.category !== undefined) updates.category = input.category;
     if (input.primaryAssigneeId !== undefined) updates.primaryAssigneeId = input.primaryAssigneeId ?? null;
     if (input.backupAssigneeId !== undefined) updates.backupAssigneeId = input.backupAssigneeId ?? null;
+    if (input.annualPlanId !== undefined) updates.annualPlanId = input.annualPlanId ?? null; // Issue #835
     if (input.monthlyGoalId !== undefined) updates.monthlyGoalId = input.monthlyGoalId ?? null;
     if (input.dueDate !== undefined) updates.dueDate = input.dueDate ? new Date(input.dueDate as string) : null;
     if (input.startDate !== undefined) updates.startDate = input.startDate ? new Date(input.startDate as string) : null;

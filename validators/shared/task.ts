@@ -19,6 +19,7 @@ import { TaskStatusEnum, PriorityEnum, TaskCategoryEnum } from "./enums";
 export const createTaskSchema = z.object({
   title: z.string().min(1, "標題為必填").max(200, "標題不得超過 200 字元"),
   description: z.string().max(10000, "描述不得超過 10,000 字元").optional(),
+  annualPlanId: z.string().nullable().optional(), // Issue #835
   monthlyGoalId: z.string().optional(),
   primaryAssigneeId: z.string().optional(),
   backupAssigneeId: z.string().optional(),
@@ -41,6 +42,7 @@ export const createTaskSchema = z.object({
 export const createTaskFullSchema = z.object({
   title: z.string().min(1, "標題為必填").max(200, "標題不得超過 200 字元"),
   description: z.string().max(10000, "描述不得超過 10,000 字元").optional(),
+  annualPlanId: z.string().nullable().optional(), // Issue #835
   monthlyGoalId: z.string().optional(),
   primaryAssigneeId: z.string().min(1, "指派人為必填"),
   backupAssigneeId: z.string().optional(),
@@ -59,6 +61,7 @@ export const createTaskFullSchema = z.object({
 export const updateTaskSchema = z.object({
   title: z.string().min(1, "標題為必填").max(200, "標題不得超過 200 字元").optional(),
   description: z.string().max(10000, "描述不得超過 10,000 字元").optional(),
+  annualPlanId: z.string().nullable().optional(), // Issue #835
   monthlyGoalId: z.string().optional(),
   primaryAssigneeId: z.string().nullable().optional(),
   backupAssigneeId: z.string().nullable().optional(),
