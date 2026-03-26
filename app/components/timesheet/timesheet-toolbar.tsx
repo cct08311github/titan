@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Grid3X3, List, Copy, FileDown, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Grid3X3, List, Calendar, Copy, FileDown, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateSelector } from "./template-selector";
 import { OvertimeBadge } from "./overtime-badge";
@@ -9,7 +9,7 @@ import { type TimeEntry } from "./use-timesheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ViewMode = "grid" | "list";
+type ViewMode = "grid" | "list" | "calendar";
 
 type TimesheetToolbarProps = {
   weekRange: string;
@@ -97,6 +97,19 @@ export function TimesheetToolbar({
             >
               <List className="h-3.5 w-3.5" />
               列表
+            </button>
+            <button
+              onClick={() => onViewModeChange("calendar")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors",
+                viewMode === "calendar"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+              data-testid="view-calendar-btn"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              日曆
             </button>
           </div>
 
