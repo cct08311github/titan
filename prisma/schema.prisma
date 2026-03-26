@@ -777,6 +777,7 @@ model Document {
   title     String
   content   String   // Markdown
   slug      String   @unique
+  tags      String[] // Issue #859: 標籤（如 "Oracle", "batch", "EOD", "DR"）
   createdBy String
   updatedBy String
   version   Int      @default(1)
