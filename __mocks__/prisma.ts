@@ -29,6 +29,7 @@ export const mockPrisma = {
   kPITaskLink: createMockModel(),
   milestone: createMockModel(),
   subTask: createMockModel(),
+  taskAttachment: createMockModel(),
   taskComment: createMockModel(),
   permission: createMockModel(),
   notification: createMockModel(),
