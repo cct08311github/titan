@@ -613,6 +613,22 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+/// Refresh tokens for JWT rotation — Issue #795 (AU-1)
+/// Each refresh token can only be used once (rotation).
+/// Revoked tokens are kept for audit trail.
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique  // SHA-256 hash of the refresh token
+  expiresAt DateTime           // 7 days from creation
+  revokedAt DateTime?          // null = active; set on use, logout, or password change
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
 // ═══════════════════════════════════════
 // 知識庫文件
 // ═══════════════════════════════════════
