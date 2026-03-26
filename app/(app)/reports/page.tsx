@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Download, RefreshCw, BarChart3, Printer } from "lucide-react";
+import { Download, RefreshCw, BarChart3, Printer, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -23,7 +23,7 @@ function PrintButton() {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type TabId = "weekly" | "monthly" | "kpi" | "workload" | "trends";
+type TabId = "weekly" | "monthly" | "kpi" | "workload" | "trends" | "audit";
 
 interface Tab {
   id: TabId;
@@ -36,6 +36,7 @@ const TABS: Tab[] = [
   { id: "kpi", label: "KPI 報表" },
   { id: "workload", label: "計畫外負荷" },
   { id: "trends", label: "趨勢分析" },
+  { id: "audit", label: "稽核報表" },
 ];
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -117,11 +118,14 @@ function WeeklyReport() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{start} — {end}</p>
         <button
-          onClick={() => exportJSON(data, `weekly-report-${start}.json`)}
+          onClick={async () => {
+            const { exportWeeklyExcel } = await import("@/lib/excel-export");
+            await exportWeeklyExcel(data);
+          }}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent hover:bg-accent/80 rounded-md transition-colors"
         >
-          <Download className="h-3.5 w-3.5" />
-          匯出
+          <FileSpreadsheet className="h-3.5 w-3.5" />
+          匯出 Excel
         </button>
       </div>
 
@@ -241,11 +245,14 @@ function MonthlyReport() {
         </button>
         {data && (
           <button
-            onClick={() => exportJSON(data, `monthly-report-${month}.json`)}
+            onClick={async () => {
+              const { exportMonthlyExcel } = await import("@/lib/excel-export");
+              await exportMonthlyExcel(data);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent hover:bg-accent/80 rounded-md transition-colors ml-auto"
           >
-            <Download className="h-3.5 w-3.5" />
-            匯出
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            匯出 Excel
           </button>
         )}
       </div>
@@ -372,11 +379,14 @@ function KPIReport() {
         </button>
         {data && (
           <button
-            onClick={() => exportJSON(data, `kpi-report-${year}.json`)}
+            onClick={async () => {
+              const { exportKPIExcel } = await import("@/lib/excel-export");
+              await exportKPIExcel(data);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent hover:bg-accent/80 rounded-md transition-colors ml-auto"
           >
-            <Download className="h-3.5 w-3.5" />
-            匯出
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            匯出 Excel
           </button>
         )}
       </div>
@@ -511,11 +521,14 @@ function WorkloadReport() {
         </button>
         {data && (
           <button
-            onClick={() => exportJSON(data, `workload-report-${startDate}.json`)}
+            onClick={async () => {
+              const { exportWorkloadExcel } = await import("@/lib/excel-export");
+              await exportWorkloadExcel(data);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-accent hover:bg-accent/80 rounded-md transition-colors ml-auto"
           >
-            <Download className="h-3.5 w-3.5" />
-            匯出
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            匯出 Excel
           </button>
         )}
       </div>
@@ -771,6 +784,127 @@ function TrendsReport() {
   );
 }
 
+// ── Audit Report ──────────────────────────────────────────────────────────
+
+function AuditReport() {
+  const now = new Date();
+  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+  const [fromDate, setFromDate] = useState(
+    `${sixMonthsAgo.getFullYear()}-${String(sixMonthsAgo.getMonth() + 1).padStart(2, "0")}-01`
+  );
+  const [toDate, setToDate] = useState(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  );
+  const [data, setData] = useState<{
+    period: { from: string; to: string };
+    summary: { totalHours: number; plannedHours: number; incidentHours: number; plannedRate: number; incidentRate: number };
+    timeEntries: Array<Record<string, unknown>>;
+    tasks: Array<Record<string, unknown>>;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`/api/reports/audit?from=${fromDate}&to=${toDate}`)
+      .then((r) => { if (!r.ok) throw new Error("稽核資料載入失敗"); return r.json(); })
+      .then((body) => setData(extractData(body)))
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
+      .finally(() => setLoading(false));
+  }, [fromDate, toDate]);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function exportAudit() {
+    if (!data) return;
+    if (data.timeEntries.length === 0 && data.tasks.length === 0) {
+      alert("所選期間無資料可匯出");
+      return;
+    }
+    const { exportAuditPackage } = await import("@/lib/excel-export");
+    await exportAuditPackage({ ...data, from: fromDate, to: toDate });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>起始日</span>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="bg-accent border border-border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>截止日</span>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="bg-accent border border-border rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <button
+          onClick={load}
+          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+        {data && (
+          <button
+            onClick={exportAudit}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-primary text-primary-foreground hover:opacity-90 rounded-md transition-colors ml-auto"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            匯出稽核包
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <PageLoading message="載入稽核資料..." />
+      ) : error ? (
+        <PageError message={error} onRetry={load} />
+      ) : !data ? (
+        <PageEmpty title="無稽核資料" description="請選擇日期範圍" />
+      ) : (
+        <>
+          {/* Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-xl font-semibold tabular-nums">{safeFixed(data.summary.totalHours, 1)}</p>
+              <p className="text-xs text-muted-foreground mt-1">總工時 (h)</p>
+            </div>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-xl font-semibold tabular-nums text-success">{data.summary.plannedRate}%</p>
+              <p className="text-xs text-muted-foreground mt-1">計畫投入率</p>
+            </div>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-xl font-semibold tabular-nums text-red-500">{data.summary.incidentRate}%</p>
+              <p className="text-xs text-muted-foreground mt-1">事件佔比</p>
+            </div>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-xl font-semibold tabular-nums">{data.tasks.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">任務數</p>
+            </div>
+          </div>
+
+          {/* Time entries count */}
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <SectionTitle>稽核包內容預覽</SectionTitle>
+            <StatRow label="工時紀錄筆數" value={data.timeEntries.length} />
+            <StatRow label="任務清單筆數" value={data.tasks.length} />
+            <StatRow label="期間" value={`${formatDate(fromDate)} — ${formatDate(toDate)}`} />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Page ───────────────────────────────────────────────────────────────────
 
 const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
@@ -779,6 +913,7 @@ const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   kpi: KPIReport,
   workload: WorkloadReport,
   trends: TrendsReport,
+  audit: AuditReport,
 };
 
 export default function ReportsPage() {
