@@ -1,779 +1,516 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle, ToggleLeft, ToggleRight } from "lucide-react";
-import { TeamOverview } from "@/app/components/team-overview";
-import { OverdueAlert } from "@/app/components/overdue-alert";
-import { TaskStatusSummary } from "@/app/components/task-status-summary";
-import { MyTodoList } from "@/app/components/my-todo-list";
-import { safeFixed, safePct } from "@/lib/safe-number";
+import {
+  Flame,
+  Calendar,
+  Clock,
+  AlertTriangle,
+  Users,
+  Target,
+  BarChart3,
+  ArrowRight,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { extractData } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
-import { extractItems, extractData } from "@/lib/api-client";
+import { safeFixed } from "@/lib/safe-number";
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// ── Skeleton loader ─────────────────────────────────────────────────────
 
-interface KPIAchievement {
-  id: string;
-  code: string;
-  title: string;
-  target: number;
-  actual: number;
-  status: string;
-  achievementRate: number;
+function Skeleton({ className }: { className?: string }) {
+  return (
+    <div className={cn("animate-pulse bg-muted rounded", className)} />
+  );
 }
 
-interface WorkloadPerson {
-  userId: string;
-  name: string;
-  total: number;
-  planned: number;
-  unplanned: number;
+function SectionSkeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="bg-card rounded-xl shadow-card p-5 space-y-3">
+      <Skeleton className="h-4 w-32" />
+      {Array.from({ length: rows }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
 }
 
-interface WorkloadData {
-  byPerson: WorkloadPerson[];
-  plannedRate: number;
-  unplannedRate: number;
-  totalHours: number;
-}
+// ── Shared types ────────────────────────────────────────────────────────
 
-interface WeeklyData {
-  completedCount: number;
-  overdueCount: number;
-  delayCount: number;
-  scopeChangeCount: number;
-  totalHours: number;
-}
-
-interface Task {
+interface TaskItem {
   id: string;
   title: string;
   status: string;
   priority: string;
   dueDate: string | null;
+  flagReason?: string | null;
+  managerFlagged?: boolean;
+  estimatedHours?: number | null;
+  actualHours?: number | null;
+  primaryAssignee?: { id: string; name: string; avatar?: string | null } | null;
 }
 
-// ── Today's Tasks Card ──────────────────────────────────────────────────────
-
-function dueCountdownText(dueDate: string): { text: string; urgent: boolean } {
-  const now = new Date();
-  const due = new Date(dueDate);
-  const diffMs = due.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return { text: `逾期 ${Math.abs(diffDays)} 天`, urgent: true };
-  if (diffDays === 0) return { text: "今天截止", urgent: true };
-  if (diffDays === 1) return { text: "明天截止", urgent: true };
-  if (diffDays <= 3) return { text: `${diffDays} 天後截止`, urgent: true };
-  if (diffDays <= 7) return { text: `${diffDays} 天後截止`, urgent: false };
-  return { text: `${diffDays} 天後截止`, urgent: false };
+interface Alert {
+  type: string;
+  message: string;
 }
 
-function TodayTasksCard() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function fetchTodayTasks() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS");
-      if (!res.ok) throw new Error("無法載入待辦任務");
-      const body = await res.json();
-      const all: Task[] = extractItems<Task>(body);
-      // Sort by dueDate (closest first), tasks without dueDate go last
-      const withDue = all
-        .filter((t) => t.dueDate)
-        .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
-      const withoutDue = all.filter((t) => !t.dueDate);
-      setTasks([...withDue, ...withoutDue].slice(0, 5));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { fetchTodayTasks(); }, []);
-
-  if (loading) return <PageLoading message="載入待辦..." className="py-8" />;
-  if (error) return <PageError message={error} onRetry={fetchTodayTasks} className="py-8" />;
-  if (tasks.length === 0) return (
-    <PageEmpty
-      icon={<CalendarClock className="h-8 w-8" />}
-      title="沒有待辦任務"
-      description="目前沒有進行中或待辦的任務"
-      className="py-8"
-    />
-  );
-
-  const PRIORITY_DOT: Record<string, string> = {
-    URGENT: "bg-danger",
-    HIGH: "bg-warning",
-    MEDIUM: "bg-yellow-400",
-    LOW: "bg-muted-foreground",
-  };
-  const STATUS_LABEL: Record<string, string> = {
-    TODO: "待辦",
-    IN_PROGRESS: "進行中",
-  };
-
-  return (
-    <div className="bg-card rounded-xl shadow-card p-5">
-      <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
-        <CalendarClock className="h-4 w-4 text-primary" />
-        今日待辦
-        <span className="text-xs text-muted-foreground font-normal">（最近 5 項）</span>
-      </h2>
-      <div className="space-y-2">
-        {tasks.map((t) => {
-          const countdown = t.dueDate ? dueCountdownText(t.dueDate) : null;
-          return (
-            <div
-              key={t.id}
-              className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
-            >
-              <span
-                className={cn(
-                  "w-2 h-2 rounded-full flex-shrink-0",
-                  PRIORITY_DOT[t.priority] ?? "bg-muted-foreground"
-                )}
-              />
-              <span className="flex-1 text-xs sm:text-sm text-foreground truncate min-w-0">{t.title}</span>
-              <span className="text-[11px] text-muted-foreground flex-shrink-0">
-                {STATUS_LABEL[t.status] ?? t.status}
-              </span>
-              {countdown ? (
-                <span
-                  className={cn(
-                    "text-[11px] tabular-nums flex-shrink-0 flex items-center gap-1",
-                    countdown.urgent ? "text-danger font-medium" : "text-muted-foreground"
-                  )}
-                >
-                  {countdown.urgent && <AlertTriangle className="h-3 w-3" />}
-                  {countdown.text}
-                </span>
-              ) : (
-                <span className="text-[11px] text-muted-foreground flex-shrink-0">無截止日</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+interface MemberWorkload {
+  id: string;
+  name: string;
+  avatar: string | null;
+  activeTasks: number;
+  overdueTasks: number;
+  flaggedTasks: number;
 }
 
-// ── KPI Achievement Section ─────────────────────────────────────────────────
+interface PlanSummary {
+  id: string;
+  title: string;
+  progressPct: number;
+  flaggedCount: number;
+}
 
-const KPI_STATUS_COLOR: Record<string, string> = {
-  ON_TRACK: "text-success bg-success/10",
-  AT_RISK:  "text-yellow-400 bg-warning/10",
-  BEHIND:   "text-danger bg-danger/10",
-  ACHIEVED: "text-blue-400 bg-blue-500/10",
-};
-const KPI_STATUS_LABEL: Record<string, string> = {
-  ON_TRACK: "進行中",
-  AT_RISK:  "風險",
-  BEHIND:   "落後",
-  ACHIEVED: "達成",
+interface MonthlyGoalItem {
+  id: string;
+  title: string;
+  progressPct: number;
+  status: string;
+}
+
+interface TimeSuggestion {
+  taskId: string;
+  title: string;
+  estimatedHours: number | null;
+  suggestion: string;
+}
+
+interface EngineerData {
+  role: "ENGINEER";
+  flaggedTasks: TaskItem[];
+  dueTodayTasks: TaskItem[];
+  inProgressTasks: TaskItem[];
+  todayHours: number;
+  dailyTarget: number;
+  timeSuggestions: TimeSuggestion[];
+  monthlyGoals: MonthlyGoalItem[];
+}
+
+interface ManagerData {
+  role: "MANAGER";
+  flaggedTasks: TaskItem[];
+  overdueTasks: TaskItem[];
+  memberWorkload: MemberWorkload[];
+  todayHours: number;
+  alerts: Alert[];
+  planSummaries: PlanSummary[];
+}
+
+type MyDayData = EngineerData | ManagerData;
+
+// ── Task Row ────────────────────────────────────────────────────────────
+
+const PRIORITY_DOT: Record<string, string> = {
+  P0: "bg-red-500",
+  P1: "bg-orange-500",
+  P2: "bg-yellow-400",
+  P3: "bg-gray-400",
 };
 
-function KPIAchievementSection() {
-  const [kpis, setKpis] = useState<KPIAchievement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function fetchKPIs() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/kpi?year=${new Date().getFullYear()}`);
-      if (!res.ok) throw new Error("無法載入 KPI");
-      const body = await res.json();
-      const data = extractItems<{
-        id: string; code: string; title: string; target: number; actual: number; status: string;
-        taskLinks: Array<{ weight: number; task: { status: string; progressPct: number } }>;
-        autoCalc: boolean;
-      }>(body);
-      const mapped: KPIAchievement[] = data.map((k) => {
-        let rate = 0;
-        if (k.autoCalc && k.taskLinks.length > 0) {
-          const totalW = k.taskLinks.reduce((s, l) => s + l.weight, 0);
-          const weighted = k.taskLinks.reduce((s, l) => {
-            const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
-            return s + (prog * l.weight) / 100;
-          }, 0);
-          rate = totalW > 0 ? Math.min((weighted / totalW) * k.target, 100) : 0;
-        } else {
-          rate = k.target > 0 ? Math.min((k.actual / k.target) * 100, 100) : 0;
-        }
-        return { id: k.id, code: k.code, title: k.title, target: k.target, actual: k.actual, status: k.status, achievementRate: rate };
-      });
-      setKpis(mapped);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { fetchKPIs(); }, []);
-
-  if (loading) return <PageLoading message="載入 KPI..." className="py-8" />;
-  if (error) return <PageError message={error} onRetry={fetchKPIs} className="py-8" />;
-  if (kpis.length === 0) return (
-    <PageEmpty
-      icon={<Target className="h-8 w-8" />}
-      title="尚無 KPI"
-      description="本年度尚未建立 KPI 指標"
-      className="py-8"
-    />
-  );
+function TaskRow({ task }: { task: TaskItem }) {
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
 
   return (
-    <div className="bg-card rounded-xl shadow-card p-5">
-      <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
-        <Target className="h-4 w-4 text-primary" />
-        KPI 達成狀況（{new Date().getFullYear()} 年度）
-      </h2>
-      <div className="space-y-3">
-        {kpis.map((kpi) => {
-          const barColor =
-            kpi.achievementRate >= 100 ? "bg-success" :
-            kpi.achievementRate >= 60  ? "bg-primary" :
-            kpi.achievementRate >= 30  ? "bg-warning" : "bg-danger";
-          return (
-            <div key={kpi.id} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] font-mono text-muted-foreground flex-shrink-0">{kpi.code}</span>
-                  <span className="text-sm text-foreground truncate">{kpi.title}</span>
-                  {kpi.status && (
-                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0",
-                      KPI_STATUS_COLOR[kpi.status] ?? "text-muted-foreground bg-accent")}>
-                      {KPI_STATUS_LABEL[kpi.status] ?? kpi.status}
-                    </span>
-                  )}
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <span className="text-sm font-semibold tabular-nums">{safePct(kpi.achievementRate, 0, "0")}%</span>
-                  <span className="text-[10px] text-muted-foreground tabular-nums ml-1.5">
-                    {kpi.actual} / {kpi.target}
-                  </span>
-                </div>
-              </div>
-              <div className="h-1.5 w-full bg-accent rounded-full overflow-hidden">
-                <div
-                  className={cn("h-full rounded-full transition-all", barColor)}
-                  style={{ width: `${Math.min(kpi.achievementRate, 100)}%` }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Helper ─────────────────────────────────────────────────────────────────
-
-function ProgressBar({ pct, color = "bg-primary" }: { pct: number; color?: string }) {
-  return (
-    <div className="h-2 w-full bg-accent rounded-full overflow-hidden">
-      <div
-        className={cn("h-full rounded-full transition-all", color)}
-        style={{ width: `${Math.min(pct, 100)}%` }}
-      />
-    </div>
-  );
-}
-
-function StatCard({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string | number;
-  sub?: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="bg-card rounded-xl shadow-card p-4 flex flex-col gap-1">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn("text-2xl font-semibold tabular-nums", accent && "text-danger")}>
-        {value}
-      </p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
-    </div>
-  );
-}
-
-// ── Manager Dashboard ──────────────────────────────────────────────────────
-
-function ManagerDashboard() {
-  const [workload, setWorkload] = useState<WorkloadData | null>(null);
-  const [weekly, setWeekly] = useState<WeeklyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [wlRaw, wrRaw] = await Promise.all([
-        fetch("/api/reports/workload").then((r) => { if (!r.ok) throw new Error("工作負載載入失敗"); return r.json(); }),
-        fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
-      ]);
-      const wl = extractData<WorkloadData>(wlRaw);
-      setWorkload(wl && typeof wl === "object" ? wl : null);
-      const weeklyData = extractData<WeeklyData>(wrRaw);
-      setWeekly(weeklyData && typeof weeklyData === "object" ? weeklyData : null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, []);
-
-  if (loading) return <PageLoading />;
-  if (error) return <PageError message={error} onRetry={load} />;
-
-  // Check if there is truly no data at all
-  const hasNoData =
-    (weekly?.completedCount ?? 0) === 0 &&
-    (weekly?.totalHours ?? 0) === 0 &&
-    (weekly?.overdueCount ?? 0) === 0 &&
-    (workload?.totalHours ?? 0) === 0 &&
-    (!workload?.byPerson || workload.byPerson.length === 0);
-
-  if (hasNoData) {
-    return (
-      <div className="space-y-6">
-        <PageEmpty
-          icon={<BarChart3 className="h-8 w-8" />}
-          title="尚無團隊數據"
-          description="目前沒有任務完成紀錄與工時資料。當團隊成員開始記錄工時與完成任務後，此處將自動顯示團隊整體狀況。"
-          className="py-16"
-        />
-        <div className="bg-card rounded-xl shadow-card p-6">
-          <h3 className="text-sm font-medium mb-3">快速開始指南</h3>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-semibold text-primary">1</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">建立年度計畫</p>
-                <p className="text-xs text-muted-foreground">前往「計畫」頁面建立年度計畫與月度目標</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-semibold text-primary">2</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">指派任務給團隊成員</p>
-                <p className="text-xs text-muted-foreground">在看板或任務列表中建立任務並指派負責人</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <span className="text-xs font-semibold text-primary">3</span>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">記錄工時</p>
-                <p className="text-xs text-muted-foreground">請團隊成員在「工時」頁面每日登錄工時，即可在此追蹤進度</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const maxPersonHours =
-    workload?.byPerson?.length
-      ? Math.max(...workload.byPerson.map((p) => p.total), 1)
-      : 1;
-
-  return (
-    <div className="space-y-6">
-      {/* ── Stats cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="本週完成任務" value={weekly?.completedCount ?? "—"} />
-        <StatCard label="本週總工時 (h)" value={safeFixed(weekly?.totalHours, 1, "—")} />
-        <StatCard
-          label="逾期任務"
-          value={weekly?.overdueCount ?? "—"}
-          accent={(weekly?.overdueCount ?? 0) > 0}
-        />
-        <StatCard label="本月計畫外比例" value={workload ? `${workload.unplannedRate}%` : "—"} />
-      </div>
-
-      {/* ── Team workload ── */}
-      <div className="bg-card rounded-xl shadow-card p-5">
-        <h2 className="text-sm font-medium mb-4">團隊工時分佈（本月）</h2>
-        {workload?.byPerson?.length ? (
-          <div className="space-y-3">
-            {workload.byPerson.slice(0, 5).map((p) => {
-              const pct = (p.total / maxPersonHours) * 100;
-              const unplannedPct = p.total > 0 ? (p.unplanned / p.total) * 100 : 0;
-              return (
-                <div key={p.userId} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-foreground font-medium">{p.name}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {safeFixed(p.total, 1)} h
-                    </span>
-                  </div>
-                  <ProgressBar pct={pct} />
-                  {unplannedPct > 0 && (
-                    <p className="text-[11px] text-muted-foreground tabular-nums">
-                      計畫外 {safePct(unplannedPct, 0)}%
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <PageEmpty
-            icon={<Users className="h-6 w-6" />}
-            title="本月尚無工時紀錄"
-            description="團隊成員開始記錄工時後，此處將顯示每人的工時分佈與計畫外比例"
-            className="py-8"
-          />
-        )}
-      </div>
-
-      {/* ── 投入率 ── */}
-      <div className="bg-card rounded-xl shadow-card p-5">
-        <h2 className="text-sm font-medium mb-4">投入率分析（計畫任務 vs 加入任務）</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">計畫內投入</span>
-              <span className="tabular-nums font-medium text-success">
-                {workload?.plannedRate ?? 0}%
-              </span>
-            </div>
-            <ProgressBar pct={workload?.plannedRate ?? 0} color="bg-success" />
-          </div>
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">計畫外投入</span>
-              <span className="tabular-nums font-medium text-warning">
-                {workload?.unplannedRate ?? 0}%
-              </span>
-            </div>
-            <ProgressBar pct={workload?.unplannedRate ?? 0} color="bg-warning" />
-          </div>
-        </div>
-      </div>
-
-      {/* ── This month ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="本週延遲次數" value={weekly?.delayCount ?? "—"} accent={(weekly?.delayCount ?? 0) > 0} />
-        <StatCard label="本週範疇變更" value={weekly?.scopeChangeCount ?? "—"} />
-        <StatCard
-          label="計畫外負荷率"
-          value={workload ? `${workload.unplannedRate}%` : "—"}
-          sub="(ADDED+INCIDENT+SUPPORT)"
-        />
-        <StatCard
-          label="計畫投入率"
-          value={workload ? `${workload.plannedRate}%` : "—"}
-          sub="(PLANNED_TASK)"
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Engineer Dashboard ─────────────────────────────────────────────────────
-
-function EngineerDashboard() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [weekly, setWeekly] = useState<WeeklyData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const [taskBody, wrBody] = await Promise.all([
-        fetch("/api/tasks?assignee=me&status=TODO,IN_PROGRESS").then((r) => { if (!r.ok) throw new Error("任務載入失敗"); return r.json(); }),
-        fetch("/api/reports/weekly").then((r) => { if (!r.ok) throw new Error("週報載入失敗"); return r.json(); }),
-      ]);
-      setTasks(extractItems<Task>(taskBody));
-      const weeklyData = extractData<WeeklyData>(wrBody);
-      setWeekly(weeklyData && typeof weeklyData === "object" ? weeklyData : null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, []);
-
-  if (loading) return <PageLoading />;
-  if (error) return <PageError message={error} onRetry={load} />;
-
-  // Check if engineer has no data at all
-  const hasNoData = tasks.length === 0 && (weekly?.totalHours ?? 0) === 0;
-
-  if (hasNoData) {
-    return (
-      <div className="space-y-6">
-        <PageEmpty
-          icon={<ClipboardList className="h-8 w-8" />}
-          title="尚無待處理任務"
-          description="目前沒有進行中的任務與工時紀錄。當主管指派任務給您後，此處將顯示您的工作狀況。"
-          className="py-16"
-        />
-        <div className="bg-card rounded-xl shadow-card p-6">
-          <h3 className="text-sm font-medium mb-3">開始使用</h3>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Clock className="h-3 w-3 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">記錄每日工時</p>
-                <p className="text-xs text-muted-foreground">前往「工時」頁面登錄您的每日工作時數，協助團隊追蹤進度</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <ClipboardList className="h-3 w-3 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">查看看板</p>
-                <p className="text-xs text-muted-foreground">在「看板」頁面查看與管理您被指派的任務</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const weeklyPct = Math.min(((weekly?.totalHours ?? 0) / 40) * 100, 100);
-  const today = new Date().toDateString();
-  const overdue = tasks.filter(
-    (t) => t.dueDate && new Date(t.dueDate) < new Date() && t.status !== "DONE"
-  );
-
-  const PRIORITY_LABEL: Record<string, string> = {
-    URGENT: "緊急",
-    HIGH: "高",
-    MEDIUM: "中",
-    LOW: "低",
-  };
-  const PRIORITY_COLOR: Record<string, string> = {
-    URGENT: "text-danger",
-    HIGH: "text-warning",
-    MEDIUM: "text-yellow-400",
-    LOW: "text-muted-foreground",
-  };
-  const STATUS_LABEL: Record<string, string> = {
-    TODO: "待辦",
-    IN_PROGRESS: "進行中",
-    DONE: "完成",
-    BLOCKED: "封鎖",
-  };
-
-  return (
-    <div className="space-y-6">
-      {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <StatCard label="進行中任務" value={tasks.length} />
-        <StatCard label="逾期任務" value={overdue.length} accent={overdue.length > 0} />
-        <StatCard
-          label="本週工時 (h)"
-          value={`${safeFixed(weekly?.totalHours, 1)} / 40`}
-          sub={`進度 ${safePct(weeklyPct, 0)}%`}
-        />
-      </div>
-
-      {/* ── Weekly hours bar ── */}
-      <div className="bg-card rounded-xl shadow-card p-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-medium">本週工時進度</h2>
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {safeFixed(weekly?.totalHours, 1)} / 40 h
-          </span>
-        </div>
-        <ProgressBar
-          pct={weeklyPct}
-          color={weeklyPct >= 90 ? "bg-success" : weeklyPct >= 60 ? "bg-primary" : "bg-warning"}
-        />
-      </div>
-
-      {/* ── My tasks today ── */}
-      <div className="bg-card rounded-xl shadow-card p-5">
-        <h2 className="text-sm font-medium mb-4">我的任務（待辦 + 進行中）</h2>
-        {tasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">目前沒有待處理的任務</p>
-        ) : (
-          <div className="space-y-2">
-            {tasks.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
-              >
-                <span
-                  className={cn(
-                    "text-[11px] font-medium w-8 flex-shrink-0",
-                    PRIORITY_COLOR[t.priority] ?? "text-muted-foreground"
-                  )}
-                >
-                  {PRIORITY_LABEL[t.priority] ?? t.priority}
-                </span>
-                <span className="flex-1 text-xs sm:text-sm text-foreground truncate min-w-0">{t.title}</span>
-                <span className="text-[11px] text-muted-foreground flex-shrink-0">
-                  {STATUS_LABEL[t.status] ?? t.status}
-                </span>
-                {t.dueDate && (
-                  <span
-                    className={cn(
-                      "text-[11px] tabular-nums flex-shrink-0",
-                      new Date(t.dueDate) < new Date()
-                        ? "text-danger"
-                        : "text-muted-foreground"
-                    )}
-                  >
-                    {formatDate(t.dueDate)}
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── Overdue ── */}
-      {overdue.length > 0 && (
-        <div className="bg-card border-l-[3px] border-l-danger shadow-card rounded-lg p-5">
-          <h2 className="text-sm font-medium text-danger mb-3">逾期任務</h2>
-          <div className="space-y-2">
-            {overdue.map((t) => (
-              <div key={t.id} className="flex items-center justify-between text-sm">
-                <span className="text-foreground truncate">{t.title}</span>
-                <span className="text-danger tabular-nums text-xs flex-shrink-0 ml-2">
-                  {t.dueDate ? formatDate(t.dueDate) : ""}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
+    <div className="flex items-center gap-2 p-2.5 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors">
+      {task.managerFlagged && (
+        <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500 flex-shrink-0" />
+      )}
+      <span className={cn("w-2 h-2 rounded-full flex-shrink-0", PRIORITY_DOT[task.priority] ?? "bg-gray-400")} />
+      <span className="flex-1 text-sm text-foreground truncate min-w-0">{task.title}</span>
+      {task.primaryAssignee && (
+        <span className="text-[11px] text-muted-foreground flex-shrink-0">{task.primaryAssignee.name}</span>
+      )}
+      {task.dueDate && (
+        <span className={cn("text-[11px] tabular-nums flex-shrink-0", isOverdue ? "text-red-500 font-medium" : "text-muted-foreground")}>
+          {isOverdue && <AlertTriangle className="h-3 w-3 inline mr-0.5" />}
+          {formatDate(task.dueDate)}
+        </span>
       )}
     </div>
   );
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
+// ── Engineer My Day ─────────────────────────────────────────────────────
 
-const DASHBOARD_VIEW_KEY = "titan-dashboard-view";
-type DashboardView = "personal" | "team";
+function EngineerMyDay({ data }: { data: EngineerData }) {
+  const hoursPct = Math.min((data.todayHours / data.dailyTarget) * 100, 100);
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
+      {/* Left column — Task sections */}
+      <div className="space-y-4">
+        {/* Flagged tasks (red top) */}
+        {data.flaggedTasks.length > 0 && (
+          <div className="bg-card rounded-xl shadow-card p-5 border-l-[3px] border-l-red-500">
+            <h2 className="text-sm font-medium mb-3 flex items-center gap-2 text-red-600 dark:text-red-400">
+              <Flame className="h-4 w-4 fill-current" />
+              主管標記任務
+            </h2>
+            <div className="space-y-2">
+              {data.flaggedTasks.map((t) => (
+                <TaskRow key={t.id} task={t} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Due today (yellow) */}
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-yellow-500" />
+            今日到期
+            <span className="text-xs text-muted-foreground font-normal">({data.dueTodayTasks.length})</span>
+          </h2>
+          {data.dueTodayTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">今天沒有到期任務</p>
+          ) : (
+            <div className="space-y-2">
+              {data.dueTodayTasks.map((t) => (
+                <TaskRow key={t.id} task={t} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* In progress */}
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-500" />
+            進行中
+            <span className="text-xs text-muted-foreground font-normal">({data.inProgressTasks.length})</span>
+          </h2>
+          {data.inProgressTasks.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-2">目前沒有進行中的任務</p>
+          ) : (
+            <div className="space-y-2">
+              {data.inProgressTasks.map((t) => (
+                <TaskRow key={t.id} task={t} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Time suggestions */}
+        {data.timeSuggestions.length > 0 && (
+          <div className="bg-card rounded-xl shadow-card p-5">
+            <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-purple-500" />
+              時間建議
+            </h2>
+            <div className="space-y-2">
+              {data.timeSuggestions.map((s) => (
+                <div key={s.taskId} className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-sm text-purple-700 dark:text-purple-300">
+                  <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                  <span>{s.suggestion}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Right column — Info panels */}
+      <div className="space-y-4">
+        {/* Today hours summary */}
+        <div className="bg-card rounded-xl shadow-card p-5">
+          <h2 className="text-sm font-medium mb-3">今日工時</h2>
+          <div className="text-2xl font-semibold tabular-nums">
+            {safeFixed(data.todayHours, 1)}h <span className="text-sm text-muted-foreground font-normal">/ {data.dailyTarget}h</span>
+          </div>
+          <div className="mt-2 h-2 bg-accent rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                hoursPct >= 90 ? "bg-green-500" : hoursPct >= 50 ? "bg-blue-500" : "bg-yellow-500"
+              )}
+              style={{ width: `${hoursPct}%` }}
+            />
+          </div>
+          {data.todayHours === 0 && (
+            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              尚未記錄任何工時
+            </p>
+          )}
+        </div>
+
+        {/* Monthly goals */}
+        {data.monthlyGoals.length > 0 && (
+          <div className="bg-card rounded-xl shadow-card p-5">
+            <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              本月目標
+            </h2>
+            <div className="space-y-3">
+              {data.monthlyGoals.map((g) => (
+                <div key={g.id} className="space-y-1">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-foreground truncate">{g.title}</span>
+                    <span className="tabular-nums text-muted-foreground ml-2">{Math.round(g.progressPct)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-accent rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        g.progressPct >= 80 ? "bg-green-500" : g.progressPct >= 40 ? "bg-blue-500" : "bg-yellow-500"
+                      )}
+                      style={{ width: `${Math.min(g.progressPct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Manager My Day ──────────────────────────────────────────────────────
+
+function ManagerMyDay({ data }: { data: ManagerData }) {
+  return (
+    <div className="space-y-6">
+      {/* Alerts bar */}
+      {data.alerts.length > 0 && (
+        <div className="space-y-2">
+          {data.alerts.map((alert, i) => (
+            <div
+              key={i}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium",
+                alert.type === "CRITICAL"
+                  ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
+              )}
+            >
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              {alert.message}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
+        {/* Left — Team health + flagged items */}
+        <div className="space-y-4">
+          {/* Team health snapshot */}
+          <div className="bg-card rounded-xl shadow-card p-5">
+            <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" />
+              團隊健康快照
+            </h2>
+            {data.memberWorkload.length === 0 ? (
+              <p className="text-sm text-muted-foreground">尚無團隊成員資料</p>
+            ) : (
+              <div className="space-y-3">
+                {data.memberWorkload.map((m) => (
+                  <div key={m.id} className="flex items-center gap-3 p-2.5 bg-accent/40 rounded-md">
+                    <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium flex-shrink-0">
+                      {m.avatar ? (
+                        <img src={m.avatar} alt={m.name} className="h-full w-full rounded-full object-cover" />
+                      ) : (
+                        m.name.charAt(0)
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{m.name}</div>
+                      <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                        <span>進行中 {m.activeTasks}</span>
+                        {m.overdueTasks > 0 && <span className="text-red-500">逾期 {m.overdueTasks}</span>}
+                        {m.flaggedTasks > 0 && <span className="text-red-500">標記 {m.flaggedTasks}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Flagged items */}
+          {data.flaggedTasks.length > 0 && (
+            <div className="bg-card rounded-xl shadow-card p-5 border-l-[3px] border-l-red-500">
+              <h2 className="text-sm font-medium mb-3 flex items-center gap-2 text-red-600 dark:text-red-400">
+                <Flame className="h-4 w-4 fill-current" />
+                已標記任務
+                <span className="text-xs font-normal">({data.flaggedTasks.length})</span>
+              </h2>
+              <div className="space-y-2">
+                {data.flaggedTasks.map((t) => (
+                  <TaskRow key={t.id} task={t} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Overdue tasks */}
+          {data.overdueTasks.length > 0 && (
+            <div className="bg-card rounded-xl shadow-card p-5 border-l-[3px] border-l-orange-500">
+              <h2 className="text-sm font-medium mb-3 flex items-center gap-2 text-orange-600 dark:text-orange-400">
+                <AlertTriangle className="h-4 w-4" />
+                逾期任務
+                <span className="text-xs font-normal">({data.overdueTasks.length})</span>
+              </h2>
+              <div className="space-y-2">
+                {data.overdueTasks.slice(0, 10).map((t) => (
+                  <TaskRow key={t.id} task={t} />
+                ))}
+                {data.overdueTasks.length > 10 && (
+                  <p className="text-xs text-muted-foreground pt-1">還有 {data.overdueTasks.length - 10} 個逾期任務...</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Right — Workload + plan summaries */}
+        <div className="space-y-4">
+          {/* Plan summaries */}
+          {data.planSummaries.length > 0 && (
+            <div className="bg-card rounded-xl shadow-card p-5">
+              <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                年度計畫
+              </h2>
+              <div className="space-y-3">
+                {data.planSummaries.map((p) => (
+                  <div key={p.id} className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-foreground truncate">{p.title}</span>
+                      <span className="tabular-nums text-muted-foreground ml-2">{Math.round(p.progressPct)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-accent rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${Math.min(p.progressPct, 100)}%` }}
+                      />
+                    </div>
+                    {p.flaggedCount > 0 && (
+                      <p className="text-[11px] text-red-500 flex items-center gap-1">
+                        <Flame className="h-3 w-3 fill-current" />
+                        {p.flaggedCount} 個標記任務
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Quick links */}
+          <div className="bg-card rounded-xl shadow-card p-5">
+            <h2 className="text-sm font-medium mb-3">快速前往</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <a href="/cockpit" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/60 hover:bg-accent transition-colors text-sm">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                駕駛艙
+              </a>
+              <a href="/kanban" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/60 hover:bg-accent transition-colors text-sm">
+                <Target className="h-4 w-4 text-primary" />
+                看板
+              </a>
+              <a href="/reports" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/60 hover:bg-accent transition-colors text-sm">
+                <BarChart3 className="h-4 w-4 text-primary" />
+                報表
+              </a>
+              <a href="/timesheet" className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/60 hover:bg-accent transition-colors text-sm">
+                <Clock className="h-4 w-4 text-primary" />
+                工時
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const [data, setData] = useState<MyDayData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMyDay = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/my-day");
+      if (!res.ok) throw new Error(`載入失敗 (${res.status})`);
+      const body = await res.json();
+      setData(extractData<MyDayData>(body));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchMyDay();
+    }
+  }, [status, fetchMyDay]);
+
   const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
-
-  // View toggle (persisted in localStorage)
-  const [view, setView] = useState<DashboardView>(() => {
-    if (typeof window === "undefined") return "team";
-    return (localStorage.getItem(DASHBOARD_VIEW_KEY) as DashboardView) || "team";
-  });
-
-  function toggleView() {
-    const next: DashboardView = view === "personal" ? "team" : "personal";
-    setView(next);
-    localStorage.setItem(DASHBOARD_VIEW_KEY, next);
-  }
-
-  const showTeam = isManager && view === "team";
+  const greeting = getGreeting();
+  const userName = session?.user?.name ?? "";
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">儀表板</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
-            {showTeam ? "團隊視角 — 團隊整體狀況" : "個人視角 — 我的工作狀況"}
-          </p>
-        </div>
-        {/* View toggle — only for Manager/Admin */}
-        {isManager && status !== "loading" && (
-          <button
-            onClick={toggleView}
-            className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-md text-sm font-medium text-foreground hover:bg-accent transition-colors"
-          >
-            {view === "team" ? (
-              <ToggleRight className="h-4 w-4 text-primary" />
-            ) : (
-              <ToggleLeft className="h-4 w-4 text-muted-foreground" />
-            )}
-            {view === "team" ? "團隊" : "個人"}
-          </button>
-        )}
+    <div className="max-w-6xl mx-auto px-4 py-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-xl font-semibold tracking-tight">
+          {greeting}，{userName}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isManager ? "團隊全局 — 今日需關注事項" : "我的一天 — 今日工作安排"}
+        </p>
       </div>
 
-      {/* ── Overdue Alert (Issue #809, top of dashboard) ── */}
-      {status !== "loading" && (
-        <div className="mb-6">
-          <OverdueAlert />
-        </div>
-      )}
-
-      {/* ── Task Status Summary Cards (Issue #808) ── */}
-      {status !== "loading" && (
-        <div className="mb-8">
-          <TaskStatusSummary />
-        </div>
-      )}
-
-      {status === "loading" ? (
-        <PageLoading />
-      ) : showTeam ? (
-        <>
-          <TeamOverview />
-          <div className="mt-8">
-            <ManagerDashboard />
+      {/* Progressive loading with skeletons */}
+      {status === "loading" || loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
+          <div className="space-y-4">
+            <SectionSkeleton rows={2} />
+            <SectionSkeleton rows={3} />
           </div>
-        </>
-      ) : isManager ? (
-        <EngineerDashboard />
+          <div className="space-y-4">
+            <SectionSkeleton rows={1} />
+            <SectionSkeleton rows={2} />
+          </div>
+        </div>
+      ) : error ? (
+        <PageError message={error} onRetry={fetchMyDay} />
+      ) : !data ? (
+        <PageEmpty title="尚無資料" description="無法載入 My Day 資料" />
+      ) : data.role === "MANAGER" ? (
+        <ManagerMyDay data={data} />
       ) : (
-        <EngineerDashboard />
-      )}
-
-      {/* ── My Todo List (both views, Issue #807) ── */}
-      {status !== "loading" && (
-        <div className="mt-8">
-          <MyTodoList />
-        </div>
-      )}
-
-      {/* ── KPI Achievement Cards ── */}
-      {status !== "loading" && (
-        <div className="mt-8">
-          <KPIAchievementSection />
-        </div>
+        <EngineerMyDay data={data} />
       )}
     </div>
   );
+}
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "早安";
+  if (hour < 18) return "午安";
+  return "晚安";
 }
