@@ -53,15 +53,20 @@ describe("DocumentService", () => {
     expect(result).toEqual(updated);
   });
 
-  test("updateDocument skips version snapshot when only title changes", async () => {
-    const existing = { id: "doc-1", version: 1, content: "same content" };
-    const updated = { id: "doc-1", version: 1, title: "New Title", content: "same content" };
+  test("updateDocument creates version snapshot when only title changes (Issue #967)", async () => {
+    const existing = { id: "doc-1", version: 1, content: "same content", title: "Old Title" };
+    const updated = { id: "doc-1", version: 2, title: "New Title", content: "same content" };
     (prisma.document.findUnique as jest.Mock).mockResolvedValue(existing);
+    (prisma.documentVersion.create as jest.Mock).mockResolvedValue({});
     (prisma.document.update as jest.Mock).mockResolvedValue(updated);
 
     const result = await service.updateDocument("doc-1", { title: "New Title", updatedBy: "u1" });
 
-    expect(prisma.documentVersion.create).not.toHaveBeenCalled();
+    expect(prisma.documentVersion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ documentId: "doc-1", title: "Old Title" }),
+      })
+    );
     expect(result).toEqual(updated);
   });
 
