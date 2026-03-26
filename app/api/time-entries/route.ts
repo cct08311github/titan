@@ -40,14 +40,28 @@ export const GET = withAuth(async (req: NextRequest) => {
     where.date = { gte: start, lte: end };
   }
 
-  const entries = await prisma.timeEntry.findMany({
-    where,
-    include: {
-      task: { select: { id: true, title: true, category: true } },
-      subTask: { select: { id: true, title: true } },  // Issue #933
-    },
-    orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-  });
+  // Issue #940: defensive try — if subTask relation is unavailable (e.g. pending
+  // migration), fall back to a query without the subTask include so the API
+  // never returns 500 for a missing column.
+  let entries;
+  try {
+    entries = await prisma.timeEntry.findMany({
+      where,
+      include: {
+        task: { select: { id: true, title: true, category: true } },
+        subTask: { select: { id: true, title: true } },  // Issue #933
+      },
+      orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+    });
+  } catch {
+    entries = await prisma.timeEntry.findMany({
+      where,
+      include: {
+        task: { select: { id: true, title: true, category: true } },
+      },
+      orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+    });
+  }
 
   return success(entries);
 });
