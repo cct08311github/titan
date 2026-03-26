@@ -8,8 +8,8 @@
  * then sanitizes output via sanitizeHtml() for defense-in-depth XSS prevention.
  */
 
-import { useState } from "react";
-import { Eye, Edit3 } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { Eye, Edit3, ImagePlus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/security/sanitize";
 
@@ -45,6 +45,7 @@ function renderMarkdown(md: string): string {
     .replace(/^---$/gm, '<hr class="border-border my-4" />')
     .replace(/^[-*] (.+)$/gm, '<li class="ml-4 list-disc text-foreground">$1</li>')
     .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-foreground">$1</li>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full rounded my-2" />')
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>')
     .replace(/\n\n/g, '</p><p class="my-2 text-foreground leading-relaxed">')
     .replace(/\n/g, "<br />");
@@ -54,9 +55,69 @@ function renderMarkdown(md: string): string {
 
 export function MarkdownEditor({ value, onChange, placeholder, minHeight = 400, maxLength = 10000 }: MarkdownEditorProps) {
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [uploading, setUploading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = useCallback(async (file: File) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/uploads", { method: "POST", body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(err?.message ?? "圖片上傳失敗");
+        return;
+      }
+      const body = await res.json();
+      const url = body.data?.url ?? body.url;
+      if (!url) return;
+
+      // Insert markdown image at cursor position
+      const textarea = textareaRef.current;
+      const imageMarkdown = `![image](${url})`;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const newValue = value.slice(0, start) + imageMarkdown + value.slice(end);
+        onChange(newValue);
+        // Restore cursor position after the inserted text
+        requestAnimationFrame(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + imageMarkdown.length;
+          textarea.focus();
+        });
+      } else {
+        onChange(value + "\n" + imageMarkdown);
+      }
+    } finally {
+      setUploading(false);
+    }
+  }, [value, onChange]);
+
+  const handleFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageUpload(file);
+    }
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+  }, [handleImageUpload]);
 
   return (
     <div className="flex flex-col h-full">
+      {/* Hidden file input for image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border bg-muted/30">
         <button
           onClick={() => setMode("edit")}
@@ -78,12 +139,24 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 400, 
           <Eye className="h-3 w-3" />
           預覽
         </button>
+        {mode === "edit" && (
+          <button
+            onClick={handleFileSelect}
+            disabled={uploading}
+            title="上傳圖片"
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded transition-colors text-muted-foreground hover:text-foreground hover:bg-accent disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ImagePlus className="h-3 w-3" />}
+            {uploading ? "上傳中..." : "圖片"}
+          </button>
+        )}
         <span className="ml-auto text-xs text-muted-foreground">Markdown</span>
       </div>
 
       {mode === "edit" ? (
         <div className="flex-1 flex flex-col">
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder ?? "輸入 Markdown 內容..."}
