@@ -97,6 +97,7 @@ function setupFetch(
   taskSummary: unknown = TASK_SUMMARY_HAPPY,
 ) {
   mockFetch.mockImplementation((url: string) => {
+    if (url.includes("team-summary")) return Promise.resolve({ ok: true, json: async () => ({ members: [], totalTasks: 0, completedTasks: 0 }) } as Response);
     if (url.includes("task-summary")) return Promise.resolve({ ok: true, json: async () => taskSummary } as Response);
     if (url.includes("workload")) return Promise.resolve({ ok: true, json: async () => workload } as Response);
     if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => weekly } as Response);
@@ -198,6 +199,8 @@ describe("Dashboard Extended — Error recovery interaction", () => {
     let callCount = 0;
     mockFetch.mockImplementation((url: string) => {
       callCount++;
+      // team-summary always succeeds to prevent TeamOverview crash
+      if (url.includes("team-summary")) return Promise.resolve({ ok: true, json: async () => ({ members: [], totalTasks: 0, completedTasks: 0 }) } as Response);
       if (callCount <= 2) {
         // First round: both workload + weekly fail
         return Promise.resolve({ ok: false, json: async () => ({}) } as Response);

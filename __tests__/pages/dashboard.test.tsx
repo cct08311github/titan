@@ -145,6 +145,7 @@ function setupFetch(
   taskSummary: unknown = TASK_SUMMARY_HAPPY,
 ) {
   mockFetch.mockImplementation((url: string) => {
+    if (url.includes("team-summary")) return Promise.resolve({ ok: true, json: async () => ({ members: [], totalTasks: 0, completedTasks: 0 }) } as Response);
     if (url.includes("task-summary")) return Promise.resolve({ ok: true, json: async () => taskSummary } as Response);
     if (url.includes("workload")) return Promise.resolve({ ok: true, json: async () => workload } as Response);
     if (url.includes("weekly"))   return Promise.resolve({ ok: true, json: async () => weekly   } as Response);
@@ -197,11 +198,11 @@ describe("Dashboard Page", () => {
   });
 
   // ── Case 5: Engineer role subtitle ──────────────────────────────────────
-  it("shows 工程師視角 subtitle for MEMBER role", async () => {
+  it("shows 個人視角 subtitle for MEMBER role", async () => {
     setSession("MEMBER");
     setupFetch();
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText(/工程師視角/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/個人視角/)).toBeInTheDocument());
   });
 
   // ── Case 6: Engineer stat card ───────────────────────────────────────────
@@ -213,11 +214,11 @@ describe("Dashboard Page", () => {
   });
 
   // ── Case 7: Manager role subtitle ───────────────────────────────────────
-  it("shows 主管視角 subtitle for MANAGER role", async () => {
+  it("shows 團隊視角 subtitle for MANAGER role", async () => {
     setSession("MANAGER");
     setupFetch();
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText(/主管視角/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/團隊視角/)).toBeInTheDocument());
   });
 
   // ── Case 8: Manager stat card ────────────────────────────────────────────
