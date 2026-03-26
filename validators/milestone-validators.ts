@@ -8,11 +8,18 @@ const MilestoneStatusEnum = z.enum([
   "CANCELLED",
 ]);
 
+const MilestoneTypeEnum = z.enum([
+  "LAUNCH",
+  "AUDIT",
+  "CUSTOM",
+]);
+
 export const createMilestoneSchema = z
   .object({
     annualPlanId: z.string().min(1),
     title: z.string().min(1),
     description: z.string().optional(),
+    type: MilestoneTypeEnum.optional().default("CUSTOM"),
     plannedStart: z.coerce.date().optional(),
     plannedEnd: z.coerce.date(),
     order: z.number().int().min(0).optional(),
@@ -30,6 +37,7 @@ export const createMilestoneSchema = z
 export const updateMilestoneSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
+  type: MilestoneTypeEnum.optional(),
   plannedStart: z.coerce.date().optional(),
   plannedEnd: z.coerce.date().optional(),
   actualStart: z.coerce.date().optional(),
