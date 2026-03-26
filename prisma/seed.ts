@@ -8,14 +8,14 @@ async function main() {
 
   // ── 建立使用者 ─────────────────────────────────────────
   // Issue #180: passwords must meet policy (12+ chars, upper+lower+digit+special)
-  const adminPassword = await hash("Titan@2026Dev!", 12);
-  const engPassword = await hash("Titan@2026Dev!", 12);
+  const adminPassword = await hash("Admin@2026!x", 12);
+  const engPassword = await hash("Admin@2026!x", 12);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin" },
+    where: { email: "admin@titan.local" },
     update: {},
     create: {
-      email: "admin",
+      email: "admin@titan.local",
       name: "系統管理員",
       password: adminPassword,
       role: Role.MANAGER,
@@ -26,10 +26,10 @@ async function main() {
 
   const engineers = await Promise.all([
     prisma.user.upsert({
-      where: { email: "eng01" },
+      where: { email: "eng-a@titan.local" },
       update: {},
       create: {
-        email: "eng01",
+        email: "eng-a@titan.local",
         name: "王大明",
         password: engPassword,
         role: Role.ENGINEER,
@@ -38,10 +38,10 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "eng02" },
+      where: { email: "eng-b@titan.local" },
       update: {},
       create: {
-        email: "eng02",
+        email: "eng-b@titan.local",
         name: "李小花",
         password: engPassword,
         role: Role.ENGINEER,
@@ -50,10 +50,10 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "eng03" },
+      where: { email: "eng-c@titan.local" },
       update: {},
       create: {
-        email: "eng03",
+        email: "eng-c@titan.local",
         name: "張志偉",
         password: engPassword,
         role: Role.ENGINEER,
@@ -62,10 +62,10 @@ async function main() {
       },
     }),
     prisma.user.upsert({
-      where: { email: "eng04" },
+      where: { email: "eng-d@titan.local" },
       update: {},
       create: {
-        email: "eng04",
+        email: "eng-d@titan.local",
         name: "陳美玖",
         password: engPassword,
         role: Role.ENGINEER,
