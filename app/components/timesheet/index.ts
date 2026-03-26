@@ -8,5 +8,6 @@ export { TimesheetTimer } from "./timesheet-timer";
 export { TemplateSelector } from "./template-selector";
 export { CalendarDayView } from "./calendar-day-view";
 export { CalendarWeekView } from "./calendar-week/index";
+export { CalendarMonthView } from "./calendar-month-view";
 export type { TimeEntry, TaskRow, TaskOption, SubTaskOption, OvertimeType, TimerState } from "./use-timesheet";
 export type { ViewMode } from "./timesheet-toolbar";
