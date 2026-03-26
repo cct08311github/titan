@@ -683,14 +683,19 @@ model TaskTemplate {
 model AuditLog {
   id           String   @id @default(cuid())
   userId       String?  // null for unauthenticated events (e.g. login failures)
-  action       String   // e.g. DELETE_TASK, ROLE_CHANGE, PASSWORD_CHANGE, LOGIN_FAILURE
+  action       String   // e.g. CREATE, UPDATE, DELETE, LOGIN, LOGOUT, STATUS_CHANGE
+  module       String   @default("AUTH") // AUTH, KANBAN, TIMESHEET, KPI, ADMIN, GANTT, PLAN, SETTINGS
   resourceType String   // e.g. Task, User, Auth
   resourceId   String?  // nullable for non-resource events
-  detail       String?  // human-readable or JSON-serialised description
+  metadata     Json?    // JSONB — before/after diff, extra context (Issue #802)
+  detail       String?  // human-readable description (backward compat)
   ipAddress    String?
+  userAgent    String?  // browser/client user-agent string (Issue #802)
   createdAt    DateTime @default(now())
 
   @@index([userId])
+  @@index([module])
+  @@index([createdAt])
   @@index([resourceType, resourceId])
   @@map("audit_logs")
 }
