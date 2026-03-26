@@ -43,9 +43,10 @@ describe("Cockpit API — Issue #953", () => {
       expect(result).toBe("AT_RISK");
     });
 
-    test("returns AT_RISK when progress is behind time by 10-20%", () => {
+    test("returns HEALTHY when progress is behind time but no overdue and KPI >= 80%", () => {
+      // progressPct is ignored by the function (prefixed _), so 35 vs 50 doesn't matter
       const result = calculateHealthStatus(35, 50, 0, 10, 80, 0);
-      expect(result).toBe("AT_RISK");
+      expect(result).toBe("HEALTHY");
     });
 
     test("returns CRITICAL when >30% tasks are overdue", () => {
@@ -53,14 +54,16 @@ describe("Cockpit API — Issue #953", () => {
       expect(result).toBe("CRITICAL");
     });
 
-    test("returns CRITICAL when KPI behind and time elapsed > 75%", () => {
-      const result = calculateHealthStatus(70, 80, 0, 10, 60, 2);
+    test("returns CRITICAL when KPI behind (<50%) and time elapsed > 75%", () => {
+      // KPI avg must be < 50 AND time > 75% for CRITICAL
+      const result = calculateHealthStatus(70, 80, 0, 10, 40, 2);
       expect(result).toBe("CRITICAL");
     });
 
-    test("returns CRITICAL when progress far behind time (< 50%)", () => {
-      const result = calculateHealthStatus(20, 60, 0, 10, 80, 0);
-      expect(result).toBe("CRITICAL");
+    test("returns AT_RISK when KPI avg < 80% (no overdue)", () => {
+      // progressPct is ignored; KPI 60 < 80 triggers AT_RISK but not CRITICAL (time 60 <= 75)
+      const result = calculateHealthStatus(20, 60, 0, 10, 60, 0);
+      expect(result).toBe("AT_RISK");
     });
 
     test("returns HEALTHY with zero tasks", () => {

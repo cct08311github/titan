@@ -1,5 +1,5 @@
 /**
- * Page tests: Reports
+ * Page tests: Reports v2 — Updated for Phase A/B/C sidebar nav + 4 report types
  */
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
@@ -15,46 +15,33 @@ jest.mock("next-auth/react", () => ({
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-const WEEKLY_REPORT = {
-  period: { start: "2024-01-15T00:00:00Z", end: "2024-01-21T23:59:59Z" },
-  completedTasks: [],
-  completedCount: 3,
-  totalHours: 40,
-  hoursByCategory: { PLANNED_TASK: 35, ADMIN: 5 },
-  overdueTasks: [],
-  overdueCount: 1,
-  changes: [],
-  delayCount: 0,
-  scopeChangeCount: 0,
-};
-
-const MONTHLY_REPORT = {
-  period: { year: 2024, month: 1, start: "2024-01-01", end: "2024-01-31" },
-  totalTasks: 10,
-  completedTasks: 7,
-  completionRate: 70,
-  totalHours: 160,
-  hoursByCategory: {},
-  monthlyGoals: [],
-  changes: [],
-  delayCount: 0,
-  scopeChangeCount: 0,
-};
-
 describe("Reports Page", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("weekly")) {
-        return Promise.resolve({ ok: true, json: async () => WEEKLY_REPORT } as Response);
+      if (url.includes("time-distribution")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ok: true,
+            data: {
+              members: [
+                { userId: "u1", userName: "Alice", totalHours: 35, availableHours: 40, utilizationPct: 87.5 },
+              ],
+            },
+          }),
+        } as Response);
       }
-      if (url.includes("monthly")) {
-        return Promise.resolve({ ok: true, json: async () => MONTHLY_REPORT } as Response);
+      if (url.includes("completion-rate")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            ok: true,
+            data: { weeks: [{ week: "2026-W12", label: "W12", completed: 3 }] },
+          }),
+        } as Response);
       }
-      if (url.includes("workload")) {
-        return Promise.resolve({ ok: true, json: async () => ({ byPerson: [], totalHours: 0, plannedRate: 0, unplannedRate: 0 }) } as Response);
-      }
-      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      return Promise.resolve({ ok: true, json: async () => ({ ok: true, data: {} }) } as Response);
     });
   });
 
@@ -66,80 +53,68 @@ describe("Reports Page", () => {
     expect(document.body).toBeDefined();
   });
 
-  it("shows completed count after loading", async () => {
+  it("renders report sidebar nav labels", async () => {
+    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
+    await act(async () => {
+      render(<ReportsPage />);
+    });
+    expect(screen.getByText("團隊利用率")).toBeInTheDocument();
+    expect(screen.getByText("任務速率")).toBeInTheDocument();
+    expect(screen.getByText("KPI 達成率趨勢")).toBeInTheDocument();
+    expect(screen.getByText("計畫外工作趨勢")).toBeInTheDocument();
+  });
+
+  it("shows utilization report data after loading", async () => {
     const { default: ReportsPage } = await import("@/app/(app)/reports/page");
     await act(async () => {
       render(<ReportsPage />);
     });
     await waitFor(() => {
-      // completedCount = 3 may appear multiple times (weekly/monthly views)
-      const matches = screen.getAllByText("3");
-      expect(matches.length).toBeGreaterThan(0);
+      expect(screen.getByText("Alice")).toBeInTheDocument();
     });
   });
 
   it("handles fetch error gracefully", async () => {
-    // Reports page calls r.json() regardless of ok status, so provide valid shape to avoid crashes
-    // Real error handling would require the component to check r.ok
     mockFetch.mockImplementation(() =>
-      Promise.resolve({ ok: false, json: async () => null } as unknown as Response)
+      Promise.resolve({ ok: false, json: async () => ({}) } as Response)
     );
     const { default: ReportsPage } = await import("@/app/(app)/reports/page");
     await act(async () => {
       render(<ReportsPage />);
     });
-    // Component shows loading or error state without crashing (data stays null)
+    // Component shows error state without crashing
     expect(document.body).toBeDefined();
   });
 
-  it("renders report tab labels (週報 / 月報)", async () => {
+  it("renders 報表 heading", async () => {
     const { default: ReportsPage } = await import("@/app/(app)/reports/page");
     await act(async () => {
       render(<ReportsPage />);
     });
-    // Tab bar is rendered immediately without waiting for fetch
-    expect(screen.getByText("週報")).toBeInTheDocument();
-    expect(screen.getByText("月報")).toBeInTheDocument();
+    expect(screen.getAllByText("報表").length).toBeGreaterThan(0);
   });
 
-  it("shows empty state guidance when weekly report data is null", async () => {
-    // Simulate API returning null (no report generated yet)
+  it("shows empty state when utilization report returns no members", async () => {
     mockFetch.mockImplementation((url: string) => {
-      if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => null } as unknown as Response);
-      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      if (url.includes("time-distribution")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ ok: true, data: { members: [] } }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => ({ ok: true, data: {} }) } as Response);
     });
     const { default: ReportsPage } = await import("@/app/(app)/reports/page");
     await act(async () => {
       render(<ReportsPage />);
     });
     await waitFor(() => {
-      // 空資料時顯示引導訊息
-      expect(screen.getByText("無週報資料")).toBeInTheDocument();
-      expect(screen.getByText("本週尚無相關數據")).toBeInTheDocument();
+      expect(screen.getByText("此期間無工時資料")).toBeInTheDocument();
     });
   });
 
   it("handles API error (network failure) without crashing", async () => {
     mockFetch.mockRejectedValue(new Error("Network error"));
-    const { default: ReportsPage } = await import("@/app/(app)/reports/page");
-    await act(async () => {
-      render(<ReportsPage />);
-    });
-    // Page should catch the error and not propagate to React error boundary
-    expect(document.body).toBeDefined();
-  });
-
-  it("renders without crash on zero/empty weekly report values", async () => {
-    // Partial schema: numeric fields are 0, arrays are empty
-    const partial = {
-      period: { start: "2024-01-15T00:00:00Z", end: "2024-01-21T23:59:59Z" },
-      completedCount: 0, totalHours: 0, overdueCount: 0, delayCount: 0,
-      scopeChangeCount: 0, completedTasks: [], overdueTasks: [], hoursByCategory: {},
-    };
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => partial } as Response);
-      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
-    });
     const { default: ReportsPage } = await import("@/app/(app)/reports/page");
     await act(async () => {
       render(<ReportsPage />);

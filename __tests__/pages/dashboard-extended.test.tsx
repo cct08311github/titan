@@ -1,17 +1,16 @@
 /**
- * Extended RTL tests for Dashboard page — Issue #373
+ * Extended tests for Dashboard (My Day) page — Updated for Phase A/B/C v2 redesign
  *
- * Focuses on:
- *  - Role-based rendering differences (Manager vs Engineer)
- *  - User interaction: retry buttons, conditional sections
- *  - Data-driven rendering: KPI section, today tasks, overdue highlight
- *  - Edge cases: mixed data states
+ * Covers:
+ *  - Role-based rendering (Manager vs Engineer My Day)
+ *  - Error recovery with retry
+ *  - Edge cases: empty data states
  */
 import React from "react";
 import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-// ── Session mock ──────────────────────────────────────────────────────────────
+// ── Session mock ──────────────────────────────────────────────────────
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
   useSession: (...args: unknown[]) => mockUseSession(...args),
@@ -32,55 +31,55 @@ beforeAll(async () => {
   DashboardPage = mod.default;
 });
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Mock data ────────────────────────────────────────────────────────
 
-const WORKLOAD_HAPPY = {
-  byPerson: [
-    { userId: "u1", name: "Alice", total: 40, planned: 30, unplanned: 10 },
-    { userId: "u2", name: "Bob", total: 35, planned: 25, unplanned: 10 },
-  ],
-  plannedRate: 75,
-  unplannedRate: 25,
-  totalHours: 75,
-};
-
-const WEEKLY_HAPPY = {
-  completedCount: 5,
-  overdueCount: 2,
-  delayCount: 1,
-  scopeChangeCount: 0,
-  totalHours: 38,
-};
-
-const TASKS_HAPPY = [
-  { id: "t1", title: "Task One", status: "IN_PROGRESS", priority: "HIGH", dueDate: null },
-  { id: "t2", title: "Task Two", status: "TODO", priority: "MEDIUM", dueDate: "2099-12-31" },
-  { id: "t3", title: "Overdue Task", status: "IN_PROGRESS", priority: "URGENT", dueDate: "2020-01-01" },
-];
-
-const KPI_HAPPY = [
-  {
-    id: "k1", code: "KPI-01", title: "Revenue Growth",
-    target: 100, actual: 80, status: "ON_TRACK",
-    autoCalc: false, taskLinks: [],
-  },
-  {
-    id: "k2", code: "KPI-02", title: "Customer Satisfaction",
-    target: 90, actual: 85, status: "AT_RISK",
-    autoCalc: false, taskLinks: [],
-  },
-];
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const TASK_SUMMARY_HAPPY = {
+const MANAGER_DATA_HAPPY = {
+  ok: true,
   data: {
-    todo: { count: 3, trend: "up" as const, diff: 1 },
-    inProgress: { count: 5, trend: "same" as const, diff: 0 },
-    done: { count: 8, trend: "down" as const, diff: -2 },
-    scope: "personal" as const,
+    role: "MANAGER",
+    flaggedTasks: [
+      { id: "t1", title: "Flagged Task", status: "IN_PROGRESS", priority: "P0", dueDate: null, managerFlagged: true },
+    ],
+    overdueTasks: [
+      { id: "t2", title: "Overdue Task", status: "IN_PROGRESS", priority: "P1", dueDate: "2020-01-01" },
+    ],
+    memberWorkload: [
+      { id: "u1", name: "Alice", avatar: null, activeTasks: 5, overdueTasks: 1, flaggedTasks: 1 },
+      { id: "u2", name: "Bob", avatar: null, activeTasks: 3, overdueTasks: 0, flaggedTasks: 0 },
+    ],
+    todayHours: 4,
+    alerts: [
+      { type: "CRITICAL", message: "2 tasks overdue > 3 days" },
+    ],
+    planSummaries: [
+      { id: "p1", title: "2026 Annual Plan", progressPct: 65, flaggedCount: 2 },
+    ],
   },
 };
+
+const ENGINEER_DATA_HAPPY = {
+  ok: true,
+  data: {
+    role: "ENGINEER",
+    flaggedTasks: [
+      { id: "t3", title: "Manager Flagged", status: "IN_PROGRESS", priority: "P0", dueDate: null, managerFlagged: true },
+    ],
+    dueTodayTasks: [
+      { id: "t4", title: "Due Today Task", status: "TODO", priority: "P1", dueDate: "2026-03-27" },
+    ],
+    inProgressTasks: [
+      { id: "t5", title: "Working On It", status: "IN_PROGRESS", priority: "P2", dueDate: null },
+    ],
+    todayHours: 3.5,
+    dailyTarget: 8,
+    timeSuggestions: [],
+    monthlyGoals: [
+      { id: "g1", title: "Complete Module A", progressPct: 70, status: "IN_PROGRESS" },
+    ],
+  },
+};
+
+// ── Helpers ──────────────────────────────────────────────────────────
 
 function setSession(role: "MANAGER" | "MEMBER") {
   mockUseSession.mockReturnValue({
@@ -89,103 +88,77 @@ function setSession(role: "MANAGER" | "MEMBER") {
   });
 }
 
-function setupFetch(
-  workload: unknown = WORKLOAD_HAPPY,
-  weekly: unknown = WEEKLY_HAPPY,
-  tasks: unknown = TASKS_HAPPY,
-  kpi: unknown = KPI_HAPPY,
-  taskSummary: unknown = TASK_SUMMARY_HAPPY,
-) {
-  mockFetch.mockImplementation((url: string) => {
-    if (url.includes("team-summary")) return Promise.resolve({ ok: true, json: async () => ({ members: [], totalTasks: 0, completedTasks: 0 }) } as Response);
-    if (url.includes("task-summary")) return Promise.resolve({ ok: true, json: async () => taskSummary } as Response);
-    if (url.includes("workload")) return Promise.resolve({ ok: true, json: async () => workload } as Response);
-    if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => weekly } as Response);
-    if (url.includes("tasks")) return Promise.resolve({ ok: true, json: async () => tasks } as Response);
-    if (url.includes("kpi")) return Promise.resolve({ ok: true, json: async () => kpi } as Response);
-    return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
-  });
-}
-
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// ── Tests ────────────────────────────────────────────────────────────
 
 describe("Dashboard Extended — Role-based rendering", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it("Manager sees 團隊工時分佈 section with team member names", async () => {
+  it("Manager sees 團隊健康快照 section with team member names", async () => {
     setSession("MANAGER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA_HAPPY } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("團隊工時分佈（本月）")).toBeInTheDocument();
+      expect(screen.getByText("團隊健康快照")).toBeInTheDocument();
       expect(screen.getByText("Alice")).toBeInTheDocument();
       expect(screen.getByText("Bob")).toBeInTheDocument();
     });
   });
 
-  it("Manager sees 投入率分析 section with planned/unplanned rates", async () => {
+  it("Manager sees alerts bar when alerts exist", async () => {
     setSession("MANAGER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA_HAPPY } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("投入率分析（計畫任務 vs 加入任務）")).toBeInTheDocument();
-      expect(screen.getByText("計畫內投入")).toBeInTheDocument();
-      expect(screen.getByText("計畫外投入")).toBeInTheDocument();
+      expect(screen.getByText("2 tasks overdue > 3 days")).toBeInTheDocument();
     });
   });
 
-  it("Engineer sees 我的任務 section with task titles", async () => {
-    setSession("MEMBER");
-    setupFetch();
+  it("Manager sees 年度計畫 summaries with progress", async () => {
+    setSession("MANAGER");
+    mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA_HAPPY } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("我的任務（待辦 + 進行中）")).toBeInTheDocument();
-      expect(screen.getAllByText("Task One").length).toBeGreaterThan(0);
-      expect(screen.getAllByText("Task Two").length).toBeGreaterThan(0);
+      expect(screen.getByText("年度計畫")).toBeInTheDocument();
+      expect(screen.getByText("2026 Annual Plan")).toBeInTheDocument();
     });
   });
 
-  it("Engineer sees 本週工時進度 progress bar section", async () => {
+  it("Engineer sees flagged tasks section when manager-flagged tasks exist", async () => {
     setSession("MEMBER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA_HAPPY } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("本週工時進度")).toBeInTheDocument();
+      expect(screen.getByText("主管標記任務")).toBeInTheDocument();
+      expect(screen.getByText("Manager Flagged")).toBeInTheDocument();
     });
   });
 
-  it("Engineer sees overdue task count as stat card with accent", async () => {
+  it("Engineer sees 今日到期 section", async () => {
     setSession("MEMBER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA_HAPPY } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getAllByText("逾期任務").length).toBeGreaterThan(0);
-    });
-  });
-});
-
-describe("Dashboard Extended — KPI section", () => {
-  beforeEach(() => jest.clearAllMocks());
-
-  it("renders KPI progress bars with code and title", async () => {
-    setSession("MEMBER");
-    setupFetch();
-    await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => {
-      expect(screen.getByText("KPI-01")).toBeInTheDocument();
-      expect(screen.getByText("Revenue Growth")).toBeInTheDocument();
-      expect(screen.getByText("KPI-02")).toBeInTheDocument();
-      expect(screen.getByText("Customer Satisfaction")).toBeInTheDocument();
+      expect(screen.getByText("今日到期")).toBeInTheDocument();
+      expect(screen.getByText("Due Today Task")).toBeInTheDocument();
     });
   });
 
-  it("renders KPI status badges (ON_TRACK / AT_RISK)", async () => {
+  it("Engineer sees 本月目標 section", async () => {
     setSession("MEMBER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA_HAPPY } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getAllByText("進行中").length).toBeGreaterThan(0); // ON_TRACK
-      expect(screen.getAllByText("風險").length).toBeGreaterThan(0);   // AT_RISK
+      expect(screen.getByText("本月目標")).toBeInTheDocument();
+      expect(screen.getByText("Complete Module A")).toBeInTheDocument();
+    });
+  });
+
+  it("Engineer sees 今日工時 progress bar section", async () => {
+    setSession("MEMBER");
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA_HAPPY } as Response);
+    await act(async () => { render(<DashboardPage />); });
+    await waitFor(() => {
+      expect(screen.getByText("今日工時")).toBeInTheDocument();
     });
   });
 });
@@ -195,65 +168,73 @@ describe("Dashboard Extended — Error recovery interaction", () => {
 
   it("Manager: error state shows 發生錯誤 and retry triggers re-fetch", async () => {
     setSession("MANAGER");
-    // First call fails, second succeeds
     let callCount = 0;
-    mockFetch.mockImplementation((url: string) => {
+    mockFetch.mockImplementation(() => {
       callCount++;
-      // team-summary always succeeds to prevent TeamOverview crash
-      if (url.includes("team-summary")) return Promise.resolve({ ok: true, json: async () => ({ members: [], totalTasks: 0, completedTasks: 0 }) } as Response);
-      if (callCount <= 2) {
-        // First round: both workload + weekly fail
+      if (callCount <= 1) {
         return Promise.resolve({ ok: false, json: async () => ({}) } as Response);
       }
-      // After retry
-      if (url.includes("workload")) return Promise.resolve({ ok: true, json: async () => WORKLOAD_HAPPY } as Response);
-      if (url.includes("weekly")) return Promise.resolve({ ok: true, json: async () => WEEKLY_HAPPY } as Response);
-      if (url.includes("kpi")) return Promise.resolve({ ok: true, json: async () => KPI_HAPPY } as Response);
-      return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      return Promise.resolve({ ok: true, json: async () => MANAGER_DATA_HAPPY } as Response);
     });
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
       expect(screen.getAllByText("發生錯誤").length).toBeGreaterThan(0);
     });
 
-    // Click retry button
     const retryButtons = screen.getAllByText("重試");
     expect(retryButtons.length).toBeGreaterThan(0);
     await act(async () => { fireEvent.click(retryButtons[0]); });
 
-    // After retry, data should load
     await waitFor(() => {
-      expect(screen.getByText("儀表板")).toBeInTheDocument();
+      expect(screen.getByText("團隊健康快照")).toBeInTheDocument();
     });
   });
 
-  it("Engineer: empty tasks + zero weekly hours shows 尚無待處理任務 guidance", async () => {
+  it("Engineer: empty tasks shows 今天沒有到期任務 and 目前沒有進行中的任務", async () => {
     setSession("MEMBER");
-    setupFetch(
-      WORKLOAD_HAPPY,
-      { completedCount: 0, overdueCount: 0, delayCount: 0, scopeChangeCount: 0, totalHours: 0 },
-      [],
-      KPI_HAPPY,
-    );
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          role: "ENGINEER",
+          flaggedTasks: [],
+          dueTodayTasks: [],
+          inProgressTasks: [],
+          todayHours: 0,
+          dailyTarget: 8,
+          timeSuggestions: [],
+          monthlyGoals: [],
+        },
+      }),
+    } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("尚無待處理任務")).toBeInTheDocument();
-      expect(screen.getByText("開始使用")).toBeInTheDocument();
+      expect(screen.getByText("今天沒有到期任務")).toBeInTheDocument();
+      expect(screen.getByText("目前沒有進行中的任務")).toBeInTheDocument();
     });
   });
 
-  it("Manager with zero data shows 尚無團隊數據 guidance", async () => {
+  it("Manager with empty team shows 尚無團隊成員資料", async () => {
     setSession("MANAGER");
-    setupFetch(
-      { byPerson: [], plannedRate: 0, unplannedRate: 0, totalHours: 0 },
-      { completedCount: 0, overdueCount: 0, delayCount: 0, scopeChangeCount: 0, totalHours: 0 },
-      [],
-      [],
-    );
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          role: "MANAGER",
+          flaggedTasks: [],
+          overdueTasks: [],
+          memberWorkload: [],
+          todayHours: 0,
+          alerts: [],
+          planSummaries: [],
+        },
+      }),
+    } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
-      expect(screen.getByText("尚無團隊數據")).toBeInTheDocument();
-      expect(screen.getByText("快速開始指南")).toBeInTheDocument();
+      expect(screen.getByText("尚無團隊成員資料")).toBeInTheDocument();
     });
   });
 });

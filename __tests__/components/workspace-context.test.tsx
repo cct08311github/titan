@@ -2,7 +2,6 @@
  * WorkspaceContext + Unified Workspace Tests — Issue #961
  */
 
-import { jest } from "@jest/globals";
 import { render, screen, act, fireEvent, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
@@ -99,42 +98,26 @@ describe("WorkspaceContext", () => {
     mockFetch.mockImplementation(async (input) => {
       const url = typeof input === "string" ? input : (input as Request).url;
       if (url.includes("/api/tasks")) {
-        return new Response(
-          JSON.stringify({
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
             ok: true,
             data: [
-              {
-                id: "t1",
-                title: "Task 1",
-                status: "IN_PROGRESS",
-                priority: "P1",
-                progressPct: 50,
-                position: 1,
-              },
-              {
-                id: "t2",
-                title: "Task 2",
-                status: "TODO",
-                priority: "P2",
-                progressPct: 0,
-                dueDate: "2026-04-01",
-                position: 2,
-              },
+              { id: "t1", title: "Task 1", status: "IN_PROGRESS", priority: "P1", progressPct: 50, position: 1 },
+              { id: "t2", title: "Task 2", status: "TODO", priority: "P2", progressPct: 0, dueDate: "2026-04-01", position: 2 },
             ],
           }),
-          { status: 200 }
-        );
+        } as Response;
       }
       if (url.includes("/api/users")) {
-        return new Response(
-          JSON.stringify({
-            ok: true,
-            data: [{ id: "u1", name: "Alice" }],
-          }),
-          { status: 200 }
-        );
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ ok: true, data: [{ id: "u1", name: "Alice" }] }),
+        } as Response;
       }
-      return new Response("{}", { status: 200 });
+      return { ok: true, status: 200, json: async () => ({}) } as Response;
     });
   });
 
@@ -159,7 +142,28 @@ describe("WorkspaceContext", () => {
   });
 
   it("fetches tasks on mount", async () => {
-    renderWithProvider();
+    // Use plain object mock instead of Response constructor for jsdom compatibility
+    mockFetch.mockImplementation(async (input) => {
+      const url = typeof input === "string" ? input : (input as Request).url;
+      if (url.includes("/api/tasks")) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            ok: true,
+            data: [
+              { id: "t1", title: "Task 1", status: "IN_PROGRESS", priority: "P1", progressPct: 50, position: 1 },
+              { id: "t2", title: "Task 2", status: "TODO", priority: "P2", progressPct: 0, dueDate: "2026-04-01", position: 2 },
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, status: 200, json: async () => ({ ok: true, data: [] }) } as Response;
+    });
+
+    await act(async () => {
+      renderWithProvider();
+    });
     await waitFor(() => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
@@ -343,7 +347,7 @@ describe("ConnectedViewSwitcher", () => {
     jest.clearAllMocks();
     mockSearchParams = new URLSearchParams();
     mockFetch.mockImplementation(async () =>
-      new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 })
+      ({ ok: true, status: 200, json: async () => ({ ok: true, data: [] }) } as Response)
     );
   });
 
@@ -370,7 +374,7 @@ describe("WorkspaceShell", () => {
     jest.clearAllMocks();
     mockSearchParams = new URLSearchParams();
     mockFetch.mockImplementation(async () =>
-      new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 })
+      ({ ok: true, status: 200, json: async () => ({ ok: true, data: [] }) } as Response)
     );
   });
 
@@ -389,7 +393,7 @@ describe("WorkspaceFilterBar", () => {
     jest.clearAllMocks();
     mockSearchParams = new URLSearchParams();
     mockFetch.mockImplementation(async () =>
-      new Response(JSON.stringify({ ok: true, data: [] }), { status: 200 })
+      ({ ok: true, status: 200, json: async () => ({ ok: true, data: [] }) } as Response)
     );
   });
 

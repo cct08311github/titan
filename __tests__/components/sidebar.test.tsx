@@ -1,5 +1,5 @@
 /**
- * Component tests: Sidebar
+ * Component tests: Sidebar — Updated for 5-experience-group restructure (Issue #970)
  */
 import React from "react";
 import { render, screen } from "@testing-library/react";
@@ -9,8 +9,9 @@ jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { id: "u1", role: "MANAGER" } }, status: "authenticated" }),
 }));
 
+const mockUsePathname = jest.fn(() => "/dashboard");
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => mockUsePathname(),
 }));
 
 import { Sidebar } from "@/app/components/sidebar";
@@ -38,11 +39,6 @@ jest.mock("next/link", () => {
   return MockLink;
 });
 
-const mockUsePathname = jest.fn(() => "/dashboard");
-jest.mock("next/navigation", () => ({
-  usePathname: () => mockUsePathname(),
-}));
-
 describe("Sidebar", () => {
   beforeEach(() => {
     mockUsePathname.mockReturnValue("/dashboard");
@@ -53,49 +49,54 @@ describe("Sidebar", () => {
     expect(screen.getByText("TITAN")).toBeInTheDocument();
   });
 
-  it("renders all navigation items", () => {
+  it("renders all navigation items from 5 experience groups", () => {
     render(<Sidebar />);
-    expect(screen.getByText("儀表板")).toBeInTheDocument();
-    expect(screen.getByText("看板")).toBeInTheDocument();
-    expect(screen.getByText("甘特圖")).toBeInTheDocument();
-    expect(screen.getByText("知識庫")).toBeInTheDocument();
-    expect(screen.getByText("工時紀錄")).toBeInTheDocument();
-    expect(screen.getByText("KPI")).toBeInTheDocument();
-    expect(screen.getByText("報表")).toBeInTheDocument();
+    // My Day group (Manager gets cockpit + 今日總覽)
+    expect(screen.getByText("駕駛艙")).toBeInTheDocument();
+    expect(screen.getByText("今日總覽")).toBeInTheDocument();
+    // Big Picture
     expect(screen.getByText("年度計畫")).toBeInTheDocument();
+    expect(screen.getByText("KPI")).toBeInTheDocument();
+    expect(screen.getByText("甘特圖")).toBeInTheDocument();
+    // Get It Done
+    expect(screen.getByText("任務看板")).toBeInTheDocument();
+    expect(screen.getByText("團隊動態")).toBeInTheDocument();
+    // Track Time
+    expect(screen.getByText("工時紀錄")).toBeInTheDocument();
+    expect(screen.getByText("報表分析")).toBeInTheDocument();
+    // Know More
+    expect(screen.getByText("知識庫")).toBeInTheDocument();
   });
 
   it("renders version footer", () => {
     render(<Sidebar />);
-    expect(screen.getByText(/v1\.0\.0/)).toBeInTheDocument();
+    expect(screen.getByText(/v2\.0\.0/)).toBeInTheDocument();
   });
 
   it("marks dashboard link as active when on dashboard path", () => {
     render(<Sidebar />);
-    const dashboardLink = screen.getByText("儀表板").closest("a");
+    const dashboardLink = screen.getByText("今日總覽").closest("a");
     expect(dashboardLink?.className).toContain("bg-[hsl(var(--sidebar-accent))]");
   });
 
   it("does not mark kanban as active when on dashboard", () => {
     render(<Sidebar />);
-    const dashboardLink = screen.getByText("儀表板").closest("a");
-    const kanbanLink = screen.getByText("看板").closest("a");
-    // Dashboard should be active, kanban should not have the active (non-hover) class as a standalone class
+    const dashboardLink = screen.getByText("今日總覽").closest("a");
+    const kanbanLink = screen.getByText("任務看板").closest("a");
     expect(dashboardLink?.className).toContain("bg-[hsl(var(--sidebar-accent))]");
-    // Kanban is not active — it should not contain the font-medium active indicator
     expect(kanbanLink?.className).not.toContain("font-medium");
   });
 
   it("marks kanban link as active when on kanban path", () => {
     mockUsePathname.mockReturnValue("/kanban");
     render(<Sidebar />);
-    const kanbanLink = screen.getByText("看板").closest("a");
+    const kanbanLink = screen.getByText("任務看板").closest("a");
     expect(kanbanLink?.className).toContain("bg-[hsl(var(--sidebar-accent))]");
   });
 
   it("renders navigation links with correct hrefs", () => {
     render(<Sidebar />);
-    const dashboardLink = screen.getByText("儀表板").closest("a");
+    const dashboardLink = screen.getByText("今日總覽").closest("a");
     expect(dashboardLink).toHaveAttribute("href", "/dashboard");
     const kpiLink = screen.getByText("KPI").closest("a");
     expect(kpiLink).toHaveAttribute("href", "/kpi");

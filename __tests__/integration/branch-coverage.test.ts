@@ -793,17 +793,17 @@ describe("DocumentService — branch coverage", () => {
       expect(mockTx.documentVersion.create).not.toHaveBeenCalled();
     });
 
-    it("updates title and slug without creating version", async () => {
+    it("creates version snapshot when title changes (even without content change)", async () => {
       (prisma.document.findUnique as jest.Mock).mockResolvedValue(EXISTING_DOC);
 
       const mockTx = {
-        documentVersion: { create: jest.fn() },
-        document: { update: jest.fn().mockResolvedValue({ ...EXISTING_DOC, title: "New Title" }) },
+        documentVersion: { create: jest.fn().mockResolvedValue({}) },
+        document: { update: jest.fn().mockResolvedValue({ ...EXISTING_DOC, title: "New Title", version: 2 }) },
       };
       (prisma.$transaction as jest.Mock).mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => fn(mockTx));
 
       await service.updateDocument("d1", { title: "New Title", slug: "new-title", updatedBy: "u1" });
-      expect(mockTx.documentVersion.create).not.toHaveBeenCalled();
+      expect(mockTx.documentVersion.create).toHaveBeenCalled();
     });
   });
 

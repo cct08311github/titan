@@ -1,24 +1,14 @@
 /**
- * Page tests: Dashboard (15 cases)
+ * Page tests: Dashboard (My Day) — Updated for Phase A/B/C v2 redesign
  *
- * Covers:
- *  - Engineer view, Manager view, loading state, unauthenticated
- *  - 6 stat-card defensive cases: null / undefined / NaN / 0 / negative / malformed types
- *  - API error state, network rejection
- *  - Empty workload, empty KPI list, empty task list
- *  - 4-level mock strategy: happy / empty / partial / malformed
- *
- * NOTE: Do NOT call jest.resetModules() in this suite — it breaks React's
- * internal hook registry and causes "Cannot read properties of null (reading
- * 'useState')" crashes. Instead, import the page once in beforeAll and
- * control per-test behaviour through mockReturnValue / mockImplementation.
+ * The dashboard was rewritten as "My Day" page that calls /api/my-day
+ * and renders EngineerMyDay or ManagerMyDay based on returned role.
  */
 import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-// ── Session mock (must be hoisted before any import of next-auth) ──────────
-
+// ── Session mock ──────────────────────────────────────────────────────
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
   useSession: (...args: unknown[]) => mockUseSession(...args),
@@ -29,13 +19,11 @@ jest.mock("next/navigation", () => ({
   usePathname: jest.fn(() => "/dashboard"),
 }));
 
-// ── Global fetch mock ──────────────────────────────────────────────────────
-
+// ── Global fetch mock ──────────────────────────────────────────────────
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// ── Page component (imported once; resetModules would break React hooks) ───
-
+// ── Page component ─────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let DashboardPage: React.ComponentType<any>;
 beforeAll(async () => {
@@ -43,68 +31,54 @@ beforeAll(async () => {
   DashboardPage = mod.default;
 });
 
-// ── Mock data (4-level strategy) ───────────────────────────────────────────
+// ── Mock data ──────────────────────────────────────────────────────────
 
-// Level 1 — happy: complete valid data
-const WORKLOAD_HAPPY = {
-  byPerson: [{ userId: "u1", name: "Alice", total: 40, planned: 30, unplanned: 10 }],
-  plannedRate: 75,
-  unplannedRate: 25,
-  totalHours: 40,
-};
-const WEEKLY_HAPPY = {
-  completedCount: 5,
-  overdueCount: 2,
-  delayCount: 1,
-  scopeChangeCount: 0,
-  totalHours: 38,
-};
-const TASKS_HAPPY = [
-  { id: "t1", title: "Task One", status: "IN_PROGRESS", priority: "HIGH", dueDate: null },
-  { id: "t2", title: "Task Two", status: "TODO", priority: "MEDIUM", dueDate: "2099-12-31" },
-];
-const KPI_HAPPY = [
-  {
-    id: "k1", code: "KPI-01", title: "Revenue Growth",
-    target: 100, actual: 80, status: "ON_TRACK",
-    autoCalc: false, taskLinks: [],
+const ENGINEER_DATA = {
+  ok: true,
+  data: {
+    role: "ENGINEER",
+    flaggedTasks: [],
+    dueTodayTasks: [],
+    inProgressTasks: [
+      { id: "t1", title: "Task One", status: "IN_PROGRESS", priority: "P1", dueDate: null },
+    ],
+    todayHours: 2.5,
+    dailyTarget: 8,
+    timeSuggestions: [],
+    monthlyGoals: [],
   },
-];
-
-// Level 2 — empty: null / empty arrays
-const WORKLOAD_EMPTY = { byPerson: [], plannedRate: 0, unplannedRate: 0, totalHours: 0 };
-const WEEKLY_EMPTY = { completedCount: 0, overdueCount: 0, delayCount: 0, scopeChangeCount: 0, totalHours: 0 };
-
-// Level 3 — partial: missing fields (schema drift)
-const WORKLOAD_PARTIAL = {
-  byPerson: [{ userId: "u2", name: "Bob" /* total / planned / unplanned missing */ }],
-  /* plannedRate / unplannedRate / totalHours missing */
-};
-const WEEKLY_PARTIAL = {
-  completedCount: 3,
-  /* overdueCount / delayCount / scopeChangeCount / totalHours missing */
 };
 
-// Level 4 — malformed: wrong types
-const WEEKLY_MALFORMED = {
-  completedCount: "five" as unknown as number,
-  overdueCount: null as unknown as number,
-  delayCount: undefined as unknown as number,
-  scopeChangeCount: NaN,
-  totalHours: -1,
-};
-const WORKLOAD_MALFORMED = {
-  byPerson: [
-    { userId: 123 as unknown as string, name: null as unknown as string,
-      total: "forty" as unknown as number, planned: NaN, unplanned: -5 },
-  ],
-  plannedRate: NaN,
-  unplannedRate: undefined as unknown as number,
-  totalHours: null as unknown as number,
+const MANAGER_DATA = {
+  ok: true,
+  data: {
+    role: "MANAGER",
+    flaggedTasks: [],
+    overdueTasks: [],
+    memberWorkload: [
+      { id: "u1", name: "Alice", avatar: null, activeTasks: 3, overdueTasks: 0, flaggedTasks: 0 },
+    ],
+    todayHours: 4,
+    alerts: [],
+    planSummaries: [],
+  },
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+const EMPTY_ENGINEER_DATA = {
+  ok: true,
+  data: {
+    role: "ENGINEER",
+    flaggedTasks: [],
+    dueTodayTasks: [],
+    inProgressTasks: [],
+    todayHours: 0,
+    dailyTarget: 8,
+    timeSuggestions: [],
+    monthlyGoals: [],
+  },
+};
 
+// ── Helpers ────────────────────────────────────────────────────────────
 function setSession(role: "MANAGER" | "MEMBER") {
   mockUseSession.mockReturnValue({
     data: { user: { id: "u1", name: "Alice", role }, expires: "2099" },
@@ -120,180 +94,135 @@ function setSessionUnauthenticated() {
   mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
 }
 
-const TASK_SUMMARY_HAPPY = {
-  data: {
-    todo: { count: 3, trend: "up" as const, diff: 1 },
-    inProgress: { count: 5, trend: "same" as const, diff: 0 },
-    done: { count: 8, trend: "down" as const, diff: -2 },
-    scope: "personal" as const,
-  },
-};
-const TASK_SUMMARY_EMPTY = {
-  data: {
-    todo: { count: 0, trend: "same" as const, diff: 0 },
-    inProgress: { count: 0, trend: "same" as const, diff: 0 },
-    done: { count: 0, trend: "same" as const, diff: 0 },
-    scope: "personal" as const,
-  },
-};
-
-function setupFetch(
-  workload: unknown = WORKLOAD_HAPPY,
-  weekly: unknown = WEEKLY_HAPPY,
-  tasks: unknown = TASKS_HAPPY,
-  kpi: unknown = KPI_HAPPY,
-  taskSummary: unknown = TASK_SUMMARY_HAPPY,
-) {
-  mockFetch.mockImplementation((url: string) => {
-    if (url.includes("team-summary")) return Promise.resolve({ ok: true, json: async () => ({ members: [], totalTasks: 0, completedTasks: 0 }) } as Response);
-    if (url.includes("task-summary")) return Promise.resolve({ ok: true, json: async () => taskSummary } as Response);
-    if (url.includes("workload")) return Promise.resolve({ ok: true, json: async () => workload } as Response);
-    if (url.includes("weekly"))   return Promise.resolve({ ok: true, json: async () => weekly   } as Response);
-    if (url.includes("tasks"))    return Promise.resolve({ ok: true, json: async () => tasks    } as Response);
-    if (url.includes("kpi"))      return Promise.resolve({ ok: true, json: async () => kpi      } as Response);
-    return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
-  });
-}
-
-// ── Test suite ─────────────────────────────────────────────────────────────
+// ── Tests ──────────────────────────────────────────────────────────────
 
 describe("Dashboard Page", () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  // ── Case 1: renders without crashing (empty data) ────────────────────────
   it("renders without crashing with empty data (Engineer)", async () => {
     setSession("MEMBER");
-    setupFetch(WORKLOAD_EMPTY, WEEKLY_EMPTY, [], []);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => EMPTY_ENGINEER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
-    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
-  // ── Case 2: loading state ────────────────────────────────────────────────
   it("shows loading state while session is loading (no crash)", async () => {
     setSessionLoading();
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
     await act(async () => { render(<DashboardPage />); });
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
-    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
-  // ── Case 3: key UI element — 儀表板 heading ──────────────────────────────
-  it("shows 儀表板 heading for all roles", async () => {
+  it("shows greeting heading for all roles", async () => {
     setSession("MEMBER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
-    expect(screen.getByText("儀表板")).toBeInTheDocument();
+    // Greeting is dynamic (早安/午安/晚安) + user name
+    await waitFor(() => expect(screen.getByText(/Alice/)).toBeInTheDocument());
   });
 
-  // ── Case 4: defensive — unauthenticated session ──────────────────────────
   it("renders without crash when session is unauthenticated", async () => {
     setSessionUnauthenticated();
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
     await act(async () => { render(<DashboardPage />); });
     expect(document.body.innerHTML.length).toBeGreaterThan(0);
-    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
   });
 
-  // ── Case 5: Engineer role subtitle ──────────────────────────────────────
-  it("shows 個人視角 subtitle for MEMBER role", async () => {
+  it("shows 我的一天 subtitle for MEMBER role", async () => {
     setSession("MEMBER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText(/個人視角/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/我的一天/)).toBeInTheDocument());
   });
 
-  // ── Case 6: Engineer stat card ───────────────────────────────────────────
-  it("shows 進行中任務 stat card label for Engineer", async () => {
+  it("shows 進行中 section for Engineer with tasks", async () => {
     setSession("MEMBER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ENGINEER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText("進行中任務")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("進行中")).toBeInTheDocument());
   });
 
-  // ── Case 7: Manager role subtitle ───────────────────────────────────────
-  it("shows 團隊視角 subtitle for MANAGER role", async () => {
+  it("shows 團隊全局 subtitle for MANAGER role", async () => {
     setSession("MANAGER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText(/團隊視角/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/團隊全局/)).toBeInTheDocument());
   });
 
-  // ── Case 8: Manager stat card ────────────────────────────────────────────
-  it("shows 本週完成任務 stat card label for Manager", async () => {
+  it("shows 團隊健康快照 section for Manager", async () => {
     setSession("MANAGER");
-    setupFetch();
+    mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText("本週完成任務")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("團隊健康快照")).toBeInTheDocument());
   });
 
-  // ── Case 9: API error state (ok: false) ─────────────────────────────────
-  it("handles API error (ok: false) without crashing", async () => {
+  it("handles API error without crashing", async () => {
     setSession("MEMBER");
     mockFetch.mockResolvedValue({ ok: false, json: async () => ({}) } as Response);
     await act(async () => { render(<DashboardPage />); });
-    // PageError renders 「發生錯誤」— may appear multiple times (main + KPI section)
     await waitFor(() => expect(screen.getAllByText("發生錯誤").length).toBeGreaterThan(0));
-    // Should show localised error message, not raw JSON
-    expect(screen.queryByText(/^\{"error"/)).not.toBeInTheDocument();
   });
 
-  // ── Case 10: network rejection ───────────────────────────────────────────
   it("handles network rejection without crashing", async () => {
     setSession("MANAGER");
     mockFetch.mockRejectedValue(new Error("Network error"));
     await act(async () => { render(<DashboardPage />); });
-    // PageError renders 「發生錯誤」— may appear multiple times (main + KPI section)
     await waitFor(() => expect(screen.getAllByText("發生錯誤").length).toBeGreaterThan(0));
-    // Should show localised error message, not raw JSON
-    expect(screen.queryByText(/^\{"error"/)).not.toBeInTheDocument();
   });
 
-  // ── Case 11: empty workload ──────────────────────────────────────────────
-  it("shows fallback text when Manager workload byPerson is empty", async () => {
+  it("shows 尚無資料 when API returns null data", async () => {
     setSession("MANAGER");
-    setupFetch(WORKLOAD_EMPTY, WEEKLY_HAPPY);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ ok: true, data: null }) } as Response);
+    await act(async () => { render(<DashboardPage />); });
+    await waitFor(() => expect(screen.getByText("尚無資料")).toBeInTheDocument());
+  });
+
+  it("defensive: does not crash on empty flaggedTasks", async () => {
+    setSession("MEMBER");
+    mockFetch.mockResolvedValue({ ok: true, json: async () => EMPTY_ENGINEER_DATA } as Response);
+    await act(async () => { render(<DashboardPage />); });
+    await waitFor(() => expect(screen.getByText("今日工時")).toBeInTheDocument());
+  });
+
+  it("renders without crash on partial data (missing fields)", async () => {
+    setSession("MANAGER");
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        data: {
+          role: "MANAGER",
+          flaggedTasks: [],
+          overdueTasks: [],
+          memberWorkload: [],
+          todayHours: 0,
+          alerts: [],
+          planSummaries: [],
+        },
+      }),
+    } as Response);
+    await act(async () => { render(<DashboardPage />); });
+    // Manager with empty memberWorkload shows fallback text
+    await waitFor(() => expect(screen.getByText("尚無團隊成員資料")).toBeInTheDocument());
+  });
+
+  it("shows 今天沒有到期任務 when Engineer has no due today tasks", async () => {
+    setSession("MEMBER");
+    mockFetch.mockResolvedValue({ ok: true, json: async () => EMPTY_ENGINEER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() =>
-      expect(screen.getByText("本月尚無工時紀錄")).toBeInTheDocument()
+      expect(screen.getByText("今天沒有到期任務")).toBeInTheDocument()
     );
   });
 
-  // ── Case 12: empty KPI list ──────────────────────────────────────────────
-  it("shows 尚無 KPI when KPI list is empty", async () => {
+  it("shows 目前沒有進行中的任務 when Engineer has no in-progress tasks", async () => {
     setSession("MEMBER");
-    setupFetch(WORKLOAD_HAPPY, WEEKLY_HAPPY, TASKS_HAPPY, []);
-    await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText("尚無 KPI")).toBeInTheDocument());
-  });
-
-  // ── Case 13: defensive — NaN / null / negative / malformed types ─────────
-  it("defensive: stat cards do not crash on null/NaN/negative/malformed stats", async () => {
-    setSession("MANAGER");
-    setupFetch(WORKLOAD_MALFORMED, WEEKLY_MALFORMED);
-    await act(async () => { render(<DashboardPage />); });
-    expect(screen.getByText("儀表板")).toBeInTheDocument();
-    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
-  });
-
-  // ── Case 14: defensive — partial data (schema drift) ────────────────────
-  it("renders without crash on partial workload/weekly data (missing fields)", async () => {
-    setSession("MANAGER");
-    setupFetch(WORKLOAD_PARTIAL, WEEKLY_PARTIAL);
-    await act(async () => { render(<DashboardPage />); });
-    expect(screen.getByText("儀表板")).toBeInTheDocument();
-    expect(screen.queryByText(/uncaught/i)).not.toBeInTheDocument();
-  });
-
-  // ── Case 15: empty tasks list for Engineer ───────────────────────────────
-  it("shows fallback text when Engineer has no tasks", async () => {
-    setSession("MEMBER");
-    setupFetch(WORKLOAD_HAPPY, WEEKLY_HAPPY, [], []);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => EMPTY_ENGINEER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() =>
-      expect(screen.getByText("目前沒有待處理的任務")).toBeInTheDocument()
+      expect(screen.getByText("目前沒有進行中的任務")).toBeInTheDocument()
     );
   });
 });

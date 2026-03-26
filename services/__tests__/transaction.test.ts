@@ -211,13 +211,22 @@ describe("DocumentService.updateDocument — transaction", () => {
     );
   });
 
-  test("does not create version snapshot when content is unchanged", async () => {
+  test("creates version snapshot when only title is changed", async () => {
     (prisma.document.findUnique as jest.Mock).mockResolvedValue(existingDoc);
-    (prisma.document.update as jest.Mock).mockResolvedValue({ ...existingDoc, title: "New Title" });
+    (prisma.documentVersion.create as jest.Mock).mockResolvedValue({});
+    (prisma.document.update as jest.Mock).mockResolvedValue({ ...existingDoc, title: "New Title", version: 4 });
 
     await service.updateDocument("doc-1", { title: "New Title", updatedBy: "user-1" });
 
-    expect(prisma.documentVersion.create).not.toHaveBeenCalled();
+    expect(prisma.documentVersion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          documentId: "doc-1",
+          title: "Old Title",
+          version: 3,
+        }),
+      })
+    );
   });
 
   test("passes timeout option to $transaction", async () => {
