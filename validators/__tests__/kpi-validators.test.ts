@@ -1,4 +1,4 @@
-import { createKpiSchema, updateKpiSchema } from "../kpi-validators";
+import { createKpiSchema, updateKpiSchema, createKpiAchievementSchema } from "../kpi-validators";
 
 describe("createKpiSchema", () => {
   const validInput = {
@@ -17,7 +17,13 @@ describe("createKpiSchema", () => {
     const result = createKpiSchema.safeParse({
       ...validInput,
       description: "NPS score target",
-      weight: 2.0,
+      measureMethod: "Monthly NPS survey",
+      weight: 20,
+      frequency: "MONTHLY",
+      minValue: 0,
+      maxValue: 100,
+      unit: "%",
+      visibility: "ALL",
       autoCalc: true,
     });
     expect(result.success).toBe(true);
@@ -61,6 +67,52 @@ describe("createKpiSchema", () => {
     const result = createKpiSchema.safeParse({ ...validInput, code: "" });
     expect(result.success).toBe(false);
   });
+
+  test("rejects weight > 100", () => {
+    const result = createKpiSchema.safeParse({ ...validInput, weight: 101 });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects weight < 0", () => {
+    const result = createKpiSchema.safeParse({ ...validInput, weight: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects invalid frequency", () => {
+    const result = createKpiSchema.safeParse({ ...validInput, frequency: "WEEKLY" });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects invalid visibility", () => {
+    const result = createKpiSchema.safeParse({ ...validInput, visibility: "PRIVATE" });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects minValue > maxValue", () => {
+    const result = createKpiSchema.safeParse({ ...validInput, minValue: 100, maxValue: 50 });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects target outside value range", () => {
+    const result = createKpiSchema.safeParse({
+      ...validInput, target: 200, minValue: 0, maxValue: 100,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts valid frequency values", () => {
+    for (const frequency of ["MONTHLY", "QUARTERLY", "YEARLY"]) {
+      const result = createKpiSchema.safeParse({ ...validInput, frequency });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  test("accepts valid visibility values", () => {
+    for (const visibility of ["ALL", "MANAGER"]) {
+      const result = createKpiSchema.safeParse({ ...validInput, visibility });
+      expect(result.success).toBe(true);
+    }
+  });
 });
 
 describe("updateKpiSchema", () => {
@@ -82,6 +134,16 @@ describe("updateKpiSchema", () => {
     }
   });
 
+  test("accepts update with new fields", () => {
+    const result = updateKpiSchema.safeParse({
+      frequency: "QUARTERLY",
+      visibility: "MANAGER",
+      measureMethod: "Updated method",
+      unit: "hours",
+    });
+    expect(result.success).toBe(true);
+  });
+
   test("accepts empty object", () => {
     const result = updateKpiSchema.safeParse({});
     expect(result.success).toBe(true);
@@ -100,5 +162,49 @@ describe("updateKpiSchema", () => {
   test("rejects negative actual in update", () => {
     const result = updateKpiSchema.safeParse({ actual: -5 });
     expect(result.success).toBe(false);
+  });
+
+  test("rejects weight > 100 in update", () => {
+    const result = updateKpiSchema.safeParse({ weight: 101 });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("createKpiAchievementSchema", () => {
+  test("accepts valid achievement", () => {
+    const result = createKpiAchievementSchema.safeParse({
+      period: "2026-01",
+      actualValue: 85.5,
+      note: "Good progress",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("accepts achievement without note", () => {
+    const result = createKpiAchievementSchema.safeParse({
+      period: "2026-Q1",
+      actualValue: 90,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects missing period", () => {
+    const result = createKpiAchievementSchema.safeParse({ actualValue: 90 });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects empty period", () => {
+    const result = createKpiAchievementSchema.safeParse({ period: "", actualValue: 90 });
+    expect(result.success).toBe(false);
+  });
+
+  test("rejects missing actualValue", () => {
+    const result = createKpiAchievementSchema.safeParse({ period: "2026-01" });
+    expect(result.success).toBe(false);
+  });
+
+  test("accepts zero as actualValue", () => {
+    const result = createKpiAchievementSchema.safeParse({ period: "2026-01", actualValue: 0 });
+    expect(result.success).toBe(true);
   });
 });
