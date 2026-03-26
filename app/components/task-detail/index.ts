@@ -5,3 +5,4 @@ export { TaskAttachmentSection } from "./task-attachment-section";
 export { TaskDeliverableSection } from "./task-deliverable-section";
 export { TaskIncidentSection } from "./task-incident-section";
 export { TaskDocumentSection } from "./task-document-section";
+export { TaskChangeManagementSection } from "./task-change-management-section";
