@@ -15,8 +15,10 @@ const auditService = new AuditService(prisma);
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const includeSuspended = searchParams.get("includeSuspended") === "true";
+  const search = searchParams.get("search") ?? undefined;
+  const role = searchParams.get("role") ?? undefined;
 
-  const users = await userService.listUsers({ includeSuspended });
+  const users = await userService.listUsers({ includeSuspended, search, role });
   return success(users);
 });
 
