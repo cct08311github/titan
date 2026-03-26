@@ -124,6 +124,7 @@ export function TimesheetToolbar({
               <CalendarDays className="h-3.5 w-3.5" />
               日曆(週)
             </button>
+            {/* Issue #966: Month calendar view */}
             <button
               onClick={() => onViewModeChange("calendar-month")}
               className={cn(

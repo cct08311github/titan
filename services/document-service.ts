@@ -52,9 +52,15 @@ export class DocumentService {
       include: {
         creator: { select: { id: true, name: true } },
         updater: { select: { id: true, name: true } },
+        verifier: { select: { id: true, name: true } },
+        space: { select: { id: true, name: true } },
         parent: { select: { id: true, title: true, slug: true } },
         children: { select: { id: true, title: true, slug: true } },
-        versions: { orderBy: { version: "desc" }, take: 10 },
+        versions: {
+          include: { creator: { select: { id: true, name: true } } },
+          orderBy: { version: "desc" },
+          take: 20,
+        },
       },
     });
 
@@ -92,10 +98,13 @@ export class DocumentService {
     return this.prisma.$transaction(
       async (tx) => {
         // Save current version as snapshot before updating
-        if (input.content !== undefined && input.content !== existing.content) {
+        const contentChanged = input.content !== undefined && input.content !== existing.content;
+        const titleChanged = input.title !== undefined && input.title !== existing.title;
+        if (contentChanged || titleChanged) {
           await tx.documentVersion.create({
             data: {
               documentId: id,
+              title: existing.title,
               content: existing.content,
               version: existing.version,
               createdBy: input.updatedBy,
@@ -109,6 +118,8 @@ export class DocumentService {
         if (input.title !== undefined) updates.title = input.title;
         if (input.content !== undefined) {
           updates.content = input.content;
+        }
+        if (contentChanged || titleChanged) {
           updates.version = existing.version + 1;
         }
         if (input.slug !== undefined) updates.slug = input.slug;

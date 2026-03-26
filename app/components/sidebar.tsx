@@ -4,38 +4,53 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import {
-  LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
+  KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
-  Activity, Settings, ShieldCheck, Gauge,
+  Activity, Settings, ShieldCheck, Gauge, Sun,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+
+/**
+ * Sidebar nav restructured into 5 experience groups (Issue #970):
+ * My Day / Big Picture / Get It Done / Track Time / Know More
+ */
 
 const cockpitNavItem = { href: "/cockpit", label: "駕駛艙", icon: Gauge };
 
 const navGroups = [
   {
-    label: "概覽",
+    label: "My Day",
     items: [
-      { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
-      { href: "/kanban", label: "看板", icon: KanbanSquare },
+      { href: "/dashboard", label: "今日總覽", icon: Sun },
+    ],
+  },
+  {
+    label: "Big Picture",
+    items: [
+      { href: "/plans", label: "年度計畫", icon: Target },
+      { href: "/kpi", label: "KPI", icon: Crosshair },
       { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
     ],
   },
   {
-    label: "管理",
+    label: "Get It Done",
     items: [
-      { href: "/plans", label: "年度計畫", icon: Target },
-      { href: "/kpi", label: "KPI", icon: Crosshair },
-      { href: "/knowledge", label: "知識庫", icon: BookOpen },
+      { href: "/kanban", label: "任務看板", icon: KanbanSquare },
+      { href: "/activity", label: "團隊動態", icon: Activity },
     ],
   },
   {
-    label: "紀錄",
+    label: "Track Time",
     items: [
       { href: "/timesheet", label: "工時紀錄", icon: Clock },
-      { href: "/reports", label: "報表", icon: BarChart2 },
-      { href: "/activity", label: "團隊動態", icon: Activity },
+      { href: "/reports", label: "報表分析", icon: BarChart2 },
+    ],
+  },
+  {
+    label: "Know More",
+    items: [
+      { href: "/knowledge", label: "知識庫", icon: BookOpen },
     ],
   },
   {
@@ -54,7 +69,7 @@ export function Sidebar() {
   const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
   const groups = isManager
     ? [
-        { ...navGroups[0], items: [cockpitNavItem, ...navGroups[0].items] },
+        { label: navGroups[0].label, items: [cockpitNavItem, ...navGroups[0].items] },
         ...navGroups.slice(1, -1),
         { label: "帳號", items: [navGroups[navGroups.length - 1].items[0], adminNavItem] },
       ]
@@ -147,7 +162,7 @@ export function Sidebar() {
             <PanelLeftOpen className="h-4 w-4" />
           </button>
         ) : (
-          <p className="font-mono text-[11px] text-muted-foreground/60 tabular-nums px-3 py-1">v1.0.0</p>
+          <p className="font-mono text-[11px] text-muted-foreground/60 tabular-nums px-3 py-1">v2.0.0</p>
         )}
       </div>
     </aside>

@@ -45,6 +45,7 @@ interface PlanHealthCardProps {
   expanded?: boolean;
   onToggle?: () => void;
   children?: React.ReactNode;
+  flaggedCount?: number;
 }
 
 const healthConfig = {
@@ -74,7 +75,7 @@ const healthConfig = {
   },
 };
 
-export function PlanHealthCard({ plan, expanded, onToggle, children }: PlanHealthCardProps) {
+export function PlanHealthCard({ plan, expanded, onToggle, children, flaggedCount }: PlanHealthCardProps) {
   const [isExpanded, setIsExpanded] = useState(expanded ?? false);
   const config = healthConfig[plan.healthStatus];
   const Icon = config.icon;
@@ -144,6 +145,9 @@ export function PlanHealthCard({ plan, expanded, onToggle, children }: PlanHealt
         <MiniStat label="逾期任務" value={String(plan.taskDistribution.overdue)} warn={plan.taskDistribution.overdue > 0} />
         <MiniStat label="KPI 達標" value={`${kpiOnTrack}/${plan.kpis.length}`} />
         <MiniStat label="累計工時" value={`${Math.round(plan.timeInvestment.actual)}h`} />
+        {(flaggedCount ?? 0) > 0 && (
+          <MiniStat label="標記任務" value={String(flaggedCount)} warn />
+        )}
       </div>
 
       {/* Expandable children */}
