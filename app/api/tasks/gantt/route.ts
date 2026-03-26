@@ -9,8 +9,9 @@ export const GET = withAuth(async (req: NextRequest) => {
   const year = searchParams.get("year") ? parseInt(searchParams.get("year")!) : new Date().getFullYear();
   const assignee = searchParams.get("assignee");
 
-  const annualPlan = await prisma.annualPlan.findUnique({
-    where: { year },
+  const annualPlan = await prisma.annualPlan.findFirst({
+    where: { year, archivedAt: null },
+    orderBy: { createdAt: "desc" },
     include: {
       milestones: { orderBy: { plannedEnd: "asc" } },
       monthlyGoals: {

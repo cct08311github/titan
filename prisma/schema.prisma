@@ -150,23 +150,24 @@ model KPITaskLink {
 // ═══════════════════════════════════════
 
 model AnnualPlan {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   year               Int
   title              String
   description        String?
-  implementationPlan String?  // 執行計畫說明（Markdown）
-  progressPct        Float    @default(0)
+  implementationPlan String?   // 執行計畫說明（Markdown）
+  progressPct        Float     @default(0)
   copiedFromYear     Int?
+  archivedAt         DateTime? // 封存時間（不可硬刪除，僅封存）
   createdBy          String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   creator      User          @relation("PlanCreator", fields: [createdBy], references: [id])
   monthlyGoals MonthlyGoal[]
   milestones   Milestone[]
   deliverables Deliverable[] @relation("AnnualPlanDeliverable")
 
-  @@unique([year])
+  @@index([year])
   @@index([createdBy])
   @@map("annual_plans")
 }

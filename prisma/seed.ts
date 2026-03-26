@@ -79,10 +79,9 @@ async function main() {
   console.log(`建立使用者：1 位主管 + ${engineers.length} 位工程師`);
 
   // ── 建立 3 個年度計畫 ───────────────────────────────────
-  const plan2026 = await prisma.annualPlan.upsert({
-    where: { year: 2026 },
-    update: {},
-    create: {
+  const existing2026 = await prisma.annualPlan.findFirst({ where: { year: 2026 } });
+  const plan2026 = existing2026 ?? await prisma.annualPlan.create({
+    data: {
       year: 2026,
       title: "2026 年度 IT 維運計畫",
       description: "銀行 IT 團隊 2026 年度核心維運目標與計畫",
@@ -91,26 +90,26 @@ async function main() {
     },
   });
 
-  const plan2025 = await prisma.annualPlan.upsert({
-    where: { year: 2025 },
-    update: {},
-    create: {
+  const existing2025 = await prisma.annualPlan.findFirst({ where: { year: 2025 } });
+  const plan2025 = existing2025 ?? await prisma.annualPlan.create({
+    data: {
       year: 2025,
       title: "2025 年度 IT 維運計畫",
       description: "銀行 IT 團隊 2025 年度計畫（已歸檔）",
       progressPct: 85,
+      archivedAt: new Date("2025-12-31"),
       createdBy: admin.id,
     },
   });
 
-  const plan2024 = await prisma.annualPlan.upsert({
-    where: { year: 2024 },
-    update: {},
-    create: {
+  const existing2024 = await prisma.annualPlan.findFirst({ where: { year: 2024 } });
+  const plan2024 = existing2024 ?? await prisma.annualPlan.create({
+    data: {
       year: 2024,
       title: "2024 年度 IT 維運計畫",
       description: "銀行 IT 團隊 2024 年度計畫（已歸檔）",
       progressPct: 100,
+      archivedAt: new Date("2024-12-31"),
       createdBy: admin.id,
     },
   });

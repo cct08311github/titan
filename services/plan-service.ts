@@ -53,7 +53,7 @@ export class PlanService {
         },
         _count: { select: { monthlyGoals: true } },
       },
-      orderBy: { year: "desc" },
+      orderBy: [{ year: "desc" }, { createdAt: "desc" }],
     });
   }
 

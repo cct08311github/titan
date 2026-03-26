@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, ChevronDown, Target, Calendar, CheckCircle2, Circle, Clock, XCircle } from "lucide-react";
+import { ChevronRight, ChevronDown, Target, Calendar, CheckCircle2, Circle, Clock, XCircle, Archive, ArchiveRestore, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
@@ -20,6 +20,7 @@ type AnnualPlan = {
   year: number;
   title: string;
   progressPct: number;
+  archivedAt?: string | null;
   monthlyGoals: MonthlyGoal[];
   _count?: { monthlyGoals: number };
 };
@@ -37,9 +38,11 @@ interface PlanTreeProps {
   plans: AnnualPlan[];
   onSelectGoal?: (goalId: string) => void;
   onSelectPlan?: (planId: string) => void;
+  onToggleArchive?: (planId: string, isArchived: boolean) => void;
+  archivingId?: string | null;
 }
 
-export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
+export function PlanTree({ plans, onSelectGoal, onSelectPlan, onToggleArchive, archivingId }: PlanTreeProps) {
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set(plans.map((p) => p.id)));
 
   function togglePlan(planId: string) {
@@ -63,8 +66,9 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
     <div className="space-y-3">
       {plans.map((plan) => {
         const expanded = expandedPlans.has(plan.id);
+        const isArchived = !!plan.archivedAt;
         return (
-          <div key={plan.id} className="bg-card border border-border rounded-xl overflow-hidden">
+          <div key={plan.id} className={cn("bg-card border border-border rounded-xl overflow-hidden", isArchived && "opacity-60")}>
             {/* Plan header */}
             <div className="flex items-center gap-3 px-4 py-3">
               <button
@@ -73,7 +77,7 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
               >
                 {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </button>
-              <Target className="h-4 w-4 text-blue-400 flex-shrink-0" />
+              <Target className={cn("h-4 w-4 flex-shrink-0", isArchived ? "text-muted-foreground" : "text-blue-400")} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground font-mono">{plan.year}</span>
@@ -83,12 +87,17 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
                   >
                     {plan.title}
                   </button>
+                  {isArchived && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                      已封存
+                    </span>
+                  )}
                 </div>
                 {/* Progress bar */}
                 <div className="flex items-center gap-2 mt-1.5">
                   <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-blue-500 rounded-full transition-all"
+                      className={cn("h-full rounded-full transition-all", isArchived ? "bg-muted-foreground" : "bg-blue-500")}
                       style={{ width: `${plan.progressPct}%` }}
                     />
                   </div>
@@ -97,6 +106,22 @@ export function PlanTree({ plans, onSelectGoal, onSelectPlan }: PlanTreeProps) {
                   </span>
                 </div>
               </div>
+              {onToggleArchive && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleArchive(plan.id, isArchived); }}
+                  disabled={archivingId === plan.id}
+                  className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 p-1"
+                  title={isArchived ? "解除封存" : "封存計畫"}
+                >
+                  {archivingId === plan.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : isArchived ? (
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              )}
               <span className="text-xs text-muted-foreground flex-shrink-0">
                 {plan.monthlyGoals.length} 個月度目標
               </span>
