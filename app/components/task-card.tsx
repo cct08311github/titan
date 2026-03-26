@@ -13,6 +13,8 @@ import {
   BookOpen,
   Clock,
   Layers,
+  AlertTriangle,
+  Tag,
 } from "lucide-react";
 
 export type IncidentSeverityType = "SEV1" | "SEV2" | "SEV3" | "SEV4";
@@ -30,6 +32,8 @@ export type TaskCardData = {
   subTasks?: { done: boolean }[];
   _count?: { subTasks?: number; comments?: number };
   incidentRecord?: { severity: IncidentSeverityType } | null;
+  tags?: string[];
+  position?: number;
 };
 
 const severityBorderColors: Record<IncidentSeverityType, string> = {
@@ -61,6 +65,37 @@ const categoryConfig = {
   ADMIN: { label: "行政", icon: BookOpen, color: "text-muted-foreground" },
   LEARNING: { label: "學習", icon: BookOpen, color: "text-teal-400" },
 };
+
+/** Default tag color mapping — Issue #804 (K-2) */
+const DEFAULT_TAG_COLORS: Record<string, string> = {
+  "維運": "#3B82F6",
+  "開發": "#10B981",
+  "資安": "#EF4444",
+  "稽核": "#F59E0B",
+  "文件": "#8B5CF6",
+  "測試": "#06B6D4",
+  "會議": "#6B7280",
+  "教育訓練": "#EC4899",
+};
+
+function getTagColor(tagName: string): string {
+  if (DEFAULT_TAG_COLORS[tagName]) return DEFAULT_TAG_COLORS[tagName];
+  // Deterministic color for custom tags
+  let hash = 0;
+  for (let i = 0; i < tagName.length; i++) {
+    hash = ((hash << 5) - hash + tagName.charCodeAt(i)) | 0;
+  }
+  const colors = ["#0EA5E9", "#14B8A6", "#A855F7", "#F97316", "#84CC16", "#E11D48", "#6366F1", "#D946EF"];
+  return colors[Math.abs(hash) % colors.length];
+}
+
+/**
+ * Check if a task has all required fields filled.
+ * Missing: assignee, dueDate, or tags → "資料不完整"
+ */
+function isTaskIncomplete(task: TaskCardData): boolean {
+  return !task.primaryAssignee || !task.dueDate || !task.tags || task.tags.length === 0;
+}
 
 function Avatar({ name, avatar }: { name: string; avatar?: string | null }) {
   return (
@@ -146,10 +181,43 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
         )}
       </div>
 
+      {/* Incomplete data warning — Issue #804 */}
+      {isTaskIncomplete(task) && (
+        <div className="flex items-center gap-1 mb-1.5">
+          <AlertTriangle className="h-3 w-3 text-warning flex-shrink-0" />
+          <span className="text-[10px] text-warning font-medium">資料不完整</span>
+        </div>
+      )}
+
       {/* Title */}
       <p className="text-sm font-medium text-foreground leading-snug line-clamp-2 mb-2">
         {task.title}
       </p>
+
+      {/* Tags — Issue #804 */}
+      {task.tags && task.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {task.tags.slice(0, 4).map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full border"
+              style={{
+                color: getTagColor(tag),
+                backgroundColor: `${getTagColor(tag)}15`,
+                borderColor: `${getTagColor(tag)}30`,
+              }}
+            >
+              <Tag className="h-2 w-2" />
+              {tag}
+            </span>
+          ))}
+          {task.tags.length > 4 && (
+            <span className="text-[9px] text-muted-foreground px-1">
+              +{task.tags.length - 4}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center justify-between gap-2">
