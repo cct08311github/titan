@@ -29,14 +29,23 @@ export const PUT = withAuth(async (
   const existing = await prisma.timeEntry.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
 
+  const callerRole = session.user.role ?? "ENGINEER";
+
   // IDOR: all roles (including MANAGER) may only write their own entries.
-  if (existing.userId !== callerId) {
+  // ADMIN can edit any entry (including locked ones).
+  if (existing.userId !== callerId && callerRole !== "ADMIN") {
     throw new ForbiddenError("只能修改自己的時間記錄");
   }
 
-  // TS-24: Locked entries cannot be modified
-  if ((existing as Record<string, unknown>).locked) {
-    throw new ForbiddenError("此工時記錄已被主管鎖定，無法修改");
+  // T-6: Auto-lock check — entries created more than 7 days ago are locked
+  const createdAt = new Date(existing.createdAt);
+  const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+  const isAutoLocked = daysSinceCreation > 7;
+  const isManuallyLocked = (existing as Record<string, unknown>).locked === true;
+
+  // Only ADMIN can bypass lock
+  if ((isAutoLocked || isManuallyLocked) && callerRole !== "ADMIN") {
+    throw new ForbiddenError("此工時記錄已鎖定（超過 7 天），無法修改。請向管理員申請解鎖。");
   }
 
   const raw = await req.json();
@@ -116,14 +125,21 @@ export const DELETE = withAuth(async (
   const existing = await prisma.timeEntry.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
 
+  const deleterRole = session.user.role ?? "ENGINEER";
+
   // IDOR: all roles (including MANAGER) may only delete their own entries.
-  if (existing.userId !== callerId) {
+  // ADMIN can delete any entry.
+  if (existing.userId !== callerId && deleterRole !== "ADMIN") {
     throw new ForbiddenError("只能刪除自己的時間記錄");
   }
 
-  // TS-24: Locked entries cannot be deleted
-  if ((existing as Record<string, unknown>).locked) {
-    throw new ForbiddenError("此工時記錄已被主管鎖定，無法刪除");
+  // T-6: Auto-lock check + manual lock — only ADMIN bypasses
+  const delCreatedAt = new Date(existing.createdAt);
+  const delDaysSince = (Date.now() - delCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
+  const delIsLocked = delDaysSince > 7 || (existing as Record<string, unknown>).locked === true;
+
+  if (delIsLocked && deleterRole !== "ADMIN") {
+    throw new ForbiddenError("此工時記錄已鎖定（超過 7 天），無法刪除。請向管理員申請解鎖。");
   }
 
   await prisma.timeEntry.delete({ where: { id } });
