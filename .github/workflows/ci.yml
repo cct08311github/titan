@@ -116,6 +116,7 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           category: '/language:javascript-typescript'
+          wait-for-processing: false
 
   e2e:
     runs-on: ubuntu-latest
