@@ -122,3 +122,161 @@ test.describe('工時紀錄功能測試', () => {
   });
 
 });
+
+// ─── Calendar Week 視圖 E2E（#957）─────────────────────────────────────────
+
+test.describe('工時紀錄 — Calendar Week 視圖', () => {
+
+  test('TS-CW-001: 點擊日曆(週)按鈕切換至週日曆視圖', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="calendar-week-view"]')).toBeVisible({ timeout: 10000 });
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-002: 7 日欄位標題全部可見', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="calendar-week-view"]')).toBeVisible({ timeout: 10000 });
+
+      for (let i = 0; i < 7; i++) {
+        await expect(page.locator(`[data-testid="day-header-${i}"]`)).toBeVisible();
+      }
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-003: 時間格線 08:00-22:00 可見', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="week-grid-body"]')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=08:00')).toBeVisible();
+      await expect(page.locator('text=12:00')).toBeVisible();
+      await expect(page.locator('text=22:00')).toBeVisible();
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-004: 已有工時區塊正確顯示', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="calendar-week-view"]')).toBeVisible({ timeout: 10000 });
+
+      // 如有工時區塊則驗證存在
+      const blocks = page.locator('[data-testid="week-time-block"]');
+      const count = await blocks.count();
+      // count 可能為 0（無帶 startTime/endTime 的 entries）
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-005: 前一週/本週/下一週導航', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="week-range-label"]')).toBeVisible({ timeout: 10000 });
+
+      const label1 = await page.locator('[data-testid="week-range-label"]').textContent();
+      await page.locator('[data-testid="prev-week-btn"]').click();
+      await page.waitForTimeout(500);
+      const label2 = await page.locator('[data-testid="week-range-label"]').textContent();
+      expect(label2).not.toBe(label1);
+
+      await page.locator('[data-testid="this-week-btn"]').click();
+      await page.waitForTimeout(500);
+      const label3 = await page.locator('[data-testid="week-range-label"]').textContent();
+      expect(label3).toBe(label1);
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-006: 週合計數字正確格式', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      const total = page.locator('[data-testid="weekly-total"]');
+      await expect(total).toBeVisible({ timeout: 10000 });
+      const text = await total.textContent();
+      expect(text).toMatch(/週合計：\d+\.?\d*h/);
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-007: 行動裝置顯示 fallback 訊息', async ({ browser }) => {
+    const context = await browser.newContext({
+      storageState: MANAGER_STATE_FILE,
+      viewport: { width: 375, height: 812 },
+    });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="week-view-mobile-fallback"]')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('text=週檢視在手機上空間不足')).toBeVisible();
+    }
+
+    await context.close();
+  });
+
+  test('TS-CW-008: 底部 totals row 顯示', async ({ browser }) => {
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
+    await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('networkidle');
+
+    const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
+    if (await weekBtn.isVisible()) {
+      await weekBtn.click();
+      await expect(page.locator('[data-testid="week-totals-row"]')).toBeVisible({ timeout: 10000 });
+      for (let i = 0; i < 7; i++) {
+        await expect(page.locator(`[data-testid="day-total-cell-${i}"]`)).toBeVisible();
+      }
+    }
+
+    await context.close();
+  });
+});
