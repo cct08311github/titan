@@ -9,7 +9,7 @@ import { type TimeEntry } from "./use-timesheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ViewMode = "grid" | "list" | "calendar" | "calendar-week";
+type ViewMode = "grid" | "list" | "calendar" | "calendar-week" | "calendar-month";
 
 type TimesheetToolbarProps = {
   weekRange: string;
