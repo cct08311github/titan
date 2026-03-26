@@ -1,14 +1,12 @@
 /**
  * Component tests: Overtime badge in TimeEntryCell
  * Issue #723: [TS-19] 加班標記顯示
- *
- * TDD: Tests written first.
+ * Updated for Issue #814 (T-2): overtimeType dropdown
  */
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
-// We test the overtime logic and badge rendering
 import { TimeEntryCell, type TimeEntry } from "@/app/components/time-entry-cell";
 
 describe("Overtime Badge", () => {
@@ -19,7 +17,7 @@ describe("Overtime Badge", () => {
     onDelete: jest.fn(),
   };
 
-  it("shows overtime badge when entry has overtime=true", () => {
+  it("shows overtime badge when entry has overtimeType=WEEKDAY", () => {
     const entry: TimeEntry = {
       id: "e1",
       taskId: "task-1",
@@ -27,14 +25,44 @@ describe("Overtime Badge", () => {
       hours: 2,
       category: "PLANNED_TASK",
       description: null,
-      overtime: true,
+      overtimeType: "WEEKDAY",
     };
 
     render(<TimeEntryCell {...baseProps} entry={entry} />);
     expect(screen.getByText("OT")).toBeInTheDocument();
   });
 
-  it("does not show overtime badge when overtime=false", () => {
+  it("shows REST_DAY badge", () => {
+    const entry: TimeEntry = {
+      id: "e1b",
+      taskId: "task-1",
+      date: "2026-03-21",
+      hours: 4,
+      category: "PLANNED_TASK",
+      description: null,
+      overtimeType: "REST_DAY",
+    };
+
+    render(<TimeEntryCell {...baseProps} entry={entry} />);
+    expect(screen.getByText("\u4F11")).toBeInTheDocument(); // 休
+  });
+
+  it("shows HOLIDAY badge", () => {
+    const entry: TimeEntry = {
+      id: "e1c",
+      taskId: "task-1",
+      date: "2026-03-22",
+      hours: 6,
+      category: "PLANNED_TASK",
+      description: null,
+      overtimeType: "HOLIDAY",
+    };
+
+    render(<TimeEntryCell {...baseProps} entry={entry} />);
+    expect(screen.getByText("\u5047")).toBeInTheDocument(); // 假
+  });
+
+  it("does not show overtime badge when overtimeType=NONE", () => {
     const entry: TimeEntry = {
       id: "e2",
       taskId: "task-1",
@@ -42,14 +70,14 @@ describe("Overtime Badge", () => {
       hours: 2,
       category: "PLANNED_TASK",
       description: null,
-      overtime: false,
+      overtimeType: "NONE",
     };
 
     render(<TimeEntryCell {...baseProps} entry={entry} />);
     expect(screen.queryByText("OT")).not.toBeInTheDocument();
   });
 
-  it("does not show overtime badge when overtime is undefined", () => {
+  it("does not show overtime badge when overtimeType is undefined", () => {
     const entry: TimeEntry = {
       id: "e3",
       taskId: "task-1",
@@ -63,7 +91,7 @@ describe("Overtime Badge", () => {
     expect(screen.queryByText("OT")).not.toBeInTheDocument();
   });
 
-  it("shows overtime toggle in the edit popover", async () => {
+  it("shows overtime type dropdown in the edit popover", async () => {
     const entry: TimeEntry = {
       id: "e4",
       taskId: "task-1",
@@ -71,20 +99,22 @@ describe("Overtime Badge", () => {
       hours: 4,
       category: "PLANNED_TASK",
       description: null,
-      overtime: false,
+      overtimeType: "NONE",
     };
 
     render(<TimeEntryCell {...baseProps} entry={entry} />);
+    fireEvent.click(screen.getByText("4h"));
 
-    // Open popover by clicking the cell
-    const cellButton = screen.getByText("4h");
-    fireEvent.click(cellButton);
-
-    // Should have overtime toggle
-    expect(screen.getByLabelText("加班")).toBeInTheDocument();
+    // Should have overtime type label
+    expect(screen.getByText("加班類型")).toBeInTheDocument();
+    // Should have options
+    expect(screen.getByText("非加班")).toBeInTheDocument();
+    expect(screen.getByText("平日加班")).toBeInTheDocument();
+    expect(screen.getByText("休息日加班")).toBeInTheDocument();
+    expect(screen.getByText("國定假日加班")).toBeInTheDocument();
   });
 
-  it("overtime toggle is checked when entry.overtime=true", () => {
+  it("dropdown shows correct value for WEEKDAY entry", () => {
     const entry: TimeEntry = {
       id: "e5",
       taskId: "task-1",
@@ -92,13 +122,14 @@ describe("Overtime Badge", () => {
       hours: 4,
       category: "PLANNED_TASK",
       description: null,
-      overtime: true,
+      overtimeType: "WEEKDAY",
     };
 
     render(<TimeEntryCell {...baseProps} entry={entry} />);
-    fireEvent.click(screen.getByText("4h"));
+    fireEvent.click(screen.getByText("OT"));
 
-    const checkbox = screen.getByLabelText("加班") as HTMLInputElement;
-    expect(checkbox.checked).toBe(true);
+    // The select should have WEEKDAY selected
+    const select = screen.getByDisplayValue("平日加班");
+    expect(select).toBeInTheDocument();
   });
 });

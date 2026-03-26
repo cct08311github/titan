@@ -20,7 +20,7 @@ const MOCK_ENTRY = {
   id: "entry-1",
   userId: "u1",
   taskId: null,
-  date: new Date("2024-01-15"),
+  date: new Date(), // Use current date to avoid auto-lock
   hours: 4,
   category: "PLANNED_TASK",
   description: null,
