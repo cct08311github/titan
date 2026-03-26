@@ -57,8 +57,13 @@ describe("createUserSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  test("rejects invalid role", () => {
+  test("accepts ADMIN role (Issue #801)", () => {
     const result = createUserSchema.safeParse({ ...validInput, role: "ADMIN" });
+    expect(result.success).toBe(true);
+  });
+
+  test("rejects invalid role", () => {
+    const result = createUserSchema.safeParse({ ...validInput, role: "SUPERADMIN" });
     expect(result.success).toBe(false);
   });
 });
