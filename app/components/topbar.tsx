@@ -2,14 +2,14 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, Moon, Sun, X } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, X, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, Activity, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
 
 const PAGE_TITLES: Record<string, string> = {
@@ -48,14 +48,40 @@ const MOBILE_NAV = [
   { href: "/settings", label: "個人設定", icon: Settings },
 ];
 
+const PASSWORD_MAX_AGE_DAYS = 90;
+const PASSWORD_WARN_DAYS = 7;
+
+function computeDaysUntilExpiry(passwordChangedAt?: string | null): number | null {
+  if (!passwordChangedAt) return null;
+  const changedMs = new Date(passwordChangedAt).getTime();
+  const expiresAt = changedMs + PASSWORD_MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+  const remaining = expiresAt - Date.now();
+  return remaining > 0 ? Math.ceil(remaining / (24 * 60 * 60 * 1000)) : 0;
+}
+
 export function Topbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1];
 
+  // Issue #834: password expiry warning
+  const user = session?.user as { passwordChangedAt?: string | null } | undefined;
+  const daysLeft = useMemo(() => computeDaysUntilExpiry(user?.passwordChangedAt), [user?.passwordChangedAt]);
+  const showExpiryWarning = daysLeft !== null && daysLeft <= PASSWORD_WARN_DAYS && daysLeft > 0;
+
   return (
     <>
+    {/* Password expiry warning banner (Issue #834) */}
+    {showExpiryWarning && (
+      <div className="bg-amber-500/10 border-b border-amber-500/30 px-4 py-2 flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400" data-testid="password-expiry-warning">
+        <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+        <span>
+          您的密碼將於 <strong>{daysLeft}</strong> 天後到期，請儘速
+          <Link href="/change-password" className="underline font-medium ml-1">變更密碼</Link>
+        </span>
+      </div>
+    )}
     <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 flex-shrink-0 sticky top-0 z-10">
       <div className="flex items-center gap-3">
         {/* Mobile hamburger */}
