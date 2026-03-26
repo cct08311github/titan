@@ -168,6 +168,7 @@ model AnnualPlan {
   monthlyGoals MonthlyGoal[]
   milestones   Milestone[]
   deliverables Deliverable[] @relation("AnnualPlanDeliverable")
+  linkedTasks  Task[]        @relation("PlanTasks") // Issue #835: direct task linkage
 
   @@index([year])
   @@index([createdBy])
@@ -267,6 +268,7 @@ enum TaskCategory {
 
 model Task {
   id                String       @id @default(cuid())
+  annualPlanId      String?      // Issue #835: direct FK to AnnualPlan
   monthlyGoalId     String?
   title             String
   description       String?
@@ -289,6 +291,7 @@ model Task {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
+  annualPlan      AnnualPlan?   @relation("PlanTasks", fields: [annualPlanId], references: [id], onDelete: SetNull)
   monthlyGoal     MonthlyGoal?  @relation(fields: [monthlyGoalId], references: [id])
   primaryAssignee User?         @relation("TaskPrimaryAssignee", fields: [primaryAssigneeId], references: [id])
   backupAssignee  User?         @relation("TaskBackupAssignee", fields: [backupAssigneeId], references: [id])
@@ -303,6 +306,7 @@ model Task {
   deliverables    Deliverable[] @relation("TaskDeliverable")
   incidentRecord  IncidentRecord?
 
+  @@index([annualPlanId])
   @@index([monthlyGoalId])
   @@index([primaryAssigneeId])
   @@index([backupAssigneeId])

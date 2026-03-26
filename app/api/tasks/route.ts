@@ -30,7 +30,8 @@ export const GET = withAuth(async (req: NextRequest) => {
       : (searchParams.get("status") as TaskStatus) ?? undefined,
     priority: (searchParams.get("priority") as Priority) ?? undefined,
     category: (searchParams.get("category") as TaskCategory) ?? undefined,
-    monthlyGoalId: searchParams.get("monthlyGoalId") ?? undefined,
+    annualPlanId: searchParams.get("planId") ?? searchParams.get("annualPlanId") ?? undefined, // Issue #835
+    monthlyGoalId: searchParams.get("monthlyGoalId") ?? searchParams.get("goalId") ?? undefined, // Issue #835: also accept goalId
     skip,
     take: limit,
   });
