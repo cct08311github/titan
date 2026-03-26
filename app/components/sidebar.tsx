@@ -6,10 +6,12 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
-  Activity, Settings, ShieldCheck,
+  Activity, Settings, ShieldCheck, Gauge,
 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+
+const cockpitNavItem = { href: "/cockpit", label: "駕駛艙", icon: Gauge };
 
 const navGroups = [
   {
@@ -51,7 +53,11 @@ export function Sidebar() {
   const { data: session } = useSession();
   const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
   const groups = isManager
-    ? [...navGroups.slice(0, -1), { label: "帳號", items: [navGroups[navGroups.length - 1].items[0], adminNavItem] }]
+    ? [
+        { ...navGroups[0], items: [cockpitNavItem, ...navGroups[0].items] },
+        ...navGroups.slice(1, -1),
+        { label: "帳號", items: [navGroups[navGroups.length - 1].items[0], adminNavItem] },
+      ]
     : navGroups;
   const [collapsed, setCollapsed] = useState(false);
 
