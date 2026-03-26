@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { safeFixed } from "@/lib/safe-number";
+import { safeFixed, safeNum } from "@/lib/safe-number";
 import { type TimeEntry, type OvertimeType, type TaskOption } from "./use-timesheet";
 import { CATEGORIES } from "./timesheet-cell";
 import { ChevronLeft, ChevronRight, Copy } from "lucide-react";
@@ -540,7 +540,7 @@ export function CalendarWeekView({
                 {/* Time blocks */}
                 {dayEntries.map((entry) => {
                   const style = getBlockStyle(entry.startTime!, entry.endTime!, HOUR_HEIGHT);
-                  const height = Number(style.height) || 24;
+                  const height = safeNum(style.height, 24);
                   const isEditing = editingEntryId === entry.id;
 
                   return (
