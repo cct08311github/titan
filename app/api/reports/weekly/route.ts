@@ -14,7 +14,17 @@ export const GET = withAuth(async (req: NextRequest) => {
   const dateParam = searchParams.get("date");
   const refDate = dateParam ? new Date(dateParam) : new Date();
 
-  const isManager = session.user.role === "MANAGER";
+  const view = searchParams.get("view"); // "pivot" for pivot table (Issue #832)
+  const isManager = session.user.role === "MANAGER" || session.user.role === "ADMIN";
+
+  if (view === "pivot") {
+    const data = await reportService.getWeeklyPivot({
+      isManager,
+      userId: session.user.id,
+      refDate,
+    });
+    return success(data);
+  }
 
   const data = await reportService.getWeeklyReport({
     isManager,

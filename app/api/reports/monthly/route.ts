@@ -16,7 +16,18 @@ export const GET = withAuth(async (req: NextRequest) => {
   const year = monthParam ? parseInt(monthParam.split("-")[0]) : now.getFullYear();
   const month = monthParam ? parseInt(monthParam.split("-")[1]) : now.getMonth() + 1;
 
-  const isManager = session.user.role === "MANAGER";
+  const view = searchParams.get("view"); // "pivot" for pivot table (Issue #832)
+  const isManager = session.user.role === "MANAGER" || session.user.role === "ADMIN";
+
+  if (view === "pivot") {
+    const data = await reportService.getMonthlyPivot({
+      isManager,
+      userId: session.user.id,
+      year,
+      month,
+    });
+    return success(data);
+  }
 
   const data = await reportService.getMonthlyReport({
     isManager,
