@@ -16,6 +16,12 @@ jest.mock("@/app/components/subtask-list", () => ({
 jest.mock("@/app/components/deliverable-list", () => ({
   DeliverableList: () => <div data-testid="deliverable-list" />,
 }));
+jest.mock("@/app/components/comment-list", () => ({
+  CommentList: () => <div data-testid="comment-list" />,
+}));
+jest.mock("@/lib/security/sanitize", () => ({
+  sanitizeHtml: (html: string) => html,
+}));
 
 const MOCK_TASK = {
   id: "task-1",
@@ -82,9 +88,13 @@ describe("TaskDetailModal", () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument();
     });
-    // Click the X button (second button in header: index 1)
+    // Click the X button — find it by looking for all buttons and picking the last one in the header
     const buttons = screen.getAllByRole("button");
-    const closeBtn = buttons[1];
+    // The X button is after Save, tabs (詳情, 評論), so find by iterating from end
+    const closeBtn = buttons.find((b) => {
+      // The X button is the one that is not Save, not a tab
+      return b.closest(".flex.items-center.gap-2") && !b.textContent?.includes("儲存");
+    }) ?? buttons[buttons.length - 1];
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
   });
@@ -121,8 +131,10 @@ describe("TaskDetailModal", () => {
       render(<TaskDetailModal taskId="task-1" onClose={jest.fn()} />);
     });
     await waitFor(() => {
-      // Description is rendered in a <textarea value="..."> field
-      expect(screen.getByDisplayValue("A test description")).toBeInTheDocument();
+      // Description is rendered in a MarkdownEditor textarea
+      const textareas = screen.getAllByRole("textbox");
+      const descTextarea = textareas.find((t) => (t as HTMLTextAreaElement).value === "A test description");
+      expect(descTextarea).toBeInTheDocument();
     });
   });
 
