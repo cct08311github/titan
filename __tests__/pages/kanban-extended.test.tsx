@@ -28,6 +28,8 @@ jest.mock("@/app/components/task-card", () => ({
 }));
 jest.mock("@/app/components/task-filters", () => ({
   TaskFilters: () => <div data-testid="task-filters" />,
+  emptyFilters: { assignee: "", priority: "", category: "", tags: [], dueDateFrom: "", dueDateTo: "" },
+  hasActiveFilters: () => false,
 }));
 jest.mock("@/app/components/task-detail-modal", () => ({
   TaskDetailModal: () => <div data-testid="task-detail-modal" />,

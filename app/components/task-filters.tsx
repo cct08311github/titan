@@ -1,21 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Filter, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { extractItems } from "@/lib/api-client";
+import { extractItems, extractData } from "@/lib/api-client";
+import { useRouter, usePathname } from "next/navigation";
 
 export type TaskFilters = {
   assignee: string;
   priority: string;
   category: string;
+  tags: string[];
+  dueDateFrom: string;
+  dueDateTo: string;
+};
+
+export const emptyFilters: TaskFilters = {
+  assignee: "",
+  priority: "",
+  category: "",
+  tags: [],
+  dueDateFrom: "",
+  dueDateTo: "",
 };
 
 type User = { id: string; name: string };
+type TagOption = { name: string; color: string };
 
 interface TaskFiltersProps {
   filters: TaskFilters;
   onChange: (filters: TaskFilters) => void;
+  /** Total tasks count (before filter) */
+  totalCount?: number;
+  /** Filtered tasks count */
+  filteredCount?: number;
+  /** Whether to sync filters to URL query string */
+  syncUrl?: boolean;
 }
 
 const priorities = [
@@ -36,8 +56,52 @@ const categories = [
   { value: "LEARNING", label: "學習成長" },
 ];
 
-export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
+/**
+ * Parse filters from URL search params.
+ */
+export function parseFiltersFromUrl(searchParams: URLSearchParams): TaskFilters {
+  return {
+    assignee: searchParams.get("assignee") ?? "",
+    priority: searchParams.get("priority") ?? "",
+    category: searchParams.get("category") ?? "",
+    tags: searchParams.get("tags")?.split(",").filter(Boolean) ?? [],
+    dueDateFrom: searchParams.get("dueDateFrom") ?? "",
+    dueDateTo: searchParams.get("dueDateTo") ?? "",
+  };
+}
+
+/**
+ * Serialize filters to URL search params string.
+ */
+export function serializeFiltersToUrl(filters: TaskFilters): string {
+  const params = new URLSearchParams();
+  if (filters.assignee) params.set("assignee", filters.assignee);
+  if (filters.priority) params.set("priority", filters.priority);
+  if (filters.category) params.set("category", filters.category);
+  if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
+  if (filters.dueDateFrom) params.set("dueDateFrom", filters.dueDateFrom);
+  if (filters.dueDateTo) params.set("dueDateTo", filters.dueDateTo);
+  return params.toString();
+}
+
+export function hasActiveFilters(filters: TaskFilters): boolean {
+  return !!(
+    filters.assignee ||
+    filters.priority ||
+    filters.category ||
+    filters.tags.length > 0 ||
+    filters.dueDateFrom ||
+    filters.dueDateTo
+  );
+}
+
+export function TaskFilters({ filters, onChange, totalCount, filteredCount, syncUrl }: TaskFiltersProps) {
   const [users, setUsers] = useState<User[]>([]);
+  const [tags, setTags] = useState<TagOption[]>([]);
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     fetch("/api/users")
@@ -46,75 +110,175 @@ export function TaskFilters({ filters, onChange }: TaskFiltersProps) {
       .catch(() => {});
   }, []);
 
-  const hasActiveFilters = filters.assignee || filters.priority || filters.category;
+  useEffect(() => {
+    fetch("/api/tasks/tags")
+      .then((r) => r.json())
+      .then((body) => {
+        const data = extractData<{ tags: TagOption[] }>(body);
+        setTags(data?.tags ?? []);
+      })
+      .catch(() => {});
+  }, []);
 
-  const clearFilters = () => onChange({ assignee: "", priority: "", category: "" });
+  // Sync filters to URL
+  useEffect(() => {
+    if (!syncUrl) return;
+    const qs = serializeFiltersToUrl(filters);
+    const newUrl = qs ? `${pathname}?${qs}` : pathname;
+    router.replace(newUrl, { scroll: false });
+  }, [filters, syncUrl, pathname, router]);
+
+  const active = hasActiveFilters(filters);
+
+  const clearFilters = () => onChange({ ...emptyFilters });
+
+  function toggleTag(tagName: string) {
+    const newTags = filters.tags.includes(tagName)
+      ? filters.tags.filter((t) => t !== tagName)
+      : [...filters.tags, tagName];
+    onChange({ ...filters, tags: newTags });
+  }
 
   const selectCls =
     "h-9 bg-card border border-border text-foreground text-sm rounded-lg px-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer hover:border-muted-foreground/30 transition-all shadow-sm";
 
+  const dateCls =
+    "h-9 bg-card border border-border text-foreground text-sm rounded-lg px-2.5 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all shadow-sm";
+
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Filter className="h-3.5 w-3.5" />
-        <span className="text-xs font-medium">篩選</span>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Filter className="h-3.5 w-3.5" />
+          <span className="text-xs font-medium">篩選</span>
+        </div>
+
+        {/* Assignee */}
+        <select
+          aria-label="篩選負責人"
+          value={filters.assignee}
+          onChange={(e) => onChange({ ...filters, assignee: e.target.value })}
+          className={selectCls}
+        >
+          <option value="">所有成員</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name}
+            </option>
+          ))}
+        </select>
+
+        {/* Priority */}
+        <select
+          aria-label="篩選優先度"
+          value={filters.priority}
+          onChange={(e) => onChange({ ...filters, priority: e.target.value })}
+          className={selectCls}
+        >
+          {priorities.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Category */}
+        <select
+          aria-label="篩選分類"
+          value={filters.category}
+          onChange={(e) => onChange({ ...filters, category: e.target.value })}
+          className={selectCls}
+        >
+          {categories.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Tags multi-select dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setTagDropdownOpen((v) => !v)}
+            className={cn(
+              selectCls,
+              "flex items-center gap-1.5 min-w-[100px]",
+              filters.tags.length > 0 && "border-primary/50"
+            )}
+          >
+            標籤
+            {filters.tags.length > 0 && (
+              <span className="bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                {filters.tags.length}
+              </span>
+            )}
+          </button>
+          {tagDropdownOpen && (
+            <div className="absolute top-full mt-1 left-0 z-50 w-48 bg-card border border-border rounded-lg shadow-xl p-2 max-h-48 overflow-y-auto">
+              {tags.map((tag) => (
+                <label
+                  key={tag.name}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent/30 cursor-pointer text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    checked={filters.tags.includes(tag.name)}
+                    onChange={() => toggleTag(tag.name)}
+                    className="h-3.5 w-3.5 rounded border-border"
+                  />
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: tag.color }}
+                  />
+                  <span className="text-foreground">{tag.name}</span>
+                </label>
+              ))}
+              {tags.length === 0 && (
+                <div className="text-xs text-muted-foreground px-2 py-1">無標籤</div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Due date range */}
+        <div className="flex items-center gap-1">
+          <input
+            type="date"
+            aria-label="到期日起始"
+            value={filters.dueDateFrom}
+            onChange={(e) => onChange({ ...filters, dueDateFrom: e.target.value })}
+            className={dateCls}
+          />
+          <span className="text-xs text-muted-foreground">~</span>
+          <input
+            type="date"
+            aria-label="到期日結束"
+            value={filters.dueDateTo}
+            onChange={(e) => onChange({ ...filters, dueDateTo: e.target.value })}
+            className={dateCls}
+          />
+        </div>
+
+        {/* Clear */}
+        {active && (
+          <button
+            onClick={clearFilters}
+            className={cn(
+              "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
+              "px-2 py-1.5 rounded-md border border-border hover:border-border/60 bg-background"
+            )}
+          >
+            <X className="h-3 w-3" />
+            清除篩選
+          </button>
+        )}
       </div>
 
-      {/* Assignee */}
-      <select
-        aria-label="篩選負責人"
-        value={filters.assignee}
-        onChange={(e) => onChange({ ...filters, assignee: e.target.value })}
-        className={selectCls}
-      >
-        <option value="">所有成員</option>
-        {users.map((u) => (
-          <option key={u.id} value={u.id}>
-            {u.name}
-          </option>
-        ))}
-      </select>
-
-      {/* Priority */}
-      <select
-        aria-label="篩選優先度"
-        value={filters.priority}
-        onChange={(e) => onChange({ ...filters, priority: e.target.value })}
-        className={selectCls}
-      >
-        {priorities.map((p) => (
-          <option key={p.value} value={p.value}>
-            {p.label}
-          </option>
-        ))}
-      </select>
-
-      {/* Category */}
-      <select
-        aria-label="篩選分類"
-        value={filters.category}
-        onChange={(e) => onChange({ ...filters, category: e.target.value })}
-        className={selectCls}
-      >
-        {categories.map((c) => (
-          <option key={c.value} value={c.value}>
-            {c.label}
-          </option>
-        ))}
-      </select>
-
-      {/* Clear */}
-      {hasActiveFilters && (
-        <button
-          onClick={clearFilters}
-          className={cn(
-            "flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors",
-            "px-2 py-1.5 rounded-md border border-border hover:border-border/60 bg-background"
-          )}
-        >
-          <X className="h-3 w-3" />
-          清除篩選
-        </button>
+      {/* Filter count indicator */}
+      {active && totalCount !== undefined && filteredCount !== undefined && (
+        <div className="text-xs text-muted-foreground">
+          顯示 {filteredCount}/{totalCount} 筆任務
+        </div>
       )}
     </div>
   );
