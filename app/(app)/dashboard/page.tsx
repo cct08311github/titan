@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle } from "lucide-react";
+import { TaskStatusSummary } from "@/app/components/task-status-summary";
 import { MyTodoList } from "@/app/components/my-todo-list";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
@@ -695,6 +696,13 @@ export default function DashboardPage() {
           {isManager ? "主管視角 — 團隊整體狀況" : "工程師視角 — 我的工作狀況"}
         </p>
       </div>
+
+      {/* ── Task Status Summary Cards (Issue #808) ── */}
+      {status !== "loading" && (
+        <div className="mb-8">
+          <TaskStatusSummary />
+        </div>
+      )}
 
       {status === "loading" ? (
         <PageLoading />
