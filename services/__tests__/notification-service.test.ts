@@ -19,6 +19,8 @@ describe("NotificationService", () => {
     service = new NotificationService(prisma as never);
     // Default: no existing notifications
     (prisma.notification.findMany as jest.Mock).mockResolvedValue([]);
+    // Default: no notification preferences (all enabled) — Issue #846
+    (prisma.notificationPreference.findMany as jest.Mock).mockResolvedValue([]);
   });
 
   // ── TASK_DUE_SOON ─────────────────────────────────────────────────────────

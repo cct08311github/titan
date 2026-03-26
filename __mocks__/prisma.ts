@@ -35,6 +35,7 @@ export const mockPrisma = {
   taskDocument: createMockModel(),
   permission: createMockModel(),
   notification: createMockModel(),
+  notificationPreference: createMockModel(),
   deliverable: createMockModel(),
   auditLog: createMockModel(),
   timeEntryTemplate: createMockModel(),
