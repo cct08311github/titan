@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle } from "lucide-react";
+import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle, ToggleLeft, ToggleRight } from "lucide-react";
+import { TeamOverview } from "@/app/components/team-overview";
 import { OverdueAlert } from "@/app/components/overdue-alert";
 import { TaskStatusSummary } from "@/app/components/task-status-summary";
 import { MyTodoList } from "@/app/components/my-todo-list";
@@ -685,17 +686,50 @@ function EngineerDashboard() {
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
+const DASHBOARD_VIEW_KEY = "titan-dashboard-view";
+type DashboardView = "personal" | "team";
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const isManager = session?.user?.role === "MANAGER";
+  const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
+
+  // View toggle (persisted in localStorage)
+  const [view, setView] = useState<DashboardView>(() => {
+    if (typeof window === "undefined") return "team";
+    return (localStorage.getItem(DASHBOARD_VIEW_KEY) as DashboardView) || "team";
+  });
+
+  function toggleView() {
+    const next: DashboardView = view === "personal" ? "team" : "personal";
+    setView(next);
+    localStorage.setItem(DASHBOARD_VIEW_KEY, next);
+  }
+
+  const showTeam = isManager && view === "team";
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold tracking-tight">儀表板</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isManager ? "主管視角 — 團隊整體狀況" : "工程師視角 — 我的工作狀況"}
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight">儀表板</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {showTeam ? "團隊視角 — 團隊整體狀況" : "個人視角 — 我的工作狀況"}
+          </p>
+        </div>
+        {/* View toggle — only for Manager/Admin */}
+        {isManager && status !== "loading" && (
+          <button
+            onClick={toggleView}
+            className="flex items-center gap-2 px-3 py-1.5 bg-card border border-border rounded-md text-sm font-medium text-foreground hover:bg-accent transition-colors"
+          >
+            {view === "team" ? (
+              <ToggleRight className="h-4 w-4 text-primary" />
+            ) : (
+              <ToggleLeft className="h-4 w-4 text-muted-foreground" />
+            )}
+            {view === "team" ? "團隊" : "個人"}
+          </button>
+        )}
       </div>
 
       {/* ── Overdue Alert (Issue #809, top of dashboard) ── */}
@@ -714,8 +748,15 @@ export default function DashboardPage() {
 
       {status === "loading" ? (
         <PageLoading />
+      ) : showTeam ? (
+        <>
+          <TeamOverview />
+          <div className="mt-8">
+            <ManagerDashboard />
+          </div>
+        </>
       ) : isManager ? (
-        <ManagerDashboard />
+        <EngineerDashboard />
       ) : (
         <EngineerDashboard />
       )}
