@@ -103,7 +103,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           primaryAssigneeId: form.primaryAssigneeId || null,
           backupAssigneeId: form.backupAssigneeId || null,
           monthlyGoalId: form.monthlyGoalId || null,
-          dueDate: form.dueDate || null,
+          dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
           estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
         }),
       });
