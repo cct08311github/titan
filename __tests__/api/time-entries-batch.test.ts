@@ -297,6 +297,8 @@ describe("Audit trail for time entry changes", () => {
     jest.clearAllMocks();
     jest.resetModules();
     mockGetServerSession.mockResolvedValue(SESSION_ENGINEER);
+    // T-1: Mock findMany for daily limit check
+    mockTimeEntry.findMany.mockResolvedValue([]);
   });
 
   test("updating time entry creates audit log", async () => {

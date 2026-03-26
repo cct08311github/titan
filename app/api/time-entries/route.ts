@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TimeCategory } from "@prisma/client";
-import { ForbiddenError } from "@/services/errors";
+import { ForbiddenError, ValidationError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { createTimeEntrySchema } from "@/validators/time-entry-validators";
+import { validateDailyLimit } from "@/validators/shared/time-entry";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
@@ -55,6 +56,21 @@ export const POST = withAuth(async (req: NextRequest) => {
 
   const raw = await req.json();
   const { taskId, date, hours, category, description } = validateBody(createTimeEntrySchema, raw);
+
+  // T-1: Enforce daily 24hr limit — sum existing entries for this date
+  const targetDate = new Date(date);
+  const existingEntries = await prisma.timeEntry.findMany({
+    where: {
+      userId: session.user.id,
+      date: targetDate,
+    },
+    select: { hours: true },
+  });
+  const existingTotal = existingEntries.reduce((sum, e) => sum + e.hours, 0);
+  const limitError = validateDailyLimit(existingTotal, hours);
+  if (limitError) {
+    throw new ValidationError(limitError);
+  }
 
   // Always create entries owned by the caller — ignores any userId in body.
   const entry = await prisma.timeEntry.create({

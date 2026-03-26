@@ -70,6 +70,8 @@ describe("POST /api/time-entries", () => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(SESSION);
     mockTimeEntry.create.mockResolvedValue(MOCK_ENTRY);
+    // T-1: Mock findMany for daily limit check (empty = no existing entries)
+    mockTimeEntry.findMany.mockResolvedValue([]);
   });
 
   it("creates time entry with valid data", async () => {
@@ -117,6 +119,8 @@ describe("PUT/DELETE /api/time-entries/[id]", () => {
     mockTimeEntry.findUnique.mockResolvedValue(MOCK_ENTRY);
     mockTimeEntry.update.mockResolvedValue({ ...MOCK_ENTRY, hours: 6 });
     mockTimeEntry.delete.mockResolvedValue(MOCK_ENTRY);
+    // T-1: Mock findMany for daily limit check (empty = no existing entries)
+    mockTimeEntry.findMany.mockResolvedValue([]);
   });
 
   it("PUT updates time entry", async () => {
