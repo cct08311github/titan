@@ -17,9 +17,6 @@ export const updateSubTaskSchema = z.object({
   notes: z.string().max(10000, "備註不得超過 10,000 字元").nullable().optional(),
   result: z.string().nullable().optional(),
   completedAt: z.string().datetime().nullable().optional(),
-  notes: z.string().max(10000, "備註不得超過 10,000 字元").nullable().optional(),
-  result: z.string().nullable().optional(),
-  completedAt: z.string().datetime().nullable().optional(),
 });
 
 export type CreateSubTaskInput = z.infer<typeof createSubTaskSchema>;

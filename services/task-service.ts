@@ -2,6 +2,7 @@ import { PrismaClient, TaskStatus, Priority, TaskCategory } from "@prisma/client
 import { NotFoundError, ValidationError } from "./errors";
 import { ChangeTrackingService } from "./change-tracking-service";
 import { AuditService } from "./audit-service";
+import { logActivity, ActivityAction, ActivityModule } from "./activity-logger";
 
 export interface ListTasksFilter {
   assignee?: string;
@@ -206,10 +207,79 @@ export class TaskService {
       },
     });
 
-    // Auto-detect delay/scope-change and record if changedBy is provided
-    if (input.changedBy) {
-      const reason = input.changeReason;
+    // ── Record field-level changes for audit trail — Issue #806 (K-6) ────
 
+    const userId = input.changedBy ?? null;
+    const reason = input.changeReason;
+
+    // Record important field changes to TaskActivity
+    if (userId) {
+      const fieldChanges: { action: string; detail: Record<string, unknown> }[] = [];
+
+      if (input.status !== undefined && input.status !== existing.status) {
+        fieldChanges.push({
+          action: "STATUS_CHANGED",
+          detail: { oldStatus: existing.status, status: input.status },
+        });
+      }
+
+      if (input.priority !== undefined && input.priority !== existing.priority) {
+        fieldChanges.push({
+          action: "PRIORITY_CHANGED",
+          detail: { oldPriority: existing.priority, newPriority: input.priority },
+        });
+      }
+
+      if (input.primaryAssigneeId !== undefined && input.primaryAssigneeId !== existing.primaryAssigneeId) {
+        fieldChanges.push({
+          action: "ASSIGNEE_CHANGED",
+          detail: {
+            oldAssigneeId: existing.primaryAssigneeId,
+            newAssigneeId: input.primaryAssigneeId,
+            oldAssignee: existing.primaryAssigneeId ?? "未指派",
+            newAssignee: input.primaryAssigneeId ?? "未指派",
+          },
+        });
+      }
+
+      if (input.dueDate !== undefined) {
+        const oldDate = existing.dueDate?.toISOString() ?? null;
+        const newDate = input.dueDate ?? null;
+        if (oldDate !== newDate) {
+          fieldChanges.push({
+            action: "DUE_DATE_CHANGED",
+            detail: { oldDueDate: oldDate, newDueDate: newDate },
+          });
+        }
+      }
+
+      // Write field changes to TaskActivity
+      for (const change of fieldChanges) {
+        await this.prisma.taskActivity.create({
+          data: {
+            taskId: id,
+            userId,
+            action: change.action,
+            detail: change.detail as unknown as import("@prisma/client").Prisma.InputJsonValue,
+          },
+        });
+      }
+
+      // Write to activity_log (AF-1) — fire-and-forget
+      if (fieldChanges.length > 0) {
+        logActivity({
+          userId,
+          action: ActivityAction.UPDATE,
+          module: ActivityModule.KANBAN,
+          targetType: "Task",
+          targetId: id,
+          metadata: {
+            changes: fieldChanges.map((c) => ({ action: c.action, ...c.detail })),
+          },
+        });
+      }
+
+      // Auto-detect delay/scope-change
       if (input.dueDate !== undefined) {
         const oldDueDate = existing.dueDate ?? null;
         const newDueDate = input.dueDate ? new Date(input.dueDate as string) : null;
@@ -217,7 +287,7 @@ export class TaskService {
           taskId: id,
           oldDueDate,
           newDueDate,
-          changedBy: input.changedBy,
+          changedBy: userId,
           reason,
         });
       }
@@ -229,7 +299,7 @@ export class TaskService {
           newTitle: input.title ?? existing.title,
           oldDescription: existing.description ?? null,
           newDescription: input.description !== undefined ? (input.description ?? null) : (existing.description ?? null),
-          changedBy: input.changedBy,
+          changedBy: userId,
           reason,
         });
       }
@@ -239,9 +309,15 @@ export class TaskService {
   }
 
   async updateTaskStatus(id: string, status: string, userId: string) {
-    return this.prisma.$transaction(
+    // Fetch old status for audit trail — Issue #806 (K-6)
+    const existing = await this.prisma.task.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    const task = await this.prisma.$transaction(
       async (tx) => {
-        const task = await tx.task.update({
+        const updated = await tx.task.update({
           where: { id },
           data: { status: status as TaskStatus },
           include: {
@@ -255,14 +331,32 @@ export class TaskService {
             taskId: id,
             userId,
             action: "STATUS_CHANGED",
-            detail: { status },
+            detail: {
+              status,
+              oldStatus: existing?.status ?? null,
+            },
           },
         });
 
-        return task;
+        return updated;
       },
       { timeout: 10000 }
     );
+
+    // Fire-and-forget: write to activity_log (AF-1) — Issue #806
+    logActivity({
+      userId,
+      action: ActivityAction.STATUS_CHANGE,
+      module: ActivityModule.KANBAN,
+      targetType: "Task",
+      targetId: id,
+      metadata: {
+        oldStatus: existing?.status ?? null,
+        newStatus: status,
+      },
+    });
+
+    return task;
   }
 
   async deleteTask(id: string, deletedBy?: string, ipAddress?: string) {

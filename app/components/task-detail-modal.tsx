@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Save, Loader2 } from "lucide-react";
+import { X, Save, Loader2, History, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, TaskIncidentSection, initialForm } from "./task-detail/index";
 import type { TaskForm } from "./task-detail/index";
+import { TaskChangeHistory } from "./task-change-history";
 
 type User = { id: string; name: string; avatar?: string | null };
 type MonthlyGoal = { id: string; title: string; month: number };
@@ -41,6 +42,8 @@ interface TaskDetailModalProps {
   onUpdated?: () => void;
 }
 
+type ModalTab = "detail" | "history";
+
 export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalProps) {
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [users, setUsers] = useState<User[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [form, setForm] = useState<TaskForm>(initialForm);
+  const [activeTab, setActiveTab] = useState<ModalTab>("detail");
 
   const updateField = useCallback(
     <K extends keyof TaskForm>(field: K, value: TaskForm[K]) => {
@@ -134,7 +138,36 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
       <div className="bg-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card z-10 rounded-t-2xl">
-          <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
+            {/* Tabs — Issue #806 (K-6) */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setActiveTab("detail")}
+                className={cn(
+                  "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
+                  activeTab === "detail"
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                )}
+              >
+                <FileText className="h-3 w-3" />
+                詳情
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={cn(
+                  "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
+                  activeTab === "history"
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                )}
+              >
+                <History className="h-3 w-3" />
+                變更歷史
+              </button>
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={save}
@@ -162,27 +195,34 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           </div>
         ) : task ? (
           <div className="p-5 space-y-5">
-            <TaskFormFields
-              form={form}
-              onFieldChange={updateField}
-              users={users}
-              goals={goals}
-            />
+            {activeTab === "detail" ? (
+              <>
+                <TaskFormFields
+                  form={form}
+                  onFieldChange={updateField}
+                  users={users}
+                  goals={goals}
+                />
 
-            <TaskIncidentSection
-              taskId={taskId}
-              category={form.category}
-            />
+                <TaskIncidentSection
+                  taskId={taskId}
+                  category={form.category}
+                />
 
-            <TaskSubtaskSection
-              subtasks={task.subTasks}
-              taskId={taskId}
-            />
+                <TaskSubtaskSection
+                  subtasks={task.subTasks}
+                  taskId={taskId}
+                />
 
-            <TaskDeliverableSection
-              deliverables={task.deliverables}
-              taskId={taskId}
-            />
+                <TaskDeliverableSection
+                  deliverables={task.deliverables}
+                  taskId={taskId}
+                />
+              </>
+            ) : (
+              /* Change History tab — Issue #806 (K-6) */
+              <TaskChangeHistory taskId={taskId} />
+            )}
           </div>
         ) : (
           <div className="py-16 text-center text-muted-foreground text-sm">任務不存在</div>
