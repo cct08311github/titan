@@ -258,11 +258,18 @@ enum MilestoneStatus {
   CANCELLED
 }
 
+enum MilestoneType {
+  LAUNCH     // 上線日
+  AUDIT      // 稽核日
+  CUSTOM     // 自訂
+}
+
 model Milestone {
   id           String          @id @default(cuid())
   annualPlanId String
   title        String
   description  String?
+  type         MilestoneType   @default(CUSTOM)
   plannedStart DateTime?
   plannedEnd   DateTime
   actualStart  DateTime?
