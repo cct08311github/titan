@@ -2,6 +2,7 @@ import { PrismaClient, TaskStatus, Priority, TaskCategory } from "@prisma/client
 import { NotFoundError, ValidationError } from "./errors";
 import { ChangeTrackingService } from "./change-tracking-service";
 import { AuditService } from "./audit-service";
+import { logActivity, ActivityAction, ActivityModule } from "./activity-logger";
 
 export interface ListTasksFilter {
   assignee?: string;
@@ -239,9 +240,15 @@ export class TaskService {
   }
 
   async updateTaskStatus(id: string, status: string, userId: string) {
-    return this.prisma.$transaction(
+    // Fetch old status for audit trail
+    const existing = await this.prisma.task.findUnique({
+      where: { id },
+      select: { status: true },
+    });
+
+    const task = await this.prisma.$transaction(
       async (tx) => {
-        const task = await tx.task.update({
+        const updated = await tx.task.update({
           where: { id },
           data: { status: status as TaskStatus },
           include: {
@@ -255,14 +262,29 @@ export class TaskService {
             taskId: id,
             userId,
             action: "STATUS_CHANGED",
-            detail: { status },
+            detail: { status, oldStatus: existing?.status },
           },
         });
 
-        return task;
+        return updated;
       },
       { timeout: 10000 }
     );
+
+    // Fire-and-forget: write to activity_log (AF-1)
+    logActivity({
+      userId,
+      action: ActivityAction.STATUS_CHANGE,
+      module: ActivityModule.KANBAN,
+      targetType: "Task",
+      targetId: id,
+      metadata: {
+        oldStatus: existing?.status ?? null,
+        newStatus: status,
+      },
+    });
+
+    return task;
   }
 
   async deleteTask(id: string, deletedBy?: string, ipAddress?: string) {

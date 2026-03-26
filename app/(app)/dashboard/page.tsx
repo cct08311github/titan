@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Target, ClipboardList, Clock, BarChart3, Users, CalendarClock, AlertTriangle } from "lucide-react";
 import { OverdueAlert } from "@/app/components/overdue-alert";
+import { TaskStatusSummary } from "@/app/components/task-status-summary";
+import { MyTodoList } from "@/app/components/my-todo-list";
 import { safeFixed, safePct } from "@/lib/safe-number";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -700,6 +702,10 @@ export default function DashboardPage() {
       {status !== "loading" && (
         <div className="mb-6">
           <OverdueAlert />
+      {/* ── Task Status Summary Cards (Issue #808) ── */}
+      {status !== "loading" && (
+        <div className="mb-8">
+          <TaskStatusSummary />
         </div>
       )}
 
@@ -711,10 +717,10 @@ export default function DashboardPage() {
         <EngineerDashboard />
       )}
 
-      {/* ── Today's Tasks Card (both views) ── */}
+      {/* ── My Todo List (both views, Issue #807) ── */}
       {status !== "loading" && (
         <div className="mt-8">
-          <TodayTasksCard />
+          <MyTodoList />
         </div>
       )}
 
