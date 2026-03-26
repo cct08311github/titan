@@ -11,6 +11,7 @@ import {
   TimesheetTimer,
   CalendarDayView,
   CalendarWeekView,
+  CalendarMonthView,
   type ViewMode,
 } from "@/app/components/timesheet";
 import { TimesheetListView } from "@/app/components/timesheet-list-view";
@@ -204,7 +205,7 @@ export default function TimesheetPage() {
         {/* Grid, List, or Calendar */}
         <div className={cn(
           "border border-border rounded-xl overflow-hidden bg-card",
-          (viewMode === "calendar" || viewMode === "calendar-week") && "p-4"
+          (viewMode === "calendar" || viewMode === "calendar-week" || viewMode === "calendar-month") && "p-4"
         )}>
           {ts.loading ? (
             <PageLoading message="載入工時..." className="py-12" />
@@ -248,6 +249,13 @@ export default function TimesheetPage() {
               onThisWeek={ts.goToThisWeek}
               onSaveEntry={ts.saveEntry}
               onDeleteEntry={ts.deleteEntry}
+            />
+          ) : viewMode === "calendar-month" ? (
+            <CalendarMonthView
+              onDayClick={(date) => {
+                setCalendarDate(date);
+                setViewMode("calendar");
+              }}
             />
           ) : (
             <TimesheetListView
