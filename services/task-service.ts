@@ -3,6 +3,7 @@ import { NotFoundError, ValidationError } from "./errors";
 import { ChangeTrackingService } from "./change-tracking-service";
 import { AuditService } from "./audit-service";
 import { logActivity, ActivityAction, ActivityModule } from "./activity-logger";
+import { AutoRollupService } from "@/lib/auto-rollup";
 
 export interface ListTasksFilter {
   assignee?: string;
@@ -58,10 +59,12 @@ export interface UpdateTaskInput {
 export class TaskService {
   private readonly changeTracker: ChangeTrackingService;
   private readonly auditor: AuditService;
+  private readonly rollup: AutoRollupService;
 
   constructor(private readonly prisma: PrismaClient) {
     this.changeTracker = new ChangeTrackingService(prisma);
     this.auditor = new AuditService(prisma);
+    this.rollup = new AutoRollupService(prisma);
   }
 
   async listTasks(filter: ListTasksFilter) {
@@ -367,6 +370,15 @@ export class TaskService {
         newStatus: status,
       },
     });
+
+    // Auto-rollup: when task transitions to DONE, recalculate upstream aggregates
+    // Issue #965 — fire-and-forget to avoid blocking the response
+    if (status === "DONE") {
+      this.rollup.executeRollup(id).catch((err) => {
+        // Log but don't fail the task update
+        console.error("[auto-rollup] Failed to rollup for task", id, err);
+      });
+    }
 
     return task;
   }
