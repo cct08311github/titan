@@ -1,32 +1,66 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Loader2, Save, Plus, BookOpen, ExternalLink, FileEdit, Globe, AlertCircle } from "lucide-react";
+import {
+  Loader2, Save, Plus, BookOpen, ExternalLink, FileEdit, Globe, AlertCircle,
+  Upload, Archive, FileText, ClipboardList, AlertTriangle, Monitor,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { DocumentTree, type DocNode } from "@/app/components/document-tree";
 import { MarkdownEditor } from "@/app/components/markdown-editor";
 import { DocumentSearch } from "@/app/components/document-search";
 import { VersionHistory } from "@/app/components/version-history";
+import { SpaceSidebar } from "@/app/components/space-sidebar";
+import { DiffView } from "@/app/components/diff-view";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { formatDate } from "@/lib/format";
+
+type DocVersion = {
+  id: string;
+  title: string | null;
+  content: string;
+  version: number;
+  createdAt: string;
+  creator: { id: string; name: string };
+};
 
 type DocDetail = {
   id: string;
   title: string;
   content: string;
   version: number;
+  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   parentId: string | null;
+  spaceId: string | null;
   slug: string;
   creator: { id: string; name: string };
   updater: { id: string; name: string };
+  verifier: { id: string; name: string } | null;
+  verifiedAt: string | null;
+  verifyIntervalDays: number | null;
+  space: { id: string; name: string } | null;
   updatedAt: string;
+  versions: DocVersion[];
 };
 
 type ViewMode = "editor" | "outline";
 
 const OUTLINE_URL = process.env.NEXT_PUBLIC_OUTLINE_URL;
 const isOutlineConfigured = Boolean(OUTLINE_URL);
+
+const STATUS_LABELS: Record<string, { label: string; className: string }> = {
+  DRAFT: { label: "草稿", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  PUBLISHED: { label: "已發布", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
+  ARCHIVED: { label: "已歸檔", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+};
+
+const TEMPLATE_OPTIONS = [
+  { key: "sop", label: "SOP 標準作業程序", icon: ClipboardList },
+  { key: "meeting-notes", label: "會議紀錄", icon: FileText },
+  { key: "incident-report", label: "事件報告", icon: AlertTriangle },
+  { key: "tech-doc", label: "技術文件", icon: Monitor },
+] as const;
 
 export default function KnowledgePage() {
   const [docs, setDocs] = useState<DocNode[]>([]);
@@ -40,13 +74,19 @@ export default function KnowledgePage() {
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("editor");
+  const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [diffVersionId, setDiffVersionId] = useState<string | null>(null);
 
   // Load doc tree
   const loadDocs = useCallback(async () => {
     setLoadingDocs(true);
     setDocsError(null);
     try {
-      const res = await fetch("/api/documents");
+      const url = selectedSpaceId
+        ? `/api/documents?spaceId=${selectedSpaceId}`
+        : "/api/documents";
+      const res = await fetch(url);
       if (!res.ok) throw new Error("文件載入失敗");
       const body = await res.json();
       setDocs(extractItems<DocNode>(body));
@@ -55,7 +95,7 @@ export default function KnowledgePage() {
     } finally {
       setLoadingDocs(false);
     }
-  }, []);
+  }, [selectedSpaceId]);
 
   useEffect(() => { loadDocs(); }, [loadDocs]);
 
@@ -63,6 +103,7 @@ export default function KnowledgePage() {
   useEffect(() => {
     if (!selectedId) { setDocDetail(null); return; }
     setLoadingDetail(true);
+    setDiffVersionId(null);
     fetch(`/api/documents/${selectedId}`)
       .then((r) => r.ok ? r.json() : null)
       .then((raw) => {
@@ -89,7 +130,15 @@ export default function KnowledgePage() {
       if (res.ok) {
         const body = await res.json();
         const updated = extractData<DocDetail>(body);
-        setDocDetail(updated);
+        // Reload full detail to get versions
+        const detailRes = await fetch(`/api/documents/${selectedId}`);
+        if (detailRes.ok) {
+          const detailBody = await detailRes.json();
+          const full = extractData<DocDetail>(detailBody);
+          setDocDetail(full);
+        } else {
+          setDocDetail(updated);
+        }
         setDirty(false);
         setDocs((prev) =>
           prev.map((d) => d.id === selectedId ? { ...d, title: updated.title } : d)
@@ -100,13 +149,43 @@ export default function KnowledgePage() {
     }
   }
 
-  async function createDoc(parentId: string | null) {
-    const title = prompt("新文件標題：");
-    if (!title?.trim()) return;
+  async function publishDoc() {
+    if (!selectedId) return;
+    const res = await fetch(`/api/documents/${selectedId}/publish`, { method: "POST" });
+    if (res.ok) {
+      const body = await res.json();
+      const updated = extractData<DocDetail>(body);
+      setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
+      loadDocs();
+    }
+  }
+
+  async function archiveDoc() {
+    if (!selectedId || !confirm("確定歸檔此文件？")) return;
+    const res = await fetch(`/api/documents/${selectedId}/archive`, { method: "POST" });
+    if (res.ok) {
+      const body = await res.json();
+      const updated = extractData<DocDetail>(body);
+      setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
+      loadDocs();
+    }
+  }
+
+  async function createDoc(parentId: string | null, templateType?: string) {
+    const title = templateType ? "" : prompt("新文件標題：");
+    if (!templateType && !title?.trim()) return;
+    setShowTemplates(false);
+
     const res = await fetch("/api/documents", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parentId, title: title.trim(), content: "" }),
+      body: JSON.stringify({
+        parentId,
+        spaceId: selectedSpaceId,
+        title: title?.trim() ?? "",
+        content: "",
+        templateType,
+      }),
     });
     if (res.ok) {
       const body = await res.json();
@@ -116,6 +195,21 @@ export default function KnowledgePage() {
     } else {
       const errBody = await res.json().catch(() => ({}));
       alert(errBody?.message ?? "文件建立失敗");
+    }
+  }
+
+  async function createSpace() {
+    const name = prompt("Space 名稱：");
+    if (!name?.trim()) return;
+    const res = await fetch("/api/spaces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    if (res.ok) {
+      const body = await res.json();
+      const space = extractData<{ id: string }>(body);
+      setSelectedSpaceId(space.id);
     }
   }
 
@@ -141,6 +235,11 @@ export default function KnowledgePage() {
     setDirty(true);
   }
 
+  // Find version for diff
+  const diffVersion = diffVersionId && docDetail
+    ? docDetail.versions.find((v) => v.id === diffVersionId)
+    : null;
+
   return (
     <div className="flex flex-col h-full gap-0">
       {/* Top bar */}
@@ -152,7 +251,7 @@ export default function KnowledgePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* View mode toggle — only show Outline tab when configured */}
+          {/* View mode toggle */}
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             <button
               onClick={() => setViewMode("editor")}
@@ -183,13 +282,41 @@ export default function KnowledgePage() {
           </div>
 
           {viewMode === "editor" && (
-            <button
-              onClick={() => createDoc(null)}
-              className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              新增文件
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => createDoc(null)}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                新增文件
+              </button>
+            </div>
+          )}
+
+          {viewMode === "editor" && (
+            <div className="relative">
+              <button
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
+              >
+                <FileText className="h-3.5 w-3.5" />
+                使用範本
+              </button>
+              {showTemplates && (
+                <div className="absolute right-0 top-full mt-1 w-56 bg-card border border-border rounded-lg shadow-lg z-50 py-1">
+                  {TEMPLATE_OPTIONS.map(({ key, label, icon: Icon }) => (
+                    <button
+                      key={key}
+                      onClick={() => createDoc(null, key)}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {viewMode === "outline" && isOutlineConfigured && (
@@ -240,7 +367,16 @@ export default function KnowledgePage() {
       {/* Built-in editor view */}
       {viewMode === "editor" && (
         <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-0 border border-border rounded-xl overflow-hidden">
-          {/* Left sidebar */}
+          {/* Space sidebar */}
+          <div className="w-full md:w-44 flex-shrink-0 border-b md:border-b-0 md:border-r border-border bg-muted/30 max-h-32 md:max-h-none">
+            <SpaceSidebar
+              selectedSpaceId={selectedSpaceId}
+              onSelectSpace={setSelectedSpaceId}
+              onCreateSpace={createSpace}
+            />
+          </div>
+
+          {/* Doc tree sidebar */}
           <div className="w-full md:w-56 flex-shrink-0 border-b md:border-b-0 md:border-r border-border flex flex-col bg-sidebar-background max-h-48 md:max-h-none">
             {/* Search */}
             <div className="p-2 border-b border-border">
@@ -303,6 +439,14 @@ export default function KnowledgePage() {
                     placeholder="文件標題..."
                   />
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Status badge */}
+                    <span className={cn(
+                      "text-[10px] font-medium px-2 py-0.5 rounded-full",
+                      STATUS_LABELS[docDetail.status]?.className ?? ""
+                    )}>
+                      {STATUS_LABELS[docDetail.status]?.label ?? docDetail.status}
+                    </span>
+
                     {dirty && (
                       <span className="text-xs text-amber-500">未儲存</span>
                     )}
@@ -319,36 +463,87 @@ export default function KnowledgePage() {
                       {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                       儲存
                     </button>
+
+                    {/* Publish button */}
+                    {docDetail.status === "DRAFT" && (
+                      <button
+                        onClick={publishDoc}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors"
+                      >
+                        <Upload className="h-3 w-3" />
+                        發布
+                      </button>
+                    )}
+
+                    {/* Archive button */}
+                    {docDetail.status !== "ARCHIVED" && (
+                      <button
+                        onClick={archiveDoc}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors"
+                      >
+                        <Archive className="h-3 w-3" />
+                        歸檔
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 {/* Meta */}
-                <div className="px-4 py-1.5 border-b border-border/50 flex items-center gap-4 flex-shrink-0">
+                <div className="px-4 py-1.5 border-b border-border/50 flex items-center gap-4 flex-shrink-0 flex-wrap">
                   <span className="text-xs text-muted-foreground">
                     建立：{docDetail.creator.name}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     最後更新：{docDetail.updater.name}
-                    　{formatDate(docDetail.updatedAt)}
+                    {"\u3000"}{formatDate(docDetail.updatedAt)}
                   </span>
+                  {docDetail.space && (
+                    <span className="text-xs text-primary">
+                      Space: {docDetail.space.name}
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground/60 ml-auto">v{docDetail.version}</span>
                 </div>
 
-                {/* Markdown editor */}
-                <div className="flex-1 overflow-hidden">
-                  <MarkdownEditor
-                    value={editContent}
-                    onChange={handleContentChange}
-                    placeholder="開始撰寫 Markdown..."
-                  />
-                </div>
+                {/* Diff view or editor */}
+                {diffVersion ? (
+                  <div className="flex-1 overflow-auto p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-medium">
+                        版本比較：v{diffVersion.version} vs 目前 (v{docDetail.version})
+                      </h3>
+                      <button
+                        onClick={() => setDiffVersionId(null)}
+                        className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-accent transition-colors"
+                      >
+                        關閉比較
+                      </button>
+                    </div>
+                    <DiffView
+                      oldText={diffVersion.content}
+                      newText={editContent}
+                      oldLabel={`v${diffVersion.version} (${diffVersion.creator.name})`}
+                      newLabel={`v${docDetail.version} (目前)`}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-hidden">
+                    <MarkdownEditor
+                      value={editContent}
+                      onChange={handleContentChange}
+                      placeholder="開始撰寫 Markdown..."
+                    />
+                  </div>
+                )}
 
-                {/* Version history */}
-                <div className="flex-shrink-0">
-                  <VersionHistory
-                    documentId={docDetail.id}
+                {/* Revision history with diff support */}
+                <div className="flex-shrink-0 border-t border-border">
+                  <RevisionHistoryPanel
+                    versions={docDetail.versions}
                     currentVersion={docDetail.version}
                     onRestore={handleRestore}
+                    onDiff={setDiffVersionId}
+                    activeDiffId={diffVersionId}
                   />
                 </div>
               </>
@@ -358,6 +553,87 @@ export default function KnowledgePage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inline Revision History Panel with Diff ──
+
+function RevisionHistoryPanel({
+  versions,
+  currentVersion,
+  onRestore,
+  onDiff,
+  activeDiffId,
+}: {
+  versions: DocVersion[];
+  currentVersion: number;
+  onRestore: (content: string) => void;
+  onDiff: (versionId: string | null) => void;
+  activeDiffId: string | null;
+}) {
+  const [open, setOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  return (
+    <div>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+      >
+        <FileText className="h-3.5 w-3.5" />
+        <span>版本歷史（v{currentVersion}，{versions.length} 個版本）</span>
+        <span className="ml-auto text-[10px]">{open ? "收合" : "展開"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-border max-h-64 overflow-y-auto">
+          {versions.length === 0 && (
+            <div className="px-4 py-3 text-xs text-muted-foreground text-center">尚無歷史版本</div>
+          )}
+          {versions.map((v) => (
+            <div key={v.id} className="border-b border-border/50 last:border-0">
+              <div
+                className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-accent/30 transition-colors"
+                onClick={() => setExpandedId(expandedId === v.id ? null : v.id)}
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="text-xs font-medium text-foreground">v{v.version}</span>
+                  <span className="text-xs text-muted-foreground ml-2">{v.creator.name}</span>
+                  {v.title && (
+                    <span className="text-xs text-muted-foreground/60 ml-2">「{v.title}」</span>
+                  )}
+                </div>
+                <span className="text-xs text-muted-foreground flex-shrink-0">
+                  {formatDate(v.createdAt)}
+                </span>
+              </div>
+
+              {expandedId === v.id && (
+                <div className="px-4 pb-3 flex items-center gap-2">
+                  <button
+                    onClick={() => { onRestore(v.content); setOpen(false); }}
+                    className="text-xs px-3 py-1 rounded border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    還原此版本
+                  </button>
+                  <button
+                    onClick={() => onDiff(activeDiffId === v.id ? null : v.id)}
+                    className={cn(
+                      "text-xs px-3 py-1 rounded border transition-colors",
+                      activeDiffId === v.id
+                        ? "border-primary text-primary bg-primary/10"
+                        : "border-border text-muted-foreground hover:text-foreground hover:bg-accent"
+                    )}
+                  >
+                    {activeDiffId === v.id ? "關閉比較" : "比較差異"}
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>

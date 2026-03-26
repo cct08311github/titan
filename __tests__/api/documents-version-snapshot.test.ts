@@ -85,7 +85,7 @@ describe("PUT /api/documents/[id] -- version snapshot", () => {
     );
   });
 
-  it("does NOT create a version snapshot when only title changes", async () => {
+  it("creates a version snapshot when only title changes (Issue #967: track title changes)", async () => {
     const { PUT } = await import("@/app/api/documents/[id]/route");
     const req = createMockRequest("/api/documents/doc-1", {
       method: "PUT",
@@ -94,7 +94,15 @@ describe("PUT /api/documents/[id] -- version snapshot", () => {
 
     const res = await PUT(req, CONTEXT);
     expect(res.status).toBe(200);
-    expect(mockDocumentVersion.create).not.toHaveBeenCalled();
+    expect(mockDocumentVersion.create).toHaveBeenCalledTimes(1);
+    expect(mockDocumentVersion.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          documentId: "doc-1",
+          title: "Original Title",
+        }),
+      })
+    );
   });
 
   it("does NOT create a version snapshot when content is identical", async () => {
