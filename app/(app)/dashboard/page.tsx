@@ -135,7 +135,7 @@ function TodayTasksCard() {
           return (
             <div
               key={t.id}
-              className="flex items-center gap-3 p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
+              className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
             >
               <span
                 className={cn(
@@ -143,7 +143,7 @@ function TodayTasksCard() {
                   PRIORITY_DOT[t.priority] ?? "bg-muted-foreground"
                 )}
               />
-              <span className="flex-1 text-sm text-foreground truncate">{t.title}</span>
+              <span className="flex-1 text-xs sm:text-sm text-foreground truncate min-w-0">{t.title}</span>
               <span className="text-[11px] text-muted-foreground flex-shrink-0">
                 {STATUS_LABEL[t.status] ?? t.status}
               </span>
@@ -632,7 +632,7 @@ function EngineerDashboard() {
             {tasks.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center gap-3 p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
+                className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors"
               >
                 <span
                   className={cn(
@@ -642,7 +642,7 @@ function EngineerDashboard() {
                 >
                   {PRIORITY_LABEL[t.priority] ?? t.priority}
                 </span>
-                <span className="flex-1 text-sm text-foreground truncate">{t.title}</span>
+                <span className="flex-1 text-xs sm:text-sm text-foreground truncate min-w-0">{t.title}</span>
                 <span className="text-[11px] text-muted-foreground flex-shrink-0">
                   {STATUS_LABEL[t.status] ?? t.status}
                 </span>
@@ -709,10 +709,10 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">儀表板</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">儀表板</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 truncate">
             {showTeam ? "團隊視角 — 團隊整體狀況" : "個人視角 — 我的工作狀況"}
           </p>
         </div>

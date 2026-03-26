@@ -225,12 +225,12 @@ export default function PlansPage() {
       </nav>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">年度計畫</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">管理年度計畫與月度目標</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">年度計畫</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">管理年度計畫與月度目標</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => { setShowGoalForm(true); setGoalError(""); }}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
@@ -258,13 +258,13 @@ export default function PlansPage() {
       {/* Create plan form */}
       {showPlanForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-sm font-medium text-foreground">新增年度計畫</h3>
             <button onClick={() => setShowPlanForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
             </button>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <input
               type="number"
               value={newPlanYear}
@@ -305,7 +305,7 @@ export default function PlansPage() {
       {/* Copy template form */}
       {showCopyForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-sm font-medium text-foreground">從上年複製計畫</h3>
             <button onClick={() => setShowCopyForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />
@@ -348,7 +348,7 @@ export default function PlansPage() {
       {/* Create goal form */}
       {showGoalForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-sm font-medium text-foreground">新增月度目標</h3>
             <button onClick={() => setShowGoalForm(false)} className="text-muted-foreground hover:text-foreground">
               <X className="h-4 w-4" />

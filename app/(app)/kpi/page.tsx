@@ -199,7 +199,7 @@ function CreateKPIForm({ onCreated, onCancel }: CreateFormProps) {
     <form onSubmit={handleSubmit} className="bg-card rounded-xl shadow-card p-5 space-y-4">
       <h2 className="text-sm font-medium">新增 KPI</h2>
       <FormBanner message={bannerError} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs text-muted-foreground">年度</label>
           <input
@@ -612,18 +612,18 @@ export default function KPIPage() {
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
-            <Target className="h-6 w-6 text-primary" />
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight flex items-center gap-2">
+            <Target className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
             KPI 管理
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{year} 年度關鍵績效指標</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">{year} 年度關鍵績效指標</p>
         </div>
         {isManager && (
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90 transition-colors"
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             新增 KPI
@@ -633,7 +633,7 @@ export default function KPIPage() {
 
       {/* Filters & Search */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative flex-1 min-w-0 w-full sm:w-auto sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
@@ -672,7 +672,7 @@ export default function KPIPage() {
 
       {/* Summary */}
       {kpis.length > 0 && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
           <div className="bg-card rounded-xl shadow-card p-4 text-center">
             <p className="text-2xl font-semibold tabular-nums">{total}</p>
             <p className="text-xs text-muted-foreground mt-1">KPI 總數</p>

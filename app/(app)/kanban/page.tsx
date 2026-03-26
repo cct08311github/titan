@@ -439,7 +439,7 @@ export default function KanbanPage() {
 
       {/* Bulk action bar */}
       {hasSelection && (
-        <div className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+        <div className="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
             <CheckSquare className="h-4 w-4" />
             已選取 {selectedIds.size} 項

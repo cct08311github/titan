@@ -112,7 +112,7 @@ export default function TimesheetPage() {
 
       {/* Manager actions — Issue #832: added pivot tabs */}
       {isManager && (
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <div className="flex items-center bg-muted/50 rounded-lg p-0.5 gap-0.5">
             {([
               { key: "timesheet" as SummaryTab, label: "工時填報" },
@@ -123,7 +123,7 @@ export default function TimesheetPage() {
                 key={key}
                 onClick={() => setSummaryTab(key)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap",
                   summaryTab === key
                     ? "bg-background text-foreground font-medium shadow-sm"
                     : "text-muted-foreground hover:text-foreground"
