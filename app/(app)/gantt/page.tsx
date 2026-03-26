@@ -15,6 +15,8 @@ type User = { id: string; name: string };
 type Milestone = {
   id: string;
   title: string;
+  description?: string | null;
+  type: string;
   plannedEnd: string;
   status: string;
 };
@@ -107,7 +109,7 @@ type GanttBarProps = {
 function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: GanttBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [dragTooltip, setDragTooltip] = useState<string | null>(null);
-  const dragging = useRef<{ type: "move" | "resize-end"; startX: number; origStartDay: number; origEndDay: number } | null>(null);
+  const dragging = useRef<{ type: "move" | "resize-start" | "resize-end"; startX: number; origStartDay: number; origEndDay: number } | null>(null);
 
   if (!task.startDate && !task.dueDate) {
     return (
@@ -127,7 +129,7 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
   const leftPct = (startDay / totalDays) * 100;
   const widthPct = Math.max(0.3, ((endDay - startDay) / totalDays) * 100);
 
-  function handlePointerDown(e: React.PointerEvent, type: "move" | "resize-end") {
+  function handlePointerDown(e: React.PointerEvent, type: "move" | "resize-start" | "resize-end") {
     if (!canDrag || task.status === "DONE") return;
     e.preventDefault();
     e.stopPropagation();
@@ -144,7 +146,10 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
 
       if (dragging.current.type === "resize-end") {
         const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
-        setDragTooltip(dayToDate(newEnd, year));
+        setDragTooltip(`截止日：${dayToDate(newEnd, year)}`);
+      } else if (dragging.current.type === "resize-start") {
+        const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
+        setDragTooltip(`開始日：${dayToDate(newStart, year)}`);
       } else {
         const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
         const newEnd = dragging.current.origEndDay + daysDelta;
@@ -161,6 +166,9 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
         if (dragging.current.type === "resize-end") {
           const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
           onDateChange(task.id, task.startDate, dayToDate(newEnd, year));
+        } else if (dragging.current.type === "resize-start") {
+          const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
+          onDateChange(task.id, dayToDate(newStart, year), task.dueDate);
         } else {
           const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
           const newEnd = dragging.current.origEndDay + daysDelta;
@@ -202,6 +210,13 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
             style={{ width: `${task.progressPct}%` }}
           />
         )}
+        {/* Drag handle: left edge — Issue #844 (G-3) */}
+        {canDrag && task.status !== "DONE" && (
+          <div
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+            onPointerDown={(e) => handlePointerDown(e, "resize-start")}
+          />
+        )}
         {/* Drag handle: right edge */}
         {canDrag && task.status !== "DONE" && (
           <div
@@ -222,6 +237,26 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
   );
 }
 
+// ─── Milestone Type Config ────────────────────────────────────────────────────
+
+const MILESTONE_TYPE_COLOR: Record<string, string> = {
+  LAUNCH: "text-emerald-500",
+  AUDIT: "text-rose-500",
+  CUSTOM: "text-amber-500",
+};
+
+const MILESTONE_TYPE_LINE: Record<string, string> = {
+  LAUNCH: "bg-emerald-500/30",
+  AUDIT: "bg-rose-500/30",
+  CUSTOM: "bg-amber-500/30",
+};
+
+const MILESTONE_TYPE_LABEL: Record<string, string> = {
+  LAUNCH: "上線日",
+  AUDIT: "稽核日",
+  CUSTOM: "自訂",
+};
+
 // ─── Milestone Marker ─────────────────────────────────────────────────────────
 
 type MilestoneMarkerProps = {
@@ -231,23 +266,44 @@ type MilestoneMarkerProps = {
 };
 
 function MilestoneMarker({ milestone, year, totalDays }: MilestoneMarkerProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
   const day = dayOfYear(milestone.plannedEnd, year);
   if (day < 0 || day > totalDays) return null;
   const leftPct = (day / totalDays) * 100;
+  const typeColor = MILESTONE_TYPE_COLOR[milestone.type] ?? MILESTONE_TYPE_COLOR.CUSTOM;
+  const lineColor = MILESTONE_TYPE_LINE[milestone.type] ?? MILESTONE_TYPE_LINE.CUSTOM;
+  const typeLabel = MILESTONE_TYPE_LABEL[milestone.type] ?? "自訂";
+  const dateLabel = new Date(milestone.plannedEnd).toLocaleDateString("zh-TW");
 
   return (
     <div
-      className="absolute top-0 bottom-0 flex flex-col items-center pointer-events-none"
+      className="absolute top-0 bottom-0 flex flex-col items-center"
       style={{ left: `${leftPct}%` }}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
     >
-      <div className="w-px h-full bg-amber-500/30" />
+      <div className={cn("w-px h-full", lineColor)} />
       <div
-        className={cn("absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5", MILESTONE_STATUS_COLOR[milestone.status] ?? "text-muted-foreground")}
+        className={cn("absolute top-0 -translate-x-1/2 flex flex-col items-center gap-0.5", typeColor)}
         style={{ whiteSpace: "nowrap" }}
       >
         <Diamond className="h-3 w-3 fill-current" />
         <span className="text-[9px] font-medium bg-background/80 px-1 rounded">{milestone.title}</span>
       </div>
+      {/* Hover tooltip */}
+      {showTooltip && (
+        <div className="absolute top-8 -translate-x-1/2 z-30 bg-popover border border-border rounded-lg shadow-xl px-3 py-2 min-w-[160px] pointer-events-none">
+          <div className="text-xs font-semibold text-foreground">{milestone.title}</div>
+          <div className="text-[10px] text-muted-foreground mt-1 space-y-0.5">
+            <div>類型：{typeLabel}</div>
+            <div>日期：{dateLabel}</div>
+            <div>狀態：{MILESTONE_STATUS_COLOR[milestone.status] ? milestone.status : "PENDING"}</div>
+            {milestone.description && (
+              <div className="mt-1 text-foreground/70">{milestone.description}</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -267,18 +323,21 @@ export default function GanttPage() {
 
   const handleDateChange = useCallback(async (taskId: string, startDate: string | null, dueDate: string | null) => {
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      // Use dedicated dates endpoint — Issue #844 (G-3)
+      const res = await fetch(`/api/tasks/${taskId}/dates`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, dueDate }),
+        body: JSON.stringify({
+          startDate: startDate ? new Date(startDate).toISOString() : null,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+        }),
       });
-      if (!res.ok) throw new Error("更新失敗");
-      // Record the change
-      await fetch(`/api/tasks/${taskId}/changes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "DELAY", note: `甘特圖拖曳調整：截止日 → ${dueDate}` }),
-      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        alert(errBody?.message ?? "時程更新失敗");
+        fetchData(); // Revert by re-fetching
+        return;
+      }
       fetchData();
     } catch {
       fetchData(); // Revert by re-fetching

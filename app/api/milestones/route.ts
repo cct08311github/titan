@@ -26,6 +26,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     annualPlanId: data.annualPlanId,
     title: data.title,
     description: data.description,
+    type: data.type,
     plannedStart: data.plannedStart,
     plannedEnd: data.plannedEnd,
     order: data.order,
