@@ -95,7 +95,7 @@ export class UserService {
       throw new ValidationError(`Email already in use: ${input.email}`);
     }
 
-    const passwordHash = await hash(input.password, 10);
+    const passwordHash = await hash(input.password, 12);
 
     return this.prisma.user.create({
       data: {
@@ -138,7 +138,7 @@ export class UserService {
     if (input.avatar !== undefined) updates.avatar = input.avatar;
     if (input.isActive !== undefined) updates.isActive = input.isActive;
     if (input.password !== undefined) {
-      updates.password = await hash(input.password, 10);
+      updates.password = await hash(input.password, 12);
       updates.passwordChangedAt = new Date();
       updates.mustChangePassword = false;
     }

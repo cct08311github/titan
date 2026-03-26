@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Update password and save old hash to history
-  const newHash = await hash(newPassword, 10);
+  const newHash = await hash(newPassword, 12);
   await prisma.$transaction([
     prisma.passwordHistory.create({
       data: { userId, hash: user.password },

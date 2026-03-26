@@ -242,7 +242,7 @@ describe("POST /api/auth/change-password", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(mockTransaction).toHaveBeenCalled();
-    expect(mockHash).toHaveBeenCalledWith(STRONG_PASSWORD, 10);
+    expect(mockHash).toHaveBeenCalledWith(STRONG_PASSWORD, 12);
   });
 });
 
