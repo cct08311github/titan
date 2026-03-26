@@ -120,6 +120,10 @@ export class TaskService {
           },
         },
         subTasks: { orderBy: { order: "asc" } },
+        attachments: {
+          include: { uploader: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "desc" },
+        },
         comments: {
           include: { user: { select: { id: true, name: true, avatar: true } } },
           orderBy: { createdAt: "asc" },
