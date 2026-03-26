@@ -90,6 +90,7 @@ export class TaskService {
           monthlyGoal: { select: { id: true, title: true, month: true } },
           subTasks: { orderBy: { order: "asc" } },
           deliverables: true,
+          incidentRecord: { select: { severity: true } },
           _count: { select: { subTasks: true, comments: true } },
         },
         orderBy: [{ priority: "asc" }, { dueDate: "asc" }, { createdAt: "desc" }],
@@ -123,6 +124,7 @@ export class TaskService {
           orderBy: { createdAt: "asc" },
         },
         deliverables: true,
+        incidentRecord: true,
         taskChanges: {
           include: { changedByUser: { select: { id: true, name: true } } },
           orderBy: { changedAt: "desc" },

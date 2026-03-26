@@ -15,6 +15,8 @@ import {
   Layers,
 } from "lucide-react";
 
+export type IncidentSeverityType = "SEV1" | "SEV2" | "SEV3" | "SEV4";
+
 export type TaskCardData = {
   id: string;
   title: string;
@@ -27,6 +29,21 @@ export type TaskCardData = {
   backupAssignee?: { id: string; name: string; avatar?: string | null } | null;
   subTasks?: { done: boolean }[];
   _count?: { subTasks?: number; comments?: number };
+  incidentRecord?: { severity: IncidentSeverityType } | null;
+};
+
+const severityBorderColors: Record<IncidentSeverityType, string> = {
+  SEV1: "border-l-[#DC2626]",
+  SEV2: "border-l-[#EA580C]",
+  SEV3: "border-l-[#CA8A04]",
+  SEV4: "border-l-[#6B7280]",
+};
+
+const severityBadgeColors: Record<IncidentSeverityType, string> = {
+  SEV1: "text-[#DC2626] bg-red-50 border-red-200",
+  SEV2: "text-[#EA580C] bg-orange-50 border-orange-200",
+  SEV3: "text-[#CA8A04] bg-yellow-50 border-yellow-200",
+  SEV4: "text-[#6B7280] bg-gray-50 border-gray-200",
 };
 
 const priorityConfig = {
@@ -84,6 +101,13 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
   const totalSubtasks = task.subTasks?.length ?? task._count?.subTasks ?? 0;
 
   const dueInfo = task.dueDate ? formatDueDate(task.dueDate) : null;
+  const incidentSeverity = task.incidentRecord?.severity;
+
+  const borderClass = incidentSeverity
+    ? `border-l-[3px] ${severityBorderColors[incidentSeverity]}`
+    : task.priority === "P0"
+      ? "border-l-[3px] border-l-danger"
+      : "";
 
   return (
     <div
@@ -92,10 +116,10 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
         "bg-card rounded-xl p-3.5 cursor-pointer select-none shadow-card",
         "hover:shadow-card-hover hover:-translate-y-px transition-all duration-150",
         isDragging && "opacity-50 rotate-1 scale-105 shadow-xl",
-        task.priority === "P0" && "border-l-[3px] border-l-danger"
+        borderClass
       )}
     >
-      {/* Header: priority + category */}
+      {/* Header: priority + category + severity badge */}
       <div className="flex items-center gap-1.5 mb-2">
         <span
           className={cn(
@@ -110,6 +134,16 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
           <CIcon className="h-2.5 w-2.5" />
           {cConfig.label}
         </span>
+        {incidentSeverity && (
+          <span
+            className={cn(
+              "inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded border",
+              severityBadgeColors[incidentSeverity]
+            )}
+          >
+            {incidentSeverity}
+          </span>
+        )}
       </div>
 
       {/* Title */}

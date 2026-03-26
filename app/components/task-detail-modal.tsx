@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { X, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
-import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, initialForm } from "./task-detail/index";
+import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, TaskIncidentSection, initialForm } from "./task-detail/index";
 import type { TaskForm } from "./task-detail/index";
 
 type User = { id: string; name: string; avatar?: string | null };
@@ -167,6 +167,11 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
               onFieldChange={updateField}
               users={users}
               goals={goals}
+            />
+
+            <TaskIncidentSection
+              taskId={taskId}
+              category={form.category}
             />
 
             <TaskSubtaskSection
