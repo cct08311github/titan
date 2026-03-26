@@ -5,6 +5,7 @@ import { User, Bell, Lock, Save, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { PageError, TabSkeleton } from "@/app/components/page-states";
+import { AvatarUpload } from "@/app/components/avatar-upload";
 
 interface UserProfile {
   id: string;
@@ -84,17 +85,27 @@ export default function SettingsPage() {
     setSaving(true);
     setSaveSuccess(false);
     try {
+      // Use PATCH for self-edit — Issue #845 (S-1)
       const res = await fetch(`/api/users/${profile.id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
       if (res.ok) {
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        alert(errBody?.message ?? "儲存失敗");
       }
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleAvatarChange(newAvatar: string | null) {
+    if (profile) {
+      setProfile({ ...profile, avatar: newAvatar });
     }
   }
 
@@ -154,6 +165,15 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-y-auto">
         {activeTab === "profile" && (
           <div className="max-w-lg space-y-6">
+            {/* Avatar — Issue #845 (S-1) */}
+            {profile && (
+              <AvatarUpload
+                userId={profile.id}
+                currentAvatar={profile.avatar}
+                onAvatarChange={handleAvatarChange}
+              />
+            )}
+
             <div>
               <label className="block text-sm font-medium text-foreground mb-1.5">
                 姓名
