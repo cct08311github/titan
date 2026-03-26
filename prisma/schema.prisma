@@ -339,6 +339,10 @@ model Task {
   addedReason       String?
   addedSource       String?
   slaDeadline       DateTime?    // Issue #860: SLA 截止時間
+  managerFlagged    Boolean      @default(false) // Issue #960: 主管標記
+  flagReason        String?      // Issue #960: 標記原因
+  flaggedAt         DateTime?    // Issue #960: 標記時間
+  flaggedBy         String?      // Issue #960: 標記者 userId
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
