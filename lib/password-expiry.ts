@@ -1,11 +1,18 @@
 /**
- * Password expiry checking — Issue #182
+ * Password expiry checking — Issue #182, enhanced Issue #834 (AU-5)
  *
- * 銀行政策：密碼 90 天到期，首次登入強制變更。
+ * 銀行政策：密碼預設 90 天到期，首次登入強制變更。
+ * Admin 可透過環境變數 PASSWORD_MAX_AGE_DAYS 調整到期天數。
  */
 
-/** Password expires after this many days. */
-export const PASSWORD_MAX_AGE_DAYS = 90;
+/** Password expires after this many days (configurable via env, default 90). */
+export const PASSWORD_MAX_AGE_DAYS = parseInt(
+  process.env.PASSWORD_MAX_AGE_DAYS ?? "90",
+  10,
+) || 90;
+
+/** Days before expiry to start showing warning (Issue #834). */
+export const PASSWORD_WARN_DAYS = 7;
 
 /**
  * Returns true if the password has expired (older than PASSWORD_MAX_AGE_DAYS).
