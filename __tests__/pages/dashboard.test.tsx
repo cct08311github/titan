@@ -120,13 +120,32 @@ function setSessionUnauthenticated() {
   mockUseSession.mockReturnValue({ data: null, status: "unauthenticated" });
 }
 
+const TASK_SUMMARY_HAPPY = {
+  data: {
+    todo: { count: 3, trend: "up" as const, diff: 1 },
+    inProgress: { count: 5, trend: "same" as const, diff: 0 },
+    done: { count: 8, trend: "down" as const, diff: -2 },
+    scope: "personal" as const,
+  },
+};
+const TASK_SUMMARY_EMPTY = {
+  data: {
+    todo: { count: 0, trend: "same" as const, diff: 0 },
+    inProgress: { count: 0, trend: "same" as const, diff: 0 },
+    done: { count: 0, trend: "same" as const, diff: 0 },
+    scope: "personal" as const,
+  },
+};
+
 function setupFetch(
   workload: unknown = WORKLOAD_HAPPY,
   weekly: unknown = WEEKLY_HAPPY,
   tasks: unknown = TASKS_HAPPY,
   kpi: unknown = KPI_HAPPY,
+  taskSummary: unknown = TASK_SUMMARY_HAPPY,
 ) {
   mockFetch.mockImplementation((url: string) => {
+    if (url.includes("task-summary")) return Promise.resolve({ ok: true, json: async () => taskSummary } as Response);
     if (url.includes("workload")) return Promise.resolve({ ok: true, json: async () => workload } as Response);
     if (url.includes("weekly"))   return Promise.resolve({ ok: true, json: async () => weekly   } as Response);
     if (url.includes("tasks"))    return Promise.resolve({ ok: true, json: async () => tasks    } as Response);

@@ -702,6 +702,9 @@ export default function DashboardPage() {
       {status !== "loading" && (
         <div className="mb-6">
           <OverdueAlert />
+        </div>
+      )}
+
       {/* ── Task Status Summary Cards (Issue #808) ── */}
       {status !== "loading" && (
         <div className="mb-8">
