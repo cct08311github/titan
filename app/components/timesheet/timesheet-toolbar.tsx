@@ -124,6 +124,20 @@ export function TimesheetToolbar({
               <CalendarDays className="h-3.5 w-3.5" />
               日曆(週)
             </button>
+            {/* Issue #966: Month calendar view */}
+            <button
+              onClick={() => onViewModeChange("calendar-month")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs transition-colors",
+                viewMode === "calendar-month"
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              )}
+              data-testid="view-calendar-month-btn"
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              日曆(月)
+            </button>
           </div>
 
           {/* Week navigation */}

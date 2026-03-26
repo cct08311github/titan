@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Tag,
 } from "lucide-react";
+import { FlagBadge } from "@/app/components/flag-badge";
 
 export type IncidentSeverityType = "SEV1" | "SEV2" | "SEV3" | "SEV4";
 
@@ -34,6 +35,8 @@ export type TaskCardData = {
   incidentRecord?: { severity: IncidentSeverityType } | null;
   tags?: string[];
   position?: number;
+  managerFlagged?: boolean;
+  flagReason?: string | null;
 };
 
 const severityBorderColors: Record<IncidentSeverityType, string> = {
@@ -178,6 +181,9 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
           >
             {incidentSeverity}
           </span>
+        )}
+        {task.managerFlagged && (
+          <FlagBadge reason={task.flagReason} />
         )}
       </div>
 

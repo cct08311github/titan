@@ -1,9 +1,10 @@
 /**
- * Cockpit Summary API — Issue #951
+ * Cockpit Summary API — Issue #951, enhanced Issue #962
  *
  * GET /api/cockpit?year=2026
  * Returns aggregated management cockpit data: plan health, KPI summaries,
- * goal progress, task distribution, time investment, and alerts.
+ * goal progress, task distribution, time investment, alerts, flaggedCount,
+ * and rootCauseTasks for drill-down.
  * MANAGER / ADMIN only.
  */
 import { NextRequest } from "next/server";
@@ -24,25 +25,29 @@ interface Alert {
   targetType: string;
 }
 
-// ── Health calculation ────────────────────────────────────────────────────
+// ── Health calculation — refined Issue #962 ──────────────────────────────
+//
+// CRITICAL: >30% overdue OR (KPI<50% AND time>75%)
+// AT_RISK:  any overdue OR KPI<80%
+// HEALTHY:  none of the above
 
 export function calculateHealthStatus(
-  progressPct: number,
+  _progressPct: number,
   timeElapsedPct: number,
   overdueCount: number,
   totalTasks: number,
   kpiAvgAchievement: number,
-  kpiBehindCount: number,
+  _kpiBehindCount: number,
 ): HealthStatus {
-  // CRITICAL conditions
-  if (totalTasks > 0 && overdueCount > totalTasks * 0.3) return "CRITICAL";
-  if (kpiBehindCount > 0 && timeElapsedPct > 75) return "CRITICAL";
-  if (progressPct < timeElapsedPct * 0.5) return "CRITICAL";
+  const overdueRate = totalTasks > 0 ? overdueCount / totalTasks : 0;
 
-  // AT_RISK conditions
+  // CRITICAL: >30% tasks overdue OR (KPI avg < 50% AND time elapsed > 75%)
+  if (overdueRate > 0.3) return "CRITICAL";
+  if (kpiAvgAchievement < 50 && timeElapsedPct > 75) return "CRITICAL";
+
+  // AT_RISK: any overdue task OR KPI avg < 80%
   if (overdueCount > 0) return "AT_RISK";
-  if (kpiAvgAchievement < timeElapsedPct * 0.8) return "AT_RISK";
-  if (progressPct < timeElapsedPct * 0.8) return "AT_RISK";
+  if (kpiAvgAchievement < 80) return "AT_RISK";
 
   return "HEALTHY";
 }
@@ -65,11 +70,15 @@ export const GET = withManager(async (req: NextRequest) => {
           tasks: {
             select: {
               id: true,
+              title: true,
               status: true,
+              priority: true,
               dueDate: true,
               progressPct: true,
               estimatedHours: true,
               actualHours: true,
+              managerFlagged: true,
+              primaryAssignee: { select: { id: true, name: true } },
               kpiLinks: {
                 include: {
                   kpi: {
@@ -95,11 +104,15 @@ export const GET = withManager(async (req: NextRequest) => {
       linkedTasks: {
         select: {
           id: true,
+          title: true,
           status: true,
+          priority: true,
           dueDate: true,
           progressPct: true,
           estimatedHours: true,
           actualHours: true,
+          managerFlagged: true,
+          primaryAssignee: { select: { id: true, name: true } },
           kpiLinks: {
             include: {
               kpi: {
@@ -297,6 +310,32 @@ export const GET = withManager(async (req: NextRequest) => {
       }
     }
 
+    // Flagged task count per plan — Issue #962
+    const flaggedCount = uniqueTasks.filter((t) => t.managerFlagged).length;
+
+    // Root cause tasks for drill-down — Issue #962
+    const rootCauseTasks = uniqueTasks
+      .filter((t) => {
+        const status = t.status as string;
+        if (status === "DONE") return false;
+        const isOverdue = t.dueDate && new Date(t.dueDate) < now;
+        return isOverdue || t.managerFlagged;
+      })
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        dueDate: t.dueDate ? t.dueDate.toISOString() : null,
+        managerFlagged: t.managerFlagged,
+        assignee: t.primaryAssignee?.name ?? null,
+      }))
+      .sort((a, b) => {
+        if (a.managerFlagged !== b.managerFlagged) return a.managerFlagged ? -1 : 1;
+        if (a.dueDate && b.dueDate) return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return 0;
+      });
+
     return {
       id: plan.id,
       title: plan.title,
@@ -308,6 +347,8 @@ export const GET = withManager(async (req: NextRequest) => {
       taskDistribution,
       timeInvestment,
       alerts,
+      flaggedCount,
+      rootCauseTasks,
       milestones: plan.milestones.map((ms) => ({
         id: ms.id,
         title: ms.title,
