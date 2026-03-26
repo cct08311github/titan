@@ -34,8 +34,8 @@ const loginRateLimiter = createLoginRateLimiter({
   useMemory: !redis,
 });
 const accountLockService = new AccountLockService({
-  maxFailures: 10,
-  lockDurationSeconds: 900,
+  maxFailures: 5,           // Issue #797: 5 consecutive failures
+  lockDurationSeconds: 1800, // Issue #797: 30 minutes
   redisClient: redis,
 });
 const auditService = new AuditService(prisma);
