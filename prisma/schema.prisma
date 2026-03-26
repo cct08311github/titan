@@ -504,7 +504,8 @@ model SubTask {
   completedAt DateTime? // 完成時間戳
   createdAt   DateTime  @default(now())
 
-  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
 
   @@index([taskId])
   @@map("sub_tasks")
@@ -676,10 +677,15 @@ model TimeEntry {
   // TS-06: 排序（同日同任務多筆排序）
   sortOrder Int @default(0)
 
+  // #935: 子任務關聯（onDelete: SetNull）
+  subTaskId String?
+  subTask   SubTask? @relation(fields: [subTaskId], references: [id], onDelete: SetNull)
+
   task Task? @relation(fields: [taskId], references: [id])
   user User  @relation(fields: [userId], references: [id])
 
   @@index([taskId])
+  @@index([subTaskId])
   @@index([userId])
   @@index([date])
   @@index([userId, isRunning])
