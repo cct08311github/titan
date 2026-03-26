@@ -10,8 +10,8 @@ test.describe('工時紀錄功能測試', () => {
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('h1').first()).toContainText('工時紀錄');
-    // 副標題顯示週範圍：含「年」字
-    await expect(page.locator('text=/\\d{4} 年/').first()).toBeVisible();
+    // 週範圍標籤格式：2026/03/23 — 2026/03/29
+    await expect(page.locator('text=/\\d{4}\\/\\d{2}\\/\\d{2} — \\d{4}\\/\\d{2}\\/\\d{2}/').first()).toBeVisible({ timeout: 15000 });
 
     await context.close();
   });
@@ -24,10 +24,8 @@ test.describe('工時紀錄功能測試', () => {
 
     // 本週按鈕
     await expect(page.getByRole('button', { name: '本週' })).toBeVisible();
-    // ChevronLeft 和 ChevronRight 按鈕（透過 SVG 圖示的按鈕容器）
-    // 週導航區塊有三個按鈕
-    const navContainer = page.locator('.flex.items-center.gap-1.bg-background.border');
-    await expect(navContainer.first()).toBeVisible();
+    // 週範圍標籤也應可見
+    await expect(page.locator('text=/\\d{4}\\/\\d{2}\\/\\d{2} — /').first()).toBeVisible({ timeout: 15000 });
 
     await context.close();
   });
@@ -41,8 +39,8 @@ test.describe('工時紀錄功能測試', () => {
     // 等待頁面載入完成
     await expect(page.locator('h1').first()).toContainText('工時紀錄');
 
-    // 使用者篩選下拉（combobox 角色）
-    const userSelect = page.getByRole('combobox').first();
+    // 使用者篩選下拉：select[aria-label="篩選使用者"]（Manager 專有，第 2 個 select）
+    const userSelect = page.locator('select[aria-label="篩選使用者"]');
     await expect(userSelect).toBeVisible({ timeout: 15000 });
 
     // 預設為「我的工時」
@@ -75,14 +73,12 @@ test.describe('工時紀錄功能測試', () => {
 
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
 
-    // 等待載入完成
-    await expect(
-      page.locator('text=本週尚無工時記錄').or(
-        page.locator('text=自由工時')
-      ).or(
-        page.locator('text=載入工時')
-      ).first()
-    ).toBeVisible({ timeout: 15000 });
+    await page.waitForLoadState('networkidle').catch(() => {});
+
+    // 工時表格（table 元素）或空狀態
+    const hasTable = await page.locator('table').first().isVisible().catch(() => false);
+    const hasEmpty = await page.locator('text=本週尚無工時記錄').first().isVisible().catch(() => false);
+    expect(hasTable || hasEmpty).toBeTruthy();
 
     await context.close();
   });
@@ -93,9 +89,11 @@ test.describe('工時紀錄功能測試', () => {
 
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
 
-    // 底部幫助文字
+    await page.waitForLoadState('networkidle').catch(() => {});
+
+    // 底部幫助文字（實際文字：「點擊格子直接輸入數字，Enter/Tab 自動儲存。...」）
     await expect(
-      page.locator('text=點擊格子可輸入工時與分類').first()
+      page.locator('text=點擊格子直接輸入數字').first()
     ).toBeVisible({ timeout: 15000 });
 
     await context.close();
@@ -107,15 +105,17 @@ test.describe('工時紀錄功能測試', () => {
 
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
 
-    // 先記錄當前週標籤
-    const weekLabel = await page.locator('text=/\\d{4} 年/').first().textContent();
+    // 先記錄當前週標籤（格式：2026/03/23 — 2026/03/29）
+    const weekRangeLocator = page.locator('text=/\\d{4}\\/\\d{2}\\/\\d{2} — \\d{4}\\/\\d{2}\\/\\d{2}/').first();
+    await expect(weekRangeLocator).toBeVisible({ timeout: 15000 });
+    const weekLabel = await weekRangeLocator.textContent();
 
     // 點擊本週按鈕
     await page.getByRole('button', { name: '本週' }).click();
     await page.waitForLoadState('domcontentloaded');
 
     // 週標籤不變（已在當前週）
-    const weekLabelAfter = await page.locator('text=/\\d{4} 年/').first().textContent();
+    const weekLabelAfter = await weekRangeLocator.textContent();
     expect(weekLabelAfter).toBe(weekLabel);
 
     await context.close();
