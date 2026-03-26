@@ -32,6 +32,23 @@ export const TaskCategoryEnum = z.enum([
 
 export const IncidentSeverityEnum = z.enum(["SEV1", "SEV2", "SEV3", "SEV4"]);
 
+// ── Change Management ──────────────────────────────────────────────────
+
+export const CMChangeTypeEnum = z.enum(["NORMAL", "STANDARD", "EMERGENCY"]);
+
+export const RiskLevelEnum = z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]);
+
+export const ChangeStatusEnum = z.enum([
+  "DRAFT",
+  "PENDING_APPROVAL",
+  "APPROVED",
+  "IN_PROGRESS",
+  "VERIFYING",
+  "COMPLETED",
+  "ROLLED_BACK",
+  "CANCELLED",
+]);
+
 // ── Plan / Goal ─────────────────────────────────────────────────────────────
 
 export const GoalStatusEnum = z.enum([
@@ -98,3 +115,6 @@ export type Role = z.infer<typeof RoleEnum>;
 export type IncidentSeverity = z.infer<typeof IncidentSeverityEnum>;
 export type KpiFrequency = z.infer<typeof KpiFrequencyEnum>;
 export type KpiVisibility = z.infer<typeof KpiVisibilityEnum>;
+export type CMChangeType = z.infer<typeof CMChangeTypeEnum>;
+export type RiskLevel = z.infer<typeof RiskLevelEnum>;
+export type ChangeStatus = z.infer<typeof ChangeStatusEnum>;

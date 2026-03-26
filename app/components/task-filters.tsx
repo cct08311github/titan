@@ -13,6 +13,10 @@ export type TaskFilters = {
   tags: string[];
   dueDateFrom: string;
   dueDateTo: string;
+  createdAtFrom: string;
+  createdAtTo: string;
+  completedAtFrom: string;
+  completedAtTo: string;
 };
 
 export const emptyFilters: TaskFilters = {
@@ -22,6 +26,10 @@ export const emptyFilters: TaskFilters = {
   tags: [],
   dueDateFrom: "",
   dueDateTo: "",
+  createdAtFrom: "",
+  createdAtTo: "",
+  completedAtFrom: "",
+  completedAtTo: "",
 };
 
 type User = { id: string; name: string };
@@ -67,6 +75,10 @@ export function parseFiltersFromUrl(searchParams: URLSearchParams): TaskFilters 
     tags: searchParams.get("tags")?.split(",").filter(Boolean) ?? [],
     dueDateFrom: searchParams.get("dueDateFrom") ?? "",
     dueDateTo: searchParams.get("dueDateTo") ?? "",
+    createdAtFrom: searchParams.get("createdAtFrom") ?? "",
+    createdAtTo: searchParams.get("createdAtTo") ?? "",
+    completedAtFrom: searchParams.get("completedAtFrom") ?? "",
+    completedAtTo: searchParams.get("completedAtTo") ?? "",
   };
 }
 
@@ -81,6 +93,10 @@ export function serializeFiltersToUrl(filters: TaskFilters): string {
   if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
   if (filters.dueDateFrom) params.set("dueDateFrom", filters.dueDateFrom);
   if (filters.dueDateTo) params.set("dueDateTo", filters.dueDateTo);
+  if (filters.createdAtFrom) params.set("createdAtFrom", filters.createdAtFrom);
+  if (filters.createdAtTo) params.set("createdAtTo", filters.createdAtTo);
+  if (filters.completedAtFrom) params.set("completedAtFrom", filters.completedAtFrom);
+  if (filters.completedAtTo) params.set("completedAtTo", filters.completedAtTo);
   return params.toString();
 }
 
@@ -91,7 +107,11 @@ export function hasActiveFilters(filters: TaskFilters): boolean {
     filters.category ||
     filters.tags.length > 0 ||
     filters.dueDateFrom ||
-    filters.dueDateTo
+    filters.dueDateTo ||
+    filters.createdAtFrom ||
+    filters.createdAtTo ||
+    filters.completedAtFrom ||
+    filters.completedAtTo
   );
 }
 
@@ -257,6 +277,52 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
             onChange={(e) => onChange({ ...filters, dueDateTo: e.target.value })}
             className={dateCls}
           />
+        </div>
+
+        {/* Created date range — Issue #861 */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">建立</span>
+          <input
+            type="date"
+            aria-label="建立日期起始"
+            value={filters.createdAtFrom}
+            onChange={(e) => onChange({ ...filters, createdAtFrom: e.target.value })}
+            className={dateCls}
+          />
+          <span className="text-xs text-muted-foreground">~</span>
+          <input
+            type="date"
+            aria-label="建立日期結束"
+            value={filters.createdAtTo}
+            onChange={(e) => onChange({ ...filters, createdAtTo: e.target.value })}
+            className={dateCls}
+          />
+        </div>
+
+        {/* Quick date buttons — Issue #861 */}
+        <div className="flex items-center gap-1">
+          {[
+            { label: "近7天", days: 7 },
+            { label: "近30天", days: 30 },
+            { label: "近3個月", days: 90 },
+            { label: "近6個月", days: 180 },
+          ].map(({ label, days }) => (
+            <button
+              key={days}
+              onClick={() => {
+                const to = new Date();
+                const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+                onChange({
+                  ...filters,
+                  createdAtFrom: from.toISOString().split("T")[0],
+                  createdAtTo: to.toISOString().split("T")[0],
+                });
+              }}
+              className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* Clear */}
