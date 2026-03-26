@@ -291,12 +291,43 @@ model Task {
   timeEntries     TimeEntry[]
   kpiLinks        KPITaskLink[]
   deliverables    Deliverable[] @relation("TaskDeliverable")
+  incidentRecord  IncidentRecord?
 
   @@index([monthlyGoalId])
   @@index([primaryAssigneeId])
   @@index([backupAssigneeId])
   @@index([creatorId])
   @@map("tasks")
+}
+
+// ═══════════════════════════════════════
+// 事件管理紀錄 (Issue #855)
+// ═══════════════════════════════════════
+
+enum IncidentSeverity {
+  SEV1  // 核心系統中斷
+  SEV2  // 主要功能受損
+  SEV3  // 次要功能受損
+  SEV4  // 輕微影響
+}
+
+model IncidentRecord {
+  id             String            @id @default(cuid())
+  taskId         String            @unique
+  severity       IncidentSeverity
+  impactScope    String            // 影響範圍描述
+  incidentStart  DateTime          // 事件發生時間
+  incidentEnd    DateTime?         // 事件結束時間
+  rootCause      String?           // 根因分析（Markdown）
+  resolution     String?           // 解決方案（Markdown）
+  mttrMinutes    Int?              // 自動計算：(incidentEnd - incidentStart) 分鐘數
+  reportedBy     String?           // 通報人
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("incident_records")
 }
 
 model SubTask {

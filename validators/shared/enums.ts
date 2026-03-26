@@ -28,6 +28,10 @@ export const TaskCategoryEnum = z.enum([
   "LEARNING",
 ]);
 
+// ── Incident ────────────────────────────────────────────────────────────────
+
+export const IncidentSeverityEnum = z.enum(["SEV1", "SEV2", "SEV3", "SEV4"]);
+
 // ── Plan / Goal ─────────────────────────────────────────────────────────────
 
 export const GoalStatusEnum = z.enum([
@@ -80,3 +84,4 @@ export type KpiStatus = z.infer<typeof KpiStatusEnum>;
 export type TimeCategory = z.infer<typeof TimeCategoryEnum>;
 export type TimesheetApprovalStatus = z.infer<typeof TimesheetApprovalStatusEnum>;
 export type Role = z.infer<typeof RoleEnum>;
+export type IncidentSeverity = z.infer<typeof IncidentSeverityEnum>;
