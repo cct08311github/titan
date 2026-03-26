@@ -261,3 +261,95 @@ export async function exportAuditPackage(data: {
   const blob = await workbookToBlob(wb);
   downloadBlob(blob, `TITAN_稽核包_${todayStamp()}.xlsx`);
 }
+
+// ── Issue #861: Custom query export ──────────────────────────────────
+
+const FIELD_LABELS: Record<string, string> = {
+  title: "標題",
+  description: "描述",
+  category: "分類",
+  status: "狀態",
+  priority: "優先級",
+  dueDate: "截止日期",
+  createdAt: "建立日期",
+  updatedAt: "更新日期",
+  estimatedHours: "預估工時",
+  actualHours: "實際工時",
+  assignee: "負責人",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  PLANNED: "原始規劃",
+  ADDED: "追加任務",
+  INCIDENT: "突發事件",
+  SUPPORT: "用戶支援",
+  ADMIN: "行政庶務",
+  LEARNING: "學習成長",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  BACKLOG: "待辦",
+  TODO: "待執行",
+  IN_PROGRESS: "進行中",
+  REVIEW: "審查中",
+  DONE: "已完成",
+};
+
+export async function exportCustomQueryExcel(data: {
+  fields: string[];
+  tasks: Array<Record<string, unknown>>;
+}) {
+  const wb = new ExcelJS.Workbook();
+  const sheet = wb.addWorksheet("自訂查詢結果");
+
+  const headers = data.fields.map((f) => FIELD_LABELS[f] ?? f);
+  sheet.addRow(headers);
+  applyHeaderStyle(sheet.getRow(1));
+
+  for (const task of data.tasks) {
+    const row = data.fields.map((f) => {
+      const val = task[f];
+      if (val === null || val === undefined) return "";
+      if (f === "category") return CATEGORY_LABELS[String(val)] ?? String(val);
+      if (f === "status") return STATUS_LABELS[String(val)] ?? String(val);
+      if (f === "dueDate" || f === "createdAt" || f === "updatedAt") {
+        return val ? formatDateTW(String(val)) : "";
+      }
+      if (f === "assignee" && typeof val === "object" && val !== null && "name" in val) {
+        return (val as { name: string }).name;
+      }
+      return String(val);
+    });
+    sheet.addRow(row);
+  }
+
+  autoFitColumns(sheet);
+
+  const blob = await workbookToBlob(wb);
+  downloadBlob(blob, `TITAN_自訂查詢_${todayStamp()}.xlsx`);
+}
+
+export async function exportCustomQueryCsv(data: {
+  fields: string[];
+  tasks: Array<Record<string, unknown>>;
+}) {
+  const headers = data.fields.map((f) => FIELD_LABELS[f] ?? f);
+  const rows = [headers.join(",")];
+
+  for (const task of data.tasks) {
+    const row = data.fields.map((f) => {
+      const val = task[f];
+      if (val === null || val === undefined) return "";
+      const str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    });
+    rows.push(row.join(","));
+  }
+
+  const csv = rows.join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+  downloadBlob(blob, `TITAN_自訂查詢_${todayStamp()}.csv`);
+}
