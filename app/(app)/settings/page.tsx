@@ -144,13 +144,13 @@ export default function SettingsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex-shrink-0 flex gap-1 border-b border-border">
+      <div className="flex-shrink-0 flex gap-1 border-b border-border overflow-x-auto">
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
             className={cn(
-              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px",
+              "flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border-b-2 transition-colors -mb-px",
               activeTab === id
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -214,7 +214,7 @@ export default function SettingsPage() {
             <button
               onClick={saveProfile}
               disabled={saving}
-              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -245,7 +245,7 @@ export default function SettingsPage() {
               </p>
               <a
                 href="/change-password"
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-accent transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium border border-border rounded-lg hover:bg-accent transition-colors"
               >
                 <Lock className="h-4 w-4" />
                 前往變更密碼

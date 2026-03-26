@@ -1216,13 +1216,13 @@ export default function ReportsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-accent/50 rounded-lg mb-6">
+      <div className="flex gap-1 p-1 bg-accent/50 rounded-lg mb-6 overflow-x-auto">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex-1 py-2 px-3 text-sm rounded-md transition-colors",
+              "flex-1 py-2 px-3 text-xs sm:text-sm rounded-md transition-colors",
               activeTab === tab.id
                 ? "bg-card text-foreground font-medium shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

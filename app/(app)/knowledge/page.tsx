@@ -144,14 +144,14 @@ export default function KnowledgePage() {
   return (
     <div className="flex flex-col h-full gap-0">
       {/* Top bar */}
-      <div className="flex items-center justify-between pb-4 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 flex-shrink-0">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">知識庫</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">知識庫</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
             {viewMode === "editor" ? "Markdown 文件管理" : "Outline 協作知識庫"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* View mode toggle — only show Outline tab when configured */}
           <div className="flex items-center bg-muted rounded-lg p-0.5">
             <button
@@ -239,9 +239,9 @@ export default function KnowledgePage() {
 
       {/* Built-in editor view */}
       {viewMode === "editor" && (
-        <div className="flex flex-1 min-h-0 gap-0 border border-border rounded-xl overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-0 border border-border rounded-xl overflow-hidden">
           {/* Left sidebar */}
-          <div className="w-56 flex-shrink-0 border-r border-border flex flex-col bg-sidebar-background">
+          <div className="w-full md:w-56 flex-shrink-0 border-b md:border-b-0 md:border-r border-border flex flex-col bg-sidebar-background max-h-48 md:max-h-none">
             {/* Search */}
             <div className="p-2 border-b border-border">
               <DocumentSearch onSelect={setSelectedId} />
