@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserService } from "@/services/user-service";
 import { AuditService } from "@/services/audit-service";
@@ -6,7 +6,7 @@ import { validateBody } from "@/lib/validate";
 import { updateUserSchema } from "@/validators/user-validators";
 import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
-import { requireRole } from "@/lib/rbac";
+import { requireAuth, requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
 
 const userService = new UserService(prisma);
@@ -42,6 +42,39 @@ export const PUT = withManager(async (
     ipAddress: getClientIp(req),
   });
 
+  return success(user);
+});
+
+/**
+ * PATCH /api/users/:id — Issue #845 (S-1)
+ * Self-edit: users can update their own name (not email/role/password).
+ */
+export const PATCH = withAuth(async (
+  req: NextRequest,
+  context: { params: Promise<Record<string, string>> }
+) => {
+  const session = await requireAuth();
+  const { id } = await context.params;
+
+  // Users can only PATCH their own profile
+  if (session.user.id !== id) {
+    return NextResponse.json(
+      { ok: false, error: "ForbiddenError", message: "只能修改自己的資料" },
+      { status: 403 }
+    );
+  }
+
+  const raw = await req.json();
+  // Only allow name updates via self-edit
+  const name = typeof raw.name === "string" ? raw.name.trim() : undefined;
+  if (!name || name.length === 0) {
+    return NextResponse.json(
+      { ok: false, error: "ValidationError", message: "姓名為必填" },
+      { status: 400 }
+    );
+  }
+
+  const user = await userService.updateUser(id, { name });
   return success(user);
 });
 
