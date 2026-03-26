@@ -30,11 +30,13 @@ export const createGoalSchema = z.object({
   month: z.number().int().min(1).max(12),
   title: z.string().min(1),
   description: z.string().optional(),
+  assigneeId: z.string().optional(),
 });
 
 export const updateGoalSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
+  assigneeId: z.string().nullable().optional(),
   status: GoalStatusEnum.optional(),
   progressPct: z.number().min(0).max(100).optional(),
 });
