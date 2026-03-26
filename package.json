@@ -29,6 +29,7 @@
     "clsx": "^2.1.1",
     "echarts": "6.0.0",
     "exceljs": "^4.4.0",
+    "frappe-gantt": "1.2.2",
     "geist": "1.7.0",
     "ioredis": "^5.6.0",
     "lucide-react": "^0.460.0",
