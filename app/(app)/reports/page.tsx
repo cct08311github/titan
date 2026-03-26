@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Download, RefreshCw, BarChart3, Printer, FileSpreadsheet, Users } from "lucide-react";
-import { Download, RefreshCw, BarChart3, Printer, FileSpreadsheet, TrendingUp } from "lucide-react";
+import { Download, RefreshCw, BarChart3, Printer, FileSpreadsheet, TrendingUp, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -24,8 +23,7 @@ function PrintButton() {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type TabId = "weekly" | "monthly" | "time-distribution" | "kpi" | "workload" | "trends" | "audit";
-type TabId = "weekly" | "monthly" | "completion" | "kpi" | "workload" | "trends" | "audit";
+type TabId = "weekly" | "monthly" | "time-distribution" | "completion" | "kpi" | "workload" | "trends" | "audit";
 
 interface Tab {
   id: TabId;
@@ -345,6 +343,111 @@ function TimeDistributionReport() {
   const [error, setError] = useState<string | null>(null);
   const [DistChart, setDistChart] = useState<React.ComponentType<{
     data: TimeDistributionApiData;
+  }> | null>(null);
+
+  // Lazy-load ECharts component
+  useEffect(() => {
+    import("@/app/components/timesheet-distribution-chart").then((mod) => {
+      setDistChart(() => mod.TimesheetDistributionChart);
+    });
+  }, []);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch("/api/reports/time-distribution")
+      .then((r) => { if (!r.ok) throw new Error("工時分佈載入失敗"); return r.json(); })
+      .then((body) => {
+        const d = extractData<TimeDistributionApiData>(body);
+        setData(d);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={load}
+          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+      </div>
+
+      {loading ? (
+        <PageLoading message="載入工時分佈..." />
+      ) : error ? (
+        <PageError message={error} onRetry={load} />
+      ) : !data || data.users.length === 0 ? (
+        <PageEmpty
+          icon={<Users className="h-8 w-8" />}
+          title="無工時分佈資料"
+          description="所選期間尚無工時數據"
+        />
+      ) : (
+        <>
+          {/* Chart */}
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <SectionTitle>人員工時分佈（堆疊長條圖）</SectionTitle>
+            {DistChart ? (
+              <DistChart data={data} />
+            ) : (
+              <div className="h-96 flex items-center justify-center text-muted-foreground text-sm">
+                載入圖表元件...
+              </div>
+            )}
+          </div>
+
+          {/* Summary table */}
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <SectionTitle>人員工時明細</SectionTitle>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2">人員</th>
+                    {data.categories.map((cat) => (
+                      <th key={cat} className="text-right text-xs font-medium text-muted-foreground px-3 py-2">
+                        {CATEGORY_LABELS[cat] ?? cat}
+                      </th>
+                    ))}
+                    <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">合計</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.users.map((user, ui) => {
+                    const total = data.categories.reduce(
+                      (s, cat) => s + (data.series[cat]?.[ui] ?? 0),
+                      0,
+                    );
+                    return (
+                      <tr key={user} className="border-b border-border/50 last:border-0">
+                        <td className="px-3 py-2 text-foreground">{user}</td>
+                        {data.categories.map((cat) => (
+                          <td key={cat} className="px-3 py-2 text-right tabular-nums">
+                            {safeFixed(data.series[cat]?.[ui] ?? 0, 1)}
+                          </td>
+                        ))}
+                        <td className="px-3 py-2 text-right tabular-nums font-medium">
+                          {safeFixed(total, 1)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Completion Rate Report (R-1 #836) ─────────────────────────────────────
 
 interface CompletionDataPoint {
@@ -366,8 +469,6 @@ function CompletionRateReport() {
 
   // Lazy-load ECharts component
   useEffect(() => {
-    import("@/app/components/timesheet-distribution-chart").then((mod) => {
-      setDistChart(() => mod.TimesheetDistributionChart);
     import("@/app/components/completion-rate-chart").then((mod) => {
       setCompletionChart(() => mod.CompletionRateChart);
     });
@@ -376,15 +477,6 @@ function CompletionRateReport() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetch("/api/reports/time-distribution")
-      .then((r) => { if (!r.ok) throw new Error("工時分佈載入失敗"); return r.json(); })
-      .then((body) => {
-        const d = extractData<TimeDistributionApiData>(body);
-        setData(d);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
-      .finally(() => setLoading(false));
-  }, []);
     fetch(`/api/reports/completion-rate?granularity=${granularity}`)
       .then((r) => { if (!r.ok) throw new Error("完成率報表載入失敗"); return r.json(); })
       .then((body) => {
@@ -420,24 +512,6 @@ function CompletionRateReport() {
       </div>
 
       {loading ? (
-        <PageLoading message="載入工時分佈..." />
-      ) : error ? (
-        <PageError message={error} onRetry={load} />
-      ) : !data || data.users.length === 0 ? (
-        <PageEmpty
-          icon={<Users className="h-8 w-8" />}
-          title="無工時分佈資料"
-          description="所選期間尚無工時數據"
-        />
-      ) : (
-        <>
-          {/* Chart */}
-          <div className="bg-card rounded-xl shadow-card p-4">
-            <SectionTitle>人員工時分佈（堆疊長條圖）</SectionTitle>
-            {DistChart ? (
-              <DistChart data={data} />
-            ) : (
-              <div className="h-96 flex items-center justify-center text-muted-foreground text-sm">
         <PageLoading message="載入完成率報表..." />
       ) : error ? (
         <PageError message={error} onRetry={load} />
@@ -489,9 +563,6 @@ function CompletionRateReport() {
             )}
           </div>
 
-          {/* Summary table */}
-          <div className="bg-card rounded-xl shadow-card p-4">
-            <SectionTitle>人員工時明細</SectionTitle>
           {/* Data table */}
           <div className="bg-card rounded-xl shadow-card p-4">
             <SectionTitle>明細</SectionTitle>
@@ -499,35 +570,6 @@ function CompletionRateReport() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2">人員</th>
-                    {data.categories.map((cat) => (
-                      <th key={cat} className="text-right text-xs font-medium text-muted-foreground px-3 py-2">
-                        {CATEGORY_LABELS[cat] ?? cat}
-                      </th>
-                    ))}
-                    <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">合計</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.users.map((user, ui) => {
-                    const total = data.categories.reduce(
-                      (s, cat) => s + (data.series[cat]?.[ui] ?? 0),
-                      0,
-                    );
-                    return (
-                      <tr key={user} className="border-b border-border/50 last:border-0">
-                        <td className="px-3 py-2 text-foreground">{user}</td>
-                        {data.categories.map((cat) => (
-                          <td key={cat} className="px-3 py-2 text-right tabular-nums">
-                            {safeFixed(data.series[cat]?.[ui] ?? 0, 1)}
-                          </td>
-                        ))}
-                        <td className="px-3 py-2 text-right tabular-nums font-medium">
-                          {safeFixed(total, 1)}
-                        </td>
-                      </tr>
-                    );
-                  })}
                     <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2">期間</th>
                     <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">總任務</th>
                     <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">已完成</th>
