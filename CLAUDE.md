@@ -124,14 +124,32 @@ zug (Claude Opus) 建 Issue → cct (OpenClaw) 開 branch 開發 → 提 PR → 
 - 必填密碼以 `:?` 語法強制（`${POSTGRES_PASSWORD:?...}`）
 - Healthcheck 定義在每個服務上
 
-## Application Features (P2 完成)
+## Application Features (Sprint 1-8 + DT Phase 1-3 完成)
 
 - **Request Correlation ID** (`middleware.ts`): 每個 request 注入 `x-request-id`，支援跨層追蹤
 - **Error Boundary** (`app/global-error.tsx`, `app/(app)/error.tsx`): 前端錯誤自動回報到 AuditLog via `/api/error-report`
 - **Command Palette** (`app/components/command-palette.tsx`): `Ctrl+K` 搜尋導航 + `G`+字母快捷鍵
+- **Global Search** (`app/components/global-search-modal.tsx`): 跨 table 全文搜尋 + 標籤篩選
 - **Password History** (`PasswordHistory` model): 禁止重複使用最近 5 組密碼
+- **Password Expiry** (`AU-5`): 密碼到期強制更換 + 7 天前預警
 - **Prometheus Metrics** (`/api/metrics`): 應用層 request/error/duration 指標，Prometheus scrape config 已加入
 - **Projector Viewport**: sidebar 在 ≤1024px 自動收合，dashboard grid 使用 `md:` breakpoint
+- **SLA Timer**: 任務 SLA 倒數計時 + 到期通知
+- **Recurring Tasks**: 週期任務自動排程系統
+- **Change Management**: 結構化變更管理工作流（ChangeRecord + ApprovalRequest）
+- **Email Notifications**: 排程觸發 Email 通知管道
+- **Monitoring Integration**: 外部監控整合 + KPI 歷史追蹤
+- **User Management**: 管理員使用者 CRUD + 停用/恢復
+- **Custom Reports**: 自訂查詢 API + 日期範圍 + 多篩選 + Excel/CSV 匯出
+
+### 技術數據
+
+- **Prisma Models**: 36 models, 25 enums
+- **API Routes**: 115+ route files
+- **Components**: 70+ shared components
+- **Services**: 27+ service files
+- **Test Suites**: 199 Jest suites (~2500 tests) + 42 Playwright E2E suites
+- **Version**: 1.0.0-rc.1
 
 ## Environment Variables
 
