@@ -15,6 +15,7 @@ datasource db {
 // ═══════════════════════════════════════
 
 enum Role {
+  ADMIN
   MANAGER
   ENGINEER
 }
@@ -305,9 +306,16 @@ model SubTask {
   title      String
   done       Boolean   @default(false)
   order      Int       @default(0)
-  assigneeId String?
-  dueDate    DateTime?
-  createdAt  DateTime  @default(now())
+  assigneeId  String?
+  dueDate     DateTime?
+  notes       String?   // 執行備註（Markdown）
+  result      String?   // 執行結果：PASS / FAIL / BLOCKED / N_A
+  completedAt DateTime? // 完成時間戳
+  dueDate     DateTime?
+  notes       String?   // 執行備註（Markdown）
+  result      String?   // 執行結果：PASS / FAIL / BLOCKED / N_A
+  completedAt DateTime? // 完成時間戳
+  createdAt   DateTime  @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 

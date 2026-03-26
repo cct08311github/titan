@@ -14,6 +14,12 @@ export const updateSubTaskSchema = z.object({
   assigneeId: z.string().nullable().optional(),
   dueDate: z.string().datetime().nullable().optional(),
   order: z.number().int().nonnegative().optional(),
+  notes: z.string().max(10000, "備註不得超過 10,000 字元").nullable().optional(),
+  result: z.string().nullable().optional(),
+  completedAt: z.string().datetime().nullable().optional(),
+  notes: z.string().max(10000, "備註不得超過 10,000 字元").nullable().optional(),
+  result: z.string().nullable().optional(),
+  completedAt: z.string().datetime().nullable().optional(),
 });
 
 export type CreateSubTaskInput = z.infer<typeof createSubTaskSchema>;

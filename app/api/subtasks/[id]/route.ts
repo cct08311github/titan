@@ -20,7 +20,15 @@ export const PATCH = withAuth(async (
     );
   }
 
-  const { done, title, assigneeId, dueDate, order } = parsed.data;
+  const { done, title, assigneeId, dueDate, order, notes, result, completedAt } = parsed.data;
+
+  // Auto-set completedAt when done changes
+  let autoCompletedAt: Date | null | undefined;
+  if (done === true && completedAt === undefined) {
+    autoCompletedAt = new Date();
+  } else if (done === false) {
+    autoCompletedAt = null;
+  }
 
   const subtask = await prisma.subTask.update({
     where: { id },
@@ -30,6 +38,10 @@ export const PATCH = withAuth(async (
       ...(assigneeId !== undefined && { assigneeId: assigneeId ?? null }),
       ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
       ...(order !== undefined && { order }),
+      ...(notes !== undefined && { notes: notes ?? null }),
+      ...(result !== undefined && { result: result ?? null }),
+      ...(completedAt !== undefined && { completedAt: completedAt ? new Date(completedAt) : null }),
+      ...(autoCompletedAt !== undefined && { completedAt: autoCompletedAt }),
     },
   });
 

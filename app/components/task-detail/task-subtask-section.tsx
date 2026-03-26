@@ -3,7 +3,7 @@
 import { SubTaskList } from "../subtask-list";
 
 interface TaskSubtaskSectionProps {
-  subtasks: { id: string; title: string; done: boolean; order: number }[];
+  subtasks: { id: string; title: string; done: boolean; order: number; notes?: string | null; result?: string | null; completedAt?: string | null; assigneeId?: string | null }[];
   taskId: string;
 }
 
