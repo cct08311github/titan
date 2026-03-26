@@ -337,6 +337,7 @@ model Task {
   backupAssignee  User?         @relation("TaskBackupAssignee", fields: [backupAssigneeId], references: [id])
   creator         User          @relation("TaskCreator", fields: [creatorId], references: [id])
   subTasks        SubTask[]
+  taskDocuments   TaskDocument[]
   attachments     TaskAttachment[]
   comments        TaskComment[]
   activities      TaskActivity[]
@@ -382,6 +383,25 @@ model IncidentRecord {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("incident_records")
+}
+
+// ═══════════════════════════════════════
+// 任務關聯文件 (Issue #842 — KB-3)
+// ═══════════════════════════════════════
+
+model TaskDocument {
+  id                 String   @id @default(cuid())
+  taskId             String
+  outlineDocumentId  String   // Outline 文件 ID 或內部文件 ID
+  title              String   // 文件標題（快照）
+  addedBy            String   // 新增關聯的使用者 ID
+  createdAt          DateTime @default(now())
+
+  task  Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, outlineDocumentId])
+  @@index([taskId])
+  @@map("task_documents")
 }
 
 // ═══════════════════════════════════════

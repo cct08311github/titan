@@ -32,6 +32,7 @@ export const mockPrisma = {
   subTask: createMockModel(),
   taskAttachment: createMockModel(),
   taskComment: createMockModel(),
+  taskDocument: createMockModel(),
   permission: createMockModel(),
   notification: createMockModel(),
   deliverable: createMockModel(),
