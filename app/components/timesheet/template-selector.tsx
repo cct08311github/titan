@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { FileText, Save, ChevronDown, Trash2, X } from "lucide-react";
+import { FileText, Save, ChevronDown, Trash2, X, Pencil, Check } from "lucide-react";
 import { type TimeEntry } from "./use-timesheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -14,11 +14,30 @@ type TemplateEntry = {
   description?: string;
 };
 
+type TemplateItem = {
+  id: string;
+  hours: number;
+  category: string;
+  taskId?: string | null;
+  description?: string | null;
+  sortOrder: number;
+};
+
 type Template = {
   id: string;
   name: string;
   entries: string; // JSON-stringified TemplateEntry[]
+  items?: TemplateItem[];
   createdAt: string;
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  PLANNED_TASK: "原始規劃",
+  ADDED_TASK: "追加任務",
+  INCIDENT: "突發事件",
+  SUPPORT: "用戶支援",
+  ADMIN: "行政庶務",
+  LEARNING: "學習成長",
 };
 
 type TemplateSelectorProps = {
@@ -57,6 +76,8 @@ export function TemplateSelector({
   const [saveName, setSaveName] = useState("");
   const [confirmTemplate, setConfirmTemplate] = useState<Template | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; msg: string } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const ref = useRef<HTMLDivElement>(null);
 
   // Load templates
@@ -197,6 +218,22 @@ export function TemplateSelector({
     }
   }
 
+  // Rename template (Issue #833)
+  async function handleRename(templateId: string) {
+    if (!editName.trim()) return;
+    const res = await fetch(`/api/time-entries/templates/${templateId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: editName.trim() }),
+    });
+    if (res.ok) {
+      setTemplates((prev) => prev.map((t) => t.id === templateId ? { ...t, name: editName.trim() } : t));
+      setFeedback({ type: "success", msg: "模板名稱已更新" });
+    }
+    setEditingId(null);
+    setEditName("");
+  }
+
   // Delete template
   async function handleDelete(templateId: string) {
     const res = await fetch(`/api/time-entries/templates/${templateId}`, {
@@ -284,10 +321,25 @@ export function TemplateSelector({
               </div>
             </div>
           ) : confirmTemplate ? (
-            /* Confirmation dialog */
+            /* Confirmation with preview (Issue #833) */
             <div className="space-y-2 p-1" data-testid="template-confirm">
               <div className="text-xs font-medium text-foreground">
-                確定要套用模板「{confirmTemplate.name}」？
+                套用模板「{confirmTemplate.name}」— 預覽
+              </div>
+              {/* Preview items */}
+              <div className="max-h-40 overflow-y-auto space-y-1 border border-border/50 rounded-md p-1.5" data-testid="template-preview">
+                {(() => {
+                  const items = confirmTemplate.items && confirmTemplate.items.length > 0
+                    ? confirmTemplate.items
+                    : parseTemplateEntries(confirmTemplate.entries).map((e, i) => ({ ...e, id: String(i), sortOrder: i, taskId: e.taskId ?? null, description: e.description ?? null, category: e.category ?? "PLANNED_TASK" }));
+                  return items.map((item) => (
+                    <div key={item.id ?? item.sortOrder} className="flex items-center gap-2 text-[11px] text-foreground px-1.5 py-1 rounded bg-muted/30">
+                      <span className="text-muted-foreground w-12 flex-shrink-0">{item.hours}h</span>
+                      <span className="flex-1 truncate">{CATEGORY_LABELS[item.category] ?? item.category}</span>
+                      {item.description && <span className="text-muted-foreground/60 truncate max-w-[80px]">{item.description}</span>}
+                    </div>
+                  ));
+                })()}
               </div>
               <p className="text-[10px] text-muted-foreground">
                 僅填入空白日期，已有記錄的日期不受影響。鎖定的日期將被跳過。
@@ -321,30 +373,59 @@ export function TemplateSelector({
                 </div>
               ) : (
                 templates.map((t) => {
-                  const entryCount = parseTemplateEntries(t.entries).length;
+                  const entryCount = t.items?.length ?? parseTemplateEntries(t.entries).length;
+                  const isEditing = editingId === t.id;
                   return (
                     <div
                       key={t.id}
                       className="flex items-center gap-1 group"
                       data-testid={`template-item-${t.id}`}
                     >
-                      <button
-                        onClick={() => setConfirmTemplate(t)}
-                        className="flex-1 text-left px-2.5 py-1.5 text-xs text-foreground hover:bg-accent/50 rounded-md transition-colors truncate"
-                      >
-                        <span className="font-medium">{t.name}</span>
-                        <span className="text-[10px] text-muted-foreground/60 ml-1.5">
-                          ({entryCount} 筆)
-                        </span>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t.id)}
-                        className="p-1 text-muted-foreground/40 hover:text-red-400 rounded transition-colors opacity-0 group-hover:opacity-100"
-                        title="刪除模板"
-                        data-testid={`template-delete-${t.id}`}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
+                      {isEditing ? (
+                        <div className="flex-1 flex items-center gap-1 px-1.5">
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleRename(t.id); if (e.key === "Escape") setEditingId(null); }}
+                            autoFocus
+                            className="flex-1 bg-background border border-border rounded px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                            data-testid={`template-rename-input-${t.id}`}
+                          />
+                          <button onClick={() => handleRename(t.id)} className="p-0.5 text-emerald-500 hover:text-emerald-400"><Check className="h-3 w-3" /></button>
+                          <button onClick={() => setEditingId(null)} className="p-0.5 text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmTemplate(t)}
+                          className="flex-1 text-left px-2.5 py-1.5 text-xs text-foreground hover:bg-accent/50 rounded-md transition-colors truncate"
+                        >
+                          <span className="font-medium">{t.name}</span>
+                          <span className="text-[10px] text-muted-foreground/60 ml-1.5">
+                            ({entryCount} 筆)
+                          </span>
+                        </button>
+                      )}
+                      {!isEditing && (
+                        <>
+                          <button
+                            onClick={() => { setEditingId(t.id); setEditName(t.name); }}
+                            className="p-1 text-muted-foreground/40 hover:text-blue-400 rounded transition-colors opacity-0 group-hover:opacity-100"
+                            title="編輯名稱"
+                            data-testid={`template-edit-${t.id}`}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(t.id)}
+                            className="p-1 text-muted-foreground/40 hover:text-red-400 rounded transition-colors opacity-0 group-hover:opacity-100"
+                            title="刪除模板"
+                            data-testid={`template-delete-${t.id}`}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   );
                 })

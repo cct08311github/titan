@@ -33,6 +33,11 @@ export const GET = withAuth(async (_req: NextRequest) => {
   const templates = await prisma.timeEntryTemplate.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
+    include: {
+      items: {
+        orderBy: { sortOrder: "asc" },
+      },
+    },
   });
 
   return success(templates);
@@ -56,6 +61,18 @@ export const POST = withAuth(async (req: NextRequest) => {
       name,
       userId,
       entries: JSON.stringify(entries),
+      items: {
+        create: entries.map((e, idx) => ({
+          taskId: e.taskId || null,
+          hours: e.hours,
+          category: e.category ?? "PLANNED_TASK",
+          description: e.description || null,
+          sortOrder: idx,
+        })),
+      },
+    },
+    include: {
+      items: { orderBy: { sortOrder: "asc" } },
     },
   });
 
