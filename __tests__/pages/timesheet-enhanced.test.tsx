@@ -10,6 +10,11 @@ import "@testing-library/jest-dom";
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  usePathname: () => "/timesheet",
+}));
+
 const mockUseSession = jest.fn();
 jest.mock("next-auth/react", () => ({
   useSession: (...args: unknown[]) => mockUseSession(...args),

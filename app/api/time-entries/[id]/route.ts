@@ -48,6 +48,11 @@ export const PUT = withAuth(async (
   if (category !== undefined) updates.category = category as TimeCategory;
   if (description !== undefined) updates.description = description || null;
 
+  // Phase 2: Auto-reset REJECTED → PENDING on edit
+  if ((existing as Record<string, unknown>).approvalStatus === "REJECTED") {
+    updates.approvalStatus = "PENDING";
+  }
+
   const entry = await prisma.timeEntry.update({
     where: { id },
     data: updates,

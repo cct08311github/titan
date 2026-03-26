@@ -58,6 +58,14 @@ export const TimeCategoryEnum = z.enum([
   "LEARNING",
 ]);
 
+// ── Timesheet Approval ─────────────────────────────────────────────────────
+
+export const TimesheetApprovalStatusEnum = z.enum([
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+]);
+
 // ── User ────────────────────────────────────────────────────────────────────
 
 export const RoleEnum = z.enum(["MANAGER", "ENGINEER"]);
@@ -70,4 +78,5 @@ export type TaskCategory = z.infer<typeof TaskCategoryEnum>;
 export type GoalStatus = z.infer<typeof GoalStatusEnum>;
 export type KpiStatus = z.infer<typeof KpiStatusEnum>;
 export type TimeCategory = z.infer<typeof TimeCategoryEnum>;
+export type TimesheetApprovalStatus = z.infer<typeof TimesheetApprovalStatusEnum>;
 export type Role = z.infer<typeof RoleEnum>;
