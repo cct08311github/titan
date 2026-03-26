@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Loader2, ChevronRight, X, Target, Copy } from "lucide-react";
+import { Plus, Loader2, ChevronRight, X, Target, Copy, Archive, ArchiveRestore } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { PlanTree } from "@/app/components/plan-tree";
@@ -35,7 +35,9 @@ type AnnualPlan = {
   id: string;
   year: number;
   title: string;
+  description?: string | null;
   progressPct: number;
+  archivedAt?: string | null;
   monthlyGoals: MonthlyGoal[];
 };
 
@@ -68,8 +70,10 @@ export default function PlansPage() {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [newPlanYear, setNewPlanYear] = useState(new Date().getFullYear().toString());
   const [newPlanTitle, setNewPlanTitle] = useState("");
+  const [newPlanDescription, setNewPlanDescription] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
   const [planError, setPlanError] = useState("");
+  const [archiving, setArchiving] = useState<string | null>(null);
 
   // Create goal form
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -122,10 +126,11 @@ export default function PlansPage() {
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year: parseInt(newPlanYear), title: newPlanTitle.trim() }),
+        body: JSON.stringify({ year: parseInt(newPlanYear), title: newPlanTitle.trim(), description: newPlanDescription.trim() || undefined }),
       });
       if (res.ok) {
         setNewPlanTitle("");
+        setNewPlanDescription("");
         setShowPlanForm(false);
         setPlanError("");
         fetchPlans();
@@ -182,6 +187,22 @@ export default function PlansPage() {
       }
     } finally {
       setCopyingTemplate(false);
+    }
+  }
+
+  async function toggleArchive(planId: string, isArchived: boolean) {
+    setArchiving(planId);
+    try {
+      const res = await fetch(`/api/plans/${planId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: !isArchived }),
+      });
+      if (res.ok) {
+        fetchPlans();
+      }
+    } finally {
+      setArchiving(null);
     }
   }
 
@@ -268,6 +289,13 @@ export default function PlansPage() {
               {creatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
           </div>
+          <input
+            type="text"
+            value={newPlanDescription}
+            onChange={(e) => setNewPlanDescription(e.target.value)}
+            placeholder="計畫描述（選填）"
+            className={cn(inputCls, "w-full")}
+          />
           {planError && (
             <p className="text-xs text-danger">{planError}</p>
           )}
@@ -388,6 +416,8 @@ export default function PlansPage() {
           plans={plans}
           onSelectGoal={(goalId) => loadGoal(goalId)}
           onSelectPlan={() => {}}
+          onToggleArchive={toggleArchive}
+          archivingId={archiving}
         />
       )}
 

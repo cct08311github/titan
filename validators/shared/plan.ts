@@ -22,6 +22,7 @@ export const updatePlanSchema = z.object({
   description: z.string().optional(),
   implementationPlan: z.string().optional(),
   progressPct: z.number().min(0).max(100).optional(),
+  archived: z.boolean().optional(),
 });
 
 export const createGoalSchema = z.object({

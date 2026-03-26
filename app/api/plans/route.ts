@@ -4,7 +4,6 @@ import { PlanService } from "@/services/plan-service";
 import { validateBody } from "@/lib/validate";
 import { createPlanSchema } from "@/validators/plan-validators";
 import { success } from "@/lib/api-response";
-import { ValidationError } from "@/services/errors";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 
@@ -29,17 +28,9 @@ export const POST = withManager(async (req: NextRequest) => {
     ...raw,
     year: raw.year ? parseInt(raw.year) : raw.year,
   });
-  try {
-    const plan = await planService.createPlan({
-      ...body,
-      createdBy: session.user.id,
-    });
-    return success(plan, 201);
-  } catch (err: unknown) {
-    const prismaErr = err as { code?: string; meta?: { target?: string[] } };
-    if (prismaErr.code === "P2002" && prismaErr.meta?.target?.includes("year")) {
-      throw new ValidationError(`${body.year} 年度計畫已存在，每年僅能建立一份`);
-    }
-    throw err;
-  }
+  const plan = await planService.createPlan({
+    ...body,
+    createdBy: session.user.id,
+  });
+  return success(plan, 201);
 });

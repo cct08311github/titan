@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { NotFoundError } from "@/services/errors";
+import { NotFoundError, ValidationError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updatePlanSchema } from "@/validators/plan-validators";
 import { success } from "@/lib/api-response";
@@ -10,7 +10,6 @@ export const GET = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-
   const { id } = await context.params;
   const plan = await prisma.annualPlan.findUnique({
     where: { id },
@@ -38,33 +37,53 @@ export const GET = withAuth(async (
   return success(plan);
 });
 
-export const DELETE = withManager(async (
-  _req: NextRequest,
+/**
+ * PATCH /api/plans/:id — 編輯或封存/解封計畫
+ * 封存後僅允許 archived=false（解除封存），其他欄位不可修改。
+ * 不提供 DELETE — 銀行稽核需求禁止硬刪除。
+ */
+export const PATCH = withManager(async (
+  req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
   const { id } = await context.params;
   const existing = await prisma.annualPlan.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("計畫不存在");
 
-  await prisma.annualPlan.delete({ where: { id } });
-  return success({ deleted: true });
-});
-
-export const PUT = withManager(async (
-  req: NextRequest,
-  context: { params: Promise<Record<string, string>> }
-) => {
-  const { id } = await context.params;
   const raw = await req.json();
-  const { title, description, implementationPlan, progressPct } = validateBody(updatePlanSchema, raw);
+  const body = validateBody(updatePlanSchema, raw);
 
+  // If plan is archived, only allow un-archiving
+  if (existing.archivedAt !== null) {
+    if (body.archived !== false) {
+      throw new ValidationError("計畫已封存，不可編輯。僅允許解除封存。");
+    }
+    const plan = await prisma.annualPlan.update({
+      where: { id },
+      data: { archivedAt: null },
+      include: { milestones: true, monthlyGoals: true },
+    });
+    return success(plan);
+  }
+
+  // Handle archive request
+  if (body.archived === true) {
+    const plan = await prisma.annualPlan.update({
+      where: { id },
+      data: { archivedAt: new Date() },
+      include: { milestones: true, monthlyGoals: true },
+    });
+    return success(plan);
+  }
+
+  // Normal edit (not archived)
   const plan = await prisma.annualPlan.update({
     where: { id },
     data: {
-      ...(title !== undefined && { title }),
-      ...(description !== undefined && { description }),
-      ...(implementationPlan !== undefined && { implementationPlan }),
-      ...(progressPct !== undefined && { progressPct }),
+      ...(body.title !== undefined && { title: body.title }),
+      ...(body.description !== undefined && { description: body.description }),
+      ...(body.implementationPlan !== undefined && { implementationPlan: body.implementationPlan }),
+      ...(body.progressPct !== undefined && { progressPct: body.progressPct }),
     },
     include: { milestones: true, monthlyGoals: true },
   });
