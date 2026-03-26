@@ -14,6 +14,7 @@ jest.mock("lucide-react", () => ({
   Grid3X3: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-grid" {...props} />,
   List: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-list" {...props} />,
   Calendar: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-calendar" {...props} />,
+  CalendarDays: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-calendar-days" {...props} />,
   Copy: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-copy" {...props} />,
   FileDown: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-file-down" {...props} />,
   RefreshCw: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-refresh" {...props} />,
