@@ -19,6 +19,7 @@ export const SNAP_MINUTES = 15;
 /** Convert "HH:MM" string to a fractional hour number (e.g., "09:30" → 9.5). */
 export function timeToHours(time: string): number {
   const [h, m] = time.split(":").map(Number);
+  if (isNaN(h)) return MIN_HOUR;
   return h + (m || 0) / 60;
 }
 
