@@ -75,6 +75,7 @@ export const updateTaskSchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional(),
   addedReason: z.string().optional(),
   addedSource: z.string().optional(),
+  slaDeadline: z.string().datetime().nullable().optional(), // Issue #860
   changedBy: z.string().optional(),
   changeReason: z.string().optional(),
 });

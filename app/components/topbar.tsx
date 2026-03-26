@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
-import { LogOut, Menu, Moon, Sun, X, AlertTriangle } from "lucide-react";
+import { LogOut, Menu, Moon, Sun, X, AlertTriangle, Search } from "lucide-react";
 import Link from "next/link";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
+import { GlobalSearchModal } from "@/app/components/global-search-modal";
 
 const PAGE_TITLES: Record<string, string> = {
   "/dashboard": "儀表板", "/kanban": "看板", "/gantt": "甘特圖",
@@ -63,6 +64,20 @@ export function Topbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Command+K / Ctrl+K global search shortcut — Issue #859
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1];
 
   // Issue #834: password expiry warning
@@ -95,6 +110,14 @@ export function Topbar() {
         <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
       </div>
       <div className="flex items-center gap-1">
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          aria-label="全域搜尋"
+          title="搜尋 (⌘K)"
+        >
+          <Search className="h-4 w-4" />
+        </button>
         <ThemeToggle />
         <NotificationBell />
         <div className="w-px h-6 bg-border mx-2" />
@@ -148,6 +171,12 @@ export function Topbar() {
         </nav>
       </div>
     )}
+
+    {/* Global search modal — Issue #859 */}
+    <GlobalSearchModal
+      open={searchOpen}
+      onClose={() => setSearchOpen(false)}
+    />
     </>
   );
 }
