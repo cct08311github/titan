@@ -1,12 +1,25 @@
 "use client";
 
+/**
+ * TaskDetailModal — Enhanced for Issue #805 (K-3a)
+ *
+ * Adds:
+ * - Markdown description editor with edit/preview tabs
+ * - Comment list with @mention, edit (5 min), delete
+ * - Tabs: 詳情 | 評論
+ */
+
 import { useState, useEffect, useCallback } from "react";
 import { X, Save, Loader2, History, FileText } from "lucide-react";
+import { X, Save, Loader2, MessageSquare, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskFormFields, TaskSubtaskSection, TaskDeliverableSection, TaskIncidentSection, initialForm } from "./task-detail/index";
 import type { TaskForm } from "./task-detail/index";
 import { TaskChangeHistory } from "./task-change-history";
+import { MarkdownEditor } from "./markdown-editor";
+import { CommentList } from "./comment-list";
+import type { TaskForm, FormErrors } from "./task-detail/index";
 
 type User = { id: string; name: string; avatar?: string | null };
 type MonthlyGoal = { id: string; title: string; month: number };
@@ -23,6 +36,7 @@ type TaskDetail = {
   monthlyGoalId?: string | null;
   dueDate?: string | null;
   estimatedHours?: number | null;
+  tags?: string[];
   subTasks: { id: string; title: string; done: boolean; order: number }[];
   deliverables: {
     id: string;
@@ -34,6 +48,7 @@ type TaskDetail = {
   primaryAssignee?: User | null;
   backupAssignee?: User | null;
   monthlyGoal?: MonthlyGoal | null;
+  _count?: { comments?: number };
 };
 
 interface TaskDetailModalProps {
@@ -43,6 +58,7 @@ interface TaskDetailModalProps {
 }
 
 type ModalTab = "detail" | "history";
+type DetailTab = "detail" | "comments";
 
 export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalProps) {
   const [task, setTask] = useState<TaskDetail | null>(null);
@@ -52,6 +68,9 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [form, setForm] = useState<TaskForm>(initialForm);
   const [activeTab, setActiveTab] = useState<ModalTab>("detail");
+  const [activeTab, setActiveTab] = useState<DetailTab>("detail");
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const updateField = useCallback(
     <K extends keyof TaskForm>(field: K, value: TaskForm[K]) => {
@@ -79,6 +98,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           monthlyGoalId: data.monthlyGoalId ?? "",
           dueDate: data.dueDate ? data.dueDate.split("T")[0] : "",
           estimatedHours: data.estimatedHours?.toString() ?? "",
+          tags: data.tags ?? [],
         });
       }
     } finally {
@@ -90,9 +110,30 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
     loadTask();
     fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
     fetch("/api/goals").then((r) => r.json()).then((body) => setGoals(extractItems<MonthlyGoal>(body))).catch(() => {});
+    // Get current user for comment ownership
+    fetch("/api/auth/session")
+      .then((r) => r.json())
+      .then((s) => setCurrentUserId(s?.user?.id))
+      .catch(() => {});
   }, [loadTask]);
 
+  /** Client-side validation — Issue #804 (K-2) */
+  function validateForm(): FormErrors {
+    const errors: FormErrors = {};
+    if (!form.title.trim()) errors.title = "標題為必填";
+    else if (form.title.length > 200) errors.title = "標題不得超過 200 字元";
+    if (!form.primaryAssigneeId) errors.primaryAssigneeId = "指派人為必填";
+    if (!form.dueDate) errors.dueDate = "到期日為必填";
+    if (form.tags.length === 0) errors.tags = "至少需要一個標籤";
+    return errors;
+  }
+
   async function save() {
+    // Validate before save
+    const errors = validateForm();
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setSaving(true);
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
@@ -109,6 +150,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           monthlyGoalId: form.monthlyGoalId || null,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
           estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
+          tags: form.tags,
         }),
       });
       if (res.ok) {
@@ -130,6 +172,8 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
     return () => window.removeEventListener("keydown", handler);
   }, [onClose]);
 
+  const commentCount = task?._count?.comments ?? 0;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm pt-12 pb-4 px-4"
@@ -141,6 +185,9 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
             {/* Tabs — Issue #806 (K-6) */}
+          <div className="flex items-center gap-4">
+            <h2 className="text-sm font-medium text-foreground tracking-wide">任務詳情</h2>
+            {/* Tabs — Issue #805 */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setActiveTab("detail")}
@@ -159,12 +206,23 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                 className={cn(
                   "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
                   activeTab === "history"
+                onClick={() => setActiveTab("comments")}
+                className={cn(
+                  "flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors",
+                  activeTab === "comments"
                     ? "bg-accent text-accent-foreground font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
                 )}
               >
                 <History className="h-3 w-3" />
                 變更歷史
+                <MessageSquare className="h-3 w-3" />
+                評論
+                {commentCount > 0 && (
+                  <span className="text-[10px] bg-muted px-1 rounded tabular-nums">
+                    {commentCount}
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -214,6 +272,40 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                   taskId={taskId}
                 />
 
+            <TaskFormFields
+              form={form}
+              onFieldChange={updateField}
+              users={users}
+              goals={goals}
+              errors={formErrors}
+            />
+
+                {/* Markdown Description — Issue #805 (K-3a) */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    描述 (Markdown)
+                  </label>
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <MarkdownEditor
+                      value={form.description}
+                      onChange={(v) => updateField("description", v)}
+                      placeholder="輸入任務描述（支援 Markdown）..."
+                      minHeight={200}
+                      maxLength={10000}
+                    />
+                  </div>
+                </div>
+
+                <TaskIncidentSection
+                  taskId={taskId}
+                  category={form.category}
+                />
+
+                <TaskSubtaskSection
+                  subtasks={task.subTasks}
+                  taskId={taskId}
+                />
+
                 <TaskDeliverableSection
                   deliverables={task.deliverables}
                   taskId={taskId}
@@ -222,6 +314,11 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             ) : (
               /* Change History tab — Issue #806 (K-6) */
               <TaskChangeHistory taskId={taskId} />
+              /* Comments tab — Issue #805 (K-3a) */
+              <CommentList
+                taskId={taskId}
+                currentUserId={currentUserId}
+              />
             )}
           </div>
         ) : (

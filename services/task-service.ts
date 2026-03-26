@@ -310,6 +310,7 @@ export class TaskService {
 
   async updateTaskStatus(id: string, status: string, userId: string) {
     // Fetch old status for audit trail — Issue #806 (K-6)
+    // Fetch old status for audit trail
     const existing = await this.prisma.task.findUnique({
       where: { id },
       select: { status: true },
@@ -335,6 +336,7 @@ export class TaskService {
               status,
               oldStatus: existing?.status ?? null,
             },
+            detail: { status, oldStatus: existing?.status },
           },
         });
 
@@ -344,6 +346,7 @@ export class TaskService {
     );
 
     // Fire-and-forget: write to activity_log (AF-1) — Issue #806
+    // Fire-and-forget: write to activity_log (AF-1)
     logActivity({
       userId,
       action: ActivityAction.STATUS_CHANGE,

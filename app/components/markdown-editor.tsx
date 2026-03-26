@@ -1,18 +1,32 @@
 "use client";
 
+/**
+ * MarkdownEditor — Enhanced for Issue #805 (K-3a)
+ *
+ * Markdown editor with edit/preview tabs.
+ * Security: HTML-escapes input first, then applies markdown rules,
+ * then sanitizes output via sanitizeHtml() for defense-in-depth XSS prevention.
+ */
+
 import { useState } from "react";
 import { Eye, Edit3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 type MarkdownEditorProps = {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   minHeight?: number;
+  maxLength?: number;
 };
 
-/** Minimal Markdown renderer. Input is HTML-escaped before processing — safe for internal intranet users. */
+/**
+ * Render Markdown to sanitized HTML.
+ * Defense-in-depth: HTML-escape → markdown rules → sanitizeHtml().
+ */
 function renderMarkdown(md: string): string {
+  // Step 1: HTML-escape all user content
   let html = md
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -34,10 +48,11 @@ function renderMarkdown(md: string): string {
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary hover:underline">$1</a>')
     .replace(/\n\n/g, '</p><p class="my-2 text-foreground leading-relaxed">')
     .replace(/\n/g, "<br />");
-  return `<p class="my-2 text-foreground leading-relaxed">${html}</p>`;
+  // Step 3: Sanitize final HTML output
+  return sanitizeHtml(`<p class="my-2 text-foreground leading-relaxed">${html}</p>`);
 }
 
-export function MarkdownEditor({ value, onChange, placeholder, minHeight = 400 }: MarkdownEditorProps) {
+export function MarkdownEditor({ value, onChange, placeholder, minHeight = 400, maxLength = 10000 }: MarkdownEditorProps) {
   const [mode, setMode] = useState<"edit" | "preview">("edit");
 
   return (
@@ -67,13 +82,19 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 400 }
       </div>
 
       {mode === "edit" ? (
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder ?? "輸入 Markdown 內容..."}
-          className="flex-1 resize-none bg-transparent text-sm text-foreground p-4 focus:outline-none font-mono leading-relaxed placeholder:text-muted-foreground"
-          style={{ minHeight }}
-        />
+        <div className="flex-1 flex flex-col">
+          <textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder ?? "輸入 Markdown 內容..."}
+            maxLength={maxLength}
+            className="flex-1 resize-none bg-transparent text-sm text-foreground p-4 focus:outline-none font-mono leading-relaxed placeholder:text-muted-foreground"
+            style={{ minHeight }}
+          />
+          <div className="flex justify-end px-4 pb-1">
+            <span className="text-[10px] text-muted-foreground">{value.length}/{maxLength}</span>
+          </div>
+        </div>
       ) : (
         /* Content is HTML-escaped above before markdown rules are applied */
         /* nosec: internal intranet only, no untrusted user input */
