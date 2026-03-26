@@ -6,8 +6,9 @@ import { useState, useEffect } from "react";
 import {
   LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
-  Activity, Settings,
+  Activity, Settings, ShieldCheck,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 const navGroups = [
@@ -43,8 +44,15 @@ const navGroups = [
   },
 ];
 
+const adminNavItem = { href: "/admin", label: "系統管理", icon: ShieldCheck };
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
+  const groups = isManager
+    ? [...navGroups.slice(0, -1), { label: "帳號", items: [navGroups[navGroups.length - 1].items[0], adminNavItem] }]
+    : navGroups;
   const [collapsed, setCollapsed] = useState(false);
 
   // Auto-collapse on projector/small viewports (≤1024px) — Issue #197
@@ -88,7 +96,7 @@ export function Sidebar() {
       <nav className="flex-1 overflow-y-auto py-3 px-2" aria-label="頁面導航">
         {collapsed ? (
           <div className="space-y-1">
-            {navGroups.flatMap((g) => g.items).map(({ href, label, icon: Icon }) => {
+            {groups.flatMap((g) => g.items).map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + "/");
               return (
                 <Link key={href} href={href} title={label} aria-current={isActive ? "page" : undefined}
@@ -102,7 +110,7 @@ export function Sidebar() {
           </div>
         ) : (
           <div className="space-y-5">
-            {navGroups.map((group) => (
+            {groups.map((group) => (
               <div key={group.label}>
                 <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest px-3 mb-1.5">{group.label}</p>
                 <div className="space-y-0.5">
