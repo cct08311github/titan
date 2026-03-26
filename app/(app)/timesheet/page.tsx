@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Loader2, CalendarDays } from "lucide-react";
+import { Loader2, CalendarDays, TableProperties } from "lucide-react";
 import {
   useTimesheet,
   TimesheetGrid,
@@ -14,6 +14,10 @@ import {
 import { TimesheetListView } from "@/app/components/timesheet-list-view";
 import { TimeSummary } from "@/app/components/time-summary";
 import { PageLoading, PageError } from "@/app/components/page-states";
+import { TimesheetPivotTable, type TimesheetPivotData } from "@/app/components/timesheet-pivot-table";
+import { cn } from "@/lib/utils";
+
+type SummaryTab = "timesheet" | "weekly-pivot" | "monthly-pivot";
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -27,8 +31,33 @@ export default function TimesheetPage() {
     if (typeof window !== "undefined" && window.innerWidth < 768) return "list";
     return "grid";
   });
+  const [summaryTab, setSummaryTab] = useState<SummaryTab>("timesheet");
+  const [pivotData, setPivotData] = useState<TimesheetPivotData | null>(null);
+  const [pivotLoading, setPivotLoading] = useState(false);
 
   const ts = useTimesheet(userFilter || undefined);
+
+  // Fetch pivot data when tab switches (Issue #832)
+  const fetchPivot = useCallback(async (tab: SummaryTab) => {
+    if (tab === "timesheet") return;
+    setPivotLoading(true);
+    try {
+      const endpoint = tab === "weekly-pivot"
+        ? "/api/reports/weekly?view=pivot"
+        : `/api/reports/monthly?view=pivot&month=${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
+      const res = await fetch(endpoint);
+      if (res.ok) {
+        const body = await res.json();
+        setPivotData(body?.data ?? null);
+      }
+    } finally {
+      setPivotLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPivot(summaryTab);
+  }, [summaryTab, fetchPivot]);
 
   // Load users for manager filter
   useEffect(() => {
@@ -81,15 +110,36 @@ export default function TimesheetPage() {
         getDateStr={ts.getDateStr}
       />
 
-      {/* Manager actions */}
+      {/* Manager actions — Issue #832: added pivot tabs */}
       {isManager && (
         <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center bg-muted/50 rounded-lg p-0.5 gap-0.5">
+            {([
+              { key: "timesheet" as SummaryTab, label: "工時填報" },
+              { key: "weekly-pivot" as SummaryTab, label: "週報摘要" },
+              { key: "monthly-pivot" as SummaryTab, label: "月報摘要" },
+            ]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setSummaryTab(key)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-colors",
+                  summaryTab === key
+                    ? "bg-background text-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {key !== "timesheet" && <TableProperties className="h-3.5 w-3.5" />}
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => router.push("/timesheet/monthly")}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors"
           >
             <CalendarDays className="h-4 w-4" />
-            月報
+            月曆
           </button>
           <select
           aria-label="篩選使用者"
@@ -105,8 +155,25 @@ export default function TimesheetPage() {
         </div>
       )}
 
+      {/* Pivot table view (Issue #832) */}
+      {summaryTab !== "timesheet" && (
+        <div className="border border-border rounded-xl overflow-hidden bg-card">
+          <div className="px-4 py-3 border-b border-border">
+            <h2 className="text-sm font-medium text-foreground">
+              {summaryTab === "weekly-pivot" ? "週報" : "月報"}摘要 — 人員 × 類別 Pivot Table
+            </h2>
+            {pivotData && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                期間：{pivotData.period.label}
+              </p>
+            )}
+          </div>
+          <TimesheetPivotTable data={pivotData ?? { period: { start: "", end: "", label: "" }, rows: [], categories: [], categoryTotals: {}, grandTotal: 0, grandOvertimeTotal: 0 }} loading={pivotLoading} />
+        </div>
+      )}
+
       {/* Content area */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0">
+      <div className={cn("flex-1 flex flex-col gap-4 min-h-0", summaryTab !== "timesheet" && "hidden")}>
         {/* Stats summary */}
         <div className="flex-shrink-0">
           {ts.statsLoading ? (

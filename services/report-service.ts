@@ -70,6 +70,25 @@ export interface WorkloadReportData {
   unplannedBySource: Record<string, number>;
 }
 
+// ── Pivot table types (Issue #832 — T-5) ────────────────────────────────────
+
+export interface PivotRow {
+  userId: string;
+  userName: string;
+  cells: Record<string, number>; // category → hours
+  total: number;
+  overtimeTotal: number;
+}
+
+export interface TimesheetPivotData {
+  period: { start: Date; end: Date; label: string };
+  rows: PivotRow[];
+  categories: string[];
+  categoryTotals: Record<string, number>;
+  grandTotal: number;
+  grandOvertimeTotal: number;
+}
+
 export interface DelayChangeReportData {
   period: { start: Date; end: Date };
   delayCount: number;
@@ -448,6 +467,104 @@ export class ReportService {
       byPerson: Object.values(byPerson),
       unplannedTasks,
       unplannedBySource,
+    };
+  }
+
+  // ── Timesheet Pivot Table — weekly (Issue #832, T-5) ─────────────────────
+
+  async getWeeklyPivot(filter: ReportFilter & { refDate?: Date }): Promise<TimesheetPivotData> {
+    const refDate = filter.dateRange?.startDate ?? filter.refDate ?? new Date();
+    const { weekStart, weekEnd } = computeWeekBounds(refDate);
+
+    return this.buildPivot({
+      start: weekStart,
+      end: weekEnd,
+      label: `${formatLocalDate(weekStart)} ~ ${formatLocalDate(weekEnd)}`,
+      isManager: filter.isManager,
+      userId: filter.userId,
+    });
+  }
+
+  // ── Timesheet Pivot Table — monthly (Issue #832, T-5) ──────────────────
+
+  async getMonthlyPivot(filter: ReportFilter & { year?: number; month?: number }): Promise<TimesheetPivotData> {
+    const now = new Date();
+    const year = filter.year ?? now.getFullYear();
+    const month = filter.month ?? now.getMonth() + 1;
+    const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const end = new Date(year, month, 0, 23, 59, 59, 999);
+
+    return this.buildPivot({
+      start,
+      end,
+      label: `${year}-${String(month).padStart(2, "0")}`,
+      isManager: filter.isManager,
+      userId: filter.userId,
+    });
+  }
+
+  /** Shared pivot builder for weekly/monthly (Issue #832) */
+  private async buildPivot(opts: {
+    start: Date; end: Date; label: string;
+    isManager: boolean; userId?: string;
+  }): Promise<TimesheetPivotData> {
+    const timeEntryFilter = opts.isManager
+      ? { date: { gte: opts.start, lte: opts.end } }
+      : { userId: opts.userId, date: { gte: opts.start, lte: opts.end } };
+
+    const entries = await this.prisma.timeEntry.findMany({
+      where: timeEntryFilter,
+      select: {
+        hours: true,
+        category: true,
+        userId: true,
+        overtimeType: true,
+        user: { select: { id: true, name: true } },
+      },
+    });
+
+    const categorySet = new Set<string>();
+    const userMap = new Map<string, PivotRow>();
+
+    for (const e of entries) {
+      categorySet.add(e.category);
+
+      if (!userMap.has(e.userId)) {
+        userMap.set(e.userId, {
+          userId: e.userId,
+          userName: e.user.name,
+          cells: {},
+          total: 0,
+          overtimeTotal: 0,
+        });
+      }
+
+      const row = userMap.get(e.userId)!;
+      row.cells[e.category] = (row.cells[e.category] ?? 0) + e.hours;
+      row.total += e.hours;
+      if (e.overtimeType !== "NONE") {
+        row.overtimeTotal += e.hours;
+      }
+    }
+
+    const categories = Array.from(categorySet).sort();
+    const rows = Array.from(userMap.values()).sort((a, b) => a.userName.localeCompare(b.userName));
+
+    const categoryTotals: Record<string, number> = {};
+    for (const cat of categories) {
+      categoryTotals[cat] = rows.reduce((sum, r) => sum + (r.cells[cat] ?? 0), 0);
+    }
+
+    const grandTotal = rows.reduce((sum, r) => sum + r.total, 0);
+    const grandOvertimeTotal = rows.reduce((sum, r) => sum + r.overtimeTotal, 0);
+
+    return {
+      period: { start: opts.start, end: opts.end, label: opts.label },
+      rows,
+      categories,
+      categoryTotals,
+      grandTotal,
+      grandOvertimeTotal,
     };
   }
 
