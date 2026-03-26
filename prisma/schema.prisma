@@ -60,6 +60,7 @@ model User {
   timeEntryTemplates       TimeEntryTemplate[]
   timesheetReviews         TimesheetApproval[]  @relation("TimesheetReviewer")
   assignedGoals            MonthlyGoal[]        @relation("GoalAssignee")
+  kpiHistoryUpdates        KPIHistory[]         @relation("KPIHistoryUpdater")
 
   @@map("users")
 }
@@ -143,6 +144,7 @@ model KPI {
   taskLinks    KPITaskLink[]
   deliverables Deliverable[]     @relation("KPIDeliverable")
   achievements KPIAchievement[]
+  histories    KPIHistory[]
 
   @@unique([year, code])
   @@unique([year, title])
@@ -335,6 +337,7 @@ model Task {
   addedDate         DateTime?
   addedReason       String?
   addedSource       String?
+  slaDeadline       DateTime?    // Issue #860: SLA 截止時間
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -352,7 +355,8 @@ model Task {
   timeEntries     TimeEntry[]
   kpiLinks        KPITaskLink[]
   deliverables    Deliverable[] @relation("TaskDeliverable")
-  incidentRecord  IncidentRecord?
+  incidentRecord   IncidentRecord?
+  monitoringAlerts MonitoringAlert[]
 
   @@index([annualPlanId])
   @@index([monthlyGoalId])
@@ -698,6 +702,7 @@ enum NotificationType {
   TASK_CHANGED
   TIMESHEET_REMINDER
   TIMESHEET_REJECTED    // Phase 2: 工時被駁回通知
+  SLA_EXPIRING          // Issue #860: SLA 即將到期
 }
 
 model Notification {
@@ -894,4 +899,59 @@ model ApprovalRequest {
   @@index([status])
   @@index([resourceType, resourceId])
   @@map("approval_requests")
+}
+
+// ═══════════════════════════════════════
+// 外部監控告警 (Issue #863)
+// ═══════════════════════════════════════
+
+enum AlertStatus {
+  FIRING
+  RESOLVED
+  ACKNOWLEDGED
+}
+
+model MonitoringAlert {
+  id             String      @id @default(cuid())
+  alertName      String
+  severity       String      // critical, warning, info
+  status         AlertStatus @default(FIRING)
+  source         String      // "grafana", "prometheus", "zabbix"
+  summary        String
+  description    String?
+  labels         Json?
+  startsAt       DateTime
+  endsAt         DateTime?
+  acknowledgedBy String?
+  acknowledgedAt DateTime?
+  relatedTaskId  String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  relatedTask Task? @relation(fields: [relatedTaskId], references: [id])
+
+  @@index([status])
+  @@index([startsAt])
+  @@map("monitoring_alerts")
+}
+
+// ═══════════════════════════════════════
+// KPI 歷史記錄 (Issue #863)
+// ═══════════════════════════════════════
+
+model KPIHistory {
+  id        String   @id @default(cuid())
+  kpiId     String
+  period    String   // "2026-03" 月度標識
+  actual    Float
+  source    String?  // 資料來源說明
+  updatedBy String
+  createdAt DateTime @default(now())
+
+  kpi  KPI  @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  user User @relation("KPIHistoryUpdater", fields: [updatedBy], references: [id])
+
+  @@unique([kpiId, period])
+  @@index([kpiId])
+  @@map("kpi_histories")
 }
