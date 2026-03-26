@@ -7,8 +7,10 @@
 import { createMockRequest } from "../utils/test-utils";
 
 const mockMonthlyGoal = { findMany: jest.fn(), create: jest.fn() };
+const mockAnnualPlan = { findUnique: jest.fn() };
+const mockUser = { findUnique: jest.fn() };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { monthlyGoal: mockMonthlyGoal } }));
+jest.mock("@/lib/prisma", () => ({ prisma: { monthlyGoal: mockMonthlyGoal, annualPlan: mockAnnualPlan, user: mockUser } }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
@@ -77,6 +79,7 @@ describe("POST /api/goals", () => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
     mockMonthlyGoal.create.mockResolvedValue(MOCK_GOAL);
+    mockAnnualPlan.findUnique.mockResolvedValue({ id: "plan-1", archivedAt: null });
   });
 
   it("creates goal with valid data", async () => {

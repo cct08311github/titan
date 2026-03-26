@@ -13,6 +13,7 @@ type TimeSummaryProps = {
   totalHours: number;
   breakdown: CategoryBreakdown[];
   taskInvestmentRate: number;
+  overtimeHours?: number;
 };
 
 const CAT_META: Record<string, { label: string; barClass: string; bgClass: string }> = {
@@ -24,7 +25,7 @@ const CAT_META: Record<string, { label: string; barClass: string; bgClass: strin
   LEARNING:     { label: "學習成長", barClass: "bg-emerald-500", bgClass: "bg-emerald-500/10 border-emerald-500/20" },
 };
 
-export function TimeSummary({ totalHours, breakdown, taskInvestmentRate }: TimeSummaryProps) {
+export function TimeSummary({ totalHours, breakdown, taskInvestmentRate, overtimeHours }: TimeSummaryProps) {
   return (
     <div className="bg-card border border-border rounded-xl p-4 space-y-4">
       {/* Header totals */}
@@ -38,6 +39,15 @@ export function TimeSummary({ totalHours, breakdown, taskInvestmentRate }: TimeS
           <div className="text-2xl font-bold text-emerald-500 tabular-nums">{taskInvestmentRate}%</div>
           <div className="text-xs text-muted-foreground mt-0.5">任務投入率</div>
         </div>
+        {overtimeHours != null && overtimeHours > 0 && (
+          <>
+            <div className="h-10 w-px bg-border" />
+            <div>
+              <div className="text-2xl font-bold text-amber-500 tabular-nums">{safeFixed(overtimeHours, 1)}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">加班時數</div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Stacked bar */}
