@@ -38,11 +38,17 @@ const mockKPITaskLink = {
   upsert: jest.fn(),
 };
 
+const mockKPIAchievement = {
+  findMany: jest.fn(),
+  upsert: jest.fn(),
+};
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     milestone: mockMilestone,
     kPI: mockKPI,
     kPITaskLink: mockKPITaskLink,
+    kPIAchievement: mockKPIAchievement,
     $transaction: jest.fn((fns: unknown[]) => {
       if (Array.isArray(fns)) return Promise.all(fns);
       if (typeof fns === "function") return (fns as Function)();
@@ -369,14 +375,14 @@ describe("GET /api/kpi/[id]/achievement", () => {
     mockGetServerSession.mockResolvedValue(MEMBER);
   });
 
-  it("returns manual achievement rate when autoCalc is false", async () => {
+  it("returns achievement records for existing KPI", async () => {
     mockKPI.findUnique.mockResolvedValue({
       id: "kpi-1",
-      target: 100,
-      actual: 75,
-      autoCalc: false,
-      taskLinks: [],
+      status: "ACTIVE",
     });
+    mockKPIAchievement.findMany.mockResolvedValue([
+      { id: "a1", kpiId: "kpi-1", period: "2026-01", actualValue: 75, note: null, reportedBy: "u1" },
+    ]);
 
     const { GET } = await import("@/app/api/kpi/[id]/achievement/route");
     const res = await (GET as Function)(
@@ -386,22 +392,17 @@ describe("GET /api/kpi/[id]/achievement", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.achievementRate).toBe(75);
-    expect(body.data.autoCalc).toBe(false);
-    expect(body.data.kpiId).toBe("kpi-1");
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].actualValue).toBe(75);
+    expect(body.data[0].kpiId).toBe("kpi-1");
   });
 
-  it("calculates auto achievement from linked tasks when autoCalc is true", async () => {
+  it("returns empty array when KPI has no achievements", async () => {
     mockKPI.findUnique.mockResolvedValue({
       id: "kpi-2",
-      target: 100,
-      actual: 0,
-      autoCalc: true,
-      taskLinks: [
-        { weight: 1, task: { id: "t1", title: "A", status: "DONE", progressPct: 100, estimatedHours: 8, actualHours: 6 } },
-        { weight: 1, task: { id: "t2", title: "B", status: "IN_PROGRESS", progressPct: 50, estimatedHours: 4, actualHours: 2 } },
-      ],
+      status: "ACTIVE",
     });
+    mockKPIAchievement.findMany.mockResolvedValue([]);
 
     const { GET } = await import("@/app/api/kpi/[id]/achievement/route");
     const res = await (GET as Function)(
@@ -411,21 +412,18 @@ describe("GET /api/kpi/[id]/achievement", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    // autoCalc: (1*100/100 + 1*50/100) / 2 * 100 = 75
-    expect(body.data.achievementRate).toBe(75);
-    expect(body.data.autoCalc).toBe(true);
-    expect(body.data.linkedTaskCount).toBe(2);
-    expect(body.data.completedTaskCount).toBe(1);
+    expect(body.data).toHaveLength(0);
   });
 
-  it("returns 0 achievement when target is 0 (manual)", async () => {
+  it("returns achievements ordered by period desc", async () => {
     mockKPI.findUnique.mockResolvedValue({
       id: "kpi-3",
-      target: 0,
-      actual: 50,
-      autoCalc: false,
-      taskLinks: [],
+      status: "ACTIVE",
     });
+    mockKPIAchievement.findMany.mockResolvedValue([
+      { id: "a2", kpiId: "kpi-3", period: "2026-03", actualValue: 90 },
+      { id: "a1", kpiId: "kpi-3", period: "2026-01", actualValue: 50 },
+    ]);
 
     const { GET } = await import("@/app/api/kpi/[id]/achievement/route");
     const res = await (GET as Function)(
@@ -435,7 +433,8 @@ describe("GET /api/kpi/[id]/achievement", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data.achievementRate).toBe(0);
+    expect(body.data).toHaveLength(2);
+    expect(body.data[0].period).toBe("2026-03");
   });
 
   it("returns 404 when KPI not found", async () => {
@@ -450,24 +449,25 @@ describe("GET /api/kpi/[id]/achievement", () => {
     expect(res.status).toBe(404);
   });
 
-  it("caps achievement at 100", async () => {
+  it("calls findMany with correct kpiId and order", async () => {
     mockKPI.findUnique.mockResolvedValue({
       id: "kpi-4",
-      target: 50,
-      actual: 200,
-      autoCalc: false,
-      taskLinks: [],
+      status: "ACTIVE",
     });
+    mockKPIAchievement.findMany.mockResolvedValue([]);
 
     const { GET } = await import("@/app/api/kpi/[id]/achievement/route");
-    const res = await (GET as Function)(
+    await (GET as Function)(
       createMockRequest("/api/kpi/kpi-4/achievement"),
       { params: Promise.resolve({ id: "kpi-4" }) }
     );
 
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.data.achievementRate).toBe(100);
+    expect(mockKPIAchievement.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { kpiId: "kpi-4" },
+        orderBy: { period: "desc" },
+      })
+    );
   });
 });
 

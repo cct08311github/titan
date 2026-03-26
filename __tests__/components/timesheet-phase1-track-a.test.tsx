@@ -28,6 +28,8 @@ jest.mock("lucide-react", () => ({
   ChevronDown: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-chevron-down" {...props} />,
   Trash2: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-trash" {...props} />,
   X: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-x" {...props} />,
+  Pencil: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-pencil" {...props} />,
+  Check: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-check" {...props} />,
 }));
 
 import { TimesheetCell } from "@/app/components/timesheet/timesheet-cell";

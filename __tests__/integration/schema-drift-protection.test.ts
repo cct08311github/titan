@@ -199,7 +199,7 @@ describe("D4: TimeEntryService — handles entries with missing task relation", 
 describe("D5: API response always includes success wrapper fields", () => {
   const mockGetServerSession = jest.fn();
 
-  const mockKPI = { findMany: jest.fn() };
+  const mockKPI = { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) };
   const mockTask = { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 
   jest.mock("@/lib/prisma", () => ({
@@ -234,13 +234,14 @@ describe("D5: API response always includes success wrapper fields", () => {
 
   it("GET /api/kpi response has data array even if DB returns empty list", async () => {
     mockKPI.findMany.mockResolvedValue([]);
+    mockKPI.count.mockResolvedValue(0);
     const { GET } = await import("@/app/api/kpi/route");
     const res = await GET(createMockRequest("/api/kpi"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("data");
-    expect(Array.isArray(body.data)).toBe(true);
-    expect(body.data).toHaveLength(0);
+    expect(Array.isArray(body.data.items)).toBe(true);
+    expect(body.data.items).toHaveLength(0);
   });
 
   it("GET /api/tasks response has data array even if DB returns empty list", async () => {

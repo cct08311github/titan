@@ -32,10 +32,10 @@ const KPI_LIST = [
 describe("KPI Page", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // KPI page fetches /api/kpi?year=... and expects an array
+    // KPI page fetches /api/kpi?year=... and expects { data: { items, total } }
     mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => KPI_LIST,
+      json: async () => ({ data: { items: KPI_LIST, total: KPI_LIST.length, page: 1, limit: 100 } }),
     } as Response);
   });
 
@@ -77,7 +77,7 @@ describe("KPI Page", () => {
   });
 
   it("shows empty state guidance when KPI list is empty (Manager)", async () => {
-    mockFetch.mockResolvedValue({ ok: true, json: async () => [] } as Response);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: [], total: 0, page: 1, limit: 100 } }) } as Response);
     const { default: KpiPage } = await import("@/app/(app)/kpi/page");
     await act(async () => {
       render(<KpiPage />);
@@ -92,7 +92,7 @@ describe("KPI Page", () => {
 
   it("handles divide-by-zero: target=0 does not crash achievementRate display", async () => {
     const zeroTargetKpi = [{ ...KPI_LIST[0], target: 0, actual: 0 }];
-    mockFetch.mockResolvedValue({ ok: true, json: async () => zeroTargetKpi } as Response);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: zeroTargetKpi, total: 1, page: 1, limit: 100 } }) } as Response);
     const { default: KpiPage } = await import("@/app/(app)/kpi/page");
     await act(async () => {
       render(<KpiPage />);
@@ -103,7 +103,7 @@ describe("KPI Page", () => {
 
   it("handles null achievementRate without crashing", async () => {
     const nullRateKpi = [{ ...KPI_LIST[0], actual: null, achievementRate: null }];
-    mockFetch.mockResolvedValue({ ok: true, json: async () => nullRateKpi } as Response);
+    mockFetch.mockResolvedValue({ ok: true, json: async () => ({ data: { items: nullRateKpi, total: 1, page: 1, limit: 100 } }) } as Response);
     const { default: KpiPage } = await import("@/app/(app)/kpi/page");
     await act(async () => {
       render(<KpiPage />);

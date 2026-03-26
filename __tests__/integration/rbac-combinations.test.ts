@@ -12,7 +12,7 @@ import { createMockRequest } from "../utils/test-utils";
 // ── Mock Prisma ────────────────────────────────────────────────────────────
 const mockTask = { findMany: jest.fn(), create: jest.fn(), findUnique: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 const mockUser = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() };
-const mockKPI = { findMany: jest.fn(), create: jest.fn() };
+const mockKPI = { findMany: jest.fn(), create: jest.fn(), count: jest.fn().mockResolvedValue(0), aggregate: jest.fn().mockResolvedValue({ _sum: { weight: 0 } }) };
 const mockTimeEntry = { findMany: jest.fn(), create: jest.fn() };
 const mockAuditLog = { create: jest.fn() };
 const mockPermission = { findFirst: jest.fn() };

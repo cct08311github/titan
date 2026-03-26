@@ -29,6 +29,8 @@ const mockKPI = {
   findUnique: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
+  count: jest.fn().mockResolvedValue(0),
+  aggregate: jest.fn().mockResolvedValue({ _sum: { weight: 0 } }),
 };
 const mockTimeEntry = {
   findMany: jest.fn(),
@@ -240,18 +242,19 @@ describe("A4: GET /api/kpi — withAuth middleware", () => {
   });
 
   it("authenticated user gets KPI list with status 200", async () => {
+    mockKPI.count.mockResolvedValue(1);
     const { GET } = await import("@/app/api/kpi/route");
     const res = await GET(createMockRequest("/api/kpi"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].code).toBe("KPI-01");
+    expect(body.data.items[0].code).toBe("KPI-01");
   });
 
   it("year query param is parsed as integer and passed to prisma", async () => {
     const { GET } = await import("@/app/api/kpi/route");
     await GET(createMockRequest("/api/kpi", { searchParams: { year: "2023" } }));
     expect(mockKPI.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { year: 2023 } })
+      expect.objectContaining({ where: expect.objectContaining({ year: 2023 }) })
     );
   });
 
