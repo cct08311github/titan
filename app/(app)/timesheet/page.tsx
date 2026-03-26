@@ -9,6 +9,7 @@ import {
   TimesheetGrid,
   TimesheetToolbar,
   TimesheetTimer,
+  CalendarDayView,
   type ViewMode,
 } from "@/app/components/timesheet";
 import { TimesheetListView } from "@/app/components/timesheet-list-view";
@@ -31,6 +32,7 @@ export default function TimesheetPage() {
     if (typeof window !== "undefined" && window.innerWidth < 768) return "list";
     return "grid";
   });
+  const [calendarDate, setCalendarDate] = useState<Date>(() => new Date());
   const [summaryTab, setSummaryTab] = useState<SummaryTab>("timesheet");
   const [pivotData, setPivotData] = useState<TimesheetPivotData | null>(null);
   const [pivotLoading, setPivotLoading] = useState(false);
@@ -198,8 +200,11 @@ export default function TimesheetPage() {
           ) : null}
         </div>
 
-        {/* Grid or List */}
-        <div className="border border-border rounded-xl overflow-hidden bg-card">
+        {/* Grid, List, or Calendar */}
+        <div className={cn(
+          "border border-border rounded-xl overflow-hidden bg-card",
+          viewMode === "calendar" && "p-4"
+        )}>
           {ts.loading ? (
             <PageLoading message="載入工時..." className="py-12" />
           ) : ts.loadError ? (
@@ -222,6 +227,15 @@ export default function TimesheetPage() {
               onFullSave={ts.saveEntry}
               onDelete={ts.deleteEntry}
               onAddTaskRow={ts.addTaskRow}
+            />
+          ) : viewMode === "calendar" ? (
+            <CalendarDayView
+              selectedDate={calendarDate}
+              entries={ts.entries}
+              tasks={ts.tasks}
+              onDateChange={setCalendarDate}
+              onSaveEntry={ts.saveEntry}
+              onDeleteEntry={ts.deleteEntry}
             />
           ) : (
             <TimesheetListView

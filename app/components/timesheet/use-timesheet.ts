@@ -180,9 +180,11 @@ export function useTimesheet(userFilter?: string) {
     description: string,
     overtimeType: OvertimeType,
     existingId?: string,
-    subTaskId?: string | null            // Issue #933
+    subTaskId?: string | null,           // Issue #933
+    startTime?: string | null,           // v3: start/end time
+    endTime?: string | null              // v3: start/end time
   ) {
-    const payload = {
+    const payload: Record<string, unknown> = {
       taskId,
       subTaskId: subTaskId ?? null,      // Issue #933
       date,
@@ -192,6 +194,9 @@ export function useTimesheet(userFilter?: string) {
       overtimeType,
       overtime: overtimeType !== "NONE",
     };
+    // v3: include startTime/endTime if provided
+    if (startTime !== undefined) payload.startTime = startTime;
+    if (endTime !== undefined) payload.endTime = endTime;
 
     if (existingId) {
       const res = await fetch(`/api/time-entries/${existingId}`, {
