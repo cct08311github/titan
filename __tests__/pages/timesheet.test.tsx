@@ -5,6 +5,11 @@ import React from "react";
 import { render, screen, waitFor, act } from "@testing-library/react";
 import "@testing-library/jest-dom";
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  usePathname: () => "/timesheet",
+}));
+
 jest.mock("next-auth/react", () => ({
   useSession: jest.fn(() => ({
     data: { user: { id: "u1", name: "Alice", role: "MEMBER" }, expires: "2099" },
