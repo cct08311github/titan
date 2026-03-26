@@ -54,6 +54,7 @@ model User {
   notificationPreferences  NotificationPreference[]
   passwordResetTokens      PasswordResetToken[]
   createdTemplates         TaskTemplate[]        @relation("TemplateCreator")
+  uploadedAttachments      TaskAttachment[]     @relation("AttachmentUploader")
   approvalRequests         ApprovalRequest[]    @relation("ApprovalRequester")
   approvalReviews          ApprovalRequest[]    @relation("ApprovalApprover")
   timeEntryTemplates       TimeEntryTemplate[]
@@ -150,23 +151,24 @@ model KPITaskLink {
 // ═══════════════════════════════════════
 
 model AnnualPlan {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   year               Int
   title              String
   description        String?
-  implementationPlan String?  // 執行計畫說明（Markdown）
-  progressPct        Float    @default(0)
+  implementationPlan String?   // 執行計畫說明（Markdown）
+  progressPct        Float     @default(0)
   copiedFromYear     Int?
+  archivedAt         DateTime? // 封存時間（不可硬刪除，僅封存）
   createdBy          String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   creator      User          @relation("PlanCreator", fields: [createdBy], references: [id])
   monthlyGoals MonthlyGoal[]
   milestones   Milestone[]
   deliverables Deliverable[] @relation("AnnualPlanDeliverable")
 
-  @@unique([year])
+  @@index([year])
   @@index([createdBy])
   @@map("annual_plans")
 }
@@ -287,6 +289,7 @@ model Task {
   backupAssignee  User?         @relation("TaskBackupAssignee", fields: [backupAssigneeId], references: [id])
   creator         User          @relation("TaskCreator", fields: [creatorId], references: [id])
   subTasks        SubTask[]
+  attachments     TaskAttachment[]
   comments        TaskComment[]
   activities      TaskActivity[]
   taskChanges     TaskChange[]
@@ -330,6 +333,28 @@ model IncidentRecord {
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@map("incident_records")
+}
+
+// ═══════════════════════════════════════
+// 任務附件 (Issue #811 — K-3b)
+// ═══════════════════════════════════════
+
+model TaskAttachment {
+  id          String   @id @default(cuid())
+  taskId      String
+  fileName    String
+  fileSize    Int      // bytes
+  mimeType    String
+  storagePath String   // relative path under uploads/
+  uploaderId  String
+  createdAt   DateTime @default(now())
+
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader User @relation("AttachmentUploader", fields: [uploaderId], references: [id])
+
+  @@index([taskId])
+  @@index([uploaderId])
+  @@map("task_attachments")
 }
 
 model SubTask {
