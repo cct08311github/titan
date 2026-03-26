@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { NotFoundError } from "@/services/errors";
+import { NotFoundError, ValidationError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateGoalSchema } from "@/validators/plan-validators";
 import { withAuth, withManager } from "@/lib/auth-middleware";
@@ -14,7 +14,8 @@ export const GET = withAuth(async (
   const goal = await prisma.monthlyGoal.findUnique({
     where: { id },
     include: {
-      annualPlan: { select: { id: true, title: true, year: true } },
+      annualPlan: { select: { id: true, title: true, year: true, archivedAt: true } },
+      assignee: { select: { id: true, name: true, avatar: true } },
       tasks: {
         include: {
           primaryAssignee: { select: { id: true, name: true, avatar: true } },
@@ -37,19 +38,36 @@ export const PUT = withManager(async (
   context: { params: Promise<Record<string, string>> }
 ) => {
   const { id } = await context.params;
+  const existing = await prisma.monthlyGoal.findUnique({
+    where: { id },
+    include: { annualPlan: { select: { archivedAt: true } } },
+  });
+  if (!existing) throw new NotFoundError("目標不存在");
+  if (existing.annualPlan.archivedAt) {
+    throw new ValidationError("計畫已封存，無法編輯目標");
+  }
+
   const raw = await req.json();
-  const { title, description, status, progressPct } = validateBody(updateGoalSchema, raw);
+  const body = validateBody(updateGoalSchema, raw);
+
+  const completedAt =
+    body.status === "COMPLETED" && existing.status !== "COMPLETED"
+      ? new Date()
+      : body.status !== undefined && body.status !== "COMPLETED" ? null : undefined;
 
   const goal = await prisma.monthlyGoal.update({
     where: { id },
     data: {
-      ...(title !== undefined && { title }),
-      ...(description !== undefined && { description }),
-      ...(status !== undefined && { status }),
-      ...(progressPct !== undefined && { progressPct }),
+      ...(body.title !== undefined && { title: body.title }),
+      ...(body.description !== undefined && { description: body.description }),
+      ...(body.status !== undefined && { status: body.status }),
+      ...(body.progressPct !== undefined && { progressPct: body.progressPct }),
+      ...(body.assigneeId !== undefined && { assigneeId: body.assigneeId || null }),
+      ...(completedAt !== undefined && { completedAt }),
     },
     include: {
       annualPlan: { select: { id: true, title: true, year: true } },
+      assignee: { select: { id: true, name: true, avatar: true } },
       tasks: true,
     },
   });
@@ -62,13 +80,16 @@ export const DELETE = withManager(async (
   context: { params: Promise<Record<string, string>> }
 ) => {
   const { id } = await context.params;
-  const existing = await prisma.monthlyGoal.findUnique({ where: { id } });
-  if (!existing) throw new NotFoundError("目標不存在");
-
-  await prisma.task.updateMany({
-    where: { monthlyGoalId: id },
-    data: { monthlyGoalId: null },
+  const existing = await prisma.monthlyGoal.findUnique({
+    where: { id },
+    include: { annualPlan: { select: { archivedAt: true } } },
   });
+  if (!existing) throw new NotFoundError("目標不存在");
+  if (existing.annualPlan.archivedAt) {
+    throw new ValidationError("計畫已封存，無法刪除目標");
+  }
+
+  await prisma.task.updateMany({ where: { monthlyGoalId: id }, data: { monthlyGoalId: null } });
   await prisma.monthlyGoal.delete({ where: { id } });
   return success({ deleted: true });
 });
