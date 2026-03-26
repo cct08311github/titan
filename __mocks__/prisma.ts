@@ -39,6 +39,7 @@ export const mockPrisma = {
   deliverable: createMockModel(),
   auditLog: createMockModel(),
   timeEntryTemplate: createMockModel(),
+  notificationLog: createMockModel(),
   $transaction: jest.fn(),
   $connect: jest.fn(),
   $disconnect: jest.fn(),
