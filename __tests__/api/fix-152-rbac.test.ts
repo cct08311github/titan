@@ -19,11 +19,16 @@ const mockMonthlyGoal = {
 const mockTask = { updateMany: jest.fn() };
 const mockTaskChange = { create: jest.fn(), findMany: jest.fn() };
 
+const mockAnnualPlan = { findUnique: jest.fn() };
+const mockUser = { findUnique: jest.fn() };
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     monthlyGoal: mockMonthlyGoal,
     task: mockTask,
     taskChange: mockTaskChange,
+    annualPlan: mockAnnualPlan,
+    user: mockUser,
   },
 }));
 
@@ -61,6 +66,7 @@ describe("POST /api/goals — RBAC: requires MANAGER", () => {
     jest.clearAllMocks();
     jest.resetModules();
     mockMonthlyGoal.create.mockResolvedValue(MOCK_GOAL);
+    mockAnnualPlan.findUnique.mockResolvedValue({ id: "plan-1", archivedAt: null });
   });
 
   it("returns 201 when called by MANAGER", async () => {
@@ -110,6 +116,7 @@ describe("PUT /api/goals/[id] — RBAC: requires MANAGER", () => {
     jest.clearAllMocks();
     jest.resetModules();
     mockMonthlyGoal.update.mockResolvedValue(MOCK_GOAL);
+    mockMonthlyGoal.findUnique.mockResolvedValue({ ...MOCK_GOAL, annualPlan: { archivedAt: null } });
   });
 
   it("returns 200 when called by MANAGER", async () => {
