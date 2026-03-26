@@ -4,6 +4,15 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+
+jest.mock("next-auth/react", () => ({
+  useSession: () => ({ data: { user: { id: "u1", role: "MANAGER" } }, status: "authenticated" }),
+}));
+
+jest.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard",
+}));
+
 import { Sidebar } from "@/app/components/sidebar";
 
 // Mock window.matchMedia (not available in jsdom)
