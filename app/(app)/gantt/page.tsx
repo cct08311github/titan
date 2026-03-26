@@ -107,7 +107,7 @@ type GanttBarProps = {
 function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: GanttBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const [dragTooltip, setDragTooltip] = useState<string | null>(null);
-  const dragging = useRef<{ type: "move" | "resize-end"; startX: number; origStartDay: number; origEndDay: number } | null>(null);
+  const dragging = useRef<{ type: "move" | "resize-start" | "resize-end"; startX: number; origStartDay: number; origEndDay: number } | null>(null);
 
   if (!task.startDate && !task.dueDate) {
     return (
@@ -127,7 +127,7 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
   const leftPct = (startDay / totalDays) * 100;
   const widthPct = Math.max(0.3, ((endDay - startDay) / totalDays) * 100);
 
-  function handlePointerDown(e: React.PointerEvent, type: "move" | "resize-end") {
+  function handlePointerDown(e: React.PointerEvent, type: "move" | "resize-start" | "resize-end") {
     if (!canDrag || task.status === "DONE") return;
     e.preventDefault();
     e.stopPropagation();
@@ -144,7 +144,10 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
 
       if (dragging.current.type === "resize-end") {
         const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
-        setDragTooltip(dayToDate(newEnd, year));
+        setDragTooltip(`截止日：${dayToDate(newEnd, year)}`);
+      } else if (dragging.current.type === "resize-start") {
+        const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
+        setDragTooltip(`開始日：${dayToDate(newStart, year)}`);
       } else {
         const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
         const newEnd = dragging.current.origEndDay + daysDelta;
@@ -161,6 +164,9 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
         if (dragging.current.type === "resize-end") {
           const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
           onDateChange(task.id, task.startDate, dayToDate(newEnd, year));
+        } else if (dragging.current.type === "resize-start") {
+          const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
+          onDateChange(task.id, dayToDate(newStart, year), task.dueDate);
         } else {
           const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
           const newEnd = dragging.current.origEndDay + daysDelta;
@@ -200,6 +206,13 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
           <div
             className="absolute inset-0 left-0 bg-white/10 rounded-sm"
             style={{ width: `${task.progressPct}%` }}
+          />
+        )}
+        {/* Drag handle: left edge — Issue #844 (G-3) */}
+        {canDrag && task.status !== "DONE" && (
+          <div
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+            onPointerDown={(e) => handlePointerDown(e, "resize-start")}
           />
         )}
         {/* Drag handle: right edge */}
@@ -267,18 +280,21 @@ export default function GanttPage() {
 
   const handleDateChange = useCallback(async (taskId: string, startDate: string | null, dueDate: string | null) => {
     try {
-      const res = await fetch(`/api/tasks/${taskId}`, {
+      // Use dedicated dates endpoint — Issue #844 (G-3)
+      const res = await fetch(`/api/tasks/${taskId}/dates`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate, dueDate }),
+        body: JSON.stringify({
+          startDate: startDate ? new Date(startDate).toISOString() : null,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
+        }),
       });
-      if (!res.ok) throw new Error("更新失敗");
-      // Record the change
-      await fetch(`/api/tasks/${taskId}/changes`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "DELAY", note: `甘特圖拖曳調整：截止日 → ${dueDate}` }),
-      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        alert(errBody?.message ?? "時程更新失敗");
+        fetchData(); // Revert by re-fetching
+        return;
+      }
       fetchData();
     } catch {
       fetchData(); // Revert by re-fetching
