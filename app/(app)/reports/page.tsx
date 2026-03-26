@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Download, RefreshCw, BarChart3, Printer, FileSpreadsheet } from "lucide-react";
+import { Download, RefreshCw, BarChart3, Printer, FileSpreadsheet, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -23,7 +23,7 @@ function PrintButton() {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-type TabId = "weekly" | "monthly" | "kpi" | "workload" | "trends" | "audit";
+type TabId = "weekly" | "monthly" | "completion" | "kpi" | "workload" | "trends" | "audit";
 
 interface Tab {
   id: TabId;
@@ -33,6 +33,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: "weekly", label: "週報" },
   { id: "monthly", label: "月報" },
+  { id: "completion", label: "完成率" },
   { id: "kpi", label: "KPI 報表" },
   { id: "workload", label: "計畫外負荷" },
   { id: "trends", label: "趨勢分析" },
@@ -312,6 +313,153 @@ function MonthlyReport() {
               </div>
             </div>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Completion Rate Report (R-1 #836) ─────────────────────────────────────
+
+interface CompletionDataPoint {
+  label: string;
+  completionRate: number;
+  completedCount: number;
+  totalCount: number;
+}
+
+function CompletionRateReport() {
+  const [granularity, setGranularity] = useState<"week" | "month">("month");
+  const [data, setData] = useState<CompletionDataPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [CompletionChart, setCompletionChart] = useState<React.ComponentType<{
+    data: CompletionDataPoint[];
+    granularity: "week" | "month";
+  }> | null>(null);
+
+  // Lazy-load ECharts component
+  useEffect(() => {
+    import("@/app/components/completion-rate-chart").then((mod) => {
+      setCompletionChart(() => mod.CompletionRateChart);
+    });
+  }, []);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(null);
+    fetch(`/api/reports/completion-rate?granularity=${granularity}`)
+      .then((r) => { if (!r.ok) throw new Error("完成率報表載入失敗"); return r.json(); })
+      .then((body) => {
+        const d = extractData<{ data: CompletionDataPoint[] }>(body);
+        setData(d?.data ?? []);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "載入失敗"))
+      .finally(() => setLoading(false));
+  }, [granularity]);
+
+  useEffect(() => { load(); }, [load]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>統計粒度</span>
+          <select
+            value={granularity}
+            onChange={(e) => setGranularity(e.target.value as "week" | "month")}
+            className="h-9 bg-card border border-border text-sm rounded-lg px-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer"
+          >
+            <option value="week">週統計</option>
+            <option value="month">月統計</option>
+          </select>
+        </div>
+        <button
+          onClick={load}
+          className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
+        </button>
+      </div>
+
+      {loading ? (
+        <PageLoading message="載入完成率報表..." />
+      ) : error ? (
+        <PageError message={error} onRetry={load} />
+      ) : data.length === 0 ? (
+        <PageEmpty
+          icon={<TrendingUp className="h-8 w-8" />}
+          title="無完成率資料"
+          description="所選期間尚無任務數據"
+        />
+      ) : (
+        <>
+          {/* Summary stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-2xl font-semibold tabular-nums">
+                {data.reduce((s, d) => s + d.totalCount, 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">總任務數</p>
+            </div>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-2xl font-semibold tabular-nums text-success">
+                {data.reduce((s, d) => s + d.completedCount, 0)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">已完成</p>
+            </div>
+            <div className="bg-card rounded-xl shadow-card p-4 text-center">
+              <p className="text-2xl font-semibold tabular-nums">
+                {(() => {
+                  const total = data.reduce((s, d) => s + d.totalCount, 0);
+                  const done = data.reduce((s, d) => s + d.completedCount, 0);
+                  return total > 0 ? Math.round((done / total) * 100) : 0;
+                })()}%
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">整體完成率</p>
+            </div>
+          </div>
+
+          {/* Chart */}
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <SectionTitle>
+              {granularity === "week" ? "每週" : "每月"}任務完成率趨勢
+            </SectionTitle>
+            {CompletionChart ? (
+              <CompletionChart data={data} granularity={granularity} />
+            ) : (
+              <div className="h-80 flex items-center justify-center text-muted-foreground text-sm">
+                載入圖表元件...
+              </div>
+            )}
+          </div>
+
+          {/* Data table */}
+          <div className="bg-card rounded-xl shadow-card p-4">
+            <SectionTitle>明細</SectionTitle>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left text-xs font-medium text-muted-foreground px-3 py-2">期間</th>
+                    <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">總任務</th>
+                    <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">已完成</th>
+                    <th className="text-right text-xs font-medium text-muted-foreground px-3 py-2">完成率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.map((d) => (
+                    <tr key={d.label} className="border-b border-border/50 last:border-0">
+                      <td className="px-3 py-2 text-foreground">{d.label}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{d.totalCount}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-success">{d.completedCount}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-medium">{d.completionRate}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </>
       )}
     </div>
@@ -910,6 +1058,7 @@ function AuditReport() {
 const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   weekly: WeeklyReport,
   monthly: MonthlyReport,
+  completion: CompletionRateReport,
   kpi: KPIReport,
   workload: WorkloadReport,
   trends: TrendsReport,
