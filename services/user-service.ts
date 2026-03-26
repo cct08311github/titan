@@ -8,6 +8,7 @@ export interface ListUsersFilter {
   role?: Role | string;
   isActive?: boolean;
   includeSuspended?: boolean;
+  search?: string; // Issue #800: search by name or email
 }
 
 export interface CreateUserInput {
@@ -43,6 +44,14 @@ export class UserService {
     // unless caller explicitly opts in with includeSuspended
     if (!filter.includeSuspended) {
       where.isActive = true;
+    }
+
+    // Issue #800: search by name or email
+    if (filter.search) {
+      where.OR = [
+        { name: { contains: filter.search, mode: "insensitive" } },
+        { email: { contains: filter.search, mode: "insensitive" } },
+      ];
     }
 
     return this.prisma.user.findMany({
@@ -191,9 +200,33 @@ export class UserService {
     return updated;
   }
 
+  /**
+   * Get pending tasks for a user (Issue #800: show on suspend).
+   */
+  async getPendingTasks(userId: string) {
+    return this.prisma.task.findMany({
+      where: {
+        primaryAssigneeId: userId,
+        status: { in: ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW"] },
+      },
+      select: { id: true, title: true, status: true, dueDate: true },
+      orderBy: { dueDate: "asc" },
+    });
+  }
+
   async suspendUser(id: string) {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`User not found: ${id}`);
+
+    // Issue #800: prevent disabling the last active MANAGER
+    if (existing.role === "MANAGER") {
+      const activeManagerCount = await this.prisma.user.count({
+        where: { role: "MANAGER", isActive: true },
+      });
+      if (activeManagerCount <= 1) {
+        throw new ValidationError("無法停用最後一位管理員帳號");
+      }
+    }
 
     const updated = await this.prisma.user.update({
       where: { id },
