@@ -8,9 +8,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkEdgeJwt } from "@/lib/auth-depth";
 
-/** Routes that bypass auth check */
+/**
+ * Public routes that bypass JWT auth check — Issue #799 (AU-6)
+ * These endpoints are accessible without authentication.
+ */
 const AUTH_BYPASS_PREFIXES = ["/api/auth/"];
-const AUTH_BYPASS_EXACT = ["/change-password"];
+const AUTH_BYPASS_EXACT = [
+  "/change-password",
+  "/api/health",
+];
 
 /** Check if a pathname should bypass auth */
 export function shouldBypassAuth(pathname: string): boolean {
