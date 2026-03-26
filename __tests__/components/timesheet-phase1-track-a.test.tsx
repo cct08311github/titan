@@ -229,7 +229,8 @@ describe("Item 7: Multi-entry individual editing", () => {
         "PLANNED_TASK",
         "API work",
         "NONE",
-        "e1"
+        "e1",
+        null              // Issue #933: subTaskId
       );
     });
   });

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { type TimeEntry, type OvertimeType } from "./use-timesheet";
+import { type TimeEntry, type OvertimeType, type SubTaskOption } from "./use-timesheet";
 import { safeFixed } from "@/lib/safe-number";
 import { Lock } from "lucide-react";
 
@@ -35,6 +35,7 @@ type TimesheetCellProps = {
   entries: TimeEntry[];
   taskId: string | null;
   date: string;
+  subTasks?: SubTaskOption[];              // Issue #933
   onQuickSave: (taskId: string | null, date: string, hours: number, existingId?: string) => Promise<void>;
   onFullSave: (
     taskId: string | null,
@@ -43,7 +44,8 @@ type TimesheetCellProps = {
     category: string,
     description: string,
     overtimeType: OvertimeType,
-    existingId?: string
+    existingId?: string,
+    subTaskId?: string | null              // Issue #933
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onNavigate?: (direction: "next" | "prev" | "up" | "down") => void;
@@ -57,6 +59,7 @@ type EntryEditState = {
   category: string;
   description: string;
   overtimeType: OvertimeType;
+  subTaskId: string;                       // Issue #933: "" means no subtask
   saving: boolean;
 };
 
@@ -66,6 +69,7 @@ function initEditState(entry: TimeEntry): EntryEditState {
     category: entry.category,
     description: entry.description ?? "",
     overtimeType: (entry.overtimeType as OvertimeType) ?? "NONE",
+    subTaskId: entry.subTaskId ?? "",      // Issue #933
     saving: false,
   };
 }
@@ -98,6 +102,7 @@ export function TimesheetCell({
   entries,
   taskId,
   date,
+  subTasks = [],
   onQuickSave,
   onFullSave,
   onDelete,
@@ -131,6 +136,7 @@ export function TimesheetCell({
     category: "PLANNED_TASK",
     description: "",
     overtimeType: "NONE",
+    subTaskId: "",
     saving: false,
   });
 
@@ -261,7 +267,7 @@ export function TimesheetCell({
       return next;
     });
     try {
-      await onFullSave(taskId, date, h, state.category, state.description, state.overtimeType, entryId);
+      await onFullSave(taskId, date, h, state.category, state.description, state.overtimeType, entryId, state.subTaskId || null);
     } finally {
       setEntryStates((prev) => {
         const next = new Map(prev);
@@ -318,13 +324,14 @@ export function TimesheetCell({
     if (isNaN(h) || h <= 0) return;
     setNewEntryState((s) => ({ ...s, saving: true }));
     try {
-      await onFullSave(taskId, date, h, newEntryState.category, newEntryState.description, newEntryState.overtimeType);
+      await onFullSave(taskId, date, h, newEntryState.category, newEntryState.description, newEntryState.overtimeType, undefined, newEntryState.subTaskId || null);
       setShowNewEntry(false);
       setNewEntryState({
         hours: "",
         category: "PLANNED_TASK",
         description: "",
         overtimeType: "NONE",
+        subTaskId: "",
         saving: false,
       });
     } finally {
@@ -467,6 +474,27 @@ export function TimesheetCell({
                     </select>
                   </div>
 
+                  {/* Issue #933: Subtask selector */}
+                  {taskId && subTasks.length > 0 && (
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">子任務</label>
+                      <select
+                        value={state.subTaskId}
+                        onChange={(ev) => !isLocked && updateEntryField(e.id, "subTaskId", ev.target.value)}
+                        disabled={isLocked}
+                        className={cn(
+                          "w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer",
+                          isLocked && "opacity-60 cursor-not-allowed"
+                        )}
+                      >
+                        <option value="">整體（無子任務）</option>
+                        {subTasks.map((st) => (
+                          <option key={st.id} value={st.id}>{st.title}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs text-muted-foreground mb-1">備註</label>
                     <input
@@ -581,6 +609,22 @@ export function TimesheetCell({
                   ))}
                 </select>
               </div>
+              {/* Issue #933: Subtask selector for new entry */}
+              {taskId && subTasks.length > 0 && (
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">子任務</label>
+                  <select
+                    value={newEntryState.subTaskId}
+                    onChange={(ev) => setNewEntryState((s) => ({ ...s, subTaskId: ev.target.value }))}
+                    className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+                  >
+                    <option value="">整體（無子任務）</option>
+                    {subTasks.map((st) => (
+                      <option key={st.id} value={st.id}>{st.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-xs text-muted-foreground mb-1">備註</label>
                 <input

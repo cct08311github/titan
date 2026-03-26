@@ -37,6 +37,14 @@ export default function TimesheetPage() {
 
   const ts = useTimesheet(userFilter || undefined);
 
+  // Issue #933: pre-fetch subtasks for all task rows
+  useEffect(() => {
+    for (const row of ts.taskRows) {
+      if (row.taskId) ts.fetchSubTasks(row.taskId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ts.taskRows]);
+
   // Fetch pivot data when tab switches (Issue #832)
   const fetchPivot = useCallback(async (tab: SummaryTab) => {
     if (tab === "timesheet") return;
@@ -206,6 +214,7 @@ export default function TimesheetPage() {
               weeklyTotal={ts.weeklyTotal}
               dayLabels={ts.dayLabels}
               daysCount={ts.daysCount}
+              subTasksMap={ts.subTasksMap}
               getDateStr={ts.getDateStr}
               formatDateLabel={ts.formatDateLabel}
               getEntriesForCell={ts.getEntriesForCell}

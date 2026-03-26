@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { safeFixed } from "@/lib/safe-number";
 import { TimesheetCell } from "./timesheet-cell";
-import { type TimeEntry, type TaskRow, type OvertimeType, type TaskOption } from "./use-timesheet";
+import { type TimeEntry, type TaskRow, type OvertimeType, type TaskOption, type SubTaskOption } from "./use-timesheet";
 import { Plus } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -18,6 +18,7 @@ type TimesheetGridProps = {
   weeklyTotal: number;
   dayLabels: string[];
   daysCount: number;
+  subTasksMap?: Map<string, SubTaskOption[]>;  // Issue #933
   getDateStr: (offset: number) => string;
   formatDateLabel: (offset: number) => string;
   getEntriesForCell: (taskId: string | null, dateStr: string) => TimeEntry[];
@@ -29,7 +30,8 @@ type TimesheetGridProps = {
     category: string,
     description: string,
     overtimeType: OvertimeType,
-    existingId?: string
+    existingId?: string,
+    subTaskId?: string | null              // Issue #933
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAddTaskRow: (taskId: string, label: string) => void;
@@ -45,6 +47,7 @@ export function TimesheetGrid({
   weeklyTotal,
   dayLabels,
   daysCount,
+  subTasksMap = new Map(),
   getDateStr,
   formatDateLabel,
   getEntriesForCell,
@@ -166,18 +169,39 @@ export function TimesheetGrid({
                 className="border-b border-border/40 hover:bg-accent/10 transition-colors group"
               >
                 <td className="px-3 py-1.5 sticky left-0 bg-card group-hover:bg-accent/10 z-10">
-                  <span
-                    className="text-xs text-muted-foreground truncate block max-w-[168px]"
-                    title={row.label}
-                  >
-                    {row.taskId ? "# " : ""}
-                    {row.label}
-                  </span>
+                  {(() => {
+                    // Issue #933: show subtask info in label
+                    const rowEntries = entries.filter((e) => (e.taskId ?? null) === (row.taskId ?? null));
+                    const subTaskTitles = new Set(
+                      rowEntries
+                        .filter((e) => e.subTask?.title)
+                        .map((e) => e.subTask!.title)
+                    );
+                    const subLabel = subTaskTitles.size === 1
+                      ? ` > ${[...subTaskTitles][0]}`
+                      : subTaskTitles.size > 1
+                        ? ` > (${subTaskTitles.size} 子任務)`
+                        : "";
+                    const fullLabel = `${row.label}${subLabel}`;
+                    return (
+                      <span
+                        className="text-xs text-muted-foreground truncate block max-w-[168px]"
+                        title={fullLabel}
+                      >
+                        {row.taskId ? "# " : ""}
+                        {row.label}
+                        {subLabel && (
+                          <span className="text-muted-foreground/60">{subLabel}</span>
+                        )}
+                      </span>
+                    );
+                  })()}
                 </td>
                 {Array.from({ length: daysCount }, (_, dayIdx) => {
                   const dateStr = getDateStr(dayIdx);
                   const cellEntries = getEntriesForCell(row.taskId, dateStr);
                   const isWeekend = dayIdx >= 5;
+                  const cellSubTasks = row.taskId ? (subTasksMap.get(row.taskId) ?? []) : [];
                   return (
                     <td
                       key={dayIdx}
@@ -189,6 +213,7 @@ export function TimesheetGrid({
                         entries={cellEntries}
                         taskId={row.taskId}
                         date={dateStr}
+                        subTasks={cellSubTasks}
                         onQuickSave={onQuickSave}
                         onFullSave={onFullSave}
                         onDelete={onDelete}
