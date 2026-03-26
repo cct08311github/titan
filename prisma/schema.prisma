@@ -769,6 +769,7 @@ enum NotificationType {
   TIMESHEET_REMINDER
   TIMESHEET_REJECTED    // Phase 2: 工時被駁回通知
   SLA_EXPIRING          // Issue #860: SLA 即將到期
+  VERIFICATION_DUE      // Issue #968: 文件驗證到期
   MANAGER_FLAG          // Issue #960: 主管標記任務
 }
 
@@ -869,23 +870,23 @@ model KnowledgeSpace {
 }
 
 model Document {
-  id        String         @id @default(cuid())
-  spaceId   String?        // FK to KnowledgeSpace (nullable for migration)
-  parentId  String?
-  title     String
-  content   String         // Markdown
-  slug      String         @unique
-  tags      String[]       // Issue #859: 標籤（如 "Oracle", "batch", "EOD", "DR"）
-  status    DocumentStatus @default(DRAFT)
-  createdBy String
-  updatedBy String
-  version   Int            @default(1)
+  id                 String         @id @default(cuid())
+  spaceId            String?        // FK to KnowledgeSpace (nullable for migration)
+  parentId           String?
+  title              String
+  content            String         // Markdown
+  slug               String         @unique
+  tags               String[]       // Issue #859: 標籤（如 "Oracle", "batch", "EOD", "DR"）
+  status             DocumentStatus @default(DRAFT)
+  createdBy          String
+  updatedBy          String
+  version            Int            @default(1)
   // Verification fields (Issue #968)
-  verifierId        String?
-  verifiedAt        DateTime?
+  verifierId         String?
+  verifiedAt         DateTime?
   verifyIntervalDays Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   space    KnowledgeSpace?   @relation(fields: [spaceId], references: [id])
   parent   Document?         @relation("DocTree", fields: [parentId], references: [id])
