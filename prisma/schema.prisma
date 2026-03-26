@@ -62,6 +62,7 @@ model User {
   assignedGoals            MonthlyGoal[]        @relation("GoalAssignee")
   kpiHistoryUpdates        KPIHistory[]         @relation("KPIHistoryUpdater")
   createdRecurringRules    RecurringRule[]       @relation("RecurringRuleCreator")
+  createdSpaces            KnowledgeSpace[]     @relation("SpaceCreator")
   verifiedDocuments        Document[]           @relation("DocVerifier")
 
   @@map("users")
@@ -844,23 +845,50 @@ model RefreshToken {
 // 知識庫文件
 // ═══════════════════════════════════════
 
+// ═══════════════════════════════════════
+// 知識空間 (Issue #967: Knowledge Base v2)
+// ═══════════════════════════════════════
+
+enum DocumentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model KnowledgeSpace {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator   User       @relation("SpaceCreator", fields: [createdBy], references: [id])
+  documents Document[]
+
+  @@map("knowledge_spaces")
+}
+
 model Document {
-  id                 String   @id @default(cuid())
+  id                 String         @id @default(cuid())
+  spaceId            String?        // FK to KnowledgeSpace (nullable for migration)
   parentId           String?
   title              String
-  content            String   // Markdown
-  slug               String   @unique
-  tags               String[] // Issue #859: 標籤（如 "Oracle", "batch", "EOD", "DR"）
+  content            String         // Markdown
+  slug               String         @unique
+  tags               String[]       // Issue #859: 標籤（如 "Oracle", "batch", "EOD", "DR"）
+  status             DocumentStatus @default(DRAFT)
   createdBy          String
   updatedBy          String
-  version            Int      @default(1)
+  version            Int            @default(1)
   // Verification fields (Issue #968)
   verifierId         String?
   verifiedAt         DateTime?
   verifyIntervalDays Int?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
+  space    KnowledgeSpace?   @relation(fields: [spaceId], references: [id])
   parent   Document?         @relation("DocTree", fields: [parentId], references: [id])
   children Document[]        @relation("DocTree")
   creator  User              @relation("DocCreator", fields: [createdBy], references: [id])
@@ -868,8 +896,10 @@ model Document {
   verifier User?             @relation("DocVerifier", fields: [verifierId], references: [id])
   versions DocumentVersion[]
 
+  @@index([spaceId])
   @@index([parentId])
   @@index([createdBy])
+  @@index([status])
   @@index([verifierId])
   @@map("documents")
 }
@@ -877,6 +907,7 @@ model Document {
 model DocumentVersion {
   id         String   @id @default(cuid())
   documentId String
+  title      String?  // track title changes (Issue #967)
   content    String
   version    Int
   createdBy  String
