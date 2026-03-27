@@ -20,12 +20,19 @@ export const GET = withAuth(async (req: NextRequest) => {
   const role = session.user.role;
   const isManager = role === "MANAGER" || role === "ADMIN";
 
+  // Issue #990: support view param for tab switching
+  const { searchParams } = new URL(req.url);
+  const viewParam = searchParams.get("view"); // "my-day" | "team" | null
+
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const todayEnd = new Date(todayStart);
   todayEnd.setDate(todayEnd.getDate() + 1);
 
-  if (isManager) {
+  // If manager explicitly requests "my-day" view, show engineer view with their data
+  const showTeamView = isManager && viewParam !== "my-day";
+
+  if (showTeamView) {
     // ── Manager View ──────────────────────────────────────────────────
     const [flaggedTasks, overdueTasks, teamMembers, todayTimeEntries, plans] =
       await Promise.all([
