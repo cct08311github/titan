@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Sun, CheckSquare, Clock, X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { Sun, CheckSquare, Clock, Search, Keyboard, X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TOUR_KEY = "titan_guided_tour_completed";
@@ -48,6 +48,24 @@ const STEPS = [
     icon: Clock,
     color: "text-green-500",
     bgColor: "bg-green-50 dark:bg-green-950/30",
+  },
+  {
+    id: "quick-search",
+    title: "快速搜尋一切",
+    description: "按下 ⌘K（或 Ctrl+K）隨時開啟搜尋面板，快速找到頁面、任務、文件和使用者。也可以用 G+字母組合鍵直接跳轉頁面。",
+    tip: "試試按 ⌘K 搜尋「看板」，或按 G 再按 K 直接跳轉到看板。",
+    icon: Search,
+    color: "text-purple-500",
+    bgColor: "bg-purple-50 dark:bg-purple-950/30",
+  },
+  {
+    id: "keyboard-help",
+    title: "快捷鍵隨手查",
+    description: "按下 ? 鍵可以隨時查看所有鍵盤快捷鍵。熟練快捷鍵能大幅提升操作效率。",
+    tip: "按 ? 打開快捷鍵說明。可在設定頁重新啟動導覽。",
+    icon: Keyboard,
+    color: "text-rose-500",
+    bgColor: "bg-rose-50 dark:bg-rose-950/30",
   },
 ];
 
