@@ -7,6 +7,8 @@ import { requireAuth } from "@/lib/rbac";
 import { validateBody } from "@/lib/validate";
 import { createKpiAchievementSchema } from "@/validators/kpi-validators";
 import { hasMinimumRole } from "@/lib/auth/permissions";
+import { AuditService } from "@/services/audit-service";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/kpi/:id/achievement — 取得填報歷史
@@ -121,6 +123,20 @@ export const POST = withAuth(async (
       data: { actual: latestActual },
     });
   }
+
+  // Banking compliance: audit trail for KPI achievement changes
+  const auditService = new AuditService(prisma);
+  auditService.log({
+    userId: session.user.id,
+    action: "UPSERT_KPI_ACHIEVEMENT",
+    module: "KPI",
+    resourceType: "KPIAchievement",
+    resourceId: id,
+    detail: `KPI achievement reported: period=${period}, value=${actualValue}`,
+    metadata: { period, actualValue, note: note || null },
+  }).catch((err) => {
+    logger.error({ err, kpiId: id, period }, "[kpi] Audit log write failed for achievement");
+  });
 
   return success(achievement, 201);
 });

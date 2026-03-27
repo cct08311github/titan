@@ -37,6 +37,12 @@ export const PUT = withAuth(async (
     throw new ForbiddenError("只能修改自己的時間記錄");
   }
 
+  // Banking compliance: approved entries are immutable (only ADMIN can override)
+  const approvalStatus = (existing as Record<string, unknown>).approvalStatus as string | undefined;
+  if (approvalStatus === "APPROVED" && callerRole !== "ADMIN") {
+    throw new ForbiddenError("已核准的工時記錄不可修改。如需更正，請聯繫管理員撤回核准。");
+  }
+
   // T-6: Auto-lock check — entries created more than 7 days ago are locked
   const createdAt = new Date(existing.createdAt);
   const daysSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
@@ -148,6 +154,12 @@ export const DELETE = withAuth(async (
   // ADMIN can delete any entry.
   if (existing.userId !== callerId && deleterRole !== "ADMIN") {
     throw new ForbiddenError("只能刪除自己的時間記錄");
+  }
+
+  // Banking compliance: approved entries cannot be deleted (only ADMIN can override)
+  const delApprovalStatus = (existing as Record<string, unknown>).approvalStatus as string | undefined;
+  if (delApprovalStatus === "APPROVED" && deleterRole !== "ADMIN") {
+    throw new ForbiddenError("已核准的工時記錄不可刪除。如需更正，請聯繫管理員撤回核准。");
   }
 
   // T-6: Auto-lock check + manual lock — only ADMIN bypasses
