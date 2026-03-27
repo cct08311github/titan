@@ -871,6 +871,13 @@ model KnowledgeSpace {
   id          String   @id @default(cuid())
   name        String
   description String?
+  // Missing fields (Issue #1003)
+  slug        String?
+  icon        String?
+  color       String?
+  visibility  String   @default("TEAM")
+  sortOrder   Int      @default(0)
+  updatedBy   String?
   createdBy   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -880,6 +887,7 @@ model KnowledgeSpace {
   members    SpaceMember[]
   categories KnowledgeCategory[]
 
+  @@index([slug])
   @@map("knowledge_spaces")
 }
 
@@ -899,6 +907,19 @@ model Document {
   verifierId         String?
   verifiedAt         DateTime?
   verifyIntervalDays Int?
+  // Missing fields (Issue #1003)
+  categoryId         String?
+  summary            String?
+  pinned             Boolean        @default(false)
+  coverImage         String?
+  publishedVersion   Int?
+  publishedAt        DateTime?
+  publishedBy        String?
+  archivedAt         DateTime?
+  archivedBy         String?
+  wordCount          Int            @default(0)
+  readTimeMin        Int            @default(0)
+  visibility         String         @default("TEAM")
   // Retirement fields (Issue #987)
   replacedById       String?        // 替代文件 ID（RETIRED 時使用）
   createdAt          DateTime       @default(now())
