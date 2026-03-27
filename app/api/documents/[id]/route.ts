@@ -7,6 +7,7 @@ import { updateDocumentSchema } from "@/validators/document-validators";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { ValidationError } from "@/services/errors";
 import { getClientIp } from "@/lib/get-client-ip";
 
 const documentService = new DocumentService(prisma);
@@ -28,6 +29,18 @@ export const PUT = withAuth(async (
   const session = await requireAuth();
 
   const { id } = await context.params;
+
+  // Banking compliance: published/retired documents are immutable — require new version workflow
+  const existingDoc = await prisma.document.findUnique({
+    where: { id },
+    select: { status: true },
+  });
+  if (existingDoc && (existingDoc.status === "PUBLISHED" || existingDoc.status === "RETIRED")) {
+    throw new ValidationError(
+      "已發布或已退役的文件不可直接編輯。請建立新版本或先將文件退回草稿狀態。"
+    );
+  }
+
   const raw = await req.json();
   const { title, content, parentId } = validateBody(updateDocumentSchema, raw);
 

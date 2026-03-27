@@ -10,6 +10,8 @@ import { success, error } from "@/lib/api-response";
 import { revokeRefreshToken, revokeAllRefreshTokens } from "@/lib/auth/jwt";
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
+import { AuditService } from "@/services/audit-service";
 
 export async function POST(req: NextRequest) {
   let body: { refreshToken?: string } = {};
@@ -32,6 +34,22 @@ export async function POST(req: NextRequest) {
 
   if (userId) {
     logger.info({ userId }, "[auth] User logged out");
+
+    // Banking compliance: audit trail for logout events
+    const auditService = new AuditService(prisma);
+    auditService.log({
+      userId,
+      action: "LOGOUT",
+      module: "AUTH",
+      resourceType: "Session",
+      detail: "User logged out",
+      ipAddress:
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+        req.headers.get("x-real-ip") ||
+        null,
+    }).catch((err) => {
+      logger.error({ err, userId }, "[auth] Audit log write failed for logout");
+    });
   }
 
   return success({ message: "已登出" });

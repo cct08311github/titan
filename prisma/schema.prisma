@@ -84,7 +84,8 @@ model PasswordHistory {
   hash      String   // bcrypt hash of the previous password
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Banking compliance: password history retained even if user suspended — prevents audit trail loss
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("password_history")
