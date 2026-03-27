@@ -9,6 +9,7 @@ interface Notification {
   id: string;
   type: string;
   title: string;
+  message?: string | null;
   body?: string | null;
   isRead: boolean;
   createdAt: string;
