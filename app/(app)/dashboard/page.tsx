@@ -548,8 +548,13 @@ export default function DashboardPage() {
     fetchMyDay(tab);
   };
 
-  const greeting = getGreeting();
+  const [greeting, setGreeting] = useState("");
   const userName = session?.user?.name ?? "";
+
+  // Set greeting on client only to avoid hydration mismatch
+  useEffect(() => {
+    setGreeting(getGreeting());
+  }, []);
 
   const subtitle = activeTab === "team"
     ? "團隊全局 — 今日需關注事項"
