@@ -64,6 +64,10 @@ model User {
   createdRecurringRules    RecurringRule[]       @relation("RecurringRuleCreator")
   createdSpaces            KnowledgeSpace[]     @relation("SpaceCreator")
   verifiedDocuments        Document[]           @relation("DocVerifier")
+  createdReadingLists      ReadingList[]         @relation("ReadingListCreator")
+  readingListAssignments   ReadingListAssignment[] @relation("ReadingListAssignee")
+  readingListAssigned      ReadingListAssignment[] @relation("ReadingListAssigner")
+  readingListItemReads     ReadingListItemRead[]   @relation("ReadingListItemReads")
   spaceMemberships         SpaceMember[]        @relation("SpaceMemberships")
   docAttachments           DocumentAttachment[] @relation("DocAttachmentUploader")
   docComments              DocumentComment[]    @relation("DocCommentAuthor")
@@ -900,20 +904,22 @@ model Document {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  space        KnowledgeSpace?      @relation(fields: [spaceId], references: [id])
-  parent       Document?            @relation("DocTree", fields: [parentId], references: [id])
-  children     Document[]           @relation("DocTree")
-  replacedBy   Document?            @relation("DocReplacement", fields: [replacedById], references: [id])
-  replacedDocs Document[]           @relation("DocReplacement")
-  creator      User                 @relation("DocCreator", fields: [createdBy], references: [id])
-  updater      User                 @relation("DocUpdater", fields: [updatedBy], references: [id])
-  verifier     User?                @relation("DocVerifier", fields: [verifierId], references: [id])
-  versions     DocumentVersion[]
-  attachments  DocumentAttachment[]
-  comments     DocumentComment[]
-  readLogs     DocumentReadLog[]
-  linksFrom    DocumentLink[]       @relation("DocLinksFrom")
-  linksTo      DocumentLink[]       @relation("DocLinksTo")
+  space            KnowledgeSpace?      @relation(fields: [spaceId], references: [id])
+  parent           Document?            @relation("DocTree", fields: [parentId], references: [id])
+  children         Document[]           @relation("DocTree")
+  replacedBy       Document?            @relation("DocReplacement", fields: [replacedById], references: [id])
+  replacedDocs     Document[]           @relation("DocReplacement")
+  creator          User                 @relation("DocCreator", fields: [createdBy], references: [id])
+  updater          User                 @relation("DocUpdater", fields: [updatedBy], references: [id])
+  verifier         User?                @relation("DocVerifier", fields: [verifierId], references: [id])
+  versions         DocumentVersion[]
+  attachments      DocumentAttachment[]
+  comments         DocumentComment[]
+  readLogs         DocumentReadLog[]
+  linksFrom        DocumentLink[]       @relation("DocLinksFrom")
+  linksTo          DocumentLink[]       @relation("DocLinksTo")
+  readingListItems ReadingListItem[]
+  readingListReads ReadingListItemRead[]
 
   @@index([spaceId])
   @@index([parentId])
@@ -1141,6 +1147,81 @@ model NotificationLog {
   @@index([notificationId])
   @@index([recipient])
   @@map("notification_logs")
+}
+
+// ═══════════════════════════════════════
+// 閱讀清單 (Issue #991)
+// ═══════════════════════════════════════
+
+model ReadingList {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  createdBy   String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User                  @relation("ReadingListCreator", fields: [createdBy], references: [id])
+  items       ReadingListItem[]
+  assignments ReadingListAssignment[]
+  itemReads   ReadingListItemRead[]
+
+  @@index([createdBy])
+  @@map("reading_lists")
+}
+
+model ReadingListItem {
+  id            String   @id @default(cuid())
+  readingListId String
+  documentId    String
+  sortOrder     Int      @default(0)
+  required      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  readingList ReadingList @relation(fields: [readingListId], references: [id], onDelete: Cascade)
+  document    Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([readingListId, documentId])
+  @@index([readingListId])
+  @@index([documentId])
+  @@map("reading_list_items")
+}
+
+model ReadingListAssignment {
+  id            String    @id @default(cuid())
+  readingListId String
+  userId        String
+  assignedBy    String
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  readingList ReadingList @relation(fields: [readingListId], references: [id], onDelete: Cascade)
+  user        User        @relation("ReadingListAssignee", fields: [userId], references: [id])
+  assigner    User        @relation("ReadingListAssigner", fields: [assignedBy], references: [id])
+
+  @@unique([readingListId, userId])
+  @@index([readingListId])
+  @@index([userId])
+  @@index([assignedBy])
+  @@map("reading_list_assignments")
+}
+
+/// 閱讀清單項目已讀紀錄
+model ReadingListItemRead {
+  id            String   @id @default(cuid())
+  readingListId String
+  documentId    String
+  userId        String
+  readAt        DateTime @default(now())
+
+  readingList ReadingList @relation(fields: [readingListId], references: [id], onDelete: Cascade)
+  document   Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User        @relation("ReadingListItemReads", fields: [userId], references: [id])
+
+  @@unique([readingListId, documentId, userId])
+  @@index([readingListId, userId])
+  @@map("reading_list_item_reads")
 }
 
 // ═══════════════════════════════════════
