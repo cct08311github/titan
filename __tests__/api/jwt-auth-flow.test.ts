@@ -7,6 +7,9 @@
  * Tests: refresh token rotation, revocation, bcrypt cost,
  * token payload, session TTL, logout flow.
  */
+import path from "path";
+
+const ROOT = process.cwd();
 
 const mockAuthFn = jest.fn();
 jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockAuthFn(...args) }));
@@ -234,7 +237,7 @@ describe("bcrypt cost factor", () => {
   it("user-service uses cost >= 12", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "/Users/openclaw/.openclaw/shared/projects/titan/services/user-service.ts",
+      path.resolve(ROOT, "services/user-service.ts"),
       "utf8"
     );
     const matches = content.match(/hash\([^,]+,\s*(\d+)\)/g) ?? [];
@@ -249,7 +252,7 @@ describe("bcrypt cost factor", () => {
   it("change-password uses cost >= 12", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "/Users/openclaw/.openclaw/shared/projects/titan/app/api/auth/change-password/route.ts",
+      path.resolve(ROOT, "app/api/auth/change-password/route.ts"),
       "utf8"
     );
     const matches = content.match(/hash\([^,]+,\s*(\d+)\)/g) ?? [];
@@ -270,20 +273,20 @@ describe("JWT token payload (auth.ts callbacks)", () => {
   it("auth.ts jwt callback sets id, role, and sessionId (no sensitive data)", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "/Users/openclaw/.openclaw/shared/projects/titan/auth.ts",
+      path.resolve(ROOT, "auth.ts"),
       "utf8"
     );
     expect(content).toContain("token.id = user.id");
     expect(content).toContain("token.role");
-    // Must NOT contain password in token
-    expect(content).not.toMatch(/token\.password/);
-    expect(content).not.toMatch(/token\.hash/);
+    // Must NOT store raw password or hash in token (passwordChangedAt is OK)
+    expect(content).not.toMatch(/token\.password\s*=/);
+    expect(content).not.toMatch(/token\.hash\s*=/);
   });
 
   it("session maxAge is 15 minutes", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "/Users/openclaw/.openclaw/shared/projects/titan/auth.ts",
+      path.resolve(ROOT, "auth.ts"),
       "utf8"
     );
     expect(content).toContain("15 * 60");
