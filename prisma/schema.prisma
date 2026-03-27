@@ -64,6 +64,10 @@ model User {
   createdRecurringRules    RecurringRule[]       @relation("RecurringRuleCreator")
   createdSpaces            KnowledgeSpace[]     @relation("SpaceCreator")
   verifiedDocuments        Document[]           @relation("DocVerifier")
+  spaceMemberships         SpaceMember[]        @relation("SpaceMemberships")
+  docAttachments           DocumentAttachment[] @relation("DocAttachmentUploader")
+  docComments              DocumentComment[]    @relation("DocCommentAuthor")
+  docReadLogs              DocumentReadLog[]    @relation("DocReadLogs")
 
   @@map("users")
 }
@@ -867,8 +871,10 @@ model KnowledgeSpace {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  creator   User       @relation("SpaceCreator", fields: [createdBy], references: [id])
-  documents Document[]
+  creator    User                @relation("SpaceCreator", fields: [createdBy], references: [id])
+  documents  Document[]
+  members    SpaceMember[]
+  categories KnowledgeCategory[]
 
   @@map("knowledge_spaces")
 }
@@ -894,15 +900,20 @@ model Document {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  space      KnowledgeSpace?   @relation(fields: [spaceId], references: [id])
-  parent     Document?         @relation("DocTree", fields: [parentId], references: [id])
-  children   Document[]        @relation("DocTree")
-  replacedBy Document?         @relation("DocReplacement", fields: [replacedById], references: [id])
-  replacedDocs Document[]      @relation("DocReplacement")
-  creator    User              @relation("DocCreator", fields: [createdBy], references: [id])
-  updater    User              @relation("DocUpdater", fields: [updatedBy], references: [id])
-  verifier   User?             @relation("DocVerifier", fields: [verifierId], references: [id])
-  versions   DocumentVersion[]
+  space        KnowledgeSpace?      @relation(fields: [spaceId], references: [id])
+  parent       Document?            @relation("DocTree", fields: [parentId], references: [id])
+  children     Document[]           @relation("DocTree")
+  replacedBy   Document?            @relation("DocReplacement", fields: [replacedById], references: [id])
+  replacedDocs Document[]           @relation("DocReplacement")
+  creator      User                 @relation("DocCreator", fields: [createdBy], references: [id])
+  updater      User                 @relation("DocUpdater", fields: [updatedBy], references: [id])
+  verifier     User?                @relation("DocVerifier", fields: [verifierId], references: [id])
+  versions     DocumentVersion[]
+  attachments  DocumentAttachment[]
+  comments     DocumentComment[]
+  readLogs     DocumentReadLog[]
+  linksFrom    DocumentLink[]       @relation("DocLinksFrom")
+  linksTo      DocumentLink[]       @relation("DocLinksTo")
 
   @@index([spaceId])
   @@index([parentId])
@@ -1130,4 +1141,122 @@ model NotificationLog {
   @@index([notificationId])
   @@index([recipient])
   @@map("notification_logs")
+}
+
+// ═══════════════════════════════════════
+// 知識庫擴展模型 (Issue #989)
+// ═══════════════════════════════════════
+
+enum SpaceRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+model SpaceMember {
+  id        String    @id @default(cuid())
+  userId    String
+  spaceId   String
+  role      SpaceRole @default(VIEWER)
+  createdAt DateTime  @default(now())
+
+  user  User           @relation("SpaceMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  space KnowledgeSpace @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, spaceId])
+  @@index([spaceId])
+  @@map("space_members")
+}
+
+model KnowledgeCategory {
+  id        String   @id @default(cuid())
+  spaceId   String
+  name      String
+  slug      String
+  parentId  String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  space    KnowledgeSpace      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  parent   KnowledgeCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children KnowledgeCategory[] @relation("CategoryTree")
+
+  @@unique([spaceId, slug])
+  @@index([spaceId])
+  @@index([parentId])
+  @@map("knowledge_categories")
+}
+
+model DocumentAttachment {
+  id         String   @id @default(cuid())
+  documentId String
+  fileName   String
+  fileUrl    String
+  fileSize   Int      // bytes
+  mimeType   String
+  uploaderId String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploader User     @relation("DocAttachmentUploader", fields: [uploaderId], references: [id])
+
+  @@index([documentId])
+  @@index([uploaderId])
+  @@map("document_attachments")
+}
+
+model DocumentComment {
+  id         String   @id @default(cuid())
+  documentId String
+  authorId   String
+  content    String
+  parentId   String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  document Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author   User             @relation("DocCommentAuthor", fields: [authorId], references: [id])
+  parent   DocumentComment? @relation("CommentThread", fields: [parentId], references: [id])
+  replies  DocumentComment[] @relation("CommentThread")
+
+  @@index([documentId])
+  @@index([authorId])
+  @@index([parentId])
+  @@map("document_comments")
+}
+
+model DocumentReadLog {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  readAt     DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation("DocReadLogs", fields: [userId], references: [id])
+
+  @@index([documentId])
+  @@index([userId])
+  @@map("document_read_logs")
+}
+
+enum LinkType {
+  REFERENCE
+  RELATED
+}
+
+model DocumentLink {
+  id          String   @id @default(cuid())
+  sourceDocId String
+  targetDocId String
+  linkType    LinkType @default(REFERENCE)
+  createdAt   DateTime @default(now())
+
+  sourceDoc Document @relation("DocLinksFrom", fields: [sourceDocId], references: [id], onDelete: Cascade)
+  targetDoc Document @relation("DocLinksTo", fields: [targetDocId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceDocId, targetDocId])
+  @@index([sourceDocId])
+  @@index([targetDocId])
+  @@map("document_links")
 }
