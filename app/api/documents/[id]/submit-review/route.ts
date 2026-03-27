@@ -14,20 +14,14 @@ export const POST = withAuth(async (
 
   const doc = await prisma.document.findUnique({ where: { id } });
   if (!doc) throw new NotFoundError(`Document not found: ${id}`);
-  if (doc.status === "PUBLISHED") {
-    throw new ValidationError("文件已處於發布狀態");
-  }
-  if (doc.status === "ARCHIVED") {
-    throw new ValidationError("已歸檔文件無法直接發布，請先解除歸檔");
-  }
-  if (doc.status === "RETIRED") {
-    throw new ValidationError("已退役文件無法發布");
+  if (doc.status !== "DRAFT") {
+    throw new ValidationError("僅草稿狀態的文件可提交審核");
   }
 
   const updated = await prisma.document.update({
     where: { id },
     data: {
-      status: "PUBLISHED",
+      status: "IN_REVIEW",
       updatedBy: session.user.id,
     },
     include: {

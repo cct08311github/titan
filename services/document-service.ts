@@ -56,6 +56,7 @@ export class DocumentService {
         space: { select: { id: true, name: true } },
         parent: { select: { id: true, title: true, slug: true } },
         children: { select: { id: true, title: true, slug: true } },
+        replacedBy: { select: { id: true, title: true, slug: true } },
         versions: {
           include: { creator: { select: { id: true, name: true } } },
           orderBy: { version: "desc" },

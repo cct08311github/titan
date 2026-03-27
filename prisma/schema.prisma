@@ -853,8 +853,10 @@ model RefreshToken {
 
 enum DocumentStatus {
   DRAFT
+  IN_REVIEW   // 文件提交審核，發布前需審核通過
   PUBLISHED
   ARCHIVED
+  RETIRED     // 文件已過時，被新版本取代
 }
 
 model KnowledgeSpace {
@@ -887,16 +889,20 @@ model Document {
   verifierId         String?
   verifiedAt         DateTime?
   verifyIntervalDays Int?
+  // Retirement fields (Issue #987)
+  replacedById       String?        // 替代文件 ID（RETIRED 時使用）
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  space    KnowledgeSpace?   @relation(fields: [spaceId], references: [id])
-  parent   Document?         @relation("DocTree", fields: [parentId], references: [id])
-  children Document[]        @relation("DocTree")
-  creator  User              @relation("DocCreator", fields: [createdBy], references: [id])
-  updater  User              @relation("DocUpdater", fields: [updatedBy], references: [id])
-  verifier User?             @relation("DocVerifier", fields: [verifierId], references: [id])
-  versions DocumentVersion[]
+  space      KnowledgeSpace?   @relation(fields: [spaceId], references: [id])
+  parent     Document?         @relation("DocTree", fields: [parentId], references: [id])
+  children   Document[]        @relation("DocTree")
+  replacedBy Document?         @relation("DocReplacement", fields: [replacedById], references: [id])
+  replacedDocs Document[]      @relation("DocReplacement")
+  creator    User              @relation("DocCreator", fields: [createdBy], references: [id])
+  updater    User              @relation("DocUpdater", fields: [updatedBy], references: [id])
+  verifier   User?             @relation("DocVerifier", fields: [verifierId], references: [id])
+  versions   DocumentVersion[]
 
   @@index([spaceId])
   @@index([parentId])

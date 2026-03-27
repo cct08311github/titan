@@ -30,7 +30,7 @@ type DocDetail = {
   title: string;
   content: string;
   version: number;
-  status: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  status: "DRAFT" | "IN_REVIEW" | "PUBLISHED" | "ARCHIVED" | "RETIRED";
   parentId: string | null;
   spaceId: string | null;
   slug: string;
@@ -39,6 +39,7 @@ type DocDetail = {
   verifier: { id: string; name: string } | null;
   verifiedAt: string | null;
   verifyIntervalDays: number | null;
+  replacedBy: { id: string; title: string; slug: string } | null;
   space: { id: string; name: string } | null;
   updatedAt: string;
   versions: DocVersion[];
@@ -51,8 +52,10 @@ const isOutlineConfigured = Boolean(OUTLINE_URL);
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "草稿", className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" },
+  IN_REVIEW: { label: "審核中", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" },
   PUBLISHED: { label: "已發布", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" },
   ARCHIVED: { label: "已歸檔", className: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
+  RETIRED: { label: "已退役", className: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 line-through" },
 };
 
 const TEMPLATE_OPTIONS = [
@@ -152,6 +155,32 @@ export default function KnowledgePage() {
   async function publishDoc() {
     if (!selectedId) return;
     const res = await fetch(`/api/documents/${selectedId}/publish`, { method: "POST" });
+    if (res.ok) {
+      const body = await res.json();
+      const updated = extractData<DocDetail>(body);
+      setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
+      loadDocs();
+    }
+  }
+
+  async function submitForReview() {
+    if (!selectedId) return;
+    const res = await fetch(`/api/documents/${selectedId}/submit-review`, { method: "POST" });
+    if (res.ok) {
+      const body = await res.json();
+      const updated = extractData<DocDetail>(body);
+      setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
+      loadDocs();
+    }
+  }
+
+  async function retireDoc() {
+    if (!selectedId || !confirm("確定將此文件標記為退役？")) return;
+    const res = await fetch(`/api/documents/${selectedId}/retire`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
     if (res.ok) {
       const body = await res.json();
       const updated = extractData<DocDetail>(body);
@@ -464,8 +493,19 @@ export default function KnowledgePage() {
                       儲存
                     </button>
 
-                    {/* Publish button */}
+                    {/* Submit for review button (DRAFT only) */}
                     {docDetail.status === "DRAFT" && (
+                      <button
+                        onClick={submitForReview}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                      >
+                        <Upload className="h-3 w-3" />
+                        提交審核
+                      </button>
+                    )}
+
+                    {/* Publish button (DRAFT or IN_REVIEW) */}
+                    {(docDetail.status === "DRAFT" || docDetail.status === "IN_REVIEW") && (
                       <button
                         onClick={publishDoc}
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors"
@@ -476,13 +516,24 @@ export default function KnowledgePage() {
                     )}
 
                     {/* Archive button */}
-                    {docDetail.status !== "ARCHIVED" && (
+                    {docDetail.status !== "ARCHIVED" && docDetail.status !== "RETIRED" && (
                       <button
                         onClick={archiveDoc}
                         className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md text-muted-foreground hover:bg-accent transition-colors"
                       >
                         <Archive className="h-3 w-3" />
                         歸檔
+                      </button>
+                    )}
+
+                    {/* Retire button (PUBLISHED or ARCHIVED) */}
+                    {(docDetail.status === "PUBLISHED" || docDetail.status === "ARCHIVED") && (
+                      <button
+                        onClick={retireDoc}
+                        className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <Archive className="h-3 w-3" />
+                        退役
                       </button>
                     )}
                   </div>
@@ -504,6 +555,28 @@ export default function KnowledgePage() {
                   )}
                   <span className="text-xs text-muted-foreground/60 ml-auto">v{docDetail.version}</span>
                 </div>
+
+                {/* Retired replacement notice */}
+                {docDetail.status === "RETIRED" && (
+                  <div className="px-4 py-2 bg-red-50 dark:bg-red-900/10 border-b border-red-200 dark:border-red-900/30 flex items-center gap-2">
+                    <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+                    <span className="text-xs text-red-700 dark:text-red-400">
+                      此文件已退役
+                      {docDetail.replacedBy && (
+                        <>
+                          ，已由{" "}
+                          <button
+                            onClick={() => setSelectedId(docDetail.replacedBy!.id)}
+                            className="font-medium underline hover:no-underline"
+                          >
+                            {docDetail.replacedBy.title}
+                          </button>
+                          {" "}取代
+                        </>
+                      )}
+                    </span>
+                  </div>
+                )}
 
                 {/* Diff view or editor */}
                 {diffVersion ? (
