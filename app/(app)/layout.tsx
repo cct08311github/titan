@@ -4,6 +4,7 @@ import { CommandPalette } from "@/app/components/command-palette";
 import { FeedbackButton } from "@/app/components/feedback-button";
 import { NextAuthSessionProvider } from "@/app/components/session-provider";
 import { PasswordChangeGuard } from "@/app/components/password-change-guard";
+import { Toaster } from "sonner";
 // GlobalAlertBanner removed — alerts now consolidated into NotificationBell
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         <CommandPalette />
         <FeedbackButton />
+        <Toaster richColors position="top-right" />
       </PasswordChangeGuard>
     </NextAuthSessionProvider>
   );

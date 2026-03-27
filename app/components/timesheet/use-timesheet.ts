@@ -253,7 +253,7 @@ export function useTimesheet(userFilter?: string) {
 
   // ─── Copy Previous Week ─────────────────────────────────────────────────────
 
-  async function copyPreviousWeek() {
+  async function copyPreviousWeek(): Promise<{ ok: boolean; count: number }> {
     const prevMonday = new Date(week.weekStart);
     prevMonday.setDate(prevMonday.getDate() - 7);
     const res = await fetch("/api/time-entries/copy-week", {
@@ -264,11 +264,14 @@ export function useTimesheet(userFilter?: string) {
         targetWeekStart: formatLocalDate(week.weekStart),
       }),
     });
+    let count = 0;
     if (res.ok) {
+      const body = await res.json().catch(() => ({}));
+      count = body?.data?.copied ?? 0;
       await loadEntries();
       loadStats();
     }
-    return res.ok;
+    return { ok: res.ok, count };
   }
 
   // ─── Timer wrappers (preserve original interface) ───────────────────────────
