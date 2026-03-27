@@ -205,6 +205,7 @@ model AnnualPlan {
   year               Int
   title              String
   description        String?
+  vision             String?   // 年度願景/使命描述
   implementationPlan String?   // 執行計畫說明（Markdown）
   progressPct        Float     @default(0)
   copiedFromYear     Int?
@@ -237,8 +238,9 @@ model MonthlyGoal {
   month        Int        // 1–12
   title        String
   description  String?
-  assigneeId   String?    // 負責人
-  status       GoalStatus @default(NOT_STARTED)
+  assigneeId         String?    // 負責人
+  retrospectiveNote  String?    // 月底復盤筆記
+  status             GoalStatus @default(NOT_STARTED)
   progressPct  Float      @default(0)
   completedAt  DateTime?  // 標記完成時間
   createdAt    DateTime   @default(now())
@@ -855,8 +857,10 @@ model RefreshToken {
 
 enum DocumentStatus {
   DRAFT
+  IN_REVIEW   // 文件提交審核，發布前需審核通過
   PUBLISHED
   ARCHIVED
+  RETIRED     // 文件已過時，被新版本取代
 }
 
 model KnowledgeSpace {
@@ -889,18 +893,22 @@ model Document {
   verifierId         String?
   verifiedAt         DateTime?
   verifyIntervalDays Int?
+  // Retirement fields (Issue #987)
+  replacedById       String?        // 替代文件 ID（RETIRED 時使用）
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  space    KnowledgeSpace?   @relation(fields: [spaceId], references: [id])
-  parent   Document?         @relation("DocTree", fields: [parentId], references: [id])
-  children Document[]        @relation("DocTree")
-  creator  User              @relation("DocCreator", fields: [createdBy], references: [id])
-  updater  User              @relation("DocUpdater", fields: [updatedBy], references: [id])
-  verifier          User?             @relation("DocVerifier", fields: [verifierId], references: [id])
-  versions          DocumentVersion[]
-  readingListItems  ReadingListItem[]
-  readingListReads  ReadingListItemRead[]
+  space            KnowledgeSpace?      @relation(fields: [spaceId], references: [id])
+  parent           Document?            @relation("DocTree", fields: [parentId], references: [id])
+  children         Document[]           @relation("DocTree")
+  replacedBy       Document?            @relation("DocReplacement", fields: [replacedById], references: [id])
+  replacedDocs     Document[]           @relation("DocReplacement")
+  creator          User                 @relation("DocCreator", fields: [createdBy], references: [id])
+  updater          User                 @relation("DocUpdater", fields: [updatedBy], references: [id])
+  verifier         User?                @relation("DocVerifier", fields: [verifierId], references: [id])
+  versions         DocumentVersion[]
+  readingListItems ReadingListItem[]
+  readingListReads ReadingListItemRead[]
 
   @@index([spaceId])
   @@index([parentId])

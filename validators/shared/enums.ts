@@ -58,6 +58,16 @@ export const GoalStatusEnum = z.enum([
   "CANCELLED",
 ]);
 
+// ── Document ────────────────────────────────────────────────────────────────
+
+export const DocumentStatusEnum = z.enum([
+  "DRAFT",
+  "IN_REVIEW",
+  "PUBLISHED",
+  "ARCHIVED",
+  "RETIRED",
+]);
+
 // ── KPI ─────────────────────────────────────────────────────────────────────
 
 export const KpiStatusEnum = z.enum([
@@ -118,3 +128,4 @@ export type KpiVisibility = z.infer<typeof KpiVisibilityEnum>;
 export type CMChangeType = z.infer<typeof CMChangeTypeEnum>;
 export type RiskLevel = z.infer<typeof RiskLevelEnum>;
 export type ChangeStatus = z.infer<typeof ChangeStatusEnum>;
+export type DocumentStatus = z.infer<typeof DocumentStatusEnum>;

@@ -81,6 +81,7 @@ export const PATCH = withManager(async (
     where: { id },
     data: {
       ...(body.title !== undefined && { title: body.title }),
+      ...(body.vision !== undefined && { vision: body.vision }),
       ...(body.description !== undefined && { description: body.description }),
       ...(body.implementationPlan !== undefined && { implementationPlan: body.implementationPlan }),
       ...(body.progressPct !== undefined && { progressPct: body.progressPct }),
