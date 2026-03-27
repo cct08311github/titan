@@ -26,6 +26,7 @@ export interface MilestoneInput {
 export interface CreatePlanInput {
   year: number;
   title: string;
+  vision?: string | null;
   description?: string | null;
   implementationPlan?: string | null;
   createdBy: string;
@@ -34,6 +35,7 @@ export interface CreatePlanInput {
 
 export interface UpdatePlanInput {
   title?: string;
+  vision?: string | null;
   description?: string | null;
   implementationPlan?: string | null;
   progressPct?: number;
@@ -97,6 +99,7 @@ export class PlanService {
       data: {
         year: input.year,
         title: input.title,
+        vision: input.vision ?? null,
         description: input.description ?? null,
         implementationPlan: input.implementationPlan ?? null,
         createdBy: input.createdBy,
@@ -125,6 +128,7 @@ export class PlanService {
 
     const updates: Record<string, unknown> = {};
     if (input.title !== undefined) updates.title = input.title;
+    if (input.vision !== undefined) updates.vision = input.vision;
     if (input.description !== undefined) updates.description = input.description;
     if (input.implementationPlan !== undefined) updates.implementationPlan = input.implementationPlan;
     if (input.progressPct !== undefined) updates.progressPct = input.progressPct;
@@ -174,6 +178,7 @@ export class PlanService {
       data: {
         year: targetYear,
         title: source.title,
+        vision: source.vision ?? null,
         description: source.description ?? null,
         implementationPlan: source.implementationPlan ?? null,
         copiedFromYear: source.year,

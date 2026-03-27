@@ -148,7 +148,7 @@ describe("Dashboard Page", () => {
     setSession("MANAGER");
     mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA } as Response);
     await act(async () => { render(<DashboardPage />); });
-    await waitFor(() => expect(screen.getByText(/團隊全局/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText(/團隊全局/).length).toBeGreaterThan(0));
   });
 
   it("shows 團隊健康快照 section for Manager", async () => {

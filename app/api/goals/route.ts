@@ -30,7 +30,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
 export const POST = withManager(async (req: NextRequest) => {
   const raw = await req.json();
-  const { annualPlanId, month, title, description, assigneeId } = validateBody(createGoalSchema, raw);
+  const { annualPlanId, month, title, description, assigneeId, retrospectiveNote } = validateBody(createGoalSchema, raw);
 
   const plan = await prisma.annualPlan.findUnique({ where: { id: annualPlanId } });
   if (plan?.archivedAt) {
@@ -45,7 +45,7 @@ export const POST = withManager(async (req: NextRequest) => {
   }
 
   const goal = await prisma.monthlyGoal.create({
-    data: { annualPlanId, month, title, description: description || null, assigneeId: assigneeId || null },
+    data: { annualPlanId, month, title, description: description || null, assigneeId: assigneeId || null, retrospectiveNote: retrospectiveNote || null },
     include: {
       annualPlan: { select: { id: true, title: true, year: true } },
       assignee: { select: { id: true, name: true, avatar: true } },
