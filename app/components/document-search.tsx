@@ -16,7 +16,7 @@ type SearchResult = {
 };
 
 type DocumentSearchProps = {
-  onSelect: (id: string) => void;
+  onSelect: (id: string, title?: string) => void;
 };
 
 const SEARCH_HISTORY_KEY = "titan-doc-search-history";
@@ -130,8 +130,8 @@ export function DocumentSearch({ onSelect }: DocumentSearchProps) {
     timer.current = setTimeout(() => search(v), 300);
   }
 
-  function handleSelect(id: string) {
-    onSelect(id);
+  function handleSelect(id: string, title?: string) {
+    onSelect(id, title);
     setOpen(false);
     setShowHistory(false);
     setQuery("");
@@ -197,7 +197,7 @@ export function DocumentSearch({ onSelect }: DocumentSearchProps) {
           {results.map((r) => (
             <button
               key={r.id}
-              onClick={() => handleSelect(r.id)}
+              onClick={() => handleSelect(r.id, r.title)}
               className="w-full flex items-start gap-3 px-4 py-3 hover:bg-accent transition-colors text-left"
             >
               <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />

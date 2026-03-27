@@ -47,16 +47,18 @@ export function TaskDocumentSection({ taskId }: TaskDocumentSectionProps) {
     loadDocs();
   }, [loadDocs]);
 
-  async function handleAddDocument(documentId: string) {
-    // Search the document title from search results or use a placeholder
-    // We need to get the title — fetch document details
-    const searchRes = await fetch(`/api/documents/search?q=&id=${encodeURIComponent(documentId)}`);
-    let title = "未知文件";
-    if (searchRes.ok) {
-      const body = await searchRes.json();
-      const items = extractItems<{ id: string; title: string }>(body);
-      const found = items.find((i) => i.id === documentId);
-      if (found) title = found.title;
+  async function handleAddDocument(documentId: string, docTitle?: string) {
+    // Use provided title or fetch from document API
+    let title = docTitle || "未知文件";
+    if (!docTitle) {
+      try {
+        const docRes = await fetch(`/api/documents/${encodeURIComponent(documentId)}`);
+        if (docRes.ok) {
+          const body = await docRes.json();
+          const doc = body?.data ?? body;
+          title = doc?.title || "未知文件";
+        }
+      } catch { /* fallback to 未知文件 */ }
     }
 
     const res = await fetch(`/api/tasks/${taskId}/documents`, {
