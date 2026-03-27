@@ -30,10 +30,7 @@ export default function TimesheetPage() {
   const isManager = session?.user?.role === "MANAGER";
   const [userFilter, setUserFilter] = useState("");
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 768) return "list";
-    return "grid";
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [calendarDate, setCalendarDate] = useState<Date>(() => new Date());
   const [summaryTab, setSummaryTab] = useState<SummaryTab>("timesheet");
   const [pivotData, setPivotData] = useState<TimesheetPivotData | null>(null);
@@ -83,16 +80,17 @@ export default function TimesheetPage() {
       .catch(() => {});
   }, [isManager]);
 
-  // Auto-switch to list on mobile resize
+  // Auto-switch to list on mobile (initial + resize)
   useEffect(() => {
-    function handleResize() {
-      if (window.innerWidth < 768 && viewMode === "grid") {
+    function checkMobile() {
+      if (window.innerWidth < 768) {
         setViewMode("list");
       }
     }
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, [viewMode]);
+    checkMobile(); // check on mount
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   return (
     <div className="flex flex-col h-full gap-4">
