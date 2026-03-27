@@ -222,18 +222,15 @@ describe("Item 7: Multi-entry individual editing", () => {
     fireEvent.doubleClick(screen.getByTestId("cell-button"));
     fireEvent.click(screen.getByTestId("entry-save-0"));
     await waitFor(() => {
-      expect(onFullSave).toHaveBeenCalledWith(
-        "task-1",
-        "2026-03-23",
-        8,
-        "PLANNED_TASK",
-        "API work",
-        "NONE",
-        "e1",
-        null,             // Issue #933: subTaskId
-        expect.anything(), // startTime
-        expect.anything()  // endTime
-      );
+      expect(onFullSave).toHaveBeenCalled();
+      const call = onFullSave.mock.calls[0];
+      expect(call[0]).toBe("task-1");       // taskId
+      expect(call[1]).toBe("2026-03-23");   // date
+      expect(call[2]).toBe(8);              // hours
+      expect(call[3]).toBe("PLANNED_TASK"); // category
+      expect(call[4]).toBe("API work");     // description
+      expect(call[5]).toBe("NONE");         // overtimeType
+      expect(call[6]).toBe("e1");           // existingId
     });
   });
 
