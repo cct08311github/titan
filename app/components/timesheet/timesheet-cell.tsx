@@ -45,7 +45,9 @@ type TimesheetCellProps = {
     description: string,
     overtimeType: OvertimeType,
     existingId?: string,
-    subTaskId?: string | null              // Issue #933
+    subTaskId?: string | null,             // Issue #933
+    startTime?: string | null,             // Issue #1008
+    endTime?: string | null                // Issue #1008
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onNavigate?: (direction: "next" | "prev" | "up" | "down") => void;
@@ -60,8 +62,20 @@ type EntryEditState = {
   description: string;
   overtimeType: OvertimeType;
   subTaskId: string;                       // Issue #933: "" means no subtask
+  startTime: string;                       // Issue #1008
+  endTime: string;                         // Issue #1008
   saving: boolean;
 };
+
+// Issue #1008: auto-calculate hours from start/end time
+function calculateHours(startTime: string, endTime: string): number | null {
+  if (!startTime || !endTime) return null;
+  const [sh, sm] = startTime.split(":").map(Number);
+  const [eh, em] = endTime.split(":").map(Number);
+  const diff = (eh * 60 + em) - (sh * 60 + sm);
+  if (diff <= 0) return null; // invalid range
+  return Math.round(diff / 30) * 0.5; // round to nearest 0.5h
+}
 
 function initEditState(entry: TimeEntry): EntryEditState {
   return {
@@ -70,6 +84,8 @@ function initEditState(entry: TimeEntry): EntryEditState {
     description: entry.description ?? "",
     overtimeType: (entry.overtimeType as OvertimeType) ?? "NONE",
     subTaskId: entry.subTaskId ?? "",      // Issue #933
+    startTime: entry.startTime ?? "",      // Issue #1008
+    endTime: entry.endTime ?? "",          // Issue #1008
     saving: false,
   };
 }
@@ -137,6 +153,8 @@ export function TimesheetCell({
     description: "",
     overtimeType: "NONE",
     subTaskId: "",
+    startTime: "",
+    endTime: "",
     saving: false,
   });
 
@@ -259,7 +277,9 @@ export function TimesheetCell({
   async function handleEntrySave(entryId: string) {
     const state = entryStates.get(entryId);
     if (!state) return;
-    const h = parseFloat(state.hours);
+    // Issue #1008: use auto-calculated hours when start+end are set
+    const autoH = calculateHours(state.startTime, state.endTime);
+    const h = autoH ?? parseFloat(state.hours);
     if (isNaN(h) || h < 0) return;
     setEntryStates((prev) => {
       const next = new Map(prev);
@@ -267,7 +287,7 @@ export function TimesheetCell({
       return next;
     });
     try {
-      await onFullSave(taskId, date, h, state.category, state.description, state.overtimeType, entryId, state.subTaskId || null);
+      await onFullSave(taskId, date, h, state.category, state.description, state.overtimeType, entryId, state.subTaskId || null, state.startTime || null, state.endTime || null);
     } finally {
       setEntryStates((prev) => {
         const next = new Map(prev);
@@ -313,18 +333,27 @@ export function TimesheetCell({
     setEntryStates((prev) => {
       const next = new Map(prev);
       const state = next.get(entryId);
-      if (state) next.set(entryId, { ...state, [field]: value });
+      if (!state) return next;
+      const updated = { ...state, [field]: value };
+      // Issue #1008: auto-calculate hours when start/end time change
+      if (field === "startTime" || field === "endTime") {
+        const autoH = calculateHours(updated.startTime, updated.endTime);
+        if (autoH !== null) updated.hours = safeFixed(autoH, 1);
+      }
+      next.set(entryId, updated);
       return next;
     });
   }
 
   // New entry save
   async function handleNewEntrySave() {
-    const h = parseFloat(newEntryState.hours);
+    // Issue #1008: use auto-calculated hours when start+end are set
+    const autoH = calculateHours(newEntryState.startTime, newEntryState.endTime);
+    const h = autoH ?? parseFloat(newEntryState.hours);
     if (isNaN(h) || h <= 0) return;
     setNewEntryState((s) => ({ ...s, saving: true }));
     try {
-      await onFullSave(taskId, date, h, newEntryState.category, newEntryState.description, newEntryState.overtimeType, undefined, newEntryState.subTaskId || null);
+      await onFullSave(taskId, date, h, newEntryState.category, newEntryState.description, newEntryState.overtimeType, undefined, newEntryState.subTaskId || null, newEntryState.startTime || null, newEntryState.endTime || null);
       setShowNewEntry(false);
       setNewEntryState({
         hours: "",
@@ -332,6 +361,8 @@ export function TimesheetCell({
         description: "",
         overtimeType: "NONE",
         subTaskId: "",
+        startTime: "",
+        endTime: "",
         saving: false,
       });
     } finally {
@@ -435,24 +466,61 @@ export function TimesheetCell({
                   </div>
                 )}
                 <div className="space-y-2">
+                  {/* Issue #1008: Start/End time inputs */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">開始時間</label>
+                      <input
+                        type="time"
+                        autoFocus={idx === 0}
+                        value={state.startTime}
+                        onChange={(ev) => !isLocked && updateEntryField(e.id, "startTime", ev.target.value)}
+                        readOnly={isLocked}
+                        className={cn(
+                          "w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+                          isLocked && "opacity-60 cursor-not-allowed"
+                        )}
+                        data-testid={`entry-start-time-${idx}`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-muted-foreground mb-1">結束時間</label>
+                      <input
+                        type="time"
+                        value={state.endTime}
+                        onChange={(ev) => !isLocked && updateEntryField(e.id, "endTime", ev.target.value)}
+                        readOnly={isLocked}
+                        className={cn(
+                          "w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+                          isLocked && "opacity-60 cursor-not-allowed"
+                        )}
+                        data-testid={`entry-end-time-${idx}`}
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-xs text-muted-foreground mb-1">工時（小時）</label>
+                    <label className="block text-xs text-muted-foreground mb-1">
+                      工時（小時）
+                      {state.startTime && state.endTime && calculateHours(state.startTime, state.endTime) !== null && (
+                        <span className="ml-1 text-emerald-500">自動計算</span>
+                      )}
+                    </label>
                     <input
                       type="number"
                       min="0"
                       max="24"
                       step="0.5"
-                      autoFocus={idx === 0}
                       value={state.hours}
                       onChange={(ev) => !isLocked && updateEntryField(e.id, "hours", ev.target.value)}
                       onKeyDown={(ev) => {
                         if (ev.key === "Enter" && !isLocked) handleEntrySave(e.id);
                         if (ev.key === "Escape") setExpanded(false);
                       }}
-                      readOnly={isLocked}
+                      readOnly={isLocked || (!!state.startTime && !!state.endTime && calculateHours(state.startTime, state.endTime) !== null)}
                       className={cn(
                         "w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
-                        isLocked && "opacity-60 cursor-not-allowed"
+                        isLocked && "opacity-60 cursor-not-allowed",
+                        !!state.startTime && !!state.endTime && calculateHours(state.startTime, state.endTime) !== null && !isLocked && "bg-muted/30 text-muted-foreground"
                       )}
                     />
                   </div>
@@ -580,21 +648,69 @@ export function TimesheetCell({
             /* New entry inline form */
             <div className="space-y-2" data-testid="new-entry-form">
               <div className="text-xs font-medium text-muted-foreground">新增記錄</div>
+              {/* Issue #1008: Start/End time inputs for new entry */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">開始時間</label>
+                  <input
+                    type="time"
+                    autoFocus
+                    value={newEntryState.startTime}
+                    onChange={(ev) => {
+                      const st = ev.target.value;
+                      setNewEntryState((s) => {
+                        const updated = { ...s, startTime: st };
+                        const autoH = calculateHours(st, s.endTime);
+                        if (autoH !== null) updated.hours = safeFixed(autoH, 1);
+                        return updated;
+                      });
+                    }}
+                    className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    data-testid="new-entry-start-time"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">結束時間</label>
+                  <input
+                    type="time"
+                    value={newEntryState.endTime}
+                    onChange={(ev) => {
+                      const et = ev.target.value;
+                      setNewEntryState((s) => {
+                        const updated = { ...s, endTime: et };
+                        const autoH = calculateHours(s.startTime, et);
+                        if (autoH !== null) updated.hours = safeFixed(autoH, 1);
+                        return updated;
+                      });
+                    }}
+                    className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    data-testid="new-entry-end-time"
+                  />
+                </div>
+              </div>
               <div>
-                <label className="block text-xs text-muted-foreground mb-1">工時（小時）</label>
+                <label className="block text-xs text-muted-foreground mb-1">
+                  工時（小時）
+                  {newEntryState.startTime && newEntryState.endTime && calculateHours(newEntryState.startTime, newEntryState.endTime) !== null && (
+                    <span className="ml-1 text-emerald-500">自動計算</span>
+                  )}
+                </label>
                 <input
                   type="number"
                   min="0"
                   max="24"
                   step="0.5"
-                  autoFocus
                   value={newEntryState.hours}
                   onChange={(ev) => setNewEntryState((s) => ({ ...s, hours: ev.target.value }))}
                   onKeyDown={(ev) => {
                     if (ev.key === "Enter") handleNewEntrySave();
                     if (ev.key === "Escape") setShowNewEntry(false);
                   }}
-                  className="w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  readOnly={!!newEntryState.startTime && !!newEntryState.endTime && calculateHours(newEntryState.startTime, newEntryState.endTime) !== null}
+                  className={cn(
+                    "w-full bg-background border border-border rounded-md px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+                    !!newEntryState.startTime && !!newEntryState.endTime && calculateHours(newEntryState.startTime, newEntryState.endTime) !== null && "bg-muted/30 text-muted-foreground"
+                  )}
                 />
               </div>
               <div>

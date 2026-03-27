@@ -31,7 +31,9 @@ type TimesheetGridProps = {
     description: string,
     overtimeType: OvertimeType,
     existingId?: string,
-    subTaskId?: string | null              // Issue #933
+    subTaskId?: string | null,             // Issue #933
+    startTime?: string | null,             // Issue #1008
+    endTime?: string | null                // Issue #1008
   ) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onAddTaskRow: (taskId: string, label: string) => void;
