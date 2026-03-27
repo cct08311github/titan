@@ -60,13 +60,37 @@ export function NotificationBell() {
   async function fetchNotifications() {
     setLoading(true);
     try {
+      // Fetch regular notifications
       const res = await fetch("/api/notifications?limit=15");
+      let items: Notification[] = [];
+      let unread = 0;
       if (res.ok) {
         const body = await res.json();
         const payload = extractData<{ items?: Notification[]; notifications?: Notification[]; unreadCount?: number }>(body);
-        setNotifications(payload?.items ?? payload?.notifications ?? []);
-        setUnreadCount(payload?.unreadCount ?? 0);
+        items = payload?.items ?? payload?.notifications ?? [];
+        unread = payload?.unreadCount ?? 0;
       }
+
+      // Fetch system alerts and prepend as notifications
+      try {
+        const alertRes = await fetch("/api/alerts/active");
+        if (alertRes.ok) {
+          const alertBody = await alertRes.json();
+          const alerts = extractData<{ alerts?: Array<{ type: string; message: string }> }>(alertBody)?.alerts ?? [];
+          const alertNotifs = alerts.map((a, i) => ({
+            id: `alert-${i}`,
+            type: a.type === "CRITICAL" ? "TASK_OVERDUE" : "TASK_DUE_SOON",
+            message: a.message,
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          }));
+          items = [...(alertNotifs as unknown as Notification[]), ...items];
+          unread += alertNotifs.length;
+        }
+      } catch { /* alerts API optional */ }
+
+      setNotifications(items);
+      setUnreadCount(unread);
     } finally {
       setLoading(false);
     }
