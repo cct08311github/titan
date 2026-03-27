@@ -347,6 +347,18 @@ test.describe('RBAC 深度驗證 — Engineer 禁止存取 Manager-only API', ()
     expect(res.status()).toBe(403);
   });
 
+  test('Engineer POST /api/notifications/trigger → 403（修復後）', async ({ request }) => {
+    const res = await request.post('/api/notifications/trigger');
+    expect(res.status()).toBe(403);
+  });
+
+  // ── 週期任務（修復後 withManager）────────────────────────────────────────
+
+  test('Engineer POST /api/recurring/generate → 403（修復後）', async ({ request }) => {
+    const res = await request.post('/api/recurring/generate');
+    expect(res.status()).toBe(403);
+  });
+
   // ── 管理員功能 ──────────────────────────────────────────────────────────────
 
   test('Engineer GET /api/admin/backup-status → 403', async ({ request }) => {

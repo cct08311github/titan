@@ -4,17 +4,24 @@
  * Triggers the daily timesheet reminder logic from NotificationService.
  * Designed to be called by a cron job (e.g., at 18:00 daily) or manually.
  *
- * No auth required — protected by cron secret or internal network.
- * Validates optional `CRON_SECRET` header if env var is set.
+ * Protected by CRON_SECRET header validation (required if env var is set).
+ * Edge JWT middleware also blocks unauthenticated external requests.
  */
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { NotificationService } from "@/services/notification-service";
 import { apiHandler } from "@/lib/api-handler";
 
-export const POST = apiHandler(async (_req: NextRequest) => {
+export const POST = apiHandler(async (req: NextRequest) => {
+  const expectedSecret = process.env.CRON_SECRET;
+  if (expectedSecret) {
+    const provided = req.headers.get("x-cron-secret");
+    if (provided !== expectedSecret) {
+      return error("UnauthorizedError", "Invalid cron secret", 401);
+    }
+  }
   const service = new NotificationService(prisma);
   const now = new Date();
 
