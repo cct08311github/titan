@@ -278,9 +278,9 @@ describe("JWT token payload (auth.ts callbacks)", () => {
     );
     expect(content).toContain("token.id = user.id");
     expect(content).toContain("token.role");
-    // Must NOT contain password in token
-    expect(content).not.toMatch(/token\.password/);
-    expect(content).not.toMatch(/token\.hash/);
+    // Must NOT store raw password or hash in token (passwordChangedAt is OK)
+    expect(content).not.toMatch(/token\.password\s*=/);
+    expect(content).not.toMatch(/token\.hash\s*=/);
   });
 
   it("session maxAge is 15 minutes", async () => {
