@@ -4,15 +4,23 @@
  * Generates a digest of unconfirmed time suggestions for each user.
  * Creates a Notification for users with unconfirmed entries.
  *
- * No auth required — protected by CRON_SECRET header.
+ * Protected by CRON_SECRET header validation (required if env var is set).
+ * Edge JWT middleware also blocks unauthenticated external requests.
  */
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
 
-export const POST = apiHandler(async (_req: NextRequest) => {
+export const POST = apiHandler(async (req: NextRequest) => {
+  const expectedSecret = process.env.CRON_SECRET;
+  if (expectedSecret) {
+    const provided = req.headers.get("x-cron-secret");
+    if (provided !== expectedSecret) {
+      return error("UnauthorizedError", "Invalid cron secret", 401);
+    }
+  }
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
