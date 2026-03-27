@@ -44,6 +44,8 @@ export const mockPrisma = {
   kPIHistory: createMockModel(),
   recurringRule: createMockModel(),
   knowledgeSpace: createMockModel(),
+  changeRecord: createMockModel(),
+  incidentRecord: createMockModel(),
   $transaction: jest.fn(),
   $connect: jest.fn(),
   $disconnect: jest.fn(),
