@@ -20,6 +20,10 @@ import {
   Target,
   Download,
   Calendar,
+  BarChart3,
+  FolderKanban,
+  Clock,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
@@ -37,12 +41,49 @@ interface ReportNav {
   description: string;
 }
 
-const REPORTS: ReportNav[] = [
-  { id: "utilization", label: "團隊利用率", icon: Users, description: "工時投入 / 可用工時" },
-  { id: "velocity", label: "任務速率", icon: TrendingUp, description: "每週完成任務數趨勢" },
-  { id: "kpi-trend", label: "KPI 達成率趨勢", icon: Target, description: "月度 KPI 達成率 + 預測" },
-  { id: "unplanned", label: "計畫外工作趨勢", icon: AlertTriangle, description: "計畫外占比月趨勢" },
+interface ReportCategory {
+  label: string;
+  icon: typeof Users;
+  reports: ReportNav[];
+}
+
+const REPORT_CATEGORIES: ReportCategory[] = [
+  {
+    label: "組織績效",
+    icon: BarChart3,
+    reports: [
+      { id: "utilization", label: "團隊利用率", icon: Users, description: "工時投入 / 可用工時" },
+      { id: "velocity", label: "任務速率", icon: TrendingUp, description: "每週完成任務數趨勢" },
+    ],
+  },
+  {
+    label: "項目管理",
+    icon: FolderKanban,
+    reports: [
+      { id: "unplanned", label: "計畫外工作趨勢", icon: AlertTriangle, description: "計畫外占比月趨勢" },
+    ],
+  },
+  {
+    label: "KPI",
+    icon: Target,
+    reports: [
+      { id: "kpi-trend", label: "KPI 達成率趨勢", icon: Target, description: "月度 KPI 達成率 + 預測" },
+    ],
+  },
+  {
+    label: "工時",
+    icon: Clock,
+    reports: [],
+  },
+  {
+    label: "稽核",
+    icon: Shield,
+    reports: [],
+  },
 ];
+
+// Flat list for backward compat
+const REPORTS: ReportNav[] = REPORT_CATEGORIES.flatMap((c) => c.reports);
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
@@ -499,35 +540,53 @@ export default function ReportsV2Page() {
 
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4">
-      {/* Left sidebar nav */}
+      {/* Left sidebar nav — grouped by category (Issue #1004) */}
       <nav
-        className="lg:w-56 flex-shrink-0 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0"
+        className="lg:w-60 flex-shrink-0 flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 lg:border-r lg:border-border lg:pr-4"
         aria-label="報表導覽"
+        data-testid="reports-left-nav"
       >
         <div className="hidden lg:block mb-3">
           <h1 className="text-lg font-semibold tracking-tight">報表</h1>
           <p className="text-xs text-muted-foreground mt-0.5">管理分析與趨勢</p>
         </div>
 
-        {REPORTS.map(({ id, label, icon: Icon, description }) => (
-          <button
-            key={id}
-            onClick={() => setActiveReport(id)}
-            className={cn(
-              "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left transition-colors whitespace-nowrap lg:whitespace-normal w-full",
-              activeReport === id
-                ? "bg-primary/10 text-primary font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-            )}
-            aria-current={activeReport === id ? "page" : undefined}
-          >
-            <Icon className="h-4 w-4 flex-shrink-0" />
-            <div className="min-w-0">
-              <div className="text-sm">{label}</div>
-              <div className="text-[10px] text-muted-foreground hidden lg:block">{description}</div>
+        {REPORT_CATEGORIES.map((category) => {
+          const CatIcon = category.icon;
+          return (
+            <div key={category.label} className="mb-2">
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <CatIcon className="h-3.5 w-3.5" />
+                {category.label}
+              </div>
+              {category.reports.length === 0 ? (
+                <div className="px-3 py-1 text-[10px] text-muted-foreground/60 italic hidden lg:block">
+                  即將推出
+                </div>
+              ) : (
+                category.reports.map(({ id, label, icon: Icon, description }) => (
+                  <button
+                    key={id}
+                    onClick={() => setActiveReport(id)}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3 py-2 rounded-lg text-left transition-colors whitespace-nowrap lg:whitespace-normal w-full",
+                      activeReport === id
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                    )}
+                    aria-current={activeReport === id ? "page" : undefined}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm">{label}</div>
+                      <div className="text-[10px] text-muted-foreground hidden lg:block">{description}</div>
+                    </div>
+                  </button>
+                ))
+              )}
             </div>
-          </button>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Right content */}

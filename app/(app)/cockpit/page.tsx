@@ -154,11 +154,40 @@ export default function CockpitPage() {
           <PlanHealthCard key={plan.id} plan={plan} expanded={expandedPlan === plan.id} onToggle={() => setExpandedPlan(expandedPlan === plan.id ? null : plan.id)} flaggedCount={plan.flaggedCount}>
             <div className="space-y-6">
               {plan.rootCauseTasks.length > 0 && <RootCauseList tasks={plan.rootCauseTasks} />}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <GoalProgressList goals={plan.goals} />
-                <KPIGaugeRow kpis={plan.kpis} />
-                <TaskDistributionChart distribution={plan.taskDistribution} />
-                <TimeInvestmentBar time={plan.timeInvestment} />
+              {/* BSC Four-Quadrant Layout (Issue #1004) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="bsc-quadrant-grid">
+                {/* Q1: 交付績效 (Delivery Performance) */}
+                <div className="border border-border rounded-lg p-4" data-testid="bsc-q1-delivery">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500" />
+                    交付績效
+                  </h3>
+                  <TaskDistributionChart distribution={plan.taskDistribution} />
+                </div>
+                {/* Q2: 品質指標 (Quality Metrics) */}
+                <div className="border border-border rounded-lg p-4" data-testid="bsc-q2-quality">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    品質指標
+                  </h3>
+                  <KPIGaugeRow kpis={plan.kpis} />
+                </div>
+                {/* Q3: 效率分析 (Efficiency Analysis) */}
+                <div className="border border-border rounded-lg p-4" data-testid="bsc-q3-efficiency">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    效率分析
+                  </h3>
+                  <TimeInvestmentBar time={plan.timeInvestment} />
+                </div>
+                {/* Q4: 成長學習 (Growth & Learning) */}
+                <div className="border border-border rounded-lg p-4" data-testid="bsc-q4-growth">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-purple-500" />
+                    成長學習
+                  </h3>
+                  <GoalProgressList goals={plan.goals} />
+                </div>
               </div>
             </div>
           </PlanHealthCard>
