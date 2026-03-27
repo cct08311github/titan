@@ -230,7 +230,9 @@ describe("Item 7: Multi-entry individual editing", () => {
         "API work",
         "NONE",
         "e1",
-        null              // Issue #933: subTaskId
+        null,             // Issue #933: subTaskId
+        expect.anything(), // startTime
+        expect.anything()  // endTime
       );
     });
   });
