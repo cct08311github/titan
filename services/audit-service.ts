@@ -4,11 +4,14 @@ import { ForbiddenError } from "./errors";
 export interface LogAuditInput {
   userId: string | null;
   action: string;
+  module?: string;
   resourceType?: string;
   resourceId?: string | null;
   detail?: string | null;
   details?: string | null;
+  metadata?: Record<string, unknown> | null;
   ipAddress?: string | null;
+  userAgent?: string | null;
   targetId?: string | null;
   targetType?: string | null;
 }
