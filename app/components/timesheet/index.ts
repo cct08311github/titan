@@ -12,3 +12,5 @@ export { CalendarMonthView } from "./calendar-month-view";
 export type { TimeEntry, TaskRow, TaskOption, SubTaskOption, OvertimeType, TimerState } from "./use-timesheet";
 export type { ViewMode } from "./timesheet-toolbar";
 export { DailyDigestBanner } from "./daily-digest-banner";
+export { TaskSidebarDrag, handleTaskDragOver, handleTaskDrop } from "./task-sidebar-drag";
+export type { TaskDragData } from "./task-sidebar-drag";
