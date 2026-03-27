@@ -3,77 +3,22 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import {
-  KanbanSquare, GanttChartSquare, BookOpen,
-  Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
-  Activity, Settings, ShieldCheck, Gauge, Sun,
-} from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { getNavGroupsForRole } from "@/lib/nav-config";
 
 /**
  * Sidebar nav restructured into 5 experience groups (Issue #970):
  * My Day / Big Picture / Get It Done / Track Time / Know More
+ * Nav data sourced from shared nav-config (Issue #1019).
  */
-
-const cockpitNavItem = { href: "/cockpit", label: "駕駛艙", icon: Gauge };
-
-const navGroups = [
-  {
-    label: "My Day",
-    items: [
-      { href: "/dashboard", label: "今日總覽", icon: Sun },
-    ],
-  },
-  {
-    label: "Big Picture",
-    items: [
-      { href: "/plans", label: "年度計畫", icon: Target },
-      { href: "/kpi", label: "KPI", icon: Crosshair },
-      { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
-    ],
-  },
-  {
-    label: "Get It Done",
-    items: [
-      { href: "/kanban", label: "任務看板", icon: KanbanSquare },
-      { href: "/activity", label: "團隊動態", icon: Activity },
-    ],
-  },
-  {
-    label: "Track Time",
-    items: [
-      { href: "/timesheet", label: "工時紀錄", icon: Clock },
-      { href: "/reports", label: "報表分析", icon: BarChart2 },
-    ],
-  },
-  {
-    label: "Know More",
-    items: [
-      { href: "/knowledge", label: "知識庫", icon: BookOpen },
-    ],
-  },
-  {
-    label: "帳號",
-    items: [
-      { href: "/settings", label: "個人設定", icon: Settings },
-    ],
-  },
-];
-
-const adminNavItem = { href: "/admin", label: "系統管理", icon: ShieldCheck };
 
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
-  const groups = isManager
-    ? [
-        { label: navGroups[0].label, items: [cockpitNavItem, ...navGroups[0].items] },
-        ...navGroups.slice(1, -1),
-        { label: "帳號", items: [navGroups[navGroups.length - 1].items[0], adminNavItem] },
-      ]
-    : navGroups;
+  const role = session?.user?.role as string | undefined;
+  const groups = getNavGroupsForRole(role);
   const [collapsed, setCollapsed] = useState(false);
 
   // Auto-collapse on projector/small viewports (≤1024px) — Issue #197
