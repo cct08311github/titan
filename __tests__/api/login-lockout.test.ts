@@ -4,6 +4,9 @@
 /**
  * Login Failure Lockout tests — Issue #797 (AU-3)
  */
+import path from "path";
+
+const ROOT = process.cwd();
 
 describe("AccountLockService (5 failures / 30 min)", () => {
   let AccountLockService: typeof import("@/lib/account-lock").AccountLockService;
@@ -60,7 +63,7 @@ describe("auth.ts lockout config", () => {
   it("uses maxFailures=5 and lockDuration=1800s", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "/Users/openclaw/.openclaw/shared/projects/titan/auth.ts", "utf8"
+      path.resolve(ROOT, "auth.ts"), "utf8"
     );
     expect(content).toContain("maxFailures: 5");
     expect(content).toContain("lockDurationSeconds: 1800");
@@ -69,7 +72,7 @@ describe("auth.ts lockout config", () => {
   it("lock message does not reveal account existence", async () => {
     const fs = await import("fs");
     const content = fs.readFileSync(
-      "/Users/openclaw/.openclaw/shared/projects/titan/auth.ts", "utf8"
+      path.resolve(ROOT, "auth.ts"), "utf8"
     );
     // authorize() returns null for both non-existent and locked accounts
     expect(content).toContain("return null");
