@@ -12,6 +12,7 @@ import { GoalStatusEnum } from "./enums";
 export const createPlanSchema = z.object({
   year: z.number().int().min(2000).max(2100),
   title: z.string().min(1),
+  vision: z.string().optional(),
   description: z.string().optional(),
   implementationPlan: z.string().optional(),
   copiedFromYear: z.number().int().optional(),
@@ -19,6 +20,7 @@ export const createPlanSchema = z.object({
 
 export const updatePlanSchema = z.object({
   title: z.string().min(1).optional(),
+  vision: z.string().nullable().optional(),
   description: z.string().optional(),
   implementationPlan: z.string().optional(),
   progressPct: z.number().min(0).max(100).optional(),
@@ -31,12 +33,14 @@ export const createGoalSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   assigneeId: z.string().optional(),
+  retrospectiveNote: z.string().optional(),
 });
 
 export const updateGoalSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
   assigneeId: z.string().nullable().optional(),
+  retrospectiveNote: z.string().nullable().optional(),
   status: GoalStatusEnum.optional(),
   progressPct: z.number().min(0).max(100).optional(),
 });

@@ -25,6 +25,7 @@ type MonthlyGoal = {
   id: string;
   month: number;
   title: string;
+  retrospectiveNote?: string | null;
   status: GoalStatus;
   progressPct: number;
   _count?: { tasks: number };
@@ -35,6 +36,7 @@ type AnnualPlan = {
   id: string;
   year: number;
   title: string;
+  vision?: string | null;
   description?: string | null;
   progressPct: number;
   archivedAt?: string | null;
@@ -70,10 +72,15 @@ export default function PlansPage() {
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [newPlanYear, setNewPlanYear] = useState(new Date().getFullYear().toString());
   const [newPlanTitle, setNewPlanTitle] = useState("");
+  const [newPlanVision, setNewPlanVision] = useState("");
   const [newPlanDescription, setNewPlanDescription] = useState("");
   const [creatingPlan, setCreatingPlan] = useState(false);
   const [planError, setPlanError] = useState("");
   const [archiving, setArchiving] = useState<string | null>(null);
+
+  // Retrospective note
+  const [retroNote, setRetroNote] = useState("");
+  const [savingRetro, setSavingRetro] = useState(false);
 
   // Create goal form
   const [showGoalForm, setShowGoalForm] = useState(false);
@@ -111,10 +118,31 @@ export default function PlansPage() {
       const res = await fetch(`/api/goals/${goalId}`);
       if (res.ok) {
         const body = await res.json();
-        setSelectedGoal(extractData<MonthlyGoal>(body));
+        const goal = extractData<MonthlyGoal>(body);
+        setSelectedGoal(goal);
+        setRetroNote(goal.retrospectiveNote ?? "");
       }
     } finally {
       setGoalLoading(false);
+    }
+  }
+
+  async function saveRetrospectiveNote() {
+    if (!selectedGoal) return;
+    setSavingRetro(true);
+    try {
+      const res = await fetch(`/api/goals/${selectedGoal.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ retrospectiveNote: retroNote || null }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        const updated = extractData<MonthlyGoal>(body);
+        setSelectedGoal((prev) => prev ? { ...prev, retrospectiveNote: updated.retrospectiveNote } : prev);
+      }
+    } finally {
+      setSavingRetro(false);
     }
   }
 
@@ -126,10 +154,11 @@ export default function PlansPage() {
       const res = await fetch("/api/plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ year: parseInt(newPlanYear), title: newPlanTitle.trim(), description: newPlanDescription.trim() || undefined }),
+        body: JSON.stringify({ year: parseInt(newPlanYear), title: newPlanTitle.trim(), vision: newPlanVision.trim() || undefined, description: newPlanDescription.trim() || undefined }),
       });
       if (res.ok) {
         setNewPlanTitle("");
+        setNewPlanVision("");
         setNewPlanDescription("");
         setShowPlanForm(false);
         setPlanError("");
@@ -289,6 +318,13 @@ export default function PlansPage() {
               {creatingPlan ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
           </div>
+          <textarea
+            value={newPlanVision}
+            onChange={(e) => setNewPlanVision(e.target.value)}
+            placeholder="年度願景/使命描述（選填）"
+            rows={2}
+            className={cn(inputCls, "w-full resize-none")}
+          />
           <input
             type="text"
             value={newPlanDescription}
@@ -475,6 +511,27 @@ export default function PlansPage() {
             ) : (
               <p className="text-sm text-muted-foreground text-center py-6">此月度目標尚無任務</p>
             )}
+
+            {/* Retrospective note */}
+            <div className="mt-4 pt-4 border-t border-border">
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">月底復盤筆記</h3>
+              <textarea
+                value={retroNote}
+                onChange={(e) => setRetroNote(e.target.value)}
+                placeholder="記錄本月回顧與反思..."
+                rows={3}
+                className={cn(inputCls, "w-full resize-none")}
+              />
+              <div className="flex justify-end mt-2">
+                <button
+                  onClick={saveRetrospectiveNote}
+                  disabled={savingRetro || retroNote === (selectedGoal.retrospectiveNote ?? "")}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 bg-accent hover:bg-accent/80 text-accent-foreground rounded-md disabled:opacity-40 transition-colors"
+                >
+                  {savingRetro ? <Loader2 className="h-3 w-3 animate-spin" /> : "儲存筆記"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
