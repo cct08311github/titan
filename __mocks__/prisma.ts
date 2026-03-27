@@ -46,6 +46,7 @@ export const mockPrisma = {
   knowledgeSpace: createMockModel(),
   changeRecord: createMockModel(),
   incidentRecord: createMockModel(),
+  documentTemplate: createMockModel(),
   $transaction: jest.fn(),
   $connect: jest.fn(),
   $disconnect: jest.fn(),

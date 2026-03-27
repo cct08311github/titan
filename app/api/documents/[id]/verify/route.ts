@@ -29,12 +29,19 @@ export const POST = withAuth(async (
     // No body is fine — just verify with current settings
   }
 
+  const now = new Date();
+  const intervalDays = verifyIntervalDays ?? doc.verifyIntervalDays;
+  const verifyByDate = intervalDays
+    ? new Date(now.getTime() + intervalDays * 86400000)
+    : null;
+
   const updated = await prisma.document.update({
     where: { id },
     data: {
       verifierId: session.user.id,
-      verifiedAt: new Date(),
+      verifiedAt: now,
       ...(verifyIntervalDays !== undefined && { verifyIntervalDays }),
+      verifyByDate,
       updatedBy: session.user.id,
     },
     include: {

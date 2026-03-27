@@ -72,6 +72,7 @@ model User {
   docAttachments           DocumentAttachment[] @relation("DocAttachmentUploader")
   docComments              DocumentComment[]    @relation("DocCommentAuthor")
   docReadLogs              DocumentReadLog[]    @relation("DocReadLogs")
+  createdDocTemplates      DocumentTemplate[]   @relation("DocTemplateCreator")
 
   @@map("users")
 }
@@ -907,6 +908,7 @@ model Document {
   verifierId         String?
   verifiedAt         DateTime?
   verifyIntervalDays Int?
+  verifyByDate       DateTime?      // Auto-calculated: verifiedAt + verifyIntervalDays
   // Missing fields (Issue #1003)
   categoryId         String?
   summary            String?
@@ -947,6 +949,7 @@ model Document {
   @@index([createdBy])
   @@index([status])
   @@index([verifierId])
+  @@index([verifyByDate])
   @@map("documents")
 }
 
@@ -1361,4 +1364,24 @@ model DocumentLink {
   @@index([sourceDocId])
   @@index([targetDocId])
   @@map("document_links")
+}
+
+// ═══════════════════════════════════════
+// 文件模板 (Issue #1002)
+// ═══════════════════════════════════════
+
+model DocumentTemplate {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   // Markdown template content
+  category  String   // e.g., "SOP", "會議紀錄", "事件報告", "技術文件"
+  isSystem  Boolean  @default(false)
+  createdBy String
+  createdAt DateTime @default(now())
+
+  creator User @relation("DocTemplateCreator", fields: [createdBy], references: [id])
+
+  @@index([createdBy])
+  @@index([category])
+  @@map("document_templates")
 }

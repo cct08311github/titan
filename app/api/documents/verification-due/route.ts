@@ -4,11 +4,14 @@ import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
 /**
- * GET /api/documents/verification-due — List documents needing verification (Issue #968)
+ * GET /api/documents/verification-due — List documents needing verification (Issue #968, #1002)
+ *
+ * Uses verifyByDate field (auto-calculated from verifiedAt + verifyIntervalDays)
+ * for efficient querying instead of computing in JS.
  *
  * Returns documents where:
  * - verifyIntervalDays is set AND
- * - verifiedAt + verifyIntervalDays <= now (expired) OR verifiedAt is null (never verified)
+ * - verifyByDate <= now (expired) OR verifyByDate is null (never verified)
  *
  * Optional ?userId= to filter for a specific verifier.
  */
@@ -16,7 +19,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
 
-  // Get all documents with verification configured
+  // Get all documents with verification configured, using verifyByDate for query
   const docs = await prisma.document.findMany({
     where: {
       verifyIntervalDays: { not: null },
@@ -29,18 +32,21 @@ export const GET = withAuth(async (req: NextRequest) => {
       verifierId: true,
       verifiedAt: true,
       verifyIntervalDays: true,
+      verifyByDate: true,
       updatedAt: true,
       verifier: { select: { id: true, name: true } },
       creator: { select: { id: true, name: true } },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: { verifyByDate: "asc" },
   });
 
   const now = new Date();
   const items = docs.map((doc) => {
-    const dueDate = doc.verifiedAt && doc.verifyIntervalDays
-      ? new Date(doc.verifiedAt.getTime() + doc.verifyIntervalDays * 86400000)
-      : null;
+    // Prefer verifyByDate; fallback to computing from verifiedAt + interval
+    const dueDate = doc.verifyByDate
+      ?? (doc.verifiedAt && doc.verifyIntervalDays
+        ? new Date(doc.verifiedAt.getTime() + doc.verifyIntervalDays * 86400000)
+        : null);
     const isExpired = !doc.verifiedAt || (dueDate && dueDate <= now);
     const isNearDue = dueDate && !isExpired
       ? (dueDate.getTime() - now.getTime()) < 7 * 86400000 // within 7 days
