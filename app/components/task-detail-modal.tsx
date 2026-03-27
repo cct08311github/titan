@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, Save, Loader2, History, MessageSquare, FileText } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskFormFields, TaskSubtaskSection, TaskAttachmentSection, TaskDeliverableSection, TaskIncidentSection, TaskDocumentSection, TaskChangeManagementSection, initialForm } from "./task-detail/index";
@@ -150,11 +151,12 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
         }),
       });
       if (res.ok) {
+        toast.success("任務已儲存");
         onUpdated?.();
       } else {
         const errBody = await res.json().catch(() => ({}));
         const msg = errBody?.message ?? errBody?.error ?? "儲存失敗";
-        alert(msg);
+        toast.error("儲存失敗", { description: msg });
       }
     } finally {
       setSaving(false);

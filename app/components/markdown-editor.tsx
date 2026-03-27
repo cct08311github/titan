@@ -10,6 +10,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { Eye, Edit3, ImagePlus, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { sanitizeHtml } from "@/lib/security/sanitize";
 
@@ -67,7 +68,7 @@ export function MarkdownEditor({ value, onChange, placeholder, minHeight = 400, 
       const res = await fetch("/api/uploads", { method: "POST", body: formData });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert(err?.message ?? "圖片上傳失敗");
+        toast.error("圖片上傳失敗", { description: err?.message });
         return;
       }
       const body = await res.json();

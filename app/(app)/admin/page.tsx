@@ -3,7 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { formatDateTime } from "@/lib/format";
+import { useConfirmDialog } from "@/app/components/ui/alert-dialog";
 import {
   Database,
   Shield,
@@ -409,6 +411,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_OPTIONS = ["ADMIN", "MANAGER", "ENGINEER"] as const;
 
 function UserManagementSection() {
+  const { confirmDialog, ConfirmDialog } = useConfirmDialog();
   const [users, setUsers] = useState<UserEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -489,6 +492,7 @@ function UserManagementSection() {
         setFormError(errBody?.message ?? "建立使用者失敗");
         return;
       }
+      toast.success("使用者已建立");
       closeModal();
       await load();
     } finally {
@@ -518,6 +522,7 @@ function UserManagementSection() {
         setFormError(errBody?.message ?? "更新使用者失敗");
         return;
       }
+      toast.success("使用者已更新");
       closeModal();
       await load();
     } finally {
@@ -530,19 +535,26 @@ function UserManagementSection() {
     const confirmMsg = user.isActive
       ? `確定要停用「${user.name}」？`
       : `確定要啟用「${user.name}」？`;
-    if (!confirm(confirmMsg)) return;
+    const ok = await confirmDialog({ title: confirmMsg, description: "此操作無法復原", confirmLabel: "確認", variant: "destructive" });
+    if (!ok) return;
 
     try {
+      let res: Response;
       if (user.isActive) {
         // Suspend: DELETE /api/users/:id
-        await fetch(`/api/users/${user.id}`, { method: "DELETE" });
+        res = await fetch(`/api/users/${user.id}`, { method: "DELETE" });
       } else {
         // Unsuspend: DELETE /api/users/:id?action=unsuspend
-        await fetch(`/api/users/${user.id}?action=unsuspend`, { method: "DELETE" });
+        res = await fetch(`/api/users/${user.id}?action=unsuspend`, { method: "DELETE" });
       }
-      await load();
+      if (res.ok) {
+        toast.success(user.isActive ? `已停用「${user.name}」` : `已啟用「${user.name}」`);
+        await load();
+      } else {
+        toast.error(`${action === "suspend" ? "停用" : "啟用"}失敗`);
+      }
     } catch {
-      alert(`${action === "suspend" ? "停用" : "啟用"}失敗`);
+      toast.error(`${action === "suspend" ? "停用" : "啟用"}失敗`);
     }
   }
 
@@ -760,6 +772,7 @@ function UserManagementSection() {
           </div>
         </div>
       )}
+      <ConfirmDialog />
     </div>
   );
 }

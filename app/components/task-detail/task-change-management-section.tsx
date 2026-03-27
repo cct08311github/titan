@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Shield, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
@@ -157,7 +158,7 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
 
   async function saveRecord() {
     if (form.impactedSystems.length === 0) {
-      alert("至少需要一個受影響系統");
+      toast.error("至少需要一個受影響系統");
       return;
     }
 
@@ -184,9 +185,10 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
         const body = await res.json();
         const data = extractData<ChangeRecord>(body);
         setRecord(data);
+        toast.success("變更紀錄已儲存");
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? "儲存變更紀錄失敗");
+        toast.error(errBody?.message ?? "儲存變更紀錄失敗");
       }
     } finally {
       setSaving(false);
@@ -206,9 +208,10 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
         const body = await res.json();
         const data = extractData<ChangeRecord>(body);
         setRecord(data);
+        toast.success("狀態已更新");
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? "狀態轉移失敗");
+        toast.error(errBody?.message ?? "狀態轉移失敗");
       }
     } finally {
       setSaving(false);
