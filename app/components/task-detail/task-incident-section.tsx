@@ -33,6 +33,7 @@ const selectCls =
   "w-full h-10 bg-background border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer";
 const textareaCls =
   "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/60 resize-none";
+const errorInputCls = "border-destructive focus:border-destructive focus:ring-destructive/10";
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-muted-foreground mb-1.5">{children}</label>;
@@ -64,6 +65,7 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
   const [record, setRecord] = useState<IncidentRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     severity: "SEV2" as IncidentSeverity,
     impactScope: "",
@@ -75,6 +77,31 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
   });
 
   const isIncident = category === "INCIDENT";
+  const hasErrors = Object.keys(errors).length > 0;
+
+  function validateField(field: "impactScope" | "incidentStart", value: string) {
+    setErrors((prev) => {
+      const next = { ...prev };
+      if (field === "impactScope" && !value.trim()) {
+        next.impactScope = "影響範圍為必填欄位";
+      } else if (field === "incidentStart" && !value) {
+        next.incidentStart = "事件開始時間為必填欄位";
+      } else {
+        delete next[field];
+      }
+      return next;
+    });
+  }
+
+  function clearError(field: string) {
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  }
 
   const loadRecord = useCallback(async () => {
     if (!isIncident) return;
@@ -117,8 +144,12 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
   })();
 
   async function saveIncident() {
-    if (!form.incidentStart || !form.impactScope) {
-      alert("嚴重等級、影響範圍、事件開始時間為必填欄位");
+    // Validate all required fields on submit
+    const newErrors: Record<string, string> = {};
+    if (!form.impactScope.trim()) newErrors.impactScope = "影響範圍為必填欄位";
+    if (!form.incidentStart) newErrors.incidentStart = "事件開始時間為必填欄位";
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
@@ -201,11 +232,16 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
               <Label>影響範圍 *</Label>
               <textarea
                 value={form.impactScope}
-                onChange={(e) => setForm((f) => ({ ...f, impactScope: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, impactScope: e.target.value }));
+                  if (e.target.value.trim()) clearError("impactScope");
+                }}
+                onBlur={(e) => validateField("impactScope", e.target.value)}
                 rows={2}
                 placeholder="描述事件影響的系統、服務或使用者..."
-                className={textareaCls}
+                className={cn(textareaCls, errors.impactScope && errorInputCls)}
               />
+              {errors.impactScope && <p className="text-sm text-destructive mt-1">{errors.impactScope}</p>}
             </div>
 
             {/* Start / End times */}
@@ -215,9 +251,14 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
                 <input
                   type="datetime-local"
                   value={form.incidentStart}
-                  onChange={(e) => setForm((f) => ({ ...f, incidentStart: e.target.value }))}
-                  className={inputCls}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, incidentStart: e.target.value }));
+                    if (e.target.value) clearError("incidentStart");
+                  }}
+                  onBlur={(e) => validateField("incidentStart", e.target.value)}
+                  className={cn(inputCls, errors.incidentStart && errorInputCls)}
                 />
+                {errors.incidentStart && <p className="text-sm text-destructive mt-1">{errors.incidentStart}</p>}
               </div>
               <div>
                 <Label>事件結束時間</Label>
@@ -267,10 +308,10 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
             <div className="flex justify-end">
               <button
                 onClick={saveIncident}
-                disabled={saving}
+                disabled={saving || hasErrors}
                 className={cn(
                   "flex items-center gap-1.5 text-xs font-medium h-8 px-4 rounded-lg transition-all",
-                  "bg-red-600 text-white shadow-sm hover:bg-red-700 disabled:opacity-40"
+                  "bg-red-600 text-white shadow-sm hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
                 {saving && <Loader2 className="h-3 w-3 animate-spin" />}
