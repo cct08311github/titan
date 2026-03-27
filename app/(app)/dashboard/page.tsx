@@ -438,6 +438,60 @@ function ManagerMyDay({ data }: { data: ManagerData }) {
   );
 }
 
+// ── Tab types ─────────────────────────────────────────────────────────────
+type DashboardTab = "my-day" | "team";
+
+const TAB_STORAGE_KEY = "titan-dashboard-tab";
+
+function getStoredTab(): DashboardTab | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const val = localStorage.getItem(TAB_STORAGE_KEY);
+    if (val === "my-day" || val === "team") return val;
+  } catch { /* ignore */ }
+  return null;
+}
+
+function storeTab(tab: DashboardTab) {
+  try {
+    localStorage.setItem(TAB_STORAGE_KEY, tab);
+  } catch { /* ignore */ }
+}
+
+// ── Dashboard Tabs ────────────────────────────────────────────────────────
+
+function DashboardTabs({
+  activeTab,
+  onTabChange,
+}: {
+  activeTab: DashboardTab;
+  onTabChange: (tab: DashboardTab) => void;
+}) {
+  const tabs: { key: DashboardTab; label: string }[] = [
+    { key: "my-day", label: "我的一天" },
+    { key: "team", label: "團隊全局" },
+  ];
+
+  return (
+    <div className="flex gap-1 border-b border-border mb-6" data-testid="dashboard-tabs">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          onClick={() => onTabChange(tab.key)}
+          className={cn(
+            "px-4 py-2 text-sm transition-colors relative -mb-px",
+            activeTab === tab.key
+              ? "font-semibold text-foreground border-b-2 border-primary"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -446,11 +500,32 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMyDay = useCallback(async () => {
+  const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
+
+  // Issue #990: Tab state — Manager defaults to "team", Engineer always "my-day"
+  const [activeTab, setActiveTab] = useState<DashboardTab>(() => {
+    const stored = getStoredTab();
+    if (stored) return stored;
+    return "team"; // will be forced to "my-day" for engineers in the effect
+  });
+
+  // Force engineers to my-day
+  useEffect(() => {
+    if (status === "authenticated" && !isManager) {
+      setActiveTab("my-day");
+    } else if (status === "authenticated" && isManager) {
+      const stored = getStoredTab();
+      if (stored) setActiveTab(stored);
+    }
+  }, [status, isManager]);
+
+  const fetchMyDay = useCallback(async (view?: DashboardTab) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/my-day");
+      const viewParam = view ?? activeTab;
+      const url = isManager ? `/api/my-day?view=${viewParam}` : "/api/my-day";
+      const res = await fetch(url);
       if (!res.ok) throw new Error(`載入失敗 (${res.status})`);
       const body = await res.json();
       setData(extractData<MyDayData>(body));
@@ -459,7 +534,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTab, isManager]);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -467,21 +542,33 @@ export default function DashboardPage() {
     }
   }, [status, fetchMyDay]);
 
-  const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
+  const handleTabChange = (tab: DashboardTab) => {
+    setActiveTab(tab);
+    storeTab(tab);
+    fetchMyDay(tab);
+  };
+
   const greeting = getGreeting();
   const userName = session?.user?.name ?? "";
+
+  const subtitle = activeTab === "team"
+    ? "團隊全局 — 今日需關注事項"
+    : "我的一天 — 今日工作安排";
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-xl font-semibold tracking-tight">
           {greeting}，{userName}
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          {isManager ? "團隊全局 — 今日需關注事項" : "我的一天 — 今日工作安排"}
-        </p>
+        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
       </div>
+
+      {/* Tabs — only shown for Manager/Admin */}
+      {isManager && (
+        <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} />
+      )}
 
       {/* Progressive loading with skeletons */}
       {status === "loading" || loading ? (
@@ -496,7 +583,7 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : error ? (
-        <PageError message={error} onRetry={fetchMyDay} />
+        <PageError message={error} onRetry={() => fetchMyDay()} />
       ) : !data ? (
         <PageEmpty title="尚無資料" description="無法載入 My Day 資料" />
       ) : data.role === "MANAGER" ? (
