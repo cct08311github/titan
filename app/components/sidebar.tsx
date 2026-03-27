@@ -3,77 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import {
-  KanbanSquare, GanttChartSquare, BookOpen,
-  Clock, BarChart2, Target, Crosshair, PanelLeftClose, PanelLeftOpen,
-  Activity, Settings, ShieldCheck, Gauge, Sun,
-} from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { SimpleTooltip } from "@/app/components/ui/tooltip";
+import { getNavGroupsForRole } from "@/lib/nav-config";
 
 /**
  * Sidebar nav restructured into 5 experience groups (Issue #970):
  * My Day / Big Picture / Get It Done / Track Time / Know More
+ * Nav data sourced from shared nav-config (Issue #1019).
  */
-
-const cockpitNavItem = { href: "/cockpit", label: "駕駛艙", icon: Gauge };
-
-const navGroups = [
-  {
-    label: "My Day",
-    items: [
-      { href: "/dashboard", label: "今日總覽", icon: Sun },
-    ],
-  },
-  {
-    label: "Big Picture",
-    items: [
-      { href: "/plans", label: "年度計畫", icon: Target },
-      { href: "/kpi", label: "KPI", icon: Crosshair },
-      { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
-    ],
-  },
-  {
-    label: "Get It Done",
-    items: [
-      { href: "/kanban", label: "任務看板", icon: KanbanSquare },
-      { href: "/activity", label: "團隊動態", icon: Activity },
-    ],
-  },
-  {
-    label: "Track Time",
-    items: [
-      { href: "/timesheet", label: "工時紀錄", icon: Clock },
-      { href: "/reports", label: "報表分析", icon: BarChart2 },
-    ],
-  },
-  {
-    label: "Know More",
-    items: [
-      { href: "/knowledge", label: "知識庫", icon: BookOpen },
-    ],
-  },
-  {
-    label: "帳號",
-    items: [
-      { href: "/settings", label: "個人設定", icon: Settings },
-    ],
-  },
-];
-
-const adminNavItem = { href: "/admin", label: "系統管理", icon: ShieldCheck };
 
 export function Sidebar() {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
-  const groups = isManager
-    ? [
-        { label: navGroups[0].label, items: [cockpitNavItem, ...navGroups[0].items] },
-        ...navGroups.slice(1, -1),
-        { label: "帳號", items: [navGroups[navGroups.length - 1].items[0], adminNavItem] },
-      ]
-    : navGroups;
+  const role = session?.user?.role as string | undefined;
+  const groups = getNavGroupsForRole(role);
   const [collapsed, setCollapsed] = useState(false);
 
   // Auto-collapse on projector/small viewports (≤1024px) — Issue #197
@@ -108,9 +54,11 @@ export function Sidebar() {
           </div>
         )}
         {!collapsed && (
-          <button onClick={() => setCollapsed(true)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="收合側邊欄" title="收合側邊欄">
-            <PanelLeftClose className="h-4 w-4" />
-          </button>
+          <SimpleTooltip content="收合側邊欄" side="bottom">
+            <button onClick={() => setCollapsed(true)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="收合側邊欄">
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </SimpleTooltip>
         )}
       </div>
 
@@ -120,12 +68,14 @@ export function Sidebar() {
             {groups.flatMap((g) => g.items).map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + "/");
               return (
-                <Link key={href} href={href} title={label} aria-current={isActive ? "page" : undefined}
-                  className={cn("flex items-center justify-center w-full h-9 rounded-lg transition-colors",
-                    isActive ? "bg-[hsl(var(--sidebar-accent))] text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-accent hover:text-foreground"
-                  )}>
-                  <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                </Link>
+                <SimpleTooltip key={href} content={label} side="right">
+                  <Link href={href} aria-current={isActive ? "page" : undefined}
+                    className={cn("flex items-center justify-center w-full h-9 rounded-lg transition-colors",
+                      isActive ? "bg-[hsl(var(--sidebar-accent))] text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-accent hover:text-foreground"
+                    )}>
+                    <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                  </Link>
+                </SimpleTooltip>
               );
             })}
           </div>
@@ -158,9 +108,11 @@ export function Sidebar() {
 
       <div className="border-t border-sidebar-border p-2">
         {collapsed ? (
-          <button onClick={() => setCollapsed(false)} className="flex items-center justify-center w-full h-9 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="展開側邊欄" title="展開側邊欄">
-            <PanelLeftOpen className="h-4 w-4" />
-          </button>
+          <SimpleTooltip content="展開側邊欄" side="right">
+            <button onClick={() => setCollapsed(false)} className="flex items-center justify-center w-full h-9 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="展開側邊欄">
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          </SimpleTooltip>
         ) : (
           <p className="font-mono text-[11px] text-muted-foreground/60 tabular-nums px-3 py-1">v2.0.0</p>
         )}
