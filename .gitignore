@@ -39,3 +39,4 @@ tests/load/results/
 e2e/.auth/
 test-results/
 playwright-report/
+dump.rdb
