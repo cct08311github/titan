@@ -156,7 +156,7 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-10 w-96 bg-card border border-border rounded-lg shadow-xl z-50 overflow-hidden">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <span className="text-sm font-medium">
@@ -224,15 +224,20 @@ export function NotificationBell() {
                     </div>
                     <p
                       className={cn(
-                        "text-sm mt-0.5 truncate",
+                        "text-sm mt-0.5",
                         n.isRead ? "text-muted-foreground" : "text-foreground"
                       )}
                     >
-                      {n.title}
+                      {n.message || n.title || "通知"}
                     </p>
                     {n.body && (
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
                         {n.body}
+                      </p>
+                    )}
+                    {!n.body && n.title && n.message && n.title !== n.message && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {n.title}
                       </p>
                     )}
                   </div>
