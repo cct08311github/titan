@@ -4,21 +4,13 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, Moon, Sun, X, AlertTriangle, Search } from "lucide-react";
 import Link from "next/link";
-import {
-  LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
-  Clock, BarChart2, Target, Crosshair, Activity, Settings,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect, useMemo } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
-import { GlobalSearchModal } from "@/app/components/global-search-modal";
+import { getFlatNavItems, buildLabelMap } from "@/lib/nav-config";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "儀表板", "/kanban": "看板", "/gantt": "甘特圖",
-  "/plans": "年度計畫", "/kpi": "KPI", "/knowledge": "知識庫",
-  "/timesheet": "工時紀錄", "/reports": "報表",
-  "/activity": "團隊動態", "/settings": "個人設定",
-};
+/** Page titles derived from shared nav-config (Issue #1019) */
+const PAGE_TITLES = buildLabelMap();
 
 function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -36,19 +28,6 @@ function ThemeToggle() {
   );
 }
 
-const MOBILE_NAV = [
-  { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
-  { href: "/kanban", label: "看板", icon: KanbanSquare },
-  { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
-  { href: "/plans", label: "年度計畫", icon: Target },
-  { href: "/kpi", label: "KPI", icon: Crosshair },
-  { href: "/knowledge", label: "知識庫", icon: BookOpen },
-  { href: "/timesheet", label: "工時紀錄", icon: Clock },
-  { href: "/reports", label: "報表", icon: BarChart2 },
-  { href: "/activity", label: "團隊動態", icon: Activity },
-  { href: "/settings", label: "個人設定", icon: Settings },
-];
-
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_WARN_DAYS = 7;
 
@@ -64,21 +43,12 @@ export function Topbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-
-  // Command+K / Ctrl+K global search shortcut — Issue #859
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen((prev) => !prev);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  const role = session?.user?.role as string | undefined;
 
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1];
+
+  // Mobile nav items filtered by role (Issue #1019)
+  const mobileNavItems = getFlatNavItems(role);
 
   // Issue #834: password expiry warning
   const user = session?.user as { passwordChangedAt?: string | null } | undefined;
@@ -111,7 +81,7 @@ export function Topbar() {
       </div>
       <div className="flex items-center gap-1">
         <button
-          onClick={() => setSearchOpen(true)}
+          onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
           className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           aria-label="全域搜尋"
           title="搜尋 (⌘K)"
@@ -136,7 +106,7 @@ export function Topbar() {
       </div>
     </header>
 
-    {/* Mobile navigation overlay */}
+    {/* Mobile navigation overlay — now role-filtered via shared nav-config (Issue #1019) */}
     {mobileMenuOpen && (
       <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
         <nav
@@ -149,7 +119,7 @@ export function Topbar() {
             </div>
             <span className="text-base font-semibold tracking-tight">TITAN</span>
           </div>
-          {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
+          {mobileNavItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
@@ -171,12 +141,6 @@ export function Topbar() {
         </nav>
       </div>
     )}
-
-    {/* Global search modal — Issue #859 */}
-    <GlobalSearchModal
-      open={searchOpen}
-      onClose={() => setSearchOpen(false)}
-    />
     </>
   );
 }
