@@ -319,9 +319,9 @@ test.describe('C. Validation (Negative)', () => {
   test('C16: Daily limit exceeded → 400', async ({ browser }) => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
-    // 每次執行使用唯一日期，避免 soft delete 殘留影響 daily limit
-    const day = 10 + Math.floor(Math.random() * 18); // 10-27
-    const date = `2027-06-${String(day).padStart(2, '0')}`;
+    // 使用完全獨立的年月避免與 safeTestDate (2030-03) 碰撞
+    const day = 1 + Math.floor(Math.random() * 28);
+    const date = `2031-11-${String(day).padStart(2, '0')}`;
     const createdIds: string[] = [];
 
     try {
@@ -490,21 +490,21 @@ test.describe('E. Monthly Settlement', () => {
   test.describe.configure({ mode: 'serial' });
 
   test('E24: Manager settles month → 200', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
-    const page = await context.newPage();
-
-    // 等待 rate limiter 冷卻
-    await page.waitForTimeout(2000);
-
-    // 建立一筆工時記錄確保有 unlocked entry 可結算（用唯一年月）
+    // 用 Engineer 建立 entry（Engineer 不自動 approve/lock）
+    const engCtx = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
+    const engPage = await engCtx.newPage();
     const settleMonth = 1 + Math.floor(Math.random() * 12);
-    const settleDate = `2031-${String(settleMonth).padStart(2, '0')}-15`;
-    const setupRes = await page.request.post(BASE, {
+    const settleDate = `2033-${String(settleMonth).padStart(2, '0')}-15`;
+    await engPage.request.post(BASE, {
       data: { date: settleDate, hours: 1, category: 'ADMIN' },
     });
+    await engCtx.close();
 
+    // Manager settle
+    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
+    const page = await context.newPage();
     const res = await page.request.post(`${BASE}/settle-month`, {
-      data: { year: 2031, month: settleMonth },
+      data: { year: 2033, month: settleMonth },
     });
     expect(res.ok(), `Settle failed: ${res.status()}`).toBeTruthy();
 
@@ -549,11 +549,10 @@ test.describe('F. Batch & Copy', () => {
   test('F27: Batch create multiple entries → 201', async ({ browser }) => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
-    await page.waitForTimeout(2000); // rate limiter cooldown
-    const day1 = 10 + Math.floor(Math.random() * 18);
-    const day2 = day1 + 1;
-    const date1 = `2027-08-${String(day1).padStart(2, '0')}`;
-    const date2 = `2027-08-${String(day2).padStart(2, '0')}`;
+    await page.waitForTimeout(300);
+    const day1 = 1 + Math.floor(Math.random() * 27);
+    const date1 = `2032-05-${String(day1).padStart(2, '0')}`;
+    const date2 = `2032-05-${String(day1 + 1).padStart(2, '0')}`;
 
     const res = await page.request.post(`${BASE}/batch`, {
       data: {

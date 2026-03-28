@@ -196,6 +196,7 @@ jobs:
           BASE_URL: http://localhost:3100
           CRON_SECRET: ci-cron-secret
           NODE_ENV: test
+          E2E_TESTING: "true"
 
       - name: Upload test results (screenshots + traces)
         if: always()

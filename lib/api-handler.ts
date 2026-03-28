@@ -21,7 +21,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
 // ── Module-level API rate limiter (singleton, in-memory fallback) ──────────
-const apiLimiter = createApiRateLimiter({ useMemory: true });
+// In test/E2E environments, use a much higher limit to avoid flaky tests
+const isTestEnv = process.env.NODE_ENV === "test" || process.env.E2E_TESTING === "true";
+const apiLimiter = createApiRateLimiter({
+  useMemory: true,
+  points: isTestEnv ? 10000 : undefined,
+});
 
 // ── Audit service singleton ───────────────────────────────────────────────
 const auditService = new AuditService(prisma);
