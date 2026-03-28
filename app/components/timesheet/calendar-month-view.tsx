@@ -300,7 +300,7 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
                 key={cell.dateStr}
                 onClick={() => onDayClick(new Date(year, month, cell.day!))}
                 className={cn(
-                  "aspect-square rounded-lg border transition-all hover:ring-2 hover:ring-ring/30 flex flex-col items-center justify-center gap-0.5 p-1",
+                  "group aspect-square rounded-lg border transition-all hover:ring-2 hover:ring-ring/30 flex flex-col items-center justify-center gap-0.5 p-1",
                   hourColor(hours),
                   today && "ring-2 ring-primary/50",
                   weekend && hours <= 0 && "bg-muted/10 border-border/30"
@@ -317,11 +317,13 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
                 >
                   {cell.day}
                 </span>
-                {hours > 0 && (
+                {hours > 0 ? (
                   <span className={cn("text-[10px] font-semibold tabular-nums leading-none", hourBadgeColor(hours))}>
                     {hours.toFixed(1)}
                   </span>
-                )}
+                ) : !weekend ? (
+                  <span className="text-[10px] text-muted-foreground/30 group-hover:text-primary/60 transition-colors">+</span>
+                ) : null}
               </button>
             );
           })}
