@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Gauge, BarChart3, FileText, Flame, AlertTriangle } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError } from "@/app/components/page-states";
 import { HealthAlerts } from "@/app/components/cockpit/health-alerts";
@@ -67,13 +68,13 @@ function RootCauseList({ tasks }: { tasks: RootCauseTask[] }) {
         {tasks.slice(0, 10).map((t) => {
           const isOverdue = t.dueDate && new Date(t.dueDate) < new Date();
           return (
-            <div key={t.id} className="flex items-center gap-2 p-2 bg-accent/40 rounded text-sm">
+            <Link key={t.id} href={`/kanban?task=${t.id}`} className="flex items-center gap-2 p-2 bg-accent/40 rounded text-sm hover:bg-accent/70 transition-colors cursor-pointer">
               {t.managerFlagged && <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500 flex-shrink-0" />}
               <span className={cn("text-[11px] font-medium w-6 flex-shrink-0", PRIORITY_COLOR[t.priority] ?? "text-gray-500")}>{t.priority}</span>
               <span className="flex-1 text-foreground truncate min-w-0">{t.title}</span>
               {t.assignee && <span className="text-[11px] text-muted-foreground flex-shrink-0">{t.assignee}</span>}
               {t.dueDate && <span className={cn("text-[11px] tabular-nums flex-shrink-0", isOverdue ? "text-red-500" : "text-muted-foreground")}>{formatDate(t.dueDate)}</span>}
-            </div>
+            </Link>
           );
         })}
         {tasks.length > 10 && <p className="text-xs text-muted-foreground">還有 {tasks.length - 10} 個根因任務...</p>}

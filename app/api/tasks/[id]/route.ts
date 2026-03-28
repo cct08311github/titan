@@ -22,15 +22,18 @@ async function enforceTaskOwnership(userId: string, role: string, taskId: string
 
   const task = await prisma.task.findUnique({
     where: { id: taskId },
-    select: { primaryAssigneeId: true, backupAssigneeId: true },
+    select: { primaryAssigneeId: true, backupAssigneeId: true, creatorId: true },
   });
 
   if (!task) {
     throw new NotFoundError("任務不存在");
   }
 
-  if (task.primaryAssigneeId !== userId && task.backupAssigneeId !== userId) {
-    throw new ForbiddenError("僅能修改自己被指派的任務");
+  const isOwner = task.primaryAssigneeId === userId
+    || task.backupAssigneeId === userId
+    || (task as Record<string, unknown>).creatorId === userId;
+  if (!isOwner) {
+    throw new ForbiddenError("僅能修改自己被指派或建立的任務");
   }
 }
 
