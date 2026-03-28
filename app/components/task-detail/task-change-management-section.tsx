@@ -77,6 +77,7 @@ const selectCls =
   "w-full h-10 bg-background border border-border rounded-lg px-3 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all cursor-pointer";
 const textareaCls =
   "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/60 resize-none";
+const errorInputCls = "border-destructive focus:border-destructive focus:ring-destructive/10";
 
 function Label({ children }: { children: React.ReactNode }) {
   return <label className="block text-xs font-medium text-muted-foreground mb-1.5">{children}</label>;
@@ -98,6 +99,7 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [newSystem, setNewSystem] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     type: "NORMAL" as CMChangeType,
     riskLevel: "MEDIUM" as RiskLevel,
@@ -107,6 +109,8 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
     rollbackPlan: "",
     verificationPlan: "",
   });
+
+  const hasErrors = Object.keys(errors).length > 0;
 
   const loadRecord = useCallback(async () => {
     setLoading(true);
@@ -142,11 +146,27 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
     if (trimmed && !form.impactedSystems.includes(trimmed)) {
       setForm((f) => ({ ...f, impactedSystems: [...f.impactedSystems, trimmed] }));
       setNewSystem("");
+      // Clear error when a system is added
+      if (errors.impactedSystems) {
+        setErrors((prev) => {
+          const next = { ...prev };
+          delete next.impactedSystems;
+          return next;
+        });
+      }
     }
   }
 
   function removeSystem(sys: string) {
-    setForm((f) => ({ ...f, impactedSystems: f.impactedSystems.filter((s) => s !== sys) }));
+    setForm((f) => {
+      const updated = f.impactedSystems.filter((s) => s !== sys);
+      return { ...f, impactedSystems: updated };
+    });
+    // Check after setForm — avoid calling setErrors inside setForm updater
+    const remaining = form.impactedSystems.filter((s) => s !== sys);
+    if (remaining.length === 0) {
+      setErrors((prev) => ({ ...prev, impactedSystems: "至少需要一個受影響系統" }));
+    }
   }
 
   function handleSystemKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -157,7 +177,9 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
   }
 
   async function saveRecord() {
+    // Validate on submit
     if (form.impactedSystems.length === 0) {
+      setErrors((prev) => ({ ...prev, impactedSystems: "至少需要一個受影響系統" }));
       toast.error("至少需要一個受影響系統");
       return;
     }
@@ -341,8 +363,13 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
                   value={newSystem}
                   onChange={(e) => setNewSystem(e.target.value)}
                   onKeyDown={handleSystemKeyDown}
+                  onBlur={() => {
+                    if (form.impactedSystems.length === 0 && !newSystem.trim()) {
+                      setErrors((prev) => ({ ...prev, impactedSystems: "至少需要一個受影響系統" }));
+                    }
+                  }}
                   placeholder="輸入系統名稱，按 Enter 新增"
-                  className={inputCls}
+                  className={cn(inputCls, errors.impactedSystems && errorInputCls)}
                 />
                 <button
                   type="button"
@@ -352,6 +379,7 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
                   <Plus className="h-4 w-4" />
                 </button>
               </div>
+              {errors.impactedSystems && <p className="text-sm text-destructive mt-1">{errors.impactedSystems}</p>}
             </div>
 
             {/* Scheduled window */}
@@ -488,10 +516,10 @@ export function TaskChangeManagementSection({ taskId }: TaskChangeManagementSect
               {/* Save / create button */}
               <button
                 onClick={saveRecord}
-                disabled={saving}
+                disabled={saving || hasErrors}
                 className={cn(
                   "flex items-center gap-1.5 text-xs font-medium h-8 px-4 rounded-lg transition-all",
-                  "bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:opacity-40"
+                  "bg-blue-600 text-white shadow-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 )}
               >
                 {saving && <Loader2 className="h-3 w-3 animate-spin" />}
