@@ -74,6 +74,21 @@ check_prerequisites() {
     log_ok "openssl: $(openssl version 2>/dev/null | head -1)"
   fi
 
+  # Node.js + npm（用於建構 titan-app 映像及執行 prisma migration）
+  if ! command -v node &>/dev/null; then
+    log_error "找不到 'node'，請安裝 Node.js 20+"
+    missing=$((missing + 1))
+  else
+    log_ok "node: $(node --version)"
+  fi
+
+  if ! command -v npm &>/dev/null; then
+    log_error "找不到 'npm'，請安裝 Node.js 20+"
+    missing=$((missing + 1))
+  else
+    log_ok "npm: $(npm --version)"
+  fi
+
   # 檢查 Docker daemon 是否執行中
   if ! docker info &>/dev/null; then
     log_error "Docker daemon 未執行，請先啟動 Docker"
@@ -176,48 +191,77 @@ create_env_file() {
 
 # ── Step 4: 啟動容器 ─────────────────────────────────────────────────────────
 
-start_containers() {
-  log_section "Step 4: 啟動容器服務"
+build_titan_app() {
+  log_section "Step 4a: 建構 TITAN App 映像"
 
   cd "${PROJECT_DIR}"
 
-  log_info "拉取容器映像..."
-  docker compose pull 2>&1 | tail -5
+  # 安裝依賴
+  log_info "安裝 Node.js 依賴..."
+  npm ci --prefer-offline 2>&1 | tail -3
+
+  # Prisma generate
+  log_info "產生 Prisma client..."
+  npx prisma generate 2>&1
+
+  # Next.js build（產生 .next/standalone）
+  log_info "建構 Next.js（standalone 模式）..."
+  npm run build 2>&1 | tail -5
+
+  if [[ ! -d ".next/standalone" ]]; then
+    log_error "Next.js 建構失敗：找不到 .next/standalone 目錄"
+    exit 1
+  fi
+
+  # Docker build
+  log_info "建構 Docker 映像 titan-app:latest..."
+  docker build -t titan-app:latest . 2>&1 | tail -5
+
+  log_ok "TITAN App 映像建構完成"
+}
+
+start_containers() {
+  log_section "Step 4b: 啟動容器服務"
+
+  cd "${PROJECT_DIR}"
+
+  log_info "拉取基礎服務映像..."
+  docker compose pull --ignore-buildable 2>&1 | tail -5
 
   log_info "啟動核心服務..."
   docker compose up -d 2>&1
 
-  # 等待服務健康
+  # 等待基礎設施就緒
+  wait_for_services
+}
+
+wait_for_services() {
   log_info "等待服務就緒（最多 120 秒）..."
   local max_wait=120
   local waited=0
   local interval=5
 
   while [[ ${waited} -lt ${max_wait} ]]; do
-    local healthy
-    healthy=$(docker compose ps --format json 2>/dev/null \
-      | grep -c '"healthy"' 2>/dev/null || echo "0")
-    local total
-    total=$(docker compose ps --format json 2>/dev/null \
-      | wc -l | tr -d ' ')
+    # 檢查 PostgreSQL
+    if docker compose exec -T postgres pg_isready -U "${POSTGRES_USER:-titan}" &>/dev/null; then
+      log_ok "PostgreSQL 已就緒（${waited}s）"
 
-    log_info "  服務狀態：${healthy}/${total} 健康（已等待 ${waited}s）"
-
-    # 檢查關鍵服務
-    if docker compose exec -T postgres pg_isready -U titan &>/dev/null; then
-      log_ok "PostgreSQL 已就緒"
-      break
+      # 再等 Redis
+      if docker compose exec -T redis redis-cli -a "${REDIS_PASSWORD}" --no-auth-warning ping 2>/dev/null | grep -q PONG; then
+        log_ok "Redis 已就緒"
+        return 0
+      fi
     fi
 
     sleep "${interval}"
     waited=$((waited + interval))
+    printf "\r  等待中... %ds / %ds" "${waited}" "${max_wait}"
   done
+  echo ""
 
   if [[ ${waited} -ge ${max_wait} ]]; then
     log_warn "部分服務可能尚未完全就緒，請手動確認：docker compose ps"
   fi
-
-  log_ok "容器服務已啟動"
 }
 
 # ── Step 5: 資料庫 Migration ─────────────────────────────────────────────────
@@ -227,24 +271,27 @@ run_db_migration() {
 
   cd "${PROJECT_DIR}"
 
-  # 檢查是否有 prisma 設定
-  if [[ -f "${PROJECT_DIR}/prisma/schema.prisma" ]]; then
-    log_info "執行 Prisma DB Push..."
-    if docker compose exec -T titan-app npx prisma db push --accept-data-loss 2>&1; then
-      log_ok "Prisma DB Push 完成"
-    else
-      log_warn "Prisma DB Push 失敗（容器可能尚未就緒），嘗試本機執行..."
-      if command -v npx &>/dev/null; then
-        npx prisma db push --accept-data-loss 2>&1 || {
-          log_warn "Prisma DB Push 失敗，請手動執行：npx prisma db push"
-        }
-      else
-        log_warn "找不到 npx，請手動執行資料庫 Migration"
-      fi
-    fi
-  else
+  if [[ ! -f "${PROJECT_DIR}/prisma/schema.prisma" ]]; then
     log_warn "未找到 prisma/schema.prisma，跳過資料庫 Migration"
+    return 0
   fi
+
+  # 使用臨時容器在 titan-internal 網路內執行 prisma，無需暴露 PG 端口
+  local db_url="postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}"
+
+  log_info "透過臨時容器執行 Prisma DB Push..."
+  docker run --rm \
+    --network titan-internal \
+    -v "${PROJECT_DIR}:/app" \
+    -w /app \
+    -e DATABASE_URL="${db_url}" \
+    node:20-alpine \
+    sh -c "npx prisma generate && npx prisma db push --accept-data-loss" 2>&1 || {
+      log_error "Prisma DB Push 失敗"
+      return 1
+    }
+
+  log_ok "Prisma DB Push 完成"
 }
 
 # ── Step 6: 種子資料 ─────────────────────────────────────────────────────────
@@ -259,23 +306,26 @@ seed_database() {
 
   cd "${PROJECT_DIR}"
 
-  if [[ -f "${PROJECT_DIR}/prisma/seed.ts" ]]; then
-    log_info "執行 Prisma DB Seed..."
-    if docker compose exec -T titan-app npx prisma db seed 2>&1; then
-      log_ok "種子資料載入完成"
-    else
-      log_warn "種子資料載入失敗（容器可能尚未就緒），嘗試本機執行..."
-      if command -v npx &>/dev/null; then
-        npx prisma db seed 2>&1 || {
-          log_warn "種子資料載入失敗，請手動執行：npx prisma db seed"
-        }
-      else
-        log_warn "找不到 npx，請手動載入種子資料"
-      fi
-    fi
-  else
+  if [[ ! -f "${PROJECT_DIR}/prisma/seed.ts" ]]; then
     log_warn "未找到 prisma/seed.ts，跳過種子資料載入"
+    return 0
   fi
+
+  local db_url="postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}"
+
+  log_info "透過臨時容器載入種子資料..."
+  docker run --rm \
+    --network titan-internal \
+    -v "${PROJECT_DIR}:/app" \
+    -w /app \
+    -e DATABASE_URL="${db_url}" \
+    node:20-alpine \
+    sh -c "npx prisma db seed" 2>&1 || {
+      log_warn "種子資料載入失敗，可稍後手動執行"
+      return 1
+    }
+
+  log_ok "種子資料載入完成"
 }
 
 # ── Step 7: 健康檢查 ─────────────────────────────────────────────────────────
@@ -350,7 +400,12 @@ print_summary() {
   echo "  後續操作："
   echo "    1. 設定 /etc/hosts：<SERVER_IP>  ${domain}"
   echo "    2. 執行認證初始化：bash scripts/auth-init.sh"
-  echo "    3. 啟動監控堆疊：docker compose -f docker-compose.monitoring.yml up -d"
+  echo "    3. 啟動監控堆疊：docker compose --profile monitoring up -d"
+  echo "    4. 更新部署：bash scripts/upgrade.sh"
+  echo ""
+  echo -e "  ${BLUE}數據持久化：${NC}"
+  echo "    所有資料存於 Docker named volumes（postgres-data, redis-data, minio-data）"
+  echo "    docker compose down 安全（保留資料），docker compose down -v 會刪除資料"
   echo ""
 }
 
@@ -366,6 +421,7 @@ main() {
   check_prerequisites
   generate_secrets
   create_env_file
+  build_titan_app
   start_containers
   run_db_migration
   seed_database
