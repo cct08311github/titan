@@ -1,6 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
+
+const STATUS_MAP: Record<string, string> = {
+  done: "DONE", review: "REVIEW", inProgress: "IN_PROGRESS", todo: "TODO", backlog: "BACKLOG",
+};
 
 export interface TaskDistribution {
   backlog: number;
@@ -62,19 +67,19 @@ export function TaskDistributionChart({ distribution }: TaskDistributionChartPro
               const count = distribution[key];
               if (count === 0) return null;
               return (
-                <div key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Link key={key} href={`/kanban?status=${STATUS_MAP[key] ?? key}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
                   <span className={cn("w-2.5 h-2.5 rounded-sm", color)} />
                   <span>{label}</span>
                   <span className="font-medium text-foreground tabular-nums">{count}</span>
-                </div>
+                </Link>
               );
             })}
             {distribution.overdue > 0 && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+              <Link href="/kanban?overdue=true" className="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 hover:text-red-500 transition-colors">
                 <span className="w-2.5 h-2.5 rounded-sm bg-red-500 ring-1 ring-red-300" />
                 <span>逾期</span>
                 <span className="font-medium tabular-nums">{distribution.overdue}</span>
-              </div>
+              </Link>
             )}
           </div>
         </>

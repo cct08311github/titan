@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export interface TimeInvestment {
@@ -63,11 +64,11 @@ export function TimeInvestmentBar({ time }: TimeInvestmentBarProps) {
         </div>
       </div>
 
-      {/* Utilization rate */}
+      {/* Utilization rate — link to timesheet */}
       {time.planned > 0 && (
-        <p className="text-xs text-muted-foreground mt-2">
-          投入率 {Math.round((time.actual / time.planned) * 100)}%
-        </p>
+        <Link href="/timesheet" className="block text-xs text-muted-foreground mt-2 hover:text-primary transition-colors">
+          投入率 {Math.round((time.actual / time.planned) * 100)}% →
+        </Link>
       )}
     </div>
   );

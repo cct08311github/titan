@@ -256,7 +256,7 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
             </h2>
             <div className="space-y-3">
               {data.monthlyGoals.map((g) => (
-                <div key={g.id} className="space-y-1">
+                <Link key={g.id} href="/plans" className="block space-y-1 hover:bg-accent/40 -mx-2 px-2 py-1 rounded transition-colors">
                   <div className="flex justify-between text-xs">
                     <span className="text-foreground truncate">{g.title}</span>
                     <span className="tabular-nums text-muted-foreground ml-2">{Math.round(g.progressPct)}%</span>
@@ -270,7 +270,7 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
                       style={{ width: `${Math.min(g.progressPct, 100)}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -388,7 +388,7 @@ function ManagerMyDay({ data }: { data: ManagerData }) {
               </h2>
               <div className="space-y-3">
                 {data.planSummaries.map((p) => (
-                  <div key={p.id} className="space-y-1.5">
+                  <Link key={p.id} href="/plans" className="block space-y-1.5 hover:bg-accent/40 -mx-2 px-2 py-1 rounded transition-colors">
                     <div className="flex justify-between text-xs">
                       <span className="text-foreground truncate">{p.title}</span>
                       <span className="tabular-nums text-muted-foreground ml-2">{Math.round(p.progressPct)}%</span>
@@ -405,7 +405,7 @@ function ManagerMyDay({ data }: { data: ManagerData }) {
                         {p.flaggedCount} 個標記任務
                       </p>
                     )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>
