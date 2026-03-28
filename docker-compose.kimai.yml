@@ -1,7 +1,7 @@
 # TITAN 平台 — Kimai 工時追蹤整合擴充設定
 # Issue: #64 — Kimai Time Tracking Deep Integration
 # 此檔案覆寫 docker-compose.yml 的預設設定，新增 Kimai + MySQL 服務
-# 使用方式：docker compose -f docker-compose.yml -f docker-compose.override.yml up -d
+# 使用方式：docker compose -f docker-compose.yml -f docker-compose.kimai.yml up -d
 #
 # 架構說明：
 #   Kimai 使用獨立的 MySQL 8.0（與 TITAN 的 PostgreSQL 16 分開）
