@@ -48,7 +48,9 @@ export async function checkAuth(
     const cookieHeader = req.headers.get("cookie") ?? "";
     const hasSession = cookieHeader.includes("authjs.session-token");
     if (!hasSession) {
-      const loginUrl = new URL("/login", req.url);
+      // Use req.nextUrl.clone() so NextURL preserves basePath in the redirect
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/login";
       loginUrl.searchParams.set("callbackUrl", pathname);
       const redirectRes = NextResponse.redirect(loginUrl);
       redirectRes.headers.set("x-request-id", requestId);
