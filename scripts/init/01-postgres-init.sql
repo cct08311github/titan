@@ -4,6 +4,10 @@
 -- 用途：建立共用資料庫使用者、擴展、功能
 -- ═══════════════════════════════════════════════════════════
 
+-- 建立 Outline 專用資料庫（與 TITAN App 的 titan DB 分離）
+SELECT 'CREATE DATABASE outline'
+  WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'outline')\gexec
+
 -- 建立應用程式專用使用者（非超級使用者）
 -- 注意：實際建立使用者時，請確保使用強密碼
 DO $$
