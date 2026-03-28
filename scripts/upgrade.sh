@@ -202,6 +202,17 @@ rebuild_titan_app() {
     [[ -n "${nested_top}" ]] && rm -rf ".next/standalone/${nested_top}"
   fi
 
+  # 補充 Linux Prisma binaries 到 standalone
+  # Next.js standalone 僅追蹤 host native binary；Linux target binaries 需手動複製
+  local prisma_src="node_modules/.prisma/client"
+  local prisma_dst=".next/standalone/node_modules/.prisma/client"
+  if [[ -d "${prisma_src}" ]] && [[ -d "${prisma_dst}" ]]; then
+    log_info "補充 Linux Prisma binaries 到 standalone..."
+    for f in "${prisma_src}"/libquery_engine-linux-*.so.node; do
+      [[ -f "${f}" ]] && cp -n "${f}" "${prisma_dst}/" && log_info "  已複製 $(basename "${f}")"
+    done
+  fi
+
   log_info "建構 Docker 映像..."
   docker build -t titan-app:latest . 2>&1 | tail -5
 
