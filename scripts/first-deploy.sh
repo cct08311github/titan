@@ -213,6 +213,21 @@ build_titan_app() {
     exit 1
   fi
 
+  # Next.js standalone 會將輸出複製到 .next/standalone/<absolute-path>/server.js
+  # 需要拍平到 .next/standalone/server.js 供 Dockerfile COPY 使用
+  local standalone_server
+  standalone_server=$(find ".next/standalone" -name "server.js" -not -path "*/node_modules/*" | head -1)
+  if [[ -n "${standalone_server}" ]] && [[ "${standalone_server}" != ".next/standalone/server.js" ]]; then
+    local standalone_src
+    standalone_src=$(dirname "${standalone_server}")
+    log_info "拍平 standalone 輸出：${standalone_src} → .next/standalone/"
+    cp -rn "${standalone_src}/." ".next/standalone/"
+    # 移除嵌套的路徑目錄（保留 node_modules 和 .next）
+    local nested_top
+    nested_top=$(echo "${standalone_src#.next/standalone/}" | cut -d/ -f1)
+    [[ -n "${nested_top}" ]] && rm -rf ".next/standalone/${nested_top}"
+  fi
+
   # Docker build
   log_info "建構 Docker 映像 titan-app:latest..."
   docker build -t titan-app:latest . 2>&1 | tail -5

@@ -189,6 +189,19 @@ rebuild_titan_app() {
     return 1
   fi
 
+  # 拍平 standalone 輸出（Next.js 會將 server.js 複製到完整絕對路徑下）
+  local standalone_server
+  standalone_server=$(find ".next/standalone" -name "server.js" -not -path "*/node_modules/*" | head -1)
+  if [[ -n "${standalone_server}" ]] && [[ "${standalone_server}" != ".next/standalone/server.js" ]]; then
+    local standalone_src
+    standalone_src=$(dirname "${standalone_server}")
+    log_info "拍平 standalone 輸出：${standalone_src} → .next/standalone/"
+    cp -rn "${standalone_src}/." ".next/standalone/"
+    local nested_top
+    nested_top=$(echo "${standalone_src#.next/standalone/}" | cut -d/ -f1)
+    [[ -n "${nested_top}" ]] && rm -rf ".next/standalone/${nested_top}"
+  fi
+
   log_info "建構 Docker 映像..."
   docker build -t titan-app:latest . 2>&1 | tail -5
 
