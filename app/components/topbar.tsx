@@ -4,21 +4,14 @@ import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, Moon, Sun, X, AlertTriangle, Search } from "lucide-react";
 import Link from "next/link";
-import {
-  LayoutDashboard, KanbanSquare, GanttChartSquare, BookOpen,
-  Clock, BarChart2, Target, Crosshair, Activity, Settings,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SimpleTooltip } from "@/app/components/ui/tooltip";
 import { useState, useEffect, useMemo } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
-import { GlobalSearchModal } from "@/app/components/global-search-modal";
+import { getFlatNavItems, buildLabelMap } from "@/lib/nav-config";
 
-const PAGE_TITLES: Record<string, string> = {
-  "/dashboard": "儀表板", "/kanban": "看板", "/gantt": "甘特圖",
-  "/plans": "年度計畫", "/kpi": "KPI", "/knowledge": "知識庫",
-  "/timesheet": "工時紀錄", "/reports": "報表",
-  "/activity": "團隊動態", "/settings": "個人設定",
-};
+/** Page titles derived from shared nav-config (Issue #1019) */
+const PAGE_TITLES = buildLabelMap();
 
 function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -30,24 +23,13 @@ function ThemeToggle() {
     localStorage.setItem("titan-theme", next ? "dark" : "light");
   }
   return (
-    <button onClick={toggle} className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label={dark ? "切換淺色模式" : "切換深色模式"} title={dark ? "切換淺色模式" : "切換深色模式"}>
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
+    <SimpleTooltip content={dark ? "切換淺色模式" : "切換深色模式"} side="bottom">
+      <button onClick={toggle} className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label={dark ? "切換淺色模式" : "切換深色模式"}>
+        {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </button>
+    </SimpleTooltip>
   );
 }
-
-const MOBILE_NAV = [
-  { href: "/dashboard", label: "儀表板", icon: LayoutDashboard },
-  { href: "/kanban", label: "看板", icon: KanbanSquare },
-  { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
-  { href: "/plans", label: "年度計畫", icon: Target },
-  { href: "/kpi", label: "KPI", icon: Crosshair },
-  { href: "/knowledge", label: "知識庫", icon: BookOpen },
-  { href: "/timesheet", label: "工時紀錄", icon: Clock },
-  { href: "/reports", label: "報表", icon: BarChart2 },
-  { href: "/activity", label: "團隊動態", icon: Activity },
-  { href: "/settings", label: "個人設定", icon: Settings },
-];
 
 const PASSWORD_MAX_AGE_DAYS = 90;
 const PASSWORD_WARN_DAYS = 7;
@@ -64,21 +46,12 @@ export function Topbar() {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-
-  // Command+K / Ctrl+K global search shortcut — Issue #859
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen((prev) => !prev);
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  const role = session?.user?.role as string | undefined;
 
   const pageTitle = Object.entries(PAGE_TITLES).find(([p]) => pathname === p || pathname.startsWith(p + "/"))?.[1];
+
+  // Mobile nav items filtered by role (Issue #1019)
+  const mobileNavItems = getFlatNavItems(role);
 
   // Issue #834: password expiry warning
   const user = session?.user as { passwordChangedAt?: string | null } | undefined;
@@ -110,14 +83,15 @@ export function Topbar() {
         <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
       </div>
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => setSearchOpen(true)}
-          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          aria-label="全域搜尋"
-          title="搜尋 (⌘K)"
-        >
-          <Search className="h-4 w-4" />
-        </button>
+        <SimpleTooltip content="搜尋 (⌘K)" side="bottom">
+          <button
+            onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
+            className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            aria-label="全域搜尋"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </SimpleTooltip>
         <ThemeToggle />
         <NotificationBell />
         <div className="w-px h-6 bg-border mx-2" />
@@ -130,13 +104,15 @@ export function Topbar() {
             <p className="text-[11px] text-muted-foreground mt-0.5">{session?.user?.role === "MANAGER" ? "主管" : "工程師"}</p>
           </div>
         </div>
-        <button onClick={() => signOut({ callbackUrl: "/login" })} className="p-2 rounded-lg text-muted-foreground hover:text-danger hover:bg-accent transition-colors ml-1" aria-label="登出" title="登出">
-          <LogOut className="h-4 w-4" />
-        </button>
+        <SimpleTooltip content="登出" side="bottom">
+          <button onClick={() => signOut({ callbackUrl: "/login" })} className="p-2 rounded-lg text-muted-foreground hover:text-danger hover:bg-accent transition-colors ml-1" aria-label="登出">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </SimpleTooltip>
       </div>
     </header>
 
-    {/* Mobile navigation overlay */}
+    {/* Mobile navigation overlay — now role-filtered via shared nav-config (Issue #1019) */}
     {mobileMenuOpen && (
       <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
         <nav
@@ -149,7 +125,7 @@ export function Topbar() {
             </div>
             <span className="text-base font-semibold tracking-tight">TITAN</span>
           </div>
-          {MOBILE_NAV.map(({ href, label, icon: Icon }) => {
+          {mobileNavItems.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
@@ -171,12 +147,6 @@ export function Topbar() {
         </nav>
       </div>
     )}
-
-    {/* Global search modal — Issue #859 */}
-    <GlobalSearchModal
-      open={searchOpen}
-      onClose={() => setSearchOpen(false)}
-    />
     </>
   );
 }
