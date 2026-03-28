@@ -192,6 +192,10 @@ rebuild_titan_app() {
   log_info "建構 Docker 映像..."
   docker build -t titan-app:latest . 2>&1 | tail -5
 
+  # 同步更新 migration 映像（確保 schema 與 binary 版本一致）
+  log_info "更新 Prisma migration 映像 titan-migrate:latest..."
+  docker build -f Dockerfile.migrate -t titan-migrate:latest . 2>&1 | tail -5
+
   log_ok "TITAN App 映像重建完成"
 }
 
@@ -209,16 +213,13 @@ run_migration() {
 
   local db_url="postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}"
 
-  log_info "透過臨時容器執行 Prisma DB Push..."
+  log_info "透過 titan-migrate 容器執行 Prisma DB Push..."
   docker run --rm \
     --network titan-internal \
-    -v "${PROJECT_DIR}:/app" \
-    -w /app \
     -e DATABASE_URL="${db_url}" \
-    node:20-alpine \
-    sh -c "npx prisma generate && npx prisma db push --accept-data-loss" 2>&1 || {
+    titan-migrate:latest 2>&1 || {
       log_error "DB Migration 失敗。資料庫未變更。"
-      log_info "手動執行：docker run --rm --network titan-internal -v \$(pwd):/app -w /app -e DATABASE_URL='...' node:20-alpine sh -c 'npx prisma db push'"
+      log_info "手動執行：docker run --rm --network titan-internal -e DATABASE_URL='...' titan-migrate:latest"
       return 1
     }
 
