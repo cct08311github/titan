@@ -5,7 +5,9 @@ import {
   Loader2, Save, Plus, BookOpen, ExternalLink, FileEdit, Globe, AlertCircle,
   Upload, Archive, FileText, ClipboardList, AlertTriangle, Monitor,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog } from "@/app/components/ui/alert-dialog";
 import { extractItems, extractData } from "@/lib/api-client";
 import { DocumentTree, type DocNode } from "@/app/components/document-tree";
 import { MarkdownEditor } from "@/app/components/markdown-editor";
@@ -66,6 +68,7 @@ const TEMPLATE_OPTIONS = [
 ] as const;
 
 export default function KnowledgePage() {
+  const { confirmDialog, ConfirmDialog } = useConfirmDialog();
   const [docs, setDocs] = useState<DocNode[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState<string | null>(null);
@@ -146,6 +149,7 @@ export default function KnowledgePage() {
         setDocs((prev) =>
           prev.map((d) => d.id === selectedId ? { ...d, title: updated.title } : d)
         );
+        toast.success("文件已儲存");
       }
     } finally {
       setSaving(false);
@@ -160,6 +164,7 @@ export default function KnowledgePage() {
       const updated = extractData<DocDetail>(body);
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
+      toast.success("文件已發佈");
     }
   }
 
@@ -171,11 +176,14 @@ export default function KnowledgePage() {
       const updated = extractData<DocDetail>(body);
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
+      toast.success("已送出審核");
     }
   }
 
   async function retireDoc() {
-    if (!selectedId || !confirm("確定將此文件標記為退役？")) return;
+    if (!selectedId) return;
+    const ok = await confirmDialog({ title: "確定將此文件標記為退役？", description: "此操作無法復原", confirmLabel: "確認", variant: "destructive" });
+    if (!ok) return;
     const res = await fetch(`/api/documents/${selectedId}/retire`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -186,17 +194,21 @@ export default function KnowledgePage() {
       const updated = extractData<DocDetail>(body);
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
+      toast.success("文件已退役");
     }
   }
 
   async function archiveDoc() {
-    if (!selectedId || !confirm("確定歸檔此文件？")) return;
+    if (!selectedId) return;
+    const ok = await confirmDialog({ title: "確定歸檔此文件？", description: "此操作無法復原", confirmLabel: "確認", variant: "destructive" });
+    if (!ok) return;
     const res = await fetch(`/api/documents/${selectedId}/archive`, { method: "POST" });
     if (res.ok) {
       const body = await res.json();
       const updated = extractData<DocDetail>(body);
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
+      toast.success("文件已歸檔");
     }
   }
 
@@ -221,9 +233,10 @@ export default function KnowledgePage() {
       const doc = extractData<{ id: string }>(body);
       await loadDocs();
       setSelectedId(doc.id);
+      toast.success("文件已建立");
     } else {
       const errBody = await res.json().catch(() => ({}));
-      alert(errBody?.message ?? "文件建立失敗");
+      toast.error(errBody?.message ?? "文件建立失敗");
     }
   }
 
@@ -239,12 +252,15 @@ export default function KnowledgePage() {
       const body = await res.json();
       const space = extractData<{ id: string }>(body);
       setSelectedSpaceId(space.id);
+      toast.success("空間已建立");
     }
   }
 
   async function deleteDoc(id: string) {
-    if (!confirm("確定刪除此文件？子文件將一起刪除。")) return;
-    await fetch(`/api/documents/${id}`, { method: "DELETE" });
+    const ok = await confirmDialog({ title: "確定刪除此文件？", description: "子文件將一起刪除。此操作無法復原", confirmLabel: "確認", variant: "destructive" });
+    if (!ok) return;
+    const delRes = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+    if (delRes.ok) toast.success("文件已刪除");
     if (selectedId === id) setSelectedId(null);
     await loadDocs();
   }
@@ -628,6 +644,7 @@ export default function KnowledgePage() {
           </div>
         </div>
       )}
+      <ConfirmDialog />
     </div>
   );
 }

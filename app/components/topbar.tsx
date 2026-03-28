@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { LogOut, Menu, Moon, Sun, X, AlertTriangle, Search } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { SimpleTooltip } from "@/app/components/ui/tooltip";
 import { useState, useEffect, useMemo } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
 import { getFlatNavItems, buildLabelMap } from "@/lib/nav-config";
@@ -22,9 +23,11 @@ function ThemeToggle() {
     localStorage.setItem("titan-theme", next ? "dark" : "light");
   }
   return (
-    <button onClick={toggle} className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label={dark ? "切換淺色模式" : "切換深色模式"} title={dark ? "切換淺色模式" : "切換深色模式"}>
-      {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </button>
+    <SimpleTooltip content={dark ? "切換淺色模式" : "切換深色模式"} side="bottom">
+      <button onClick={toggle} className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label={dark ? "切換淺色模式" : "切換深色模式"}>
+        {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+      </button>
+    </SimpleTooltip>
   );
 }
 
@@ -80,14 +83,15 @@ export function Topbar() {
         <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
       </div>
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
-          className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-          aria-label="全域搜尋"
-          title="搜尋 (⌘K)"
-        >
-          <Search className="h-4 w-4" />
-        </button>
+        <SimpleTooltip content="搜尋 (⌘K)" side="bottom">
+          <button
+            onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
+            className="p-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            aria-label="全域搜尋"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </SimpleTooltip>
         <ThemeToggle />
         <NotificationBell />
         <div className="w-px h-6 bg-border mx-2" />
@@ -100,13 +104,15 @@ export function Topbar() {
             <p className="text-[11px] text-muted-foreground mt-0.5">{session?.user?.role === "MANAGER" ? "主管" : "工程師"}</p>
           </div>
         </div>
-        <button onClick={() => signOut({ callbackUrl: "/login" })} className="p-2 rounded-lg text-muted-foreground hover:text-danger hover:bg-accent transition-colors ml-1" aria-label="登出" title="登出">
-          <LogOut className="h-4 w-4" />
-        </button>
+        <SimpleTooltip content="登出" side="bottom">
+          <button onClick={() => signOut({ callbackUrl: "/login" })} className="p-2 rounded-lg text-muted-foreground hover:text-danger hover:bg-accent transition-colors ml-1" aria-label="登出">
+            <LogOut className="h-4 w-4" />
+          </button>
+        </SimpleTooltip>
       </div>
     </header>
 
-    {/* Mobile navigation overlay -- now role-filtered via shared nav-config (Issue #1019) */}
+    {/* Mobile navigation overlay — now role-filtered via shared nav-config (Issue #1019) */}
     {mobileMenuOpen && (
       <div className="md:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
         <nav

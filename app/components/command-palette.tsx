@@ -11,15 +11,17 @@ import {
   User,
   Clock,
   Loader2,
+  MessageSquare,
 } from "lucide-react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 interface SearchResultItem {
   id: string;
-  type: "route" | "task" | "document" | "kpi" | "user";
+  type: "route" | "task" | "document" | "kpi" | "user" | "comment";
   label: string;
   sub?: string;
+  snippet?: string;
   href: string;
   shortcut?: string;
 }
@@ -27,10 +29,11 @@ interface SearchResultItem {
 interface ApiSearchResponse {
   ok: boolean;
   data?: {
-    tasks: Array<{ id: string; title: string; status: string; priority: string }>;
-    documents: Array<{ id: string; title: string; slug: string }>;
+    tasks: Array<{ id: string; title: string; status: string; priority: string; snippet?: string }>;
+    documents: Array<{ id: string; title: string; slug: string; snippet?: string }>;
     kpis: Array<{ id: string; code: string; title: string; year: number }>;
     users: Array<{ id: string; name: string; email: string; role: string }>;
+    comments: Array<{ id: string; title: string; snippet: string; taskId?: string; authorName?: string }>;
   };
 }
 
@@ -66,6 +69,7 @@ const TYPE_ICON: Record<string, React.ReactNode> = {
   document: <FileText className="h-3.5 w-3.5" />,
   kpi: <Target className="h-3.5 w-3.5" />,
   user: <User className="h-3.5 w-3.5" />,
+  comment: <MessageSquare className="h-3.5 w-3.5" />,
   route: <Search className="h-3.5 w-3.5" />,
 };
 
@@ -74,6 +78,7 @@ const TYPE_LABEL: Record<string, string> = {
   document: "文件",
   kpi: "KPI",
   user: "使用者",
+  comment: "評論",
   route: "頁面",
 };
 
@@ -96,6 +101,35 @@ function saveRecentSearch(q: string) {
   } catch {
     // localStorage unavailable — ignore
   }
+}
+
+// ── Snippet Highlight ────────────────────────────────────────────────────────
+
+/** Sanitize snippet HTML — only allow <mark> tags, strip everything else. */
+function sanitizeSnippetHtml(html: string): string {
+  return html
+    .replace(/<(?!\/?mark\b)[^>]*>/gi, "")
+    .replace(/on\w+=/gi, "");
+}
+
+function HighlightSnippet({ snippet }: { snippet: string }) {
+  const sanitized = sanitizeSnippetHtml(snippet);
+  const parts = sanitized.split(/(<mark>.*?<\/mark>)/g);
+  return (
+    <span className="text-[10px] text-muted-foreground line-clamp-1">
+      {parts.map((part, i) => {
+        const m = part.match(/^<mark>(.*?)<\/mark>$/);
+        if (m) {
+          return (
+            <mark key={i} className="bg-yellow-200/60 text-foreground rounded-sm px-0.5">
+              {m[1]}
+            </mark>
+          );
+        }
+        return part;
+      })}
+    </span>
+  );
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -154,7 +188,7 @@ export function CommandPalette() {
     setSearching(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}`);
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query.trim())}&scope=all`);
         if (!res.ok) {
           setSearchResults([]);
           return;
@@ -173,6 +207,7 @@ export function CommandPalette() {
             type: "task",
             label: t.title,
             sub: `${t.status} · ${t.priority}`,
+            snippet: t.snippet,
             href: `/kanban?task=${t.id}`,
           });
         }
@@ -182,6 +217,7 @@ export function CommandPalette() {
             type: "document",
             label: d.title,
             sub: d.slug,
+            snippet: d.snippet,
             href: `/knowledge/${d.slug}`,
           });
         }
@@ -201,6 +237,16 @@ export function CommandPalette() {
             label: u.name,
             sub: `${u.email} · ${u.role}`,
             href: `/admin/users?id=${u.id}`,
+          });
+        }
+        for (const c of json.data.comments ?? []) {
+          items.push({
+            id: `comment-${c.id}`,
+            type: "comment",
+            label: c.title,
+            sub: c.authorName ? `by ${c.authorName}` : undefined,
+            snippet: c.snippet,
+            href: `/kanban?task=${c.taskId ?? c.id}`,
           });
         }
         setSearchResults(items);
@@ -227,6 +273,15 @@ export function CommandPalette() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Allow external components (e.g. Topbar search button) to open the palette
+  useEffect(() => {
+    function onOpenPalette() {
+      setOpen(true);
+    }
+    window.addEventListener("open-command-palette", onOpenPalette);
+    return () => window.removeEventListener("open-command-palette", onOpenPalette);
   }, []);
 
   // G + letter shortcuts for direct navigation
@@ -311,7 +366,7 @@ export function CommandPalette() {
             ref={inputRef}
             value={query}
             onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
-            placeholder="搜尋頁面、任務、文件、KPI、使用者…"
+            placeholder="搜尋頁面、任務、文件、評論、KPI、使用者…"
             className="flex-1 h-12 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
           />
           {searching && <Loader2 className="h-4 w-4 text-muted-foreground animate-spin flex-shrink-0" />}
@@ -353,7 +408,10 @@ export function CommandPalette() {
                 <span className="text-muted-foreground flex-shrink-0">
                   {TYPE_ICON[item.type]}
                 </span>
-                <span className="flex-1 text-left truncate">{item.label}</span>
+                <span className="flex-1 text-left min-w-0">
+                  <span className="block truncate">{item.label}</span>
+                  {item.snippet && <HighlightSnippet snippet={item.snippet} />}
+                </span>
                 {item.sub && (
                   <span className="text-[10px] text-muted-foreground flex-shrink-0 truncate max-w-[120px]">
                     {item.sub}

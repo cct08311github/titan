@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { FileText, Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
@@ -68,11 +69,12 @@ export function TaskDocumentSection({ taskId }: TaskDocumentSectionProps) {
     });
 
     if (res.ok) {
+      toast.success("連結已新增");
       await loadDocs();
       setShowSearch(false);
     } else {
       const errBody = await res.json().catch(() => ({}));
-      alert(errBody?.message ?? "新增連結失敗");
+      toast.error(errBody?.message ?? "新增連結失敗");
     }
   }
 

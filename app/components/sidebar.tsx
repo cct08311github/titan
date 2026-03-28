@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
+import { SimpleTooltip } from "@/app/components/ui/tooltip";
 import { getNavGroupsForRole } from "@/lib/nav-config";
 
 /**
@@ -53,9 +54,11 @@ export function Sidebar() {
           </div>
         )}
         {!collapsed && (
-          <button onClick={() => setCollapsed(true)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="收合側邊欄" title="收合側邊欄">
-            <PanelLeftClose className="h-4 w-4" />
-          </button>
+          <SimpleTooltip content="收合側邊欄" side="bottom">
+            <button onClick={() => setCollapsed(true)} className="p-1.5 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="收合側邊欄">
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </SimpleTooltip>
         )}
       </div>
 
@@ -65,12 +68,14 @@ export function Sidebar() {
             {groups.flatMap((g) => g.items).map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href || pathname.startsWith(href + "/");
               return (
-                <Link key={href} href={href} title={label} aria-current={isActive ? "page" : undefined}
-                  className={cn("flex items-center justify-center w-full h-9 rounded-lg transition-colors",
-                    isActive ? "bg-[hsl(var(--sidebar-accent))] text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-accent hover:text-foreground"
-                  )}>
-                  <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                </Link>
+                <SimpleTooltip key={href} content={label} side="right">
+                  <Link href={href} aria-current={isActive ? "page" : undefined}
+                    className={cn("flex items-center justify-center w-full h-9 rounded-lg transition-colors",
+                      isActive ? "bg-[hsl(var(--sidebar-accent))] text-sidebar-accent-foreground" : "text-sidebar-foreground hover:bg-accent hover:text-foreground"
+                    )}>
+                    <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                  </Link>
+                </SimpleTooltip>
               );
             })}
           </div>
@@ -103,9 +108,11 @@ export function Sidebar() {
 
       <div className="border-t border-sidebar-border p-2">
         {collapsed ? (
-          <button onClick={() => setCollapsed(false)} className="flex items-center justify-center w-full h-9 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="展開側邊欄" title="展開側邊欄">
-            <PanelLeftOpen className="h-4 w-4" />
-          </button>
+          <SimpleTooltip content="展開側邊欄" side="right">
+            <button onClick={() => setCollapsed(false)} className="flex items-center justify-center w-full h-9 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition-colors" aria-label="展開側邊欄">
+              <PanelLeftOpen className="h-4 w-4" />
+            </button>
+          </SimpleTooltip>
         ) : (
           <p className="font-mono text-[11px] text-muted-foreground/60 tabular-nums px-3 py-1">v2.0.0</p>
         )}

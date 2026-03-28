@@ -9,6 +9,7 @@
 
 import { useState } from "react";
 import { KanbanSquare, Plus } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   WorkspaceShell,
@@ -79,7 +80,7 @@ function WorkspaceContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (res.ok) ws.refresh();
+      if (res.ok) { toast.success("任務已移動"); ws.refresh(); }
     } catch {
       // Silent fail — refresh to restore
       ws.refresh();
@@ -147,10 +148,10 @@ function WorkspaceContent() {
                   category: "PLANNED",
                 }),
               });
-              if (res.ok) ws.refresh();
+              if (res.ok) { toast.success("任務已建立"); ws.refresh(); }
               else {
                 const errBody = await res.json().catch(() => ({}));
-                alert(errBody?.message ?? errBody?.error ?? "建立失敗");
+                toast.error(errBody?.message ?? errBody?.error ?? "建立失敗");
               }
             }}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90"
