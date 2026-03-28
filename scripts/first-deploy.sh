@@ -234,7 +234,7 @@ build_titan_app() {
   local prisma_dst=".next/standalone/node_modules/.prisma/client"
   if [[ -d "${prisma_src}" ]] && [[ -d "${prisma_dst}" ]]; then
     log_info "補充 Linux Prisma binaries 到 standalone..."
-    for f in "${prisma_src}"/libquery_engine-linux-*.so.node; do
+    for f in "${prisma_src}"/libquery_engine-*.so.node; do
       [[ -f "${f}" ]] && cp -n "${f}" "${prisma_dst}/" && log_info "  已複製 $(basename "${f}")"
     done
   fi
