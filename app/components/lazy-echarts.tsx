@@ -35,3 +35,19 @@ export const LazyTimesheetDistributionChart = dynamic(
   () => import("@/app/components/timesheet-distribution-chart").then((mod) => ({ default: mod.TimesheetDistributionChart })),
   { loading: ChartLoading, ssr: false }
 );
+
+// Cockpit charts (Issue #1073 — UX-05)
+export const LazyTaskDistributionPie = dynamic(
+  () => import("@/app/components/cockpit/task-distribution-pie").then((mod) => ({ default: mod.TaskDistributionPie })),
+  { loading: ChartLoading, ssr: false }
+);
+
+export const LazyKPIRadarChart = dynamic(
+  () => import("@/app/components/cockpit/kpi-radar-chart").then((mod) => ({ default: mod.KPIRadarChart })),
+  { loading: ChartLoading, ssr: false }
+);
+
+export const LazyGoalTrendLine = dynamic(
+  () => import("@/app/components/cockpit/goal-trend-line").then((mod) => ({ default: mod.GoalTrendLine })),
+  { loading: ChartLoading, ssr: false }
+);
