@@ -1,43 +1,21 @@
-# ── Stage 1: deps ────────────────────────────────────────────────────
-FROM node:20-alpine AS deps
-# libc6-compat may not be available on Alpine 3.23+ — skip gracefully
-RUN apk add --no-cache libc6-compat 2>/dev/null || true
-WORKDIR /app
+# ── Offline-capable Dockerfile for air-gapped/restricted DNS environments ──
+# All dependencies pre-installed on host, COPY into image (no network needed during build)
 
-COPY package.json package-lock.json* ./
-RUN npm ci
-
-# ── Stage 2: builder ─────────────────────────────────────────────────
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
-
-# Generate Prisma client
-RUN npx prisma generate
-
-# Build Next.js app
-ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
-
-# ── Stage 3: runner ──────────────────────────────────────────────────
-# Uses Next.js standalone output (next.config.ts: output: 'standalone')
-# for minimal image size — only server.js + required node_modules are
-# copied, reducing the final image by ~50% compared to full node_modules.
-FROM node:20-alpine AS runner
+# ── Stage 1: runner ──────────────────────────────────────────────────
+# Uses pre-built .next/standalone from host (npm run build already executed)
+FROM node:20 AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
 
-# Standalone output: .next/standalone contains server.js + minimal deps
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy pre-built standalone output from host
+COPY --chown=nextjs:nodejs public ./public
+COPY --chown=nextjs:nodejs .next/standalone ./
+COPY --chown=nextjs:nodejs .next/static ./.next/static
 
 USER nextjs
 
