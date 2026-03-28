@@ -217,6 +217,10 @@ build_titan_app() {
   log_info "建構 Docker 映像 titan-app:latest..."
   docker build -t titan-app:latest . 2>&1 | tail -5
 
+  # 建構 migration 映像（預下載 Linux Prisma binary，供 air-gapped 環境使用）
+  log_info "建構 Prisma migration 映像 titan-migrate:latest..."
+  docker build -f Dockerfile.migrate -t titan-migrate:latest . 2>&1 | tail -5
+
   log_ok "TITAN App 映像建構完成"
 }
 
@@ -279,14 +283,11 @@ run_db_migration() {
   # 使用臨時容器在 titan-internal 網路內執行 prisma，無需暴露 PG 端口
   local db_url="postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}"
 
-  log_info "透過臨時容器執行 Prisma DB Push..."
+  log_info "透過 titan-migrate 容器執行 Prisma DB Push..."
   docker run --rm \
     --network titan-internal \
-    -v "${PROJECT_DIR}:/app" \
-    -w /app \
     -e DATABASE_URL="${db_url}" \
-    node:20-alpine \
-    sh -c "npx prisma generate && npx prisma db push --accept-data-loss" 2>&1 || {
+    titan-migrate:latest 2>&1 || {
       log_error "Prisma DB Push 失敗"
       return 1
     }
@@ -313,13 +314,11 @@ seed_database() {
 
   local db_url="postgresql://${POSTGRES_USER:-titan}:${POSTGRES_PASSWORD}@titan-postgres:5432/${POSTGRES_DB:-titan}"
 
-  log_info "透過臨時容器載入種子資料..."
+  log_info "透過 titan-migrate 容器載入種子資料..."
   docker run --rm \
     --network titan-internal \
-    -v "${PROJECT_DIR}:/app" \
-    -w /app \
     -e DATABASE_URL="${db_url}" \
-    node:20-alpine \
+    titan-migrate:latest \
     sh -c "npx prisma db seed" 2>&1 || {
       log_warn "種子資料載入失敗，可稍後手動執行"
       return 1

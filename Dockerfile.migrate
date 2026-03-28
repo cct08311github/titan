@@ -1,0 +1,22 @@
+# Dockerfile.migrate — Prisma migration helper image
+# Built locally so the Linux query engine binary is pre-downloaded during build.
+# Used by first-deploy.sh and upgrade.sh for air-gapped Prisma DB Push.
+#
+# Build: docker build -f Dockerfile.migrate -t titan-migrate:latest .
+# Run:   docker run --rm --network titan-internal \
+#          -e DATABASE_URL="..." titan-migrate:latest
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy only what prisma needs to generate and migrate
+COPY package.json package-lock.json ./
+COPY prisma/ ./prisma/
+
+# Install production prisma CLI + download Linux query engine binary
+# PRISMA_BINARY_TARGETS ensures the correct engine is fetched for linux-musl
+RUN npm ci --ignore-scripts && \
+    npx prisma generate
+
+CMD ["npx", "prisma", "db", "push", "--accept-data-loss"]
