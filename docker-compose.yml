@@ -97,7 +97,7 @@ services:
 
   # ── 物件儲存：MinIO ──────────────────────────────────────
   minio:
-    image: minio/minio:RELEASE.2024-01-01T00-00-00Z
+    image: minio/minio:latest
     container_name: titan-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"

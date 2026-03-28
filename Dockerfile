@@ -1,6 +1,7 @@
 # ── Stage 1: deps ────────────────────────────────────────────────────
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat
+# libc6-compat may not be available on Alpine 3.23+ — skip gracefully
+RUN apk add --no-cache libc6-compat 2>/dev/null || true
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
