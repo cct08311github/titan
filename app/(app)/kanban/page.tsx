@@ -10,15 +10,29 @@
  * - Keyboard navigation (Tab, Enter, Arrow keys)
  * - Visual drag feedback (drop indicators, column highlight)
  * - Activity log integration via API
+ * - Multi-select mode with batch operations (Issue #1023)
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Kanban, Loader2, CheckSquare, X } from "lucide-react";
+import {
+  Plus,
+  Kanban,
+  Loader2,
+  CheckSquare,
+  X,
+  MousePointerSquareDashed,
+  Check,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
 import { type TaskCardData } from "@/app/components/task-card";
-import { TaskFilters, type TaskFilters as FiltersType, emptyFilters, hasActiveFilters } from "@/app/components/task-filters";
+import {
+  TaskFilters,
+  type TaskFilters as FiltersType,
+  emptyFilters,
+  hasActiveFilters,
+} from "@/app/components/task-filters";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { KanbanColumn } from "@/app/components/kanban-column";
@@ -26,15 +40,22 @@ import { calculatePosition } from "@/lib/utils/optimistic-update";
 
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 
-const COLUMN_ORDER: TaskStatus[] = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
-
-const DEFAULT_COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
-  { status: "BACKLOG", label: "待辦清單", color: "text-muted-foreground" },
-  { status: "TODO", label: "待處理", color: "text-blue-400" },
-  { status: "IN_PROGRESS", label: "進行中", color: "text-yellow-400" },
-  { status: "REVIEW", label: "審核中", color: "text-purple-400" },
-  { status: "DONE", label: "已完成", color: "text-emerald-400" },
+const COLUMN_ORDER: TaskStatus[] = [
+  "BACKLOG",
+  "TODO",
+  "IN_PROGRESS",
+  "REVIEW",
+  "DONE",
 ];
+
+const DEFAULT_COLUMNS: { status: TaskStatus; label: string; color: string }[] =
+  [
+    { status: "BACKLOG", label: "待辦清單", color: "text-muted-foreground" },
+    { status: "TODO", label: "待處理", color: "text-blue-400" },
+    { status: "IN_PROGRESS", label: "進行中", color: "text-yellow-400" },
+    { status: "REVIEW", label: "審核中", color: "text-purple-400" },
+    { status: "DONE", label: "已完成", color: "text-emerald-400" },
+  ];
 
 const columnBorder: Record<TaskStatus, string> = {
   BACKLOG: "border-border",
@@ -89,10 +110,14 @@ function saveColumnNames(names: Record<string, string>) {
 }
 
 export default function KanbanPage() {
-  const [tasks, setTasks] = useState<(TaskCardData & { position?: number })[]>([]);
+  const [tasks, setTasks] = useState<
+    (TaskCardData & { position?: number })[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [allTasks, setAllTasks] = useState<(TaskCardData & { position?: number })[]>([]);
+  const [allTasks, setAllTasks] = useState<
+    (TaskCardData & { position?: number })[]
+  >([]);
   const [filters, setFilters] = useState<FiltersType>({ ...emptyFilters });
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
@@ -100,9 +125,14 @@ export default function KanbanPage() {
   const [movingTask, setMovingTask] = useState<string | null>(null);
   const [columnNames, setColumnNames] = useState<Record<string, string>>({});
 
-  // Bulk selection state
+  // Bulk selection state (Issue #1023)
+  const [multiSelectMode, setMultiSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkToast, setBulkToast] = useState<{
+    type: "success" | "error" | "partial";
+    message: string;
+  } | null>(null);
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
 
   // Snapshot for rollback
@@ -124,14 +154,22 @@ export default function KanbanPage() {
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
       const body = await res.json();
-      const fetched = extractItems<TaskCardData & { position?: number; tags?: string[]; dueDate?: string | null }>(body);
+      const fetched = extractItems<
+        TaskCardData & {
+          position?: number;
+          tags?: string[];
+          dueDate?: string | null;
+        }
+      >(body);
       setAllTasks(fetched);
 
       // Client-side AND filtering for tags and dueDate range
       let filtered = fetched;
       if (filters.tags.length > 0) {
         filtered = filtered.filter((t) =>
-          filters.tags.every((tag) => (t as unknown as { tags?: string[] }).tags?.includes(tag))
+          filters.tags.every((tag) =>
+            (t as unknown as { tags?: string[] }).tags?.includes(tag)
+          )
         );
       }
       if (filters.dueDateFrom) {
@@ -154,7 +192,9 @@ export default function KanbanPage() {
     }
   }, [filters]);
 
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   // Fetch users for assignee picker
   useEffect(() => {
@@ -169,17 +209,24 @@ export default function KanbanPage() {
 
   // ── Column name management ──────────────────────────────────────────────
 
-  const handleColumnNameChange = useCallback((status: TaskStatus, name: string) => {
-    setColumnNames((prev) => {
-      const next = { ...prev, [status]: name };
-      saveColumnNames(next);
-      return next;
-    });
-  }, []);
+  const handleColumnNameChange = useCallback(
+    (status: TaskStatus, name: string) => {
+      setColumnNames((prev) => {
+        const next = { ...prev, [status]: name };
+        saveColumnNames(next);
+        return next;
+      });
+    },
+    []
+  );
 
   // ── Move task between columns (optimistic) ─────────────────────────────
 
-  async function moveTask(taskId: string, newStatus: TaskStatus, targetIndex?: number) {
+  async function moveTask(
+    taskId: string,
+    newStatus: TaskStatus,
+    targetIndex?: number
+  ) {
     const task = tasks.find((t) => t.id === taskId);
     if (!task || task.status === newStatus) {
       // Same column reorder
@@ -198,14 +245,24 @@ export default function KanbanPage() {
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
     const insertIdx = targetIndex ?? columnTasks.length;
-    const prevPos = insertIdx > 0 ? (columnTasks[insertIdx - 1]?.position ?? 0) : null;
-    const nextPos = insertIdx < columnTasks.length ? (columnTasks[insertIdx]?.position ?? 0) : null;
+    const prevPos =
+      insertIdx > 0 ? (columnTasks[insertIdx - 1]?.position ?? 0) : null;
+    const nextPos =
+      insertIdx < columnTasks.length
+        ? (columnTasks[insertIdx]?.position ?? 0)
+        : null;
     const newPosition = calculatePosition(prevPos, nextPos);
 
     // Optimistic update
     setTasks((prev) =>
       prev.map((t) =>
-        t.id === taskId ? { ...t, status: newStatus as TaskCardData["status"], position: newPosition } : t
+        t.id === taskId
+          ? {
+              ...t,
+              status: newStatus as TaskCardData["status"],
+              position: newPosition,
+            }
+          : t
       )
     );
     setMovingTask(taskId);
@@ -237,6 +294,7 @@ export default function KanbanPage() {
       }
     } catch {
       setTasks(tasksSnapshot.current);
+      toast.error("任務更新失敗");
     } finally {
       setMovingTask(null);
     }
@@ -244,7 +302,11 @@ export default function KanbanPage() {
 
   // ── Reorder within same column ────────────────────────────────────────
 
-  async function reorderInColumn(taskId: string, status: TaskStatus, targetIndex: number) {
+  async function reorderInColumn(
+    taskId: string,
+    status: TaskStatus,
+    targetIndex: number
+  ) {
     const columnTasks = tasks
       .filter((t) => t.status === status)
       .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -254,8 +316,12 @@ export default function KanbanPage() {
 
     // Calculate new position
     const filtered = columnTasks.filter((t) => t.id !== taskId);
-    const prevPos = targetIndex > 0 ? (filtered[targetIndex - 1]?.position ?? 0) : null;
-    const nextPos = targetIndex < filtered.length ? (filtered[targetIndex]?.position ?? 0) : null;
+    const prevPos =
+      targetIndex > 0 ? (filtered[targetIndex - 1]?.position ?? 0) : null;
+    const nextPos =
+      targetIndex < filtered.length
+        ? (filtered[targetIndex]?.position ?? 0)
+        : null;
     const newPosition = calculatePosition(prevPos, nextPos);
 
     // Snapshot for rollback
@@ -358,6 +424,16 @@ export default function KanbanPage() {
     [tasks] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // ── Multi-select mode toggle (Issue #1023) ─────────────────────────────
+
+  function toggleMultiSelectMode() {
+    if (multiSelectMode) {
+      // Exiting multi-select: clear selection
+      setSelectedIds(new Set());
+    }
+    setMultiSelectMode((prev) => !prev);
+  }
+
   // ── Bulk selection helpers ────────────────────────────────────────────
 
   function toggleSelect(taskId: string) {
@@ -376,22 +452,57 @@ export default function KanbanPage() {
     setSelectedIds(new Set());
   }
 
+  // Issue #1023: batch operations via Promise.allSettled with concurrency limit
   async function executeBulkAction(updates: Record<string, unknown>) {
     if (selectedIds.size === 0) return;
     setBulkLoading(true);
+    setBulkToast(null);
     try {
-      const res = await fetch("/api/tasks/bulk", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskIds: [...selectedIds],
-          updates,
-        }),
-      });
-      if (res.ok) {
-        clearSelection();
-        await fetchTasks();
+      const BATCH_SIZE = 5;
+      const ids = [...selectedIds];
+      const results: PromiseSettledResult<Response>[] = [];
+      for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+        const chunk = ids.slice(i, i + BATCH_SIZE);
+        const chunkResults = await Promise.allSettled(
+          chunk.map((id) =>
+            fetch(`/api/tasks/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(updates),
+            }).then((r) => {
+              if (!r.ok) throw new Error(`HTTP ${r.status}`);
+              return r;
+            })
+          )
+        );
+        results.push(...chunkResults);
       }
+      const succeeded = results.filter(
+        (r) => r.status === "fulfilled"
+      ).length;
+      const failed = results.length - succeeded;
+      if (failed === 0) {
+        setBulkToast({
+          type: "success",
+          message: `${succeeded} 項已更新`,
+        });
+        clearSelection();
+      } else if (succeeded === 0) {
+        setBulkToast({
+          type: "error",
+          message: `${failed} 項更新失敗`,
+        });
+      } else {
+        setBulkToast({
+          type: "partial",
+          message: `${succeeded} 項已更新，${failed} 項失敗`,
+        });
+        // Keep only failed task IDs selected for retry
+        const failedIds = ids.filter((_, idx) => results[idx].status === "rejected");
+        setSelectedIds(new Set(failedIds));
+      }
+      await fetchTasks();
+      setTimeout(() => setBulkToast(null), 3000);
     } finally {
       setBulkLoading(false);
     }
@@ -411,26 +522,58 @@ export default function KanbanPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 flex-shrink-0">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">看板</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">共 {tasks.length} 項任務</p>
+          <h1 className="text-lg sm:text-xl font-semibold tracking-tight">
+            看板
+          </h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">
+            共 {tasks.length} 項任務
+          </p>
         </div>
-        <button
-          onClick={async () => {
-            const title = prompt("任務標題：");
-            if (!title?.trim()) return;
-            const res = await fetch("/api/tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title: title.trim(), status: "BACKLOG", priority: "P2", category: "PLANNED" }),
-            });
-            if (res.ok) { toast.success("任務已建立"); fetchTasks(); }
-            else { const errBody = await res.json().catch(() => ({})); toast.error(errBody?.message ?? errBody?.error ?? "建立失敗"); }
-          }}
-          className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 w-full sm:w-auto"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          新增任務
-        </button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Multi-select toggle (Issue #1023) */}
+          <button
+            onClick={toggleMultiSelectMode}
+            className={cn(
+              "flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-all",
+              multiSelectMode
+                ? "bg-primary/10 border-primary/30 text-primary"
+                : "bg-background border-border text-muted-foreground hover:text-foreground hover:bg-accent/50"
+            )}
+            data-testid="multi-select-toggle"
+          >
+            <MousePointerSquareDashed className="h-3.5 w-3.5" />
+            多選
+          </button>
+          <button
+            onClick={async () => {
+              const title = prompt("任務標題：");
+              if (!title?.trim()) return;
+              const res = await fetch("/api/tasks", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: title.trim(),
+                  status: "BACKLOG",
+                  priority: "P2",
+                  category: "PLANNED",
+                }),
+              });
+              if (res.ok) {
+                toast.success("任務已建立");
+                fetchTasks();
+              } else {
+                const errBody = await res.json().catch(() => ({}));
+                toast.error(
+                  errBody?.message ?? errBody?.error ?? "建立失敗"
+                );
+              }
+            }}
+            className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 flex-1 sm:flex-none"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            新增任務
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -444,7 +587,7 @@ export default function KanbanPage() {
         />
       </div>
 
-      {/* Bulk action bar */}
+      {/* Bulk action bar — visible when tasks are selected in multi-select mode */}
       {hasSelection && (
         <div className="flex-shrink-0 flex flex-wrap items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
           <div className="flex items-center gap-2 text-sm font-medium text-primary">
@@ -454,7 +597,7 @@ export default function KanbanPage() {
 
           <div className="h-4 w-px bg-border" />
 
-          {/* Change status */}
+          {/* Batch status change */}
           <select
             className="text-sm border border-border rounded-md px-2 py-1 bg-background"
             defaultValue=""
@@ -465,10 +608,15 @@ export default function KanbanPage() {
                 e.target.value = "";
               }
             }}
+            data-testid="bulk-status-select"
           >
-            <option value="" disabled>變更狀態</option>
+            <option value="" disabled>
+              批次移動狀態
+            </option>
             {STATUS_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
@@ -484,36 +632,51 @@ export default function KanbanPage() {
               }
             }}
           >
-            <option value="" disabled>變更優先度</option>
+            <option value="" disabled>
+              變更優先度
+            </option>
             {PRIORITY_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
             ))}
           </select>
 
-          {/* Change assignee */}
+          {/* Batch assignee change */}
           <select
             className="text-sm border border-border rounded-md px-2 py-1 bg-background"
             defaultValue=""
             disabled={bulkLoading}
             onChange={(e) => {
               if (e.target.value) {
-                const val = e.target.value === "__unassign__" ? null : e.target.value;
+                const val =
+                  e.target.value === "__unassign__" ? null : e.target.value;
                 executeBulkAction({ primaryAssigneeId: val });
                 e.target.value = "";
               }
             }}
+            data-testid="bulk-assignee-select"
           >
-            <option value="" disabled>變更負責人</option>
+            <option value="" disabled>
+              批次指派
+            </option>
             <option value="__unassign__">取消指派</option>
             {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name}</option>
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
             ))}
           </select>
 
-          {bulkLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          {bulkLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
 
           <button
-            onClick={clearSelection}
+            onClick={() => {
+              clearSelection();
+              setMultiSelectMode(false);
+            }}
             className="ml-auto p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
             aria-label="取消選取"
           >
@@ -558,7 +721,7 @@ export default function KanbanPage() {
                 isDragOver={dragOver === status}
                 movingTaskId={movingTask}
                 selectedIds={selectedIds}
-                hasSelection={hasSelection}
+                hasSelection={multiSelectMode || hasSelection}
                 customName={columnNames[status]}
                 onColumnNameChange={handleColumnNameChange}
                 onDragStart={handleDragStart}
@@ -586,6 +749,33 @@ export default function KanbanPage() {
             fetchTasks();
           }}
         />
+      )}
+
+      {/* Bulk operation toast (Issue #1023) */}
+      {bulkToast && (
+        <div
+          className={cn(
+            "fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium",
+            "animate-in fade-in slide-in-from-bottom-2 duration-200",
+            bulkToast.type === "success" &&
+              "bg-emerald-500/10 text-emerald-500 border border-emerald-500/30",
+            bulkToast.type === "error" &&
+              "bg-red-500/10 text-red-400 border border-red-500/30",
+            bulkToast.type === "partial" &&
+              "bg-amber-500/10 text-amber-500 border border-amber-500/30"
+          )}
+          role="status"
+          data-testid="bulk-toast"
+        >
+          {bulkToast.type === "success" ? (
+            <Check className="h-4 w-4" />
+          ) : bulkToast.type === "error" ? (
+            <X className="h-4 w-4" />
+          ) : (
+            <CheckSquare className="h-4 w-4" />
+          )}
+          {bulkToast.message}
+        </div>
       )}
     </div>
   );

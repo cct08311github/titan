@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Grid3X3, List, Calendar, CalendarDays, Copy, FileDown, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Grid3X3, List, Calendar, CalendarDays, Copy, FileDown, RefreshCw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TemplateSelector } from "./template-selector";
 import { OvertimeBadge } from "./overtime-badge";
@@ -18,7 +18,7 @@ type TimesheetToolbarProps = {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onThisWeek: () => void;
-  onCopyPreviousWeek: () => Promise<boolean>;
+  onCopyPreviousWeek: () => Promise<{ ok: boolean; count: number }>;
   onRefresh: () => void;
   loading?: boolean;
   // Template props (Item 6)
@@ -47,14 +47,24 @@ export function TimesheetToolbar({
 }: TimesheetToolbarProps) {
   const [copying, setCopying] = useState(false);
   const [copyResult, setCopyResult] = useState<"success" | "error" | null>(null);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
 
   async function handleCopy() {
     setCopying(true);
     setCopyResult(null);
+    setCopyToast(null);
     try {
-      const ok = await onCopyPreviousWeek();
-      setCopyResult(ok ? "success" : "error");
-      setTimeout(() => setCopyResult(null), 2000);
+      const result = await onCopyPreviousWeek();
+      setCopyResult(result.ok ? "success" : "error");
+      if (result.ok && result.count > 0) {
+        setCopyToast(`已複製上週 ${result.count} 筆工時`);
+      } else if (result.ok) {
+        setCopyToast("已複製上週工時");
+      }
+      setTimeout(() => {
+        setCopyResult(null);
+        setCopyToast(null);
+      }, 3000);
     } finally {
       setCopying(false);
     }
@@ -224,6 +234,18 @@ export function TimesheetToolbar({
           </span>
         </div>
       </div>
+
+      {/* Copy toast (Issue #1023) */}
+      {copyToast && (
+        <div
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg text-sm font-medium bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 animate-in fade-in slide-in-from-bottom-2 duration-200"
+          role="status"
+          data-testid="copy-week-toast"
+        >
+          <Check className="h-4 w-4" />
+          {copyToast}
+        </div>
+      )}
     </div>
   );
 }

@@ -535,7 +535,7 @@ function UserManagementSection() {
     const confirmMsg = user.isActive
       ? `確定要停用「${user.name}」？`
       : `確定要啟用「${user.name}」？`;
-    const ok = await confirmDialog({ title: confirmMsg, description: "此操作無法復原", confirmLabel: "確認", variant: "destructive" });
+    const ok = await confirmDialog({ title: confirmMsg, description: "此操作可能影響該使用者的存取權限", confirmLabel: "確認", variant: "destructive" });
     if (!ok) return;
 
     try {
