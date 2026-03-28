@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { User, Bell, Lock, Save, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { PageError, TabSkeleton } from "@/app/components/page-states";
@@ -93,11 +94,12 @@ export default function SettingsPage() {
         body: JSON.stringify({ name }),
       });
       if (res.ok) {
+        toast.success("設定已儲存");
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 2000);
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? "儲存失敗");
+        toast.error(errBody?.message ?? "儲存失敗");
       }
     } finally {
       setSaving(false);
@@ -121,6 +123,7 @@ export default function SettingsPage() {
       setPrefs((prev) =>
         prev.map((p) => (p.type === type ? { ...p, enabled } : p))
       );
+      toast.success("通知偏好已更新");
     }
   }
 
