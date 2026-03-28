@@ -273,7 +273,7 @@ rolling_update() {
   local waited=0
 
   while [[ ${waited} -lt ${max_wait} ]]; do
-    if docker compose exec -T titan-app wget -qO- http://localhost:3100/api/health &>/dev/null 2>&1; then
+    if docker compose exec -T titan-app wget -qO- http://localhost:3100/titan/api/health &>/dev/null 2>&1; then
       log_ok "titan-app 健康檢查通過（${waited}s）"
       return 0
     fi
@@ -310,7 +310,7 @@ run_health_check() {
   fi
 
   # TITAN App
-  if docker compose exec -T titan-app wget -qO- http://localhost:3100/api/health &>/dev/null 2>&1; then
+  if docker compose exec -T titan-app wget -qO- http://localhost:3100/titan/api/health &>/dev/null 2>&1; then
     log_ok "TITAN App：正常"
   else
     log_error "TITAN App：無回應"

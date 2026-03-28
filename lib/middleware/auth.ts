@@ -34,7 +34,8 @@ export async function checkAuth(
   req: NextRequest,
   requestId: string
 ): Promise<NextResponse | null> {
-  const { pathname } = new URL(req.url);
+  // req.nextUrl.pathname strips basePath automatically (unlike new URL(req.url).pathname)
+  const pathname = req.nextUrl.pathname;
 
   if (shouldBypassAuth(pathname)) {
     return null; // allow — CSP/correlation still applied by caller

@@ -16,6 +16,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  basePath: "/titan",
 
   // Feature flag: TITAN_V2_ENABLED — toggle new vs old UI (Issue #970)
   env: {
