@@ -430,7 +430,7 @@ export default function KnowledgePage() {
 
       {/* Outline iframe view with error handling (Issue #1069) */}
       {viewMode === "outline" && isOutlineConfigured && (
-        <OutlineIframeWrapper url={OUTLINE_URL} onFallback={() => setViewMode("editor")} />
+        <OutlineIframeWrapper url={OUTLINE_URL!} onFallback={() => setViewMode("editor")} />
       )}
 
       {/* Outline not configured fallback */}
