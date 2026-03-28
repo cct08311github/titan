@@ -47,6 +47,10 @@
     "uuid": "^11.1.0",
     "zod": "^3.24.4"
   },
+  "overrides": {
+    "handlebars": "^4.7.9",
+    "brace-expansion": "^2.0.3"
+  },
   "devDependencies": {
     "@axe-core/playwright": "4.11.1",
     "@playwright/test": "^1.58.0",
