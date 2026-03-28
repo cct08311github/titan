@@ -290,9 +290,9 @@ export default function KnowledgePage() {
     }
   }
 
-  async function createSpace() {
+  async function createSpace(): Promise<boolean> {
     const name = await promptDialog({ title: "新增 Space", placeholder: "輸入空間名稱" });
-    if (!name?.trim()) return;
+    if (!name?.trim()) return false;
     const res = await fetch("/api/spaces", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -303,7 +303,9 @@ export default function KnowledgePage() {
       const space = extractData<{ id: string }>(body);
       setSelectedSpaceId(space.id);
       toast.success("空間已建立");
+      return true;
     }
+    return false;
   }
 
   async function deleteDoc(id: string) {

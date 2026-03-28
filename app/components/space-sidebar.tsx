@@ -15,7 +15,7 @@ export type SpaceItem = {
 type SpaceSidebarProps = {
   selectedSpaceId: string | null;
   onSelectSpace: (id: string | null) => void;
-  onCreateSpace: () => void;
+  onCreateSpace: () => Promise<boolean> | void;
 };
 
 export function SpaceSidebar({ selectedSpaceId, onSelectSpace, onCreateSpace }: SpaceSidebarProps) {
@@ -44,7 +44,7 @@ export function SpaceSidebar({ selectedSpaceId, onSelectSpace, onCreateSpace }: 
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Spaces</span>
         <button
-          onClick={onCreateSpace}
+          onClick={async () => { const ok = await onCreateSpace(); if (ok) loadSpaces(); }}
           className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
           title="新增 Space"
         >
@@ -76,7 +76,7 @@ export function SpaceSidebar({ selectedSpaceId, onSelectSpace, onCreateSpace }: 
           <div className="px-3 py-4 text-center">
             <p className="text-xs text-muted-foreground">尚無 Space</p>
             <button
-              onClick={onCreateSpace}
+              onClick={async () => { const ok = await onCreateSpace(); if (ok) loadSpaces(); }}
               className="mt-1 text-xs text-primary hover:underline"
             >
               建立第一個 Space
