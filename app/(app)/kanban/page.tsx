@@ -22,6 +22,7 @@ import {
   X,
   MousePointerSquareDashed,
   Check,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -120,6 +121,13 @@ export default function KanbanPage() {
   >([]);
   const [filters, setFilters] = useState<FiltersType>({ ...emptyFilters });
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [showDragHint, setShowDragHint] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("titan-kanban-onboarded")) {
+      setShowDragHint(true);
+    }
+  }, []);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [movingTask, setMovingTask] = useState<string | null>(null);
@@ -575,6 +583,25 @@ export default function KanbanPage() {
           </button>
         </div>
       </div>
+
+      {/* Drag-and-drop onboarding hint (Issue #1068) */}
+      {showDragHint && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg text-sm flex-shrink-0">
+          <GripVertical className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-foreground/80">
+            <strong>拖曳卡片</strong>到不同欄位即可變更任務狀態
+          </span>
+          <button
+            onClick={() => {
+              setShowDragHint(false);
+              localStorage.setItem("titan-kanban-onboarded", "1");
+            }}
+            className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex-shrink-0">

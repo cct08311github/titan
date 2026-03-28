@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useConfirmDialog } from "@/app/components/ui/alert-dialog";
+import { useConfirmDialog, usePromptDialog } from "@/app/components/ui/alert-dialog";
 import { extractItems, extractData } from "@/lib/api-client";
 import { DocumentTree, type DocNode } from "@/app/components/document-tree";
 import { MarkdownEditor } from "@/app/components/markdown-editor";
@@ -67,8 +67,58 @@ const TEMPLATE_OPTIONS = [
   { key: "tech-doc", label: "技術文件", icon: Monitor },
 ] as const;
 
+/** Outline iframe wrapper with loading + timeout error handling (Issue #1069) */
+function OutlineIframeWrapper({ url, onFallback }: { url: string; onFallback: () => void }) {
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setStatus((s) => (s === "loading" ? "error" : s));
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (status === "error") {
+    return (
+      <div className="flex-1 min-h-0 border border-border rounded-xl flex items-center justify-center">
+        <div className="text-center max-w-sm">
+          <AlertCircle className="h-10 w-10 text-destructive/40 mx-auto mb-3" />
+          <h2 className="text-base font-medium text-foreground mb-1">無法連線至 Outline</h2>
+          <p className="text-sm text-muted-foreground">
+            Outline 服務可能尚未啟動或網路不可達，請確認服務狀態後重試。
+          </p>
+          <button
+            onClick={onFallback}
+            className="mt-4 text-sm font-medium px-4 py-2 bg-accent hover:bg-accent/80 text-accent-foreground rounded-md transition-colors"
+          >
+            切換至文件編輯器
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden relative">
+      {status === "loading" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <iframe
+        src={url}
+        title="Outline 知識庫"
+        className="w-full h-full border-0"
+        sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+        onLoad={() => setStatus("ready")}
+      />
+    </div>
+  );
+}
+
 export default function KnowledgePage() {
   const { confirmDialog, ConfirmDialog } = useConfirmDialog();
+  const { promptDialog, PromptDialog } = usePromptDialog();
   const [docs, setDocs] = useState<DocNode[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [docsError, setDocsError] = useState<string | null>(null);
@@ -213,7 +263,7 @@ export default function KnowledgePage() {
   }
 
   async function createDoc(parentId: string | null, templateType?: string) {
-    const title = templateType ? "" : prompt("新文件標題：");
+    const title = templateType ? "" : await promptDialog({ title: "新文件標題", placeholder: "輸入文件名稱" });
     if (!templateType && !title?.trim()) return;
     setShowTemplates(false);
 
@@ -241,7 +291,7 @@ export default function KnowledgePage() {
   }
 
   async function createSpace() {
-    const name = prompt("Space 名稱：");
+    const name = await promptDialog({ title: "新增 Space", placeholder: "輸入空間名稱" });
     if (!name?.trim()) return;
     const res = await fetch("/api/spaces", {
       method: "POST",
@@ -378,16 +428,9 @@ export default function KnowledgePage() {
         </div>
       </div>
 
-      {/* Outline iframe view */}
+      {/* Outline iframe view with error handling (Issue #1069) */}
       {viewMode === "outline" && isOutlineConfigured && (
-        <div className="flex-1 min-h-0 border border-border rounded-xl overflow-hidden">
-          <iframe
-            src={OUTLINE_URL}
-            title="Outline 知識庫"
-            className="w-full h-full border-0"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
-          />
-        </div>
+        <OutlineIframeWrapper url={OUTLINE_URL} onFallback={() => setViewMode("editor")} />
       )}
 
       {/* Outline not configured fallback */}
@@ -645,6 +688,7 @@ export default function KnowledgePage() {
         </div>
       )}
       <ConfirmDialog />
+      <PromptDialog />
     </div>
   );
 }
