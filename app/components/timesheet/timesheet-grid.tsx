@@ -6,6 +6,7 @@ import { safeFixed } from "@/lib/safe-number";
 import { TimesheetCell } from "./timesheet-cell";
 import { type TimeEntry, type TaskRow, type OvertimeType, type TaskOption, type SubTaskOption } from "./use-timesheet";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -186,16 +187,20 @@ export function TimesheetGrid({
                         : "";
                     const fullLabel = `${row.label}${subLabel}`;
                     return (
-                      <span
-                        className="text-xs text-muted-foreground truncate block max-w-[168px]"
-                        title={fullLabel}
-                      >
-                        {row.taskId ? "# " : ""}
-                        {row.label}
-                        {subLabel && (
-                          <span className="text-muted-foreground/60">{subLabel}</span>
-                        )}
-                      </span>
+                      {row.taskId ? (
+                        <Link
+                          href={`/kanban?task=${row.taskId}`}
+                          className="text-xs text-muted-foreground truncate block max-w-[168px] hover:text-primary transition-colors"
+                          title={fullLabel}
+                        >
+                          # {row.label}
+                          {subLabel && <span className="text-muted-foreground/60">{subLabel}</span>}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground truncate block max-w-[168px]" title={fullLabel}>
+                          {row.label}
+                        </span>
+                      )}
                     );
                   })()}
                 </td>

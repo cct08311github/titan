@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 export interface KPISummary {
@@ -42,7 +43,7 @@ export function KPIGaugeRow({ kpis }: KPIGaugeRowProps) {
       <h3 className="text-sm font-semibold text-foreground mb-3">KPI 達成</h3>
       <div className="space-y-2.5">
         {kpis.map((kpi) => (
-          <div key={kpi.id} className="group">
+          <Link key={kpi.id} href="/kpi" className="group block hover:bg-accent/40 -mx-1 px-1 rounded transition-colors">
             <div className="flex items-center justify-between text-sm mb-1">
               <span className="text-muted-foreground truncate mr-2">
                 <span className="font-mono text-xs">{kpi.code}</span>{" "}
@@ -58,7 +59,7 @@ export function KPIGaugeRow({ kpis }: KPIGaugeRowProps) {
                 style={{ width: `${Math.min(100, kpi.achievementRate)}%` }}
               />
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </div>

@@ -10,6 +10,7 @@ import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states"
 import { FormError, FormBanner } from "@/app/components/form-error";
 import { safePct } from "@/lib/safe-number";
 import { calculateAchievement } from "@/lib/kpi-calculator";
+import Link from "next/link";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -484,9 +485,10 @@ function KPICard({ kpi, isManager, onUnlink, onStatusChange }: KPICardProps) {
             <p className="text-sm text-muted-foreground">尚未連結任務</p>
           ) : (
             kpi.taskLinks.map((link) => (
-              <div
+              <Link
                 key={link.taskId}
-                className="flex items-center gap-3 p-2.5 bg-accent/40 rounded-md"
+                href={`/kanban?task=${link.taskId}`}
+                className="flex items-center gap-3 p-2.5 bg-accent/40 rounded-md hover:bg-accent/70 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground truncate">{link.task.title}</p>
@@ -518,7 +520,7 @@ function KPICard({ kpi, isManager, onUnlink, onStatusChange }: KPICardProps) {
                     </button>
                   )}
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>

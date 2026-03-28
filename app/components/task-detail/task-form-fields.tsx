@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Link2, Tag, X, Plus } from "lucide-react";
+import { Link2, Tag, X, Plus, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 
@@ -346,6 +347,11 @@ export function TaskFormFields({ form, onFieldChange, users, goals, errors }: Ta
           <span className="flex items-center gap-1">
             <Link2 className="h-3 w-3" />
             連結月度目標
+            {form.monthlyGoalId && (
+              <Link href="/plans" className="text-primary hover:text-primary/80 transition-colors" title="前往年度計畫">
+                <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
           </span>
         </Label>
         <select value={form.monthlyGoalId} onChange={(e) => onFieldChange("monthlyGoalId", e.target.value)} className={selectCls}>
