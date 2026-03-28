@@ -68,7 +68,7 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
-      <p className="text-center text-[11px] text-muted-foreground/50 mt-6">&copy; 2026 TITAN v1.0</p>
+      <p className="text-center text-[11px] text-muted-foreground/50 mt-6">&copy; 2026 TITAN v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
     </div>
   );
 }

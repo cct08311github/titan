@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
   // Feature flag: TITAN_V2_ENABLED — toggle new vs old UI (Issue #970)
   env: {
     NEXT_PUBLIC_TITAN_V2_ENABLED: process.env.TITAN_V2_ENABLED ?? "true",
+    NEXT_PUBLIC_APP_VERSION: require("./package.json").version ?? "0.0.0",
   },
 
   async headers() {

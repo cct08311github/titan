@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { PasswordStrengthIndicator } from "@/app/components/password-strength-indicator";
 import { PASSWORD_POLICY_DESCRIPTION } from "@/lib/password-policy";
 
 export default function ChangePasswordPage() {
@@ -92,6 +93,7 @@ export default function ChangePasswordPage() {
               minLength={12}
               autoComplete="new-password"
             />
+            {newPassword && <PasswordStrengthIndicator password={newPassword} />}
           </div>
 
           <div className="space-y-1.5">
