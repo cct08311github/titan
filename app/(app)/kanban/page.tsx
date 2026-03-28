@@ -695,6 +695,19 @@ export default function KanbanPage() {
             ))}
           </select>
 
+          {/* Bulk deadline (Issue #1071) */}
+          <input
+            type="date"
+            onChange={(e) => {
+              if (e.target.value) {
+                executeBulkAction({ dueDate: new Date(e.target.value).toISOString() });
+                e.target.value = "";
+              }
+            }}
+            className="h-7 px-2 text-xs border border-border rounded-md bg-background text-foreground cursor-pointer"
+            title="批次設定截止日"
+          />
+
           {bulkLoading && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}

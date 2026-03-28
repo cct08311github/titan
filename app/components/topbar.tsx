@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { SimpleTooltip } from "@/app/components/ui/tooltip";
 import { useState, useEffect, useMemo } from "react";
 import { NotificationBell } from "@/app/components/notification-bell";
+import { TopbarTimerIndicator } from "@/app/components/topbar-timer-indicator";
 import { getFlatNavItems, buildLabelMap } from "@/lib/nav-config";
 
 /** Page titles derived from shared nav-config (Issue #1019) */
@@ -94,6 +95,7 @@ export function Topbar() {
         </SimpleTooltip>
         <ThemeToggle />
         <NotificationBell />
+        <TopbarTimerIndicator />
         <div className="w-px h-6 bg-border mx-2" />
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
