@@ -411,6 +411,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_OPTIONS = ["ADMIN", "MANAGER", "ENGINEER"] as const;
 
 function UserManagementSection() {
+  const { confirmDialog, ConfirmDialog } = useConfirmDialog();
   const [users, setUsers] = useState<UserEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -425,7 +426,6 @@ function UserManagementSection() {
   const [formRole, setFormRole] = useState<string>("ENGINEER");
   const [formPassword, setFormPassword] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
-  const { confirmDialog, ConfirmDialog } = useConfirmDialog();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -492,6 +492,7 @@ function UserManagementSection() {
         setFormError(errBody?.message ?? "建立使用者失敗");
         return;
       }
+      toast.success("使用者已建立");
       closeModal();
       await load();
     } finally {
@@ -521,6 +522,7 @@ function UserManagementSection() {
         setFormError(errBody?.message ?? "更新使用者失敗");
         return;
       }
+      toast.success("使用者已更新");
       closeModal();
       await load();
     } finally {
