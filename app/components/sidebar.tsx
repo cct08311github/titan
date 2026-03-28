@@ -114,7 +114,7 @@ export function Sidebar() {
             </button>
           </SimpleTooltip>
         ) : (
-          <p className="font-mono text-[11px] text-muted-foreground/60 tabular-nums px-3 py-1">v2.0.0</p>
+          <p className="font-mono text-[11px] text-muted-foreground/60 tabular-nums px-3 py-1">v{process.env.NEXT_PUBLIC_APP_VERSION}</p>
         )}
       </div>
     </aside>

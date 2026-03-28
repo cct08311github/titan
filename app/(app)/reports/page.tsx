@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
-import { PageLoading, PageError } from "@/app/components/page-states";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { safeFixed, safePct } from "@/lib/safe-number";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ function UtilizationReport({ from, to }: { from: string; to: string }) {
       </div>
 
       {data.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">此期間無工時資料</p>
+        <PageEmpty icon={<Users className="h-5 w-5" />} title="此期間無工時資料" description="團隊成員開始登記工時後，利用率數據將自動產生" />
       ) : (
         <div className="grid gap-2" role="table" aria-label="團隊利用率">
           <div className="grid grid-cols-4 gap-2 text-xs font-medium text-muted-foreground px-3 py-2" role="row">
@@ -267,7 +267,7 @@ function VelocityReport({ from, to }: { from: string; to: string }) {
       </div>
 
       {data.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">此期間無完成任務</p>
+        <PageEmpty icon={<TrendingUp className="h-5 w-5" />} title="此期間無完成任務" description="任務完成後將自動統計速率趨勢" />
       ) : (
         <div className="space-y-3">
           <div className="flex items-end gap-1 h-48 px-2" role="img" aria-label="任務速率長條圖">
@@ -367,7 +367,7 @@ function KPITrendReport({ from, to }: { from: string; to: string }) {
       </div>
 
       {data.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">此期間無 KPI 資料</p>
+        <PageEmpty icon={<Target className="h-5 w-5" />} title="此期間無 KPI 資料" description="建立 KPI 指標並連結任務後，達成率將自動計算" />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm" role="table">
@@ -496,7 +496,7 @@ function UnplannedTrendReport({ from, to }: { from: string; to: string }) {
       </div>
 
       {data.length === 0 ? (
-        <p className="text-sm text-muted-foreground py-8 text-center">此期間無資料</p>
+        <PageEmpty icon={<AlertTriangle className="h-5 w-5" />} title="此期間無計畫外事件" description="當任務被標記為計畫外時，趨勢數據將自動產生" />
       ) : (
         <div className="space-y-3">
           {data.map((point) => (

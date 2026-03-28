@@ -8,21 +8,56 @@
 // ── Action → Label mapping ─────────────────────────────────────────────────
 
 const ACTION_LABELS: Record<string, string> = {
+  // General CRUD
   CREATE: "建立了",
   UPDATE: "更新了",
   DELETE: "刪除了",
+  // Task
   STATUS_CHANGE: "變更了狀態",
   STATUS_CHANGED: "變更了狀態",
+  PRIORITY_CHANGED: "變更了優先度",
+  ASSIGNEE_CHANGED: "變更了負責人",
+  DUE_DATE_CHANGED: "變更了截止日",
   COMMENT: "留言於",
   ASSIGN: "指派了",
   POST_TASKS: "建立了任務",
   PATCH_TASKS: "更新了任務",
   DELETE_TASK: "刪除了任務",
-  ROLE_CHANGE: "變更了角色",
-  PASSWORD_CHANGE: "變更了密碼",
-  LOGIN_FAILURE: "登入失敗",
+  GANTT_DATE_CHANGE: "調整了甘特圖日期",
+  // Auth / User
   LOGIN: "登入了系統",
   LOGOUT: "登出了系統",
+  LOGIN_FAILURE: "登入失敗",
+  ROLE_CHANGE: "變更了角色",
+  PASSWORD_CHANGE: "變更了密碼",
+  PASSWORD_RESET_TOKEN_GENERATED: "產生了密碼重設連結",
+  PASSWORD_RESET_COMPLETED: "完成了密碼重設",
+  ACCOUNT_UNLOCK: "解鎖了帳號",
+  CREATE_USER: "建立了使用者",
+  UPDATE_USER: "更新了使用者",
+  SUSPEND_USER: "停用了使用者",
+  UNSUSPEND_USER: "恢復了使用者",
+  // Time entries
+  UPDATE_TIME_ENTRY: "更新了工時",
+  DELETE_TIME_ENTRY: "刪除了工時",
+  BATCH_APPROVE_TIME_ENTRIES: "批次核准了工時",
+  BATCH_REJECT_TIME_ENTRIES: "批次退回了工時",
+  REQUEST_UNLOCK_TIME_ENTRY: "申請了工時解鎖",
+  // Documents
+  DELETE_DOCUMENT: "刪除了文件",
+  APPROVE: "核准了",
+  REJECT: "退回了",
+  // KPI / Permissions / Incidents
+  UPSERT_KPI_ACHIEVEMENT: "更新了 KPI 達成紀錄",
+  GRANT_PERMISSION: "授予了權限",
+  REVOKE_PERMISSION: "撤銷了權限",
+  CREATE_INCIDENT_RECORD: "建立了事件紀錄",
+  UPDATE_INCIDENT_RECORD: "更新了事件紀錄",
+  CREATE_CHANGE_RECORD: "建立了變更紀錄",
+  UPDATE_CHANGE_RECORD: "更新了變更紀錄",
+  // Other
+  KUDOS: "給了讚",
+  FRONTEND_ERROR: "回報了前端錯誤",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -82,6 +117,25 @@ export function formatActivityDescription(item: ActivityData): string {
     if (to) {
       const toLabel = STATUS_LABELS[to as string] ?? to;
       return `${who} 將${resourceLabel}${resourceName}狀態改為 ${toLabel}`;
+    }
+  }
+
+  // Priority change with detail
+  if (item.action === "PRIORITY_CHANGED" && item.detail && typeof item.detail === "object") {
+    const d = item.detail as Record<string, unknown>;
+    const from = d.from || d.oldPriority;
+    const to = d.to || d.priority || d.newPriority;
+    if (from && to) {
+      return `${who} 將${resourceLabel}${resourceName}優先度從 ${from} 改為 ${to}`;
+    }
+  }
+
+  // Assignee change with detail
+  if (item.action === "ASSIGNEE_CHANGED" && item.detail && typeof item.detail === "object") {
+    const d = item.detail as Record<string, unknown>;
+    const to = d.assigneeName || d.to;
+    if (to) {
+      return `${who} 將${resourceLabel}${resourceName}指派給 ${to}`;
     }
   }
 
