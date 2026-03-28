@@ -317,15 +317,28 @@ test.describe('C. Validation (Negative)', () => {
   test('C16: Daily limit exceeded → 400', async ({ browser }) => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
-    const date = safeTestDate2();
+    // 使用獨立日期避免與其他測試衝突
+    const date = '2026-07-04';
     const createdIds: string[] = [];
 
     try {
+      // 先清理此日期可能的殘留
+      const existingRes = await page.request.get(`${BASE}?weekStart=2026-06-29`);
+      if (existingRes.ok()) {
+        const existing = (await existingRes.json())?.data ?? [];
+        const entries = Array.isArray(existing) ? existing : existing.items ?? [];
+        for (const e of entries) {
+          if (e.date?.startsWith?.('2026-07-04') || e.date?.includes?.('2026-07-04')) {
+            await page.request.delete(`${BASE}/${e.id}`).catch(() => {});
+          }
+        }
+      }
+
       // Create 12h entry
       const res1 = await page.request.post(BASE, {
         data: { date, hours: 12, category: 'PLANNED_TASK' },
       });
-      expect(res1.status()).toBe(201);
+      expect(res1.status(), `First 12h failed: ${res1.status()}`).toBe(201);
       const body1 = await res1.json();
       createdIds.push(body1.data.id);
 
