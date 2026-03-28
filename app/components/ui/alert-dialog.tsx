@@ -177,6 +177,90 @@ export function useConfirmDialog() {
   return { confirmDialog, ConfirmDialog: ConfirmDialogComponent };
 }
 
+/* ------------------------------------------------------------------ */
+/*  usePromptDialog — async replacement for window.prompt()            */
+/* ------------------------------------------------------------------ */
+
+interface PromptDialogOptions {
+  title: string;
+  description?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+}
+
+interface PromptDialogState extends PromptDialogOptions {
+  open: boolean;
+}
+
+/**
+ * Hook that provides an async `prompt()` replacement using TITAN UI.
+ *
+ * Usage:
+ *   const { promptDialog, PromptDialog } = usePromptDialog();
+ *   const value = await promptDialog({ title: "名稱：" });
+ *   if (value) { ... }
+ *   // render <PromptDialog /> somewhere in JSX
+ */
+export function usePromptDialog() {
+  const [state, setState] = React.useState<PromptDialogState>({ open: false, title: "" });
+  const [inputValue, setInputValue] = React.useState("");
+  const resolveRef = React.useRef<((v: string | null) => void) | null>(null);
+
+  const promptDialog = React.useCallback((options: PromptDialogOptions) => {
+    return new Promise<string | null>((resolve) => {
+      resolveRef.current = resolve;
+      setInputValue(options.defaultValue ?? "");
+      setState({ ...options, open: true });
+    });
+  }, []);
+
+  const handleClose = React.useCallback(() => {
+    resolveRef.current?.(null);
+    resolveRef.current = null;
+    setState((s) => ({ ...s, open: false }));
+  }, []);
+
+  const handleConfirm = React.useCallback(() => {
+    resolveRef.current?.(inputValue);
+    resolveRef.current = null;
+    setState((s) => ({ ...s, open: false }));
+  }, [inputValue]);
+
+  const PromptDialogComponent = React.useCallback(
+    () => (
+      <AlertDialog open={state.open} onOpenChange={(open) => { if (!open) handleClose(); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{state.title}</AlertDialogTitle>
+            {state.description && <AlertDialogDescription>{state.description}</AlertDialogDescription>}
+          </AlertDialogHeader>
+          <div className="px-0 py-2">
+            <input
+              autoFocus
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
+              placeholder={state.placeholder}
+              className="w-full h-10 px-3 bg-background border border-border rounded-lg text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleClose}>{state.cancelLabel ?? "取消"}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              {state.confirmLabel ?? "確定"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    ),
+    [state, inputValue, handleClose, handleConfirm],
+  );
+
+  return { promptDialog, PromptDialog: PromptDialogComponent };
+}
+
 export {
   AlertDialog,
   AlertDialogTrigger,

@@ -22,6 +22,7 @@ import {
   X,
   MousePointerSquareDashed,
   Check,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -120,6 +121,13 @@ export default function KanbanPage() {
   >([]);
   const [filters, setFilters] = useState<FiltersType>({ ...emptyFilters });
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [showDragHint, setShowDragHint] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("titan-kanban-onboarded")) {
+      setShowDragHint(true);
+    }
+  }, []);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [movingTask, setMovingTask] = useState<string | null>(null);
@@ -546,21 +554,21 @@ export default function KanbanPage() {
           </button>
           <button
             onClick={async () => {
-              const title = prompt("任務標題：");
-              if (!title?.trim()) return;
               const res = await fetch("/api/tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  title: title.trim(),
+                  title: "新任務",
                   status: "BACKLOG",
                   priority: "P2",
                   category: "PLANNED",
                 }),
               });
               if (res.ok) {
-                toast.success("任務已建立");
-                fetchTasks();
+                const created = await res.json();
+                const newId = created.id ?? created.data?.id;
+                await fetchTasks();
+                if (newId) setSelectedTaskId(newId);
               } else {
                 const errBody = await res.json().catch(() => ({}));
                 toast.error(
@@ -575,6 +583,25 @@ export default function KanbanPage() {
           </button>
         </div>
       </div>
+
+      {/* Drag-and-drop onboarding hint (Issue #1068) */}
+      {showDragHint && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg text-sm flex-shrink-0">
+          <GripVertical className="h-4 w-4 text-primary shrink-0" />
+          <span className="text-foreground/80">
+            <strong>拖曳卡片</strong>到不同欄位即可變更任務狀態
+          </span>
+          <button
+            onClick={() => {
+              setShowDragHint(false);
+              localStorage.setItem("titan-kanban-onboarded", "1");
+            }}
+            className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex-shrink-0">
@@ -667,6 +694,19 @@ export default function KanbanPage() {
               </option>
             ))}
           </select>
+
+          {/* Bulk deadline (Issue #1071) */}
+          <input
+            type="date"
+            onChange={(e) => {
+              if (e.target.value) {
+                executeBulkAction({ dueDate: new Date(e.target.value).toISOString() });
+                e.target.value = "";
+              }
+            }}
+            className="h-7 px-2 text-xs border border-border rounded-md bg-background text-foreground cursor-pointer"
+            title="批次設定截止日"
+          />
 
           {bulkLoading && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

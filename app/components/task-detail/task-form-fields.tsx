@@ -198,6 +198,25 @@ export function TaskFormFields({ form, onFieldChange, users, goals, errors }: Ta
             <option value="">未指派</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
+          {/* Auto-suggest B角 (Issue #1072) */}
+          {form.primaryAssigneeId && !form.backupAssigneeId && (() => {
+            const suggestions = users.filter((u) => u.id !== form.primaryAssigneeId).slice(0, 3);
+            return suggestions.length > 0 ? (
+              <div className="flex items-center gap-1 mt-1">
+                <span className="text-[11px] text-muted-foreground">建議：</span>
+                {suggestions.map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => onFieldChange("backupAssigneeId", u.id)}
+                    className="text-[11px] px-1.5 py-0.5 rounded bg-accent hover:bg-accent/80 text-accent-foreground transition-colors"
+                  >
+                    {u.name}
+                  </button>
+                ))}
+              </div>
+            ) : null;
+          })()}
         </div>
       </div>
 
