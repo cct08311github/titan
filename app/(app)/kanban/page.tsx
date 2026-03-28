@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Kanban, Loader2, CheckSquare, X } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
 import { type TaskCardData } from "@/app/components/task-card";
@@ -218,15 +219,21 @@ export default function KanbanPage() {
       if (!res.ok) {
         // Rollback
         setTasks(tasksSnapshot.current);
+        toast.error("任務更新失敗");
       } else {
         // Also update position via reorder API
-        await fetch("/api/tasks/reorder", {
+        const reorderRes = await fetch("/api/tasks/reorder", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             items: [{ id: taskId, position: newPosition, status: newStatus }],
           }),
         });
+        if (reorderRes.ok) {
+          toast.success("任務已更新");
+        } else {
+          toast.error("任務排序更新失敗");
+        }
       }
     } catch {
       setTasks(tasksSnapshot.current);
@@ -416,8 +423,8 @@ export default function KanbanPage() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ title: title.trim(), status: "BACKLOG", priority: "P2", category: "PLANNED" }),
             });
-            if (res.ok) fetchTasks();
-            else { const errBody = await res.json().catch(() => ({})); alert(errBody?.message ?? errBody?.error ?? "建立失敗"); }
+            if (res.ok) { toast.success("任務已建立"); fetchTasks(); }
+            else { const errBody = await res.json().catch(() => ({})); toast.error(errBody?.message ?? errBody?.error ?? "建立失敗"); }
           }}
           className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 w-full sm:w-auto"
         >

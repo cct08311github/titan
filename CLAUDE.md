@@ -128,8 +128,7 @@ zug (Claude Opus) 建 Issue → cct (OpenClaw) 開 branch 開發 → 提 PR → 
 
 - **Request Correlation ID** (`middleware.ts`): 每個 request 注入 `x-request-id`，支援跨層追蹤
 - **Error Boundary** (`app/global-error.tsx`, `app/(app)/error.tsx`): 前端錯誤自動回報到 AuditLog via `/api/error-report`
-- **Command Palette** (`app/components/command-palette.tsx`): `Ctrl+K` 搜尋導航 + `G`+字母快捷鍵
-- **Global Search** (`app/components/global-search-modal.tsx`): 跨 table 全文搜尋 + 標籤篩選
+- **Command Palette** (`app/components/command-palette.tsx`): `Ctrl+K` 統一搜尋（任務/文件/評論/導航），`G`+字母快捷鍵
 - **Password History** (`PasswordHistory` model): 禁止重複使用最近 5 組密碼
 - **Password Expiry** (`AU-5`): 密碼到期強制更換 + 7 天前預警
 - **Prometheus Metrics** (`/api/metrics`): 應用層 request/error/duration 指標，Prometheus scrape config 已加入
@@ -141,6 +140,13 @@ zug (Claude Opus) 建 Issue → cct (OpenClaw) 開 branch 開發 → 提 PR → 
 - **Monitoring Integration**: 外部監控整合 + KPI 歷史追蹤
 - **User Management**: 管理員使用者 CRUD + 停用/恢復
 - **Custom Reports**: 自訂查詢 API + 日期範圍 + 多篩選 + Excel/CSV 匯出
+- **Toast Notification** (`sonner` + `app/components/ui/alert-dialog.tsx`): 全域 Toast 回饋 + AlertDialog 確認元件，替代 native alert/confirm
+- **Tooltip System** (`app/components/ui/tooltip.tsx`): Radix Tooltip 覆蓋所有 icon-only button + 收合 sidebar
+- **Breadcrumb** (`app/components/breadcrumb.tsx`): 路徑層級導航，自動從 pathname 產生
+- **Nav Config** (`lib/nav-config.ts`): sidebar + mobile nav 共用資料源，含角色過濾
+- **Keyboard Shortcuts** (`app/components/keyboard-shortcuts-dialog.tsx`): `?` 鍵觸發快捷鍵說明 overlay
+- **Kanban Batch Operations**: 多選模式 + 批次狀態/優先度/指派變更（併發限制 5）
+- **Timesheet Copy Week**: 一鍵複製上週工時
 
 ### 技術數據
 
