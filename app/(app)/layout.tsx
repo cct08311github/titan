@@ -3,6 +3,7 @@ import { Topbar } from "@/app/components/topbar";
 import { Breadcrumb } from "@/app/components/breadcrumb";
 import { CommandPalette } from "@/app/components/command-palette";
 import { FeedbackButton } from "@/app/components/feedback-button";
+import { KeyboardShortcutsDialog } from "@/app/components/keyboard-shortcuts-dialog";
 import { NextAuthSessionProvider } from "@/app/components/session-provider";
 import { PasswordChangeGuard } from "@/app/components/password-change-guard";
 import { TooltipProvider } from "@/app/components/ui/tooltip";
@@ -25,6 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <CommandPalette />
+        <KeyboardShortcutsDialog />
         <FeedbackButton />
       </PasswordChangeGuard>
       </TooltipProvider>
