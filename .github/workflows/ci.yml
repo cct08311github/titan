@@ -137,6 +137,16 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      redis:
+        image: redis:7-alpine
+        ports:
+          - '6379:6379'
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v6
 
@@ -168,24 +178,31 @@ jobs:
           DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
           NEXTAUTH_SECRET: test-secret-for-ci
           NEXTAUTH_URL: http://localhost:3100
+          AUTH_SECRET: test-secret-for-ci
 
       - name: Start server and run E2E tests
         run: |
           npm run start &
-          npx wait-on http://localhost:3100 --timeout 30000
-          npx playwright test
+          npx wait-on http://localhost:3100/api/health --timeout 60000
+          npx playwright test --project=chromium --workers=1
         env:
           DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
+          REDIS_URL: redis://localhost:6379/0
           NEXTAUTH_SECRET: test-secret-for-ci
           NEXTAUTH_URL: http://localhost:3100
           AUTH_TRUST_HOST: "true"
           AUTH_SECRET: test-secret-for-ci
           PORT: 3100
+          BASE_URL: http://localhost:3100
+          CRON_SECRET: ci-cron-secret
+          NODE_ENV: test
 
-      - name: Upload Playwright report
+      - name: Upload test results (screenshots + traces)
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 7
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 14
