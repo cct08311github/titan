@@ -93,6 +93,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     where: {
       userId: session.user.id,
       date: targetDate,
+      isDeleted: false,
     },
     select: { hours: true },
   });

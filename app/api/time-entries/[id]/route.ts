@@ -80,6 +80,7 @@ export const PUT = withAuth(async (
         userId: callerId,
         date: targetDate,
         id: { not: id }, // exclude current entry
+        isDeleted: false,
       },
       select: { hours: true },
     });

@@ -46,13 +46,15 @@ function tomorrowStr(): string {
   return d.toISOString().slice(0, 10);
 }
 
-// 使用遠期日期避免與 seed 資料衝突（seed 可能在今天已有 23h 工時）
+// 每次執行生成唯一日期（2030 年隨機月日）避免 soft delete 殘留
+let _safeDay = 0;
 function safeTestDate(): string {
-  return '2026-08-10';
+  if (!_safeDay) _safeDay = 1 + Math.floor(Math.random() * 28);
+  return `2030-03-${String(_safeDay).padStart(2, '0')}`;
 }
 
 function safeTestDate2(): string {
-  return '2026-08-11';
+  return `2030-04-${String(1 + Math.floor(Math.random() * 28)).padStart(2, '0')}`;
 }
 
 const BASE = '/api/time-entries';
@@ -79,13 +81,13 @@ test.describe('A. Time Entry CRUD (Manager)', () => {
   });
 
   test('A2: Read entries includes created entry', async ({ request }) => {
-    const res = await request.get(`${BASE}?weekStart=2026-08-10`);
-    expect(res.status()).toBe(200);
-
+    // 查詢所有 entries（不帶 weekStart 過濾）
+    const res = await request.get(BASE);
+    expect(res.ok()).toBeTruthy();
     const body = await res.json();
-    expect(body.ok).toBe(true);
-    const ids = (Array.isArray(body.data) ? body.data : []).map((e: { id: string }) => e.id);
-    expect(ids).toContain(createdEntryId);
+    const entries = Array.isArray(body.data) ? body.data : body.data?.items ?? body.data ?? [];
+    const found = entries.find((e: { id: string }) => e.id === createdEntryId);
+    expect(found, `Entry ${createdEntryId} not found in ${entries.length} entries`).toBeTruthy();
   });
 
   test('A3: Manager entry is auto-approved → update blocked (compliance)', async ({ request }) => {
@@ -317,23 +319,12 @@ test.describe('C. Validation (Negative)', () => {
   test('C16: Daily limit exceeded → 400', async ({ browser }) => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
-    // 使用獨立日期避免與其他測試衝突
-    const date = '2026-07-04';
+    // 每次執行使用唯一日期，避免 soft delete 殘留影響 daily limit
+    const day = 10 + Math.floor(Math.random() * 18); // 10-27
+    const date = `2027-06-${String(day).padStart(2, '0')}`;
     const createdIds: string[] = [];
 
     try {
-      // 先清理此日期可能的殘留
-      const existingRes = await page.request.get(`${BASE}?weekStart=2026-06-29`);
-      if (existingRes.ok()) {
-        const existing = (await existingRes.json())?.data ?? [];
-        const entries = Array.isArray(existing) ? existing : existing.items ?? [];
-        for (const e of entries) {
-          if (e.date?.startsWith?.('2026-07-04') || e.date?.includes?.('2026-07-04')) {
-            await page.request.delete(`${BASE}/${e.id}`).catch(() => {});
-          }
-        }
-      }
-
       // Create 12h entry
       const res1 = await page.request.post(BASE, {
         data: { date, hours: 12, category: 'PLANNED_TASK' },
@@ -432,8 +423,8 @@ test.describe('D. Approval Workflow', () => {
     const context = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
     const page = await context.newPage();
 
-    // 查 safeTestDate 所在的週
-    const res = await page.request.get(`${BASE}?weekStart=2026-08-10`);
+    // 查所有 entries（不帶 weekStart）
+    const res = await page.request.get(BASE);
     expect(res.status()).toBe(200);
 
     const body = await res.json();
@@ -502,10 +493,20 @@ test.describe('E. Monthly Settlement', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
 
-    const res = await page.request.post(`${BASE}/settle-month`, {
-      data: { year: 2026, month: 8 },
+    // 等待 rate limiter 冷卻
+    await page.waitForTimeout(2000);
+
+    // 建立一筆工時記錄確保有 unlocked entry 可結算（用唯一年月）
+    const settleMonth = 1 + Math.floor(Math.random() * 12);
+    const settleDate = `2031-${String(settleMonth).padStart(2, '0')}-15`;
+    const setupRes = await page.request.post(BASE, {
+      data: { date: settleDate, hours: 1, category: 'ADMIN' },
     });
-    expect(res.status()).toBe(200);
+
+    const res = await page.request.post(`${BASE}/settle-month`, {
+      data: { year: 2031, month: settleMonth },
+    });
+    expect(res.ok(), `Settle failed: ${res.status()}`).toBeTruthy();
 
     const body = await res.json();
     expect(body.ok).toBe(true);
@@ -517,11 +518,11 @@ test.describe('E. Monthly Settlement', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
 
+    // 嘗試結算一個無 entries 的月份 → 409（全已結算或無資料）
     const res = await page.request.post(`${BASE}/settle-month`, {
-      data: { year: 2026, month: 8 },
+      data: { year: 2099, month: 1 },
     });
-    // 已結算過 → 409 衝突，或第一次結算成功 → 200
-    expect([200, 409]).toContain(res.status());
+    expect(res.status()).toBe(409);
 
     await context.close();
   });
@@ -548,8 +549,11 @@ test.describe('F. Batch & Copy', () => {
   test('F27: Batch create multiple entries → 201', async ({ browser }) => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
-    const date1 = '2026-08-12';
-    const date2 = '2026-08-13';
+    await page.waitForTimeout(2000); // rate limiter cooldown
+    const day1 = 10 + Math.floor(Math.random() * 18);
+    const day2 = day1 + 1;
+    const date1 = `2027-08-${String(day1).padStart(2, '0')}`;
+    const date2 = `2027-08-${String(day2).padStart(2, '0')}`;
 
     const res = await page.request.post(`${BASE}/batch`, {
       data: {
@@ -634,7 +638,7 @@ test.describe('G. IDOR Protection', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(BASE, {
-      data: { date: '2026-08-14', hours: 1.5, category: 'SUPPORT' },
+      data: { date: `2030-09-${String(1 + Math.floor(Math.random() * 28)).padStart(2, '0')}`, hours: 1.5, category: 'SUPPORT' },
     });
     if (res.status() !== 201) {
       console.log('IDOR setup failed:', res.status(), await res.text());
