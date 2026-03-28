@@ -77,7 +77,7 @@ export function TeamOverview() {
 
 function MemberSummaryCard({ member }: { member: MemberSummary }) {
   return (
-    <Link href={`/kanban?assignee=${member.id}`} className="flex items-center gap-3 p-3 bg-accent/40 rounded-lg hover:bg-accent/60 transition-colors cursor-pointer">
+    <Link href={`/kanban?assignee=${member.userId}`} className="flex items-center gap-3 p-3 bg-accent/40 rounded-lg hover:bg-accent/60 transition-colors cursor-pointer">
       <div className="flex-shrink-0 h-8 w-8 rounded-full bg-muted flex items-center justify-center text-sm text-muted-foreground font-medium">
         {member.avatar ? (
           <img src={member.avatar} alt={member.name} className="h-8 w-8 rounded-full" />

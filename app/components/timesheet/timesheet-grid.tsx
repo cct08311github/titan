@@ -186,8 +186,7 @@ export function TimesheetGrid({
                         ? ` > (${subTaskTitles.size} 子任務)`
                         : "";
                     const fullLabel = `${row.label}${subLabel}`;
-                    return (
-                      {row.taskId ? (
+                    return row.taskId ? (
                         <Link
                           href={`/kanban?task=${row.taskId}`}
                           className="text-xs text-muted-foreground truncate block max-w-[168px] hover:text-primary transition-colors"
@@ -200,8 +199,7 @@ export function TimesheetGrid({
                         <span className="text-xs text-muted-foreground truncate block max-w-[168px]" title={fullLabel}>
                           {row.label}
                         </span>
-                      )}
-                    );
+                      );
                   })()}
                 </td>
                 {Array.from({ length: daysCount }, (_, dayIdx) => {
