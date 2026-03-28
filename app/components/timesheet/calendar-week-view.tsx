@@ -612,12 +612,19 @@ export function CalendarWeekView({
             <div
               key={i}
               className={cn(
-                "p-2 text-center text-xs tabular-nums border-r border-border last:border-r-0",
+                "p-2 text-center text-xs tabular-nums border-r border-border last:border-r-0 flex items-center justify-center gap-1",
                 total > 8 ? "text-amber-500 font-medium" : "text-muted-foreground"
               )}
               data-testid={`day-total-cell-${i}`}
             >
               {total > 0 ? `${safeFixed(total, 1)}h` : "--"}
+              <button
+                onClick={() => setCreateForm({ dayIndex: i, startTime: "09:00", endTime: "10:00", taskId: "", category: "PLANNED_TASK", description: "" })}
+                className="text-[10px] text-muted-foreground/40 hover:text-primary transition-colors"
+                title="新增工時"
+              >
+                +
+              </button>
             </div>
           ))}
         </div>

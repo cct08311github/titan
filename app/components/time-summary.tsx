@@ -66,9 +66,9 @@ export function TimeSummary({ totalHours, breakdown, taskInvestmentRate, overtim
         </div>
       )}
 
-      {/* Category rows */}
-      <div className="space-y-2">
-        {breakdown.map((b) => {
+      {/* Category rows — only show categories with hours > 0 */}
+      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+        {breakdown.filter((b) => b.hours > 0).map((b) => {
           const meta = CAT_META[b.category];
           if (!meta) return null;
           return (
