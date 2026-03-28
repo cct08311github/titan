@@ -8,14 +8,16 @@
 
 FROM node:20-alpine
 
+# Prisma schema engine requires OpenSSL
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy only what prisma needs to generate and migrate
 COPY package.json package-lock.json ./
 COPY prisma/ ./prisma/
 
-# Install production prisma CLI + download Linux query engine binary
-# PRISMA_BINARY_TARGETS ensures the correct engine is fetched for linux-musl
+# Install prisma CLI + download Linux query engine binary
 RUN npm ci --ignore-scripts && \
     npx prisma generate
 
