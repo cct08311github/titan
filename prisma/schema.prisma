@@ -695,6 +695,10 @@ model TimeEntry {
   // TS-06: 排序（同日同任務多筆排序）
   sortOrder Int @default(0)
 
+  // Banking compliance: soft delete — financial records must be retained
+  isDeleted Boolean @default(false)
+  deletedAt DateTime?
+
   // #935: 子任務關聯（onDelete: SetNull）
   subTaskId String?
   subTask   SubTask? @relation(fields: [subTaskId], references: [id], onDelete: SetNull)
@@ -708,6 +712,7 @@ model TimeEntry {
   @@index([date])
   @@index([userId, isRunning])
   @@index([userId, date])
+  @@index([isDeleted])
   @@map("time_entries")
 }
 

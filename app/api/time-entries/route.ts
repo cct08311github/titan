@@ -31,7 +31,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     ? requestedUserId
     : callerId;
 
-  const where: Record<string, unknown> = { userId };
+  // Banking compliance: exclude soft-deleted entries from normal queries
+  const where: Record<string, unknown> = { userId, isDeleted: false };
 
   if (weekStart) {
     const start = new Date(weekStart);

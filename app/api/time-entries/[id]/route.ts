@@ -171,9 +171,13 @@ export const DELETE = withAuth(async (
     throw new ForbiddenError("此工時記錄已鎖定（超過 7 天），無法刪除。請向管理員申請解鎖。");
   }
 
-  await prisma.timeEntry.delete({ where: { id } });
+  // Banking compliance: soft delete — financial records must be retained
+  await prisma.timeEntry.update({
+    where: { id },
+    data: { isDeleted: true, deletedAt: new Date() },
+  });
 
-  // TS-08: Explicit audit trail for time entry deletions
+  // TS-08: Explicit audit trail for time entry soft-deletions
   await prisma.auditLog.create({
     data: {
       userId: callerId,
@@ -181,6 +185,7 @@ export const DELETE = withAuth(async (
       resourceType: "TimeEntry",
       resourceId: id,
       detail: JSON.stringify({
+        softDelete: true,
         deletedEntry: {
           hours: existing.hours,
           category: existing.category,
