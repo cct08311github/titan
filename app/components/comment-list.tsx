@@ -16,9 +16,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Send, Edit3, Trash2, Loader2, X, AtSign } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { sanitizeHtml } from "@/lib/security/sanitize";
+import { useConfirmDialog } from "@/app/components/ui/alert-dialog";
 
 type User = { id: string; name: string; avatar?: string | null };
 
@@ -115,6 +117,7 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
   const [mentionFilter, setMentionFilter] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const { confirmDialog, ConfirmDialog } = useConfirmDialog();
 
   const fetchComments = useCallback(async () => {
     setLoading(true);
@@ -200,11 +203,12 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
         body: JSON.stringify({ content: newContent.trim() }),
       });
       if (res.ok) {
+        toast.success("評論已發送");
         setNewContent("");
         await fetchComments();
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? "發送失敗");
+        toast.error("發送失敗", { description: errBody?.message });
       }
     } finally {
       setSending(false);
@@ -220,29 +224,37 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
         body: JSON.stringify({ content: editContent.trim() }),
       });
       if (res.ok) {
+        toast.success("評論已更新");
         setEditingId(null);
         setEditContent("");
         await fetchComments();
       } else {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? "編輯失敗");
+        toast.error("編輯失敗", { description: errBody?.message });
       }
     } catch {
-      alert("編輯失敗");
+      toast.error("編輯失敗");
     }
   }
 
   async function deleteComment(commentId: string) {
-    if (!confirm("確定要刪除此評論？")) return;
+    const ok = await confirmDialog({
+      title: "刪除評論",
+      description: "確定要刪除此評論？此操作無法復原。",
+      confirmLabel: "刪除",
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/tasks/${taskId}/comments/${commentId}`, {
         method: "DELETE",
       });
       if (res.ok) {
+        toast.success("評論已刪除");
         await fetchComments();
       }
     } catch {
-      alert("刪除失敗");
+      toast.error("刪除失敗");
     }
   }
 
@@ -427,6 +439,7 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
           </div>
         </>
       )}
+      <ConfirmDialog />
     </div>
   );
 }

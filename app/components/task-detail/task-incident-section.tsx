@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { AlertTriangle, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
@@ -118,7 +119,7 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
 
   async function saveIncident() {
     if (!form.incidentStart || !form.impactScope) {
-      alert("嚴重等級、影響範圍、事件開始時間為必填欄位");
+      toast.error("嚴重等級、影響範圍、事件開始時間為必填欄位");
       return;
     }
 
@@ -145,10 +146,11 @@ export function TaskIncidentSection({ taskId, category }: TaskIncidentSectionPro
         const body = await res.json();
         const data = extractData<IncidentRecord>(body);
         setRecord(data);
+        toast.success("事件紀錄已儲存");
       } else {
         const errBody = await res.json().catch(() => ({}));
         const msg = errBody?.message ?? errBody?.error ?? "儲存事件紀錄失敗";
-        alert(msg);
+        toast.error(msg);
       }
     } finally {
       setSaving(false);

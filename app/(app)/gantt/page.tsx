@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { ChevronLeft, ChevronRight, Diamond, BarChart2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
@@ -334,10 +335,11 @@ export default function GanttPage() {
       });
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
-        alert(errBody?.message ?? "時程更新失敗");
+        toast.error(errBody?.message ?? "時程更新失敗");
         fetchData(); // Revert by re-fetching
         return;
       }
+      toast.success("時程已更新");
       fetchData();
     } catch {
       fetchData(); // Revert by re-fetching

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface ExportButtonProps {
@@ -60,8 +61,9 @@ export function ExportButton({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      toast.success("匯出完成");
     } catch (e) {
-      alert(e instanceof Error ? e.message : "匯出失敗，請稍後再試");
+      toast.error(e instanceof Error ? e.message : "匯出失敗，請稍後再試");
     } finally {
       setLoading(false);
     }
