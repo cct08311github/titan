@@ -1,11 +1,13 @@
 # TITAN Nginx 反向代理服務
 # 任務: T08 - Nginx 反向代理與 TLS
-
-version: '3.8'
+# 修正: Issue #1056 — 網路名稱、healthcheck、volume 路徑、雙網路
 
 services:
   # ═══════════════════════════════════════════════════════════
   # Nginx 反向代理（含 TLS）
+  # 需要雙網路：
+  #   titan-internal（internal=true）— 連接後端服務
+  #   titan-external — 暴露 port 給 host
   # ═══════════════════════════════════════════════════════════
   nginx:
     image: nginx:1.27-alpine
@@ -15,24 +17,23 @@ services:
       - "${NGINX_HTTP_PORT:-80}:80"
       - "${NGINX_HTTPS_PORT:-443}:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/ssl:/etc/nginx/ssl:ro
     networks:
-      - titan-network
-    depends_on:
-      - homepage
-      - outline
-      - minio
+      - titan-internal
+      - titan-external
     healthcheck:
-      test: ["CMD", "wget -qO- http://localhost/health"]
+      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://127.0.0.1/nginx-health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 10s
 
 # ═══════════════════════════════════════════════════════════
-# 網路配置（加入現有 titan-network）
+# 網路配置
 # ═══════════════════════════════════════════════════════════
 networks:
-  titan-network:
+  titan-internal:
+    external: true
+  titan-external:
     external: true
