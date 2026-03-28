@@ -10,6 +10,7 @@ import { PlanHealthCard } from "@/app/components/cockpit/plan-health-card";
 import { GoalProgressList } from "@/app/components/cockpit/goal-progress-list";
 import { KPIGaugeRow } from "@/app/components/cockpit/kpi-gauge-row";
 import { TaskDistributionChart } from "@/app/components/cockpit/task-distribution-chart";
+import { LazyTaskDistributionPie, LazyKPIRadarChart, LazyGoalTrendLine } from "@/app/components/lazy-echarts";
 import { TimeInvestmentBar } from "@/app/components/cockpit/time-investment-bar";
 import { extractData } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
@@ -163,6 +164,7 @@ export default function CockpitPage() {
                     交付績效
                   </h3>
                   <TaskDistributionChart distribution={plan.taskDistribution} />
+                  <LazyTaskDistributionPie data={plan.taskDistribution} />
                 </div>
                 {/* Q2: 品質指標 (Quality Metrics) */}
                 <div className="border border-border rounded-lg p-4" data-testid="bsc-q2-quality">
@@ -171,6 +173,7 @@ export default function CockpitPage() {
                     品質指標
                   </h3>
                   <KPIGaugeRow kpis={plan.kpis} />
+                  <LazyKPIRadarChart kpis={plan.kpis} />
                 </div>
                 {/* Q3: 效率分析 (Efficiency Analysis) */}
                 <div className="border border-border rounded-lg p-4" data-testid="bsc-q3-efficiency">
@@ -187,6 +190,7 @@ export default function CockpitPage() {
                     成長學習
                   </h3>
                   <GoalProgressList goals={plan.goals} />
+                  <LazyGoalTrendLine goals={plan.goals} />
                 </div>
               </div>
             </div>
