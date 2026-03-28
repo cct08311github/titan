@@ -263,9 +263,9 @@ services:
   # ── TITAN Next.js App（Issue #185）────────────────────────
   titan-app:
     image: titan-app:latest
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: titan-app
     restart: unless-stopped
     depends_on:
