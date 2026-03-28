@@ -546,21 +546,21 @@ export default function KanbanPage() {
           </button>
           <button
             onClick={async () => {
-              const title = prompt("任務標題：");
-              if (!title?.trim()) return;
               const res = await fetch("/api/tasks", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  title: title.trim(),
+                  title: "新任務",
                   status: "BACKLOG",
                   priority: "P2",
                   category: "PLANNED",
                 }),
               });
               if (res.ok) {
-                toast.success("任務已建立");
-                fetchTasks();
+                const created = await res.json();
+                const newId = created.id ?? created.data?.id;
+                await fetchTasks();
+                if (newId) setSelectedTaskId(newId);
               } else {
                 const errBody = await res.json().catch(() => ({}));
                 toast.error(
