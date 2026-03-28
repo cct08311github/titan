@@ -124,6 +124,37 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
 
         return response;
       } catch (err) {
+        // ── Banking compliance: audit failed mutations (401/403/500) ──────
+        if (MUTATING_METHODS.has(req.method)) {
+          const url = new URL(req.url);
+          const resourceType = extractResourceType(url.pathname);
+          const ipAddress =
+            req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+            req.headers.get("x-real-ip") ||
+            null;
+          const errorName =
+            err instanceof ForbiddenError ? "FORBIDDEN" :
+            err instanceof UnauthorizedError ? "UNAUTHORIZED" :
+            err instanceof ValidationError ? "VALIDATION" :
+            err instanceof ConflictError ? "CONFLICT" :
+            "ERROR";
+
+          // Fire-and-forget: never block the error response
+          auth()
+            .then((session: { user?: { id?: string } } | null) => {
+              return auditService.log({
+                userId: session?.user?.id ?? null,
+                action: `FAILED_${req.method}_${resourceType.toUpperCase()}`,
+                resourceType,
+                detail: `${errorName}: ${req.method} ${url.pathname}`,
+                ipAddress,
+              });
+            })
+            .catch(() => {
+              // Silently ignore audit failures for failed requests
+            });
+        }
+
         if (err instanceof CsrfError) {
           return error("ForbiddenError", err.message, 403);
         }
