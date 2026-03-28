@@ -48,11 +48,11 @@ function tomorrowStr(): string {
 
 // 使用遠期日期避免與 seed 資料衝突（seed 可能在今天已有 23h 工時）
 function safeTestDate(): string {
-  return '2026-12-25';
+  return '2026-08-10';
 }
 
 function safeTestDate2(): string {
-  return '2026-12-26';
+  return '2026-08-11';
 }
 
 const BASE = '/api/time-entries';
@@ -60,16 +60,14 @@ const BASE = '/api/time-entries';
 // ── A. Time Entry CRUD (Manager) ──────────────────────────────────────────
 
 test.describe('A. Time Entry CRUD (Manager)', () => {
+  test.use({ storageState: MANAGER_STATE_FILE });
+  test.describe.configure({ mode: 'serial' });
+
   let createdEntryId: string;
   let taskEntryId: string;
 
-  test.describe.configure({ mode: 'serial' });
-
-  test('A1: Create time entry', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
-    const page = await context.newPage();
-
-    const res = await page.request.post(BASE, {
+  test('A1: Create time entry', async ({ request }) => {
+    const res = await request.post(BASE, {
       data: { date: safeTestDate(), hours: 2, category: 'PLANNED_TASK' },
     });
 
@@ -78,80 +76,56 @@ test.describe('A. Time Entry CRUD (Manager)', () => {
     expect(body.ok).toBe(true);
     expect(body.data).toBeDefined();
     createdEntryId = body.data.id;
-
-    await context.close();
   });
 
-  test('A2: Read entries includes created entry', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
-    const page = await context.newPage();
-
-    // 查詢 safeTestDate (2026-12-25) 所在的週
-    const res = await page.request.get(`${BASE}?weekStart=2026-12-21`);
+  test('A2: Read entries includes created entry', async ({ request }) => {
+    const res = await request.get(`${BASE}?weekStart=2026-08-10`);
     expect(res.status()).toBe(200);
 
     const body = await res.json();
     expect(body.ok).toBe(true);
-    const ids = (Array.isArray(body.data) ? body.data : []).map((e: any) => e.id);
+    const ids = (Array.isArray(body.data) ? body.data : []).map((e: { id: string }) => e.id);
     expect(ids).toContain(createdEntryId);
-
-    await context.close();
   });
 
-  test('A3: Update entry hours', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
-    const page = await context.newPage();
-
-    const res = await page.request.put(`${BASE}/${createdEntryId}`, {
+  test('A3: Manager entry is auto-approved → update blocked (compliance)', async ({ request }) => {
+    // Manager/Admin entries are auto-approved on creation
+    // Banking compliance fix: approved entries cannot be edited without ADMIN override
+    const res = await request.put(`${BASE}/${createdEntryId}`, {
       data: { hours: 3 },
     });
 
-    expect(res.status()).toBe(200);
+    // 403 is correct — approved entries are immutable
+    expect(res.status()).toBe(403);
     const body = await res.json();
-    expect(body.ok).toBe(true);
-    expect(body.data.hours).toBe(3);
+    expect(body.message).toContain('已核准');
 
-    await context.close();
   });
 
-  test('A4: Delete entry', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
-    const page = await context.newPage();
-
-    const res = await page.request.delete(`${BASE}/${createdEntryId}`);
-    expect(res.status()).toBe(200);
-
+  test('A4: Delete auto-approved entry → blocked (compliance)', async ({ request }) => {
+    // Manager entry is auto-approved, so delete is blocked by compliance fix
+    const res = await request.delete(`${BASE}/${createdEntryId}`);
+    expect(res.status()).toBe(403);
     const body = await res.json();
-    expect(body.ok).toBe(true);
-
-    await context.close();
+    expect(body.message).toContain('已核准');
   });
 
-  test('A5: Create entry with taskId', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
-    const page = await context.newPage();
-
-    // First, fetch a valid task to get taskId
-    const tasksRes = await page.request.get('/api/tasks?limit=1');
+  test('A5: Create entry with taskId', async ({ request }) => {
+    const tasksRes = await request.get('/api/tasks?limit=1');
     const tasksBody = await tasksRes.json();
     const tasks = tasksBody.data?.items ?? tasksBody.data ?? [];
     const validTaskId = tasks.length > 0 ? tasks[0].id : undefined;
 
     if (validTaskId) {
-      const res = await page.request.post(BASE, {
+      const res = await request.post(BASE, {
         data: { date: safeTestDate(), hours: 1, taskId: validTaskId },
       });
-
       expect(res.status()).toBe(201);
       const body = await res.json();
       expect(body.ok).toBe(true);
       taskEntryId = body.data.id;
-
-      // Cleanup
-      await page.request.delete(`${BASE}/${taskEntryId}`);
+      await request.delete(`${BASE}/${taskEntryId}`);
     }
-
-    await context.close();
   });
 });
 
@@ -417,7 +391,7 @@ test.describe('D. Approval Workflow', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
 
-    const res = await page.request.get(`${BASE}/monthly?month=2026-12`);
+    const res = await page.request.get(`${BASE}/monthly?month=2026-08`);
     expect(res.ok() || res.status() === 400).toBeTruthy(); // 400 if month has no data
 
     const body = await res.json();
@@ -431,7 +405,7 @@ test.describe('D. Approval Workflow', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(`${BASE}/approve`, {
-      data: { ids: [engineerEntryId] },
+      data: { entryIds: [engineerEntryId] },
     });
     expect(res.status()).toBe(200);
 
@@ -445,14 +419,16 @@ test.describe('D. Approval Workflow', () => {
     const context = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
     const page = await context.newPage();
 
-    const res = await page.request.get(`${BASE}?weekStart=${thisMonday()}`);
+    // 查 safeTestDate 所在的週
+    const res = await page.request.get(`${BASE}?weekStart=2026-08-10`);
     expect(res.status()).toBe(200);
 
     const body = await res.json();
     const entries = Array.isArray(body.data) ? body.data : [];
-    const approved = entries.find((e: any) => e.id === engineerEntryId);
+    const approved = entries.find((e: { id: string }) => e.id === engineerEntryId);
     expect(approved).toBeDefined();
-    expect(approved.status).toBe('APPROVED');
+    // 欄位名為 approvalStatus
+    expect(approved.approvalStatus).toBe('APPROVED');
 
     await context.close();
   });
@@ -462,7 +438,7 @@ test.describe('D. Approval Workflow', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(`${BASE}/reject`, {
-      data: { ids: [engineerEntryId2], reason: '工時不合理' },
+      data: { entryIds: [engineerEntryId2], reason: '工時不合理' },
     });
     expect(res.status()).toBe(200);
 
@@ -477,7 +453,7 @@ test.describe('D. Approval Workflow', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(`${BASE}/approve`, {
-      data: { ids: [engineerEntryId2] },
+      data: { entryIds: [engineerEntryId2] },
     });
     expect(res.status()).toBe(403);
 
@@ -489,7 +465,7 @@ test.describe('D. Approval Workflow', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(`${BASE}/reject`, {
-      data: { ids: [engineerEntryId2], reason: 'test' },
+      data: { entryIds: [engineerEntryId2], reason: 'test' },
     });
     expect(res.status()).toBe(403);
 
@@ -514,7 +490,7 @@ test.describe('E. Monthly Settlement', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(`${BASE}/settle-month`, {
-      data: { year: 2026, month: 12 },
+      data: { year: 2026, month: 8 },
     });
     expect(res.status()).toBe(200);
 
@@ -529,7 +505,7 @@ test.describe('E. Monthly Settlement', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(`${BASE}/settle-month`, {
-      data: { year: 2026, month: 12 },
+      data: { year: 2026, month: 8 },
     });
     // 已結算過 → 409 衝突，或第一次結算成功 → 200
     expect([200, 409]).toContain(res.status());
@@ -541,7 +517,7 @@ test.describe('E. Monthly Settlement', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
 
-    const res = await page.request.get(`${BASE}/monthly-summary?month=2026-12`);
+    const res = await page.request.get(`${BASE}/monthly-summary?month=2026-08`);
     expect(res.status()).toBe(200);
 
     const body = await res.json();
@@ -559,8 +535,8 @@ test.describe('F. Batch & Copy', () => {
   test('F27: Batch create multiple entries → 201', async ({ browser }) => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
-    const date1 = '2026-11-23';
-    const date2 = '2026-11-24';
+    const date1 = '2026-08-12';
+    const date2 = '2026-08-13';
 
     const res = await page.request.post(`${BASE}/batch`, {
       data: {
@@ -645,7 +621,7 @@ test.describe('G. IDOR Protection', () => {
     const page = await context.newPage();
 
     const res = await page.request.post(BASE, {
-      data: { date: '2026-11-27', hours: 1.5, category: 'SUPPORT' },
+      data: { date: '2026-08-14', hours: 1.5, category: 'SUPPORT' },
     });
     if (res.status() !== 201) {
       console.log('IDOR setup failed:', res.status(), await res.text());
