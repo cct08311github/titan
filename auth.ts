@@ -55,7 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       name: "authjs.csrf-token",
       options: {
         httpOnly: true,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
         secure: process.env.NODE_ENV === "production",
       },
@@ -73,7 +73,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        const username = credentials.username as string;
+        const rawUsername = credentials.username as string;
+        const username = rawUsername.includes("@") ? rawUsername : `${rawUsername}@titan.local`;
         const password = credentials.password as string;
 
         const ip =
