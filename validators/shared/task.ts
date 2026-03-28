@@ -60,9 +60,9 @@ export const createTaskFullSchema = z.object({
 
 export const updateTaskSchema = z.object({
   title: z.string().min(1, "標題為必填").max(200, "標題不得超過 200 字元").optional(),
-  description: z.string().max(10000, "描述不得超過 10,000 字元").optional(),
+  description: z.string().max(10000, "描述不得超過 10,000 字元").nullable().optional(),
   annualPlanId: z.string().nullable().optional(), // Issue #835
-  monthlyGoalId: z.string().optional(),
+  monthlyGoalId: z.string().nullable().optional(),
   primaryAssigneeId: z.string().nullable().optional(),
   backupAssigneeId: z.string().nullable().optional(),
   status: TaskStatusEnum.optional(),

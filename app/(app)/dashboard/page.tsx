@@ -17,6 +17,7 @@ import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states"
 import { extractData } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
 import { safeFixed } from "@/lib/safe-number";
+import Link from "next/link";
 
 // ── Skeleton loader ─────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ function TaskRow({ task }: { task: TaskItem }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
 
   return (
-    <div className="flex items-center gap-2 p-2.5 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors">
+    <Link href={`/kanban?task=${task.id}`} className="flex items-center gap-2 p-2.5 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors cursor-pointer">
       {task.managerFlagged && (
         <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500 flex-shrink-0" />
       )}
@@ -138,7 +139,7 @@ function TaskRow({ task }: { task: TaskItem }) {
           {formatDate(task.dueDate)}
         </span>
       )}
-    </div>
+    </Link>
   );
 }
 
