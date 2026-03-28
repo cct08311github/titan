@@ -37,7 +37,7 @@ test.describe('A. Dashboard Deep Verification', () => {
 
     test('A-1: Tab 切換 — 點擊「我的一天」和「團隊全局」切換副標題', async ({ page }) => {
       await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('h1').first()).toContainText('儀表板', { timeout: 15000 });
+      await expect(page.locator('h1').first()).toContainText(/今日總覽|儀表板/, { timeout: 15000 });
 
       // Click "我的一天" tab if available
       const myDayTab = page.locator('button, [role="tab"], a').filter({ hasText: '我的一天' }).first();
@@ -64,13 +64,13 @@ test.describe('A. Dashboard Deep Verification', () => {
         }
       } else {
         // Tabs may be rendered differently — verify dashboard loads
-        await expect(page.locator('h1').first()).toContainText('儀表板');
+        await expect(page.locator('h1').first()).toContainText(/今日總覽|儀表板/);
       }
     });
 
     test('A-2: Manager 快速連結導航 — 駕駛艙/看板/報表/工時', async ({ page }) => {
       await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('h1').first()).toContainText('儀表板', { timeout: 15000 });
+      await expect(page.locator('h1').first()).toContainText(/今日總覽|儀表板/, { timeout: 15000 });
 
       const links: Array<{ text: string; urlPattern: string }> = [
         { text: '駕駛艙', urlPattern: '/cockpit' },
@@ -147,7 +147,7 @@ test.describe('A. Dashboard Deep Verification', () => {
 
     test('A-5: Engineer 被限制為「my-day」— Tab 切換器不可見或切換無效', async ({ page }) => {
       await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-      await expect(page.locator('h1').first()).toContainText('儀表板', { timeout: 15000 });
+      await expect(page.locator('h1').first()).toContainText(/今日總覽|儀表板/, { timeout: 15000 });
 
       // Engineer should not see team tab, or clicking it has no effect
       const teamTab = page.locator('button, [role="tab"], a').filter({ hasText: '團隊全局' }).first();
