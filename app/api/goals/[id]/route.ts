@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NotFoundError, ValidationError } from "@/services/errors";
 import { validateBody } from "@/lib/validate";
 import { updateGoalSchema } from "@/validators/plan-validators";
+import { isValidGoalTransition } from "@/lib/state-machines";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
@@ -49,6 +50,13 @@ export const PUT = withManager(async (
 
   const raw = await req.json();
   const body = validateBody(updateGoalSchema, raw);
+
+  // Banking compliance: enforce goal state machine
+  if (body.status && body.status !== existing.status) {
+    if (!isValidGoalTransition(existing.status as Parameters<typeof isValidGoalTransition>[0], body.status as Parameters<typeof isValidGoalTransition>[0])) {
+      throw new ValidationError(`無法從 ${existing.status} 轉換為 ${body.status}`);
+    }
+  }
 
   const completedAt =
     body.status === "COMPLETED" && existing.status !== "COMPLETED"

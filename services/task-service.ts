@@ -4,6 +4,7 @@ import { ChangeTrackingService } from "./change-tracking-service";
 import { AuditService } from "./audit-service";
 import { logActivity, ActivityAction, ActivityModule } from "./activity-logger";
 import { AutoRollupService } from "@/lib/auto-rollup";
+import { isValidTaskTransition } from "@/lib/state-machines";
 
 export interface ListTasksFilter {
   assignee?: string;
@@ -324,11 +325,25 @@ export class TaskService {
 
   async updateTaskStatus(id: string, status: string, userId: string) {
     // Fetch old status for audit trail — Issue #806 (K-6)
-    // Fetch old status for audit trail
     const existing = await this.prisma.task.findUnique({
       where: { id },
       select: { status: true },
     });
+
+    if (!existing) {
+      throw new NotFoundError("任務不存在");
+    }
+
+    // Banking compliance: enforce state machine transitions
+    if (!isValidTaskTransition(existing.status as Parameters<typeof isValidTaskTransition>[0], status as Parameters<typeof isValidTaskTransition>[0])) {
+      throw new ValidationError(
+        `無法從 ${existing.status} 轉換為 ${status}。允許的轉換：${
+          existing.status === "DONE" ? "TODO" :
+          existing.status === "BACKLOG" ? "TODO, IN_PROGRESS" :
+          "請參考狀態機定義"
+        }`
+      );
+    }
 
     const task = await this.prisma.$transaction(
       async (tx) => {

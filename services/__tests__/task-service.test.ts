@@ -157,6 +157,8 @@ describe("TaskService", () => {
   describe("updateTaskStatus", () => {
     test("updateTaskStatus changes status", async () => {
       const mockTask = { id: "task-1", status: "IN_PROGRESS" };
+      // State machine needs findUnique to get existing status
+      (prisma.task.findUnique as jest.Mock).mockResolvedValue({ status: "TODO" });
       (prisma.task.update as jest.Mock).mockResolvedValue(mockTask);
       (prisma.taskActivity.create as jest.Mock).mockResolvedValue({});
 
@@ -173,6 +175,8 @@ describe("TaskService", () => {
 
     test("updateTaskStatus creates activity log", async () => {
       const mockTask = { id: "task-1", status: "DONE" };
+      // State machine: REVIEW → DONE is valid
+      (prisma.task.findUnique as jest.Mock).mockResolvedValue({ status: "REVIEW" });
       (prisma.task.update as jest.Mock).mockResolvedValue(mockTask);
       (prisma.taskActivity.create as jest.Mock).mockResolvedValue({});
 

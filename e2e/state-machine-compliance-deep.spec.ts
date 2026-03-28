@@ -185,38 +185,78 @@ test.describe('B. 工時審核狀態機', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// C. 任務狀態機（設計為自由轉換）
+// C. 任務狀態機（嚴格轉換限制）
 // ═══════════════════════════════════════════════════════════════════════════════
 
-test.describe('C. 任務狀態自由轉換', () => {
+test.describe('C. 任務狀態機', () => {
   test.use({ storageState: MANAGER_STATE_FILE });
 
-  const allStatuses = ['BACKLOG', 'TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'];
-
-  test('任務可從任何狀態轉換到任何狀態', async ({ request }) => {
-    // 建立任務
+  test('正向工作流：BACKLOG → TODO → IN_PROGRESS → REVIEW → DONE', async ({ request }) => {
     const createRes = await request.post('/api/tasks', {
-      data: { title: `Status-Test-${Date.now()}`, status: 'BACKLOG', priority: 'P2', category: 'PLANNED' },
+      data: { title: `SM-Forward-${Date.now()}`, status: 'BACKLOG', priority: 'P2', category: 'PLANNED' },
     });
     const taskId = (await createRes.json()).data?.id;
 
     try {
-      // 依序轉換所有狀態
-      for (const status of allStatuses) {
-        const res = await request.patch(`/api/tasks/${taskId}`, {
-          data: { status },
-        });
-        expect(res.ok(), `Transition to ${status} should succeed`).toBeTruthy();
-        const body = await res.json();
-        expect(body.data?.status).toBe(status);
+      for (const status of ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE']) {
+        const res = await request.patch(`/api/tasks/${taskId}`, { data: { status } });
+        expect(res.ok(), `→ ${status} should succeed`).toBeTruthy();
       }
+    } finally {
+      if (taskId) await request.delete(`/api/tasks/${taskId}`);
+    }
+  });
 
-      // 反向轉換：DONE → BACKLOG（確認允許）
-      const reverseRes = await request.patch(`/api/tasks/${taskId}`, {
-        data: { status: 'BACKLOG' },
-      });
-      expect(reverseRes.ok()).toBeTruthy();
-      expect((await reverseRes.json()).data?.status).toBe('BACKLOG');
+  test('DONE → TODO 允許（重開任務）', async ({ request }) => {
+    const createRes = await request.post('/api/tasks', {
+      data: { title: `SM-Reopen-${Date.now()}`, status: 'BACKLOG', priority: 'P2', category: 'PLANNED' },
+    });
+    const taskId = (await createRes.json()).data?.id;
+
+    try {
+      // 走到 DONE
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'TODO' } });
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'IN_PROGRESS' } });
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'REVIEW' } });
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'DONE' } });
+
+      // DONE → TODO（重開）
+      const res = await request.patch(`/api/tasks/${taskId}`, { data: { status: 'TODO' } });
+      expect(res.ok()).toBeTruthy();
+    } finally {
+      if (taskId) await request.delete(`/api/tasks/${taskId}`);
+    }
+  });
+
+  test('DONE → BACKLOG 不允許（只能重開到 TODO）', async ({ request }) => {
+    const createRes = await request.post('/api/tasks', {
+      data: { title: `SM-Block-${Date.now()}`, status: 'BACKLOG', priority: 'P2', category: 'PLANNED' },
+    });
+    const taskId = (await createRes.json()).data?.id;
+
+    try {
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'TODO' } });
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'IN_PROGRESS' } });
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'REVIEW' } });
+      await request.patch(`/api/tasks/${taskId}`, { data: { status: 'DONE' } });
+
+      // DONE → BACKLOG 應被拒絕
+      const res = await request.patch(`/api/tasks/${taskId}`, { data: { status: 'BACKLOG' } });
+      expect(res.status()).toBe(400);
+    } finally {
+      if (taskId) await request.delete(`/api/tasks/${taskId}`);
+    }
+  });
+
+  test('BACKLOG → DONE 不允許（不可跳過中間狀態）', async ({ request }) => {
+    const createRes = await request.post('/api/tasks', {
+      data: { title: `SM-Skip-${Date.now()}`, status: 'BACKLOG', priority: 'P2', category: 'PLANNED' },
+    });
+    const taskId = (await createRes.json()).data?.id;
+
+    try {
+      const res = await request.patch(`/api/tasks/${taskId}`, { data: { status: 'DONE' } });
+      expect(res.status()).toBe(400);
     } finally {
       if (taskId) await request.delete(`/api/tasks/${taskId}`);
     }

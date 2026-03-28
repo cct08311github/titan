@@ -1,5 +1,6 @@
 import { PrismaClient, MilestoneStatus, MilestoneType } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
+import { isValidMilestoneTransition } from "@/lib/state-machines";
 
 export interface ListMilestonesFilter {
   planId?: string;
@@ -95,6 +96,12 @@ export class MilestoneService {
     if (input.plannedEnd !== undefined) updates.plannedEnd = input.plannedEnd;
     if (input.actualStart !== undefined) updates.actualStart = input.actualStart;
     if (input.actualEnd !== undefined) updates.actualEnd = input.actualEnd;
+    // Banking compliance: enforce milestone state machine
+    if (input.status !== undefined && input.status !== existing.status) {
+      if (!isValidMilestoneTransition(existing.status as Parameters<typeof isValidMilestoneTransition>[0], input.status as Parameters<typeof isValidMilestoneTransition>[0])) {
+        throw new ValidationError(`無法從 ${existing.status} 轉換為 ${input.status}`);
+      }
+    }
     if (input.status !== undefined) updates.status = input.status;
     if (input.order !== undefined) updates.order = input.order;
 

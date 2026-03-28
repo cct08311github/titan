@@ -291,7 +291,8 @@ describe("PATCH /api/tasks/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(MEMBER_SESSION);
-    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, primaryAssigneeId: "user-1", backupAssigneeId: null });
+    // State machine: REVIEW → DONE is valid (MOCK_TASK default is TODO, override to REVIEW)
+    mockTask.findUnique.mockResolvedValue({ ...MOCK_TASK, status: "REVIEW", primaryAssigneeId: "user-1", backupAssigneeId: null });
     mockTask.update.mockResolvedValue({ ...MOCK_TASK, status: "DONE" });
     mockTaskActivity.create.mockResolvedValue({});
     // $transaction receives a callback; simulate calling it with a tx proxy
