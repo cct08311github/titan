@@ -4,11 +4,7 @@ import "@testing-library/jest-dom";
 // Tests that need to control the session should override via:
 //   jest.mock("@/auth", () => ({ auth: jest.fn().mockResolvedValue(...) }))
 // or directly: (auth as jest.Mock).mockResolvedValue(...)
-// auth() is called as a fire-and-forget in api-handler.ts (auth().then(...))
-// Default to a function returning Promise.resolve() so .then() never throws
-jest.mock("@/auth", () => ({
-  auth: jest.fn(() => Promise.resolve(null)),
-}));
+jest.mock("@/auth");
 
 // Mock next/headers for all tests — Issue #1112
 //
