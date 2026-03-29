@@ -88,6 +88,9 @@ describe("B2: TaskService — updateTaskStatus uses transaction and records acti
     prisma = createMockPrisma();
     service = new TaskService(prisma as never);
 
+    // updateTaskStatus calls task.findUnique first to get existing status
+    // Must be IN_PROGRESS for transition to DONE to be valid (TODO→DONE is not allowed)
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({ status: "IN_PROGRESS" });
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (fn: (tx: unknown) => Promise<unknown>) => {
         const tx = {

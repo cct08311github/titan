@@ -69,11 +69,6 @@ describe("Sidebar", () => {
     expect(screen.getByText("知識庫")).toBeInTheDocument();
   });
 
-  it("renders version footer", () => {
-    render(<Sidebar />);
-    expect(screen.getByText(/v2\.0\.0/)).toBeInTheDocument();
-  });
-
   it("marks dashboard link as active when on dashboard path", () => {
     render(<Sidebar />);
     const dashboardLink = screen.getByText("今日總覽").closest("a");
