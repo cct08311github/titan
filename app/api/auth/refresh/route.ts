@@ -17,24 +17,27 @@ import { registerSession } from "@/lib/session-limiter";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { isPasswordExpired } from "@/lib/password-expiry";
+import { AuditService } from "@/services/audit-service";
+import { getClientIp } from "@/lib/get-client-ip";
 
 const ACCESS_TOKEN_MAX_AGE = 15 * 60; // 15 minutes
 const SESSION_COOKIE_NAME = "authjs.session-token";
 
 export async function POST(req: NextRequest) {
-  let body: { refreshToken?: string; source?: string };
+  let body: { refreshToken?: string; source?: string; deviceId?: string };
   try {
     body = await req.json();
   } catch {
     return error("ValidationError", "無效的請求格式", 400);
   }
 
-  const { refreshToken, source } = body;
+  const { refreshToken, source, deviceId } = body;
   if (!refreshToken) {
     return error("ValidationError", "缺少 refresh token", 400);
   }
 
-  const result = await rotateRefreshToken(refreshToken);
+  // Issue #1085: Pass deviceId for device binding verification on mobile
+  const result = await rotateRefreshToken(refreshToken, deviceId);
   if (!result) {
     return error("UnauthorizedError", "Refresh token 無效或已過期", 401);
   }
@@ -53,6 +56,19 @@ export async function POST(req: NextRequest) {
   }
 
   logger.info({ userId: user.id, source: source ?? "web" }, "[auth] Token refreshed successfully");
+
+  // Issue #1085: Audit log for mobile token refresh
+  if (source === "mobile") {
+    const auditService = new AuditService(prisma);
+    auditService.log({
+      userId: user.id,
+      action: "MOBILE_TOKEN_REFRESH",
+      resourceType: "Auth",
+      resourceId: user.id,
+      detail: JSON.stringify({ deviceId: deviceId ?? null }),
+      ipAddress: getClientIp(req),
+    }).catch(() => {});
+  }
 
   // Base response (backward compatible with web clients)
   const responseData: Record<string, unknown> = {

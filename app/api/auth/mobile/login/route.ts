@@ -160,7 +160,8 @@ export async function POST(req: NextRequest) {
   });
 
   // 9. Issue refresh token (stored as SHA-256 hash in DB)
-  const refreshToken = await issueRefreshToken(user.id);
+  // Issue #1085: Device-bound refresh token
+  const refreshToken = await issueRefreshToken(user.id, deviceId);
 
   // 10. Audit log
   auditService.log({

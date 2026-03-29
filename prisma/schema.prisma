@@ -850,12 +850,14 @@ model RefreshToken {
   id        String    @id @default(cuid())
   userId    String
   tokenHash String    @unique  // SHA-256 hash of the refresh token
+  deviceId  String?            // Issue #1085: mobile device binding (null = web client)
   expiresAt DateTime           // 7 days from creation
   revokedAt DateTime?          // null = active; set on use, logout, or password change
   createdAt DateTime  @default(now())
 
   @@index([userId])
   @@index([tokenHash])
+  @@index([deviceId])
   @@map("refresh_tokens")
 }
 
