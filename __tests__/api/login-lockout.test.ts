@@ -8,6 +8,10 @@ import path from "path";
 
 const ROOT = process.cwd();
 
+// Top-level auth mock — defined before jest.mock hoisting (following jwt-middleware.test.ts pattern)
+const mockAuthFn = jest.fn<() => Promise<unknown>>().mockResolvedValue(null);
+jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockAuthFn(...args) }));
+
 describe("AccountLockService (5 failures / 30 min)", () => {
   let AccountLockService: typeof import("@/lib/account-lock").AccountLockService;
 
@@ -80,8 +84,7 @@ describe("auth.ts lockout config", () => {
 });
 
 describe("POST /api/admin/unlock", () => {
-  const mockAuthFn = jest.fn();
-  jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockAuthFn(...args) }));
+  // auth is mocked at module level via authMockState — tests just set authMockState.currentUser
   jest.mock("@/lib/prisma", () => ({
     prisma: {
       user: { findUnique: jest.fn().mockResolvedValue({ email: "test@test.com" }) },
@@ -101,7 +104,7 @@ describe("POST /api/admin/unlock", () => {
   const { NextRequest } = require("next/server");
 
   it("should return 401 for unauthenticated", async () => {
-    mockAuthFn.mockResolvedValueOnce(null);
+    mockAuthFn.mockReturnValue(Promise.resolve(null));
     const mod = await import("@/app/api/admin/unlock/route");
     const req = new NextRequest("http://localhost/api/admin/unlock", {
       method: "POST", body: JSON.stringify({ email: "test@test.com" }),
@@ -111,7 +114,7 @@ describe("POST /api/admin/unlock", () => {
   });
 
   it("should return 400 for missing params", async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: "u1", role: "MANAGER" }, expires: "2099-01-01" });
+    mockAuthFn.mockReturnValue(Promise.resolve({ user: { id: "u1", role: "MANAGER", email: "mgr@test.com", name: "Manager" }, expires: "2099-01-01" }));
     const mod = await import("@/app/api/admin/unlock/route");
     const req = new NextRequest("http://localhost/api/admin/unlock", {
       method: "POST", body: JSON.stringify({}),
