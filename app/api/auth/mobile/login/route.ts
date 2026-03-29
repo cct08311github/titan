@@ -46,6 +46,13 @@ const ACCESS_TOKEN_MAX_AGE = 15 * 60; // 15 minutes
 const SESSION_COOKIE_NAME = "authjs.session-token";
 
 export async function POST(req: NextRequest) {
+  // [CR #2] Early check — fail fast before wasting bcrypt/DB/lockout resources
+  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    logger.error("[mobile-auth] AUTH_SECRET not set");
+    return error("ServerError", "伺服器設定錯誤", 500);
+  }
+
   let body: { username?: string; password?: string; deviceId?: string };
   try {
     body = await req.json();
@@ -138,12 +145,7 @@ export async function POST(req: NextRequest) {
   // 8. Produce JWE access token using Auth.js encode()
   //    This produces the exact same JWE format that checkEdgeJwt() expects,
   //    using HKDF with the session cookie name as salt.
-  const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!secret) {
-    logger.error("[mobile-auth] AUTH_SECRET not set");
-    return error("ServerError", "伺服器設定錯誤", 500);
-  }
-
+  //    (secret already validated at function entry — CR #2)
   const accessToken = await encode({
     token: {
       id: user.id,

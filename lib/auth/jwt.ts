@@ -97,7 +97,9 @@ export async function rotateRefreshToken(
   }
 
   // Issue #1085: Device binding verification — stolen token cannot be used on another device
-  if (deviceId && existing.deviceId && existing.deviceId !== deviceId) {
+  // [CR #4] If token was issued to a device (existing.deviceId set), caller MUST provide
+  // matching deviceId. Missing deviceId on a device-bound token = reject (prevents bypass).
+  if (existing.deviceId && (!deviceId || existing.deviceId !== deviceId)) {
     logger.warn(
       { userId: existing.userId, expected: existing.deviceId, actual: deviceId },
       "[jwt] Refresh token device mismatch — possible stolen token"

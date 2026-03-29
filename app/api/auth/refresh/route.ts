@@ -21,6 +21,8 @@ import { AuditService } from "@/services/audit-service";
 import { getClientIp } from "@/lib/get-client-ip";
 
 const ACCESS_TOKEN_MAX_AGE = 15 * 60; // 15 minutes
+// [CR #3] Module-level singleton — avoid creating new instance on every 15min refresh
+const auditService = new AuditService(prisma);
 const SESSION_COOKIE_NAME = "authjs.session-token";
 
 export async function POST(req: NextRequest) {
@@ -59,7 +61,6 @@ export async function POST(req: NextRequest) {
 
   // Issue #1085: Audit log for mobile token refresh
   if (source === "mobile") {
-    const auditService = new AuditService(prisma);
     auditService.log({
       userId: user.id,
       action: "MOBILE_TOKEN_REFRESH",

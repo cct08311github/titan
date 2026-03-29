@@ -64,13 +64,20 @@ async function verifyMobileToken(jwe: string): Promise<AuthSession> {
     throw new UnauthorizedError("伺服器設定錯誤");
   }
 
-  const payload = await decode({
-    token: jwe,
-    secret,
-    salt: "authjs.session-token",
-  });
+  // [CR #1] Wrap decode() in try-catch — crypto errors should return 401, not 500
+  let payload;
+  try {
+    payload = await decode({
+      token: jwe,
+      secret,
+      salt: "authjs.session-token",
+    });
+  } catch {
+    throw new UnauthorizedError("無效的存取權杖");
+  }
 
-  if (!payload || !payload.id) {
+  // [CR #5] Validate required fields — tampered tokens may be missing role/id
+  if (!payload || !payload.id || !payload.role) {
     throw new UnauthorizedError("無效的存取權杖");
   }
 
