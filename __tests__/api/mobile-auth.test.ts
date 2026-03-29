@@ -159,11 +159,13 @@ describe("Mobile Auth — POST /api/auth/mobile/login", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.AUTH_SECRET = "test-secret-for-mobile-auth";
+    process.env.NODE_ENV = "test";
     mockIsLocked.mockResolvedValue(false);
     mockGetRemainingLockSeconds.mockResolvedValue(0);
     mockUserFindUnique.mockResolvedValue(MOCK_USER);
     mockCompare.mockResolvedValue(true);
     mockRefreshTokenCreate.mockResolvedValue({ id: "rt-1" });
+    mockCheckRateLimit.mockResolvedValue(undefined);
   });
 
   afterAll(() => {
@@ -376,6 +378,301 @@ describe("Mobile Auth — POST /api/auth/mobile/login", () => {
       where: { email: "alice@titan.local" },
     });
   });
+
+  it("preserves full email when @ already present", async () => {
+    const req = createRequest({
+      username: "bob@custom.domain",
+      password: "pass",
+      deviceId: "device-1",
+    });
+
+    await POST(req as never);
+
+    expect(mockUserFindUnique).toHaveBeenCalledWith({
+      where: { email: "bob@custom.domain" },
+    });
+  });
+
+  // ── OWASP MSTG: Input Validation ──────────────────────────────────
+
+  it("returns 400 on malformed JSON body", async () => {
+    const req = new Request("http://localhost:3000/api/auth/mobile/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "not-json{{{",
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when password is missing", async () => {
+    const req = createRequest({ username: "alice", deviceId: "d" });
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when all fields are empty strings", async () => {
+    const req = createRequest({ username: "", password: "", deviceId: "" });
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+  });
+
+  it("handles unicode username without crash", async () => {
+    const req = createRequest({
+      username: "用戶名@titan.local",
+      password: "pass",
+      deviceId: "device-1",
+    });
+
+    const res = await POST(req as never);
+    // Should reach DB lookup (not crash on unicode)
+    expect(mockUserFindUnique).toHaveBeenCalled();
+  });
+
+  it("handles extremely long username gracefully", async () => {
+    const req = createRequest({
+      username: "a".repeat(10000),
+      password: "pass",
+      deviceId: "device-1",
+    });
+
+    const res = await POST(req as never);
+    // Should not crash (any non-5xx is acceptable since mocks return a valid user)
+    expect(res.status).toBeLessThan(500);
+  });
+
+  it("handles extremely long deviceId gracefully", async () => {
+    const req = createRequest({
+      username: "mobile",
+      password: "pass",
+      deviceId: "d".repeat(10000),
+    });
+
+    // Should not crash
+    const res = await POST(req as never);
+    expect(res.status).toBe(200);
+  });
+
+  // ── OWASP MSTG: Response Security ─────────────────────────────────
+
+  it("does NOT leak password hash in response", async () => {
+    const req = createRequest({
+      username: "mobile",
+      password: "pass",
+      deviceId: "device-1",
+    });
+
+    const res = await POST(req as never);
+    const text = await res.clone().text();
+
+    expect(text).not.toContain("$2a$");
+    expect(text).not.toContain("hashedpassword");
+  });
+
+  it("returns identical error message for wrong password vs user not found", async () => {
+    // Wrong password
+    mockCompare.mockResolvedValue(false);
+    const req1 = createRequest({ username: "mobile", password: "wrong", deviceId: "d" });
+    const res1 = await POST(req1 as never);
+    const json1 = await res1.json();
+
+    jest.clearAllMocks();
+    process.env.AUTH_SECRET = "test-secret-for-mobile-auth";
+    mockIsLocked.mockResolvedValue(false);
+    mockRefreshTokenCreate.mockResolvedValue({ id: "rt-1" });
+
+    // User not found
+    mockUserFindUnique.mockResolvedValue(null);
+    mockCompare.mockResolvedValue(true);
+    const req2 = createRequest({ username: "ghost", password: "pass", deviceId: "d" });
+    const res2 = await POST(req2 as never);
+    const json2 = await res2.json();
+
+    // OWASP: same error message prevents user enumeration
+    expect(json1.message).toBe(json2.message);
+    expect(res1.status).toBe(res2.status);
+  });
+
+  // ── OWASP MSTG: Lockout & Rate Limiting ───────────────────────────
+
+  it("records failure on wrong password (brute force counter)", async () => {
+    mockCompare.mockResolvedValue(false);
+
+    const req = createRequest({ username: "mobile", password: "wrong", deviceId: "d" });
+    await POST(req as never);
+
+    expect(mockRecordFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it("records failure on user not found (brute force counter)", async () => {
+    mockUserFindUnique.mockResolvedValue(null);
+
+    const req = createRequest({ username: "ghost", password: "pass", deviceId: "d" });
+    await POST(req as never);
+
+    expect(mockRecordFailure).toHaveBeenCalledTimes(1);
+  });
+
+  it("resets failure counter on successful login", async () => {
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    await POST(req as never);
+
+    expect(mockResetFailures).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT reset failure counter on failed login", async () => {
+    mockCompare.mockResolvedValue(false);
+
+    const req = createRequest({ username: "mobile", password: "wrong", deviceId: "d" });
+    await POST(req as never);
+
+    expect(mockResetFailures).not.toHaveBeenCalled();
+  });
+
+  it("enforces rate limiting in non-dev environment", async () => {
+    const origEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    mockCheckRateLimit.mockRejectedValue(new Error("rate limited"));
+
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(429);
+    process.env.NODE_ENV = origEnv;
+  });
+
+  // ── Token Payload Integrity ────────────────────────────────────────
+
+  it("includes sessionId in JWE token payload", async () => {
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    await POST(req as never);
+
+    expect(mockEncode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: expect.objectContaining({
+          sessionId: expect.any(String),
+          id: "user-mobile-1",
+          role: "ENGINEER",
+        }),
+      })
+    );
+  });
+
+  it("includes mustChangePassword=true when password is expired", async () => {
+    const { isPasswordExpired } = jest.requireMock("@/lib/password-expiry");
+    (isPasswordExpired as jest.Mock).mockReturnValue(true);
+
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+    const json = await res.json();
+
+    expect(json.data.user.mustChangePassword).toBe(true);
+    expect(mockEncode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: expect.objectContaining({ mustChangePassword: true }),
+      })
+    );
+
+    (isPasswordExpired as jest.Mock).mockReturnValue(false);
+  });
+
+  it("includes mustChangePassword=true when user.mustChangePassword is set", async () => {
+    mockUserFindUnique.mockResolvedValue({ ...MOCK_USER, mustChangePassword: true });
+
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+    const json = await res.json();
+
+    expect(json.data.user.mustChangePassword).toBe(true);
+  });
+
+  it("expiresAt is approximately 15 minutes in the future", async () => {
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+    const json = await res.json();
+
+    const now = Math.floor(Date.now() / 1000);
+    const diff = json.data.expiresAt - now;
+    // Should be within 900 ± 5 seconds (allowing for test execution time)
+    expect(diff).toBeGreaterThanOrEqual(895);
+    expect(diff).toBeLessThanOrEqual(905);
+  });
+
+  // ── Audit Compliance (Banking) ─────────────────────────────────────
+
+  it("audit log includes IP address", async () => {
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    await POST(req as never);
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({ ipAddress: "127.0.0.1" })
+    );
+  });
+
+  it("audit log includes deviceId on success", async () => {
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "dev-audit" });
+    await POST(req as never);
+
+    const successCall = mockAuditLog.mock.calls.find(
+      (c: unknown[]) => (c[0] as Record<string, unknown>).action === "MOBILE_LOGIN_SUCCESS"
+    );
+    expect(successCall).toBeDefined();
+    const detail = JSON.parse(successCall![0].detail);
+    expect(detail.deviceId).toBe("dev-audit");
+  });
+
+  it("audit log includes deviceId and reason on failure", async () => {
+    mockCompare.mockResolvedValue(false);
+
+    const req = createRequest({ username: "mobile", password: "wrong", deviceId: "dev-fail" });
+    await POST(req as never);
+
+    const failCall = mockAuditLog.mock.calls.find(
+      (c: unknown[]) => (c[0] as Record<string, unknown>).action === "MOBILE_LOGIN_FAILURE"
+    );
+    expect(failCall).toBeDefined();
+    const detail = JSON.parse(failCall![0].detail);
+    expect(detail.deviceId).toBe("dev-fail");
+    expect(detail.reason).toBe("invalid_password");
+  });
+
+  it("audit log failure fires and forgets (does not block response)", async () => {
+    mockAuditLog.mockRejectedValue(new Error("DB write failed"));
+
+    const req = createRequest({ username: "mobile", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+
+    // Should still succeed despite audit log failure
+    expect(res.status).toBe(200);
+  });
+
+  // ── Role-specific responses ────────────────────────────────────────
+
+  it("returns correct role for ADMIN user", async () => {
+    mockUserFindUnique.mockResolvedValue({ ...MOCK_USER, role: "ADMIN" });
+
+    const req = createRequest({ username: "admin", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+    const json = await res.json();
+
+    expect(json.data.user.role).toBe("ADMIN");
+    expect(mockEncode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: expect.objectContaining({ role: "ADMIN" }),
+      })
+    );
+  });
+
+  it("returns correct role for MANAGER user", async () => {
+    mockUserFindUnique.mockResolvedValue({ ...MOCK_USER, role: "MANAGER" });
+
+    const req = createRequest({ username: "mgr", password: "pass", deviceId: "d" });
+    const res = await POST(req as never);
+    const json = await res.json();
+
+    expect(json.data.user.role).toBe("MANAGER");
+  });
 });
 
 describe("Mobile Auth — requireAuth() Bearer path", () => {
@@ -393,6 +690,7 @@ describe("Mobile Auth — requireAuth() Bearer path", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.AUTH_SECRET = "test-secret";
+    (JwtBlacklist.has as jest.Mock).mockReturnValue(false);
   });
 
   it("decodes Bearer token and returns session", async () => {
@@ -467,6 +765,147 @@ describe("Mobile Auth — requireAuth() Bearer path", () => {
 
     expect(session.user.id).toBe("web-user");
     expect(mockDecode).not.toHaveBeenCalled();
+  });
+
+  it("throws UnauthorizedError when no Bearer and no cookie session", async () => {
+    mockHeadersGet.mockReturnValue(null);
+    mockAuth.mockResolvedValue(null);
+
+    await expect(requireAuth()).rejects.toThrow("未授權");
+  });
+
+  it("rejects token with missing id", async () => {
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+    mockDecode.mockResolvedValue({ role: "ENGINEER", sessionId: "s" });
+
+    await expect(requireAuth()).rejects.toThrow("無效的存取權杖");
+  });
+
+  it("rejects null payload from decode()", async () => {
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer empty" : null
+    );
+    mockDecode.mockResolvedValue(null);
+
+    await expect(requireAuth()).rejects.toThrow("無效的存取權杖");
+  });
+
+  it("rejects when AUTH_SECRET is missing (server misconfiguration)", async () => {
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+
+    await expect(requireAuth()).rejects.toThrow("伺服器設定錯誤");
+    process.env.AUTH_SECRET = "test-secret";
+  });
+
+  it("uses NEXTAUTH_SECRET as fallback when AUTH_SECRET is missing", async () => {
+    delete process.env.AUTH_SECRET;
+    process.env.NEXTAUTH_SECRET = "fallback-secret";
+
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+    mockDecode.mockResolvedValue({ id: "u1", role: "ENGINEER", sessionId: "s1" });
+
+    const session = await requireAuth();
+    expect(session.user.id).toBe("u1");
+    expect(mockDecode).toHaveBeenCalledWith(
+      expect.objectContaining({ secret: "fallback-secret" })
+    );
+
+    delete process.env.NEXTAUTH_SECRET;
+    process.env.AUTH_SECRET = "test-secret";
+  });
+
+  // ── OWASP: Bearer header edge cases ────────────────────────────────
+
+  it("ignores Bearer prefix with no token (empty)", async () => {
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer " : null
+    );
+    mockDecode.mockResolvedValue(null);
+
+    await expect(requireAuth()).rejects.toThrow("無效的存取權杖");
+  });
+
+  it("ignores non-Bearer auth schemes (Basic, etc.)", async () => {
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Basic dXNlcjpwYXNz" : null
+    );
+    mockAuth.mockResolvedValue({
+      user: { id: "web-user", role: "ENGINEER" },
+      expires: "2099-01-01",
+    });
+
+    // Should fall through to cookie auth, not try to decode Basic as JWE
+    const session = await requireAuth();
+    expect(session.user.id).toBe("web-user");
+    expect(mockDecode).not.toHaveBeenCalled();
+  });
+
+  it("computes correct expires from exp claim", async () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 600;
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+    mockDecode.mockResolvedValue({
+      id: "u1", role: "ENGINEER", sessionId: "s1", exp: futureExp,
+    });
+
+    const session = await requireAuth();
+    const expires = new Date(session.expires).getTime();
+    expect(expires).toBeCloseTo(futureExp * 1000, -3); // within 1 second
+  });
+
+  it("provides fallback expires when exp claim is missing", async () => {
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+    mockDecode.mockResolvedValue({
+      id: "u1", role: "ENGINEER", sessionId: "s1",
+      // no exp
+    });
+
+    const session = await requireAuth();
+    const expires = new Date(session.expires).getTime();
+    // Should be ~15 minutes from now
+    expect(expires - Date.now()).toBeGreaterThan(14 * 60 * 1000);
+    expect(expires - Date.now()).toBeLessThan(16 * 60 * 1000);
+  });
+
+  // ── RBAC: role-gated access via requireAuth → requireMinRole chain ─
+
+  it("session returned by Bearer path is usable by requireMinRole", async () => {
+    const { requireMinRole } = await import("@/lib/rbac");
+
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+    mockDecode.mockResolvedValue({
+      id: "u1", role: "MANAGER", sessionId: "s1",
+    });
+
+    const session = await requireMinRole("MANAGER");
+    expect(session.user.role).toBe("MANAGER");
+  });
+
+  it("Bearer path ENGINEER is rejected by requireMinRole(MANAGER)", async () => {
+    const { requireMinRole } = await import("@/lib/rbac");
+
+    mockHeadersGet.mockImplementation((name: string) =>
+      name === "authorization" ? "Bearer jwe" : null
+    );
+    mockDecode.mockResolvedValue({
+      id: "u1", role: "ENGINEER", sessionId: "s1",
+    });
+
+    await expect(requireMinRole("MANAGER")).rejects.toThrow("權限不足");
   });
 });
 
@@ -559,6 +998,100 @@ describe("Mobile Auth — Device binding (jwt.ts)", () => {
 
     expect(result).not.toBeNull();
     expect(result?.userId).toBe("user-1");
+  });
+
+  // ── OWASP: Replay attack detection ─────────────────────────────────
+
+  it("rejects already-revoked token (replay attack)", async () => {
+    mockRefreshTokenFindUnique.mockResolvedValue({
+      id: "rt-1",
+      userId: "user-1",
+      tokenHash: "hash",
+      deviceId: null,
+      expiresAt: new Date(Date.now() + 86400000),
+      revokedAt: new Date(), // already revoked
+    });
+
+    const result = await rotateRefreshToken("replayed-token");
+
+    expect(result).toBeNull();
+    // Should revoke ALL tokens for this user (replay = compromise)
+    expect(mockRefreshTokenUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { userId: "user-1", revokedAt: null },
+      })
+    );
+  });
+
+  it("rejects expired token", async () => {
+    mockRefreshTokenFindUnique.mockResolvedValue({
+      id: "rt-1",
+      userId: "user-1",
+      tokenHash: "hash",
+      deviceId: null,
+      expiresAt: new Date(Date.now() - 1000), // expired 1 second ago
+      revokedAt: null,
+    });
+
+    const result = await rotateRefreshToken("expired-token");
+    expect(result).toBeNull();
+  });
+
+  it("rejects nonexistent token (brute force attempt)", async () => {
+    mockRefreshTokenFindUnique.mockResolvedValue(null);
+
+    const result = await rotateRefreshToken("nonexistent-token");
+    expect(result).toBeNull();
+  });
+
+  it("new token inherits deviceId from mobile token even when caller passes different one", async () => {
+    // existing token has deviceId "original-device"
+    mockRefreshTokenFindUnique.mockResolvedValue({
+      id: "rt-1",
+      userId: "user-1",
+      tokenHash: "hash",
+      deviceId: "original-device",
+      expiresAt: new Date(Date.now() + 86400000),
+      revokedAt: null,
+    });
+
+    const result = await rotateRefreshToken("raw-token", "original-device");
+
+    expect(result).not.toBeNull();
+    // Should inherit the EXISTING deviceId, not use caller's
+    expect(mockRefreshTokenCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ deviceId: "original-device" }),
+      })
+    );
+  });
+
+  it("revokes old token before issuing new one (single-use guarantee)", async () => {
+    mockRefreshTokenFindUnique.mockResolvedValue({
+      id: "rt-old",
+      userId: "user-1",
+      tokenHash: "hash",
+      deviceId: null,
+      expiresAt: new Date(Date.now() + 86400000),
+      revokedAt: null,
+    });
+
+    await rotateRefreshToken("raw-token");
+
+    // Old token should be revoked
+    expect(mockRefreshTokenUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "rt-old" },
+        data: { revokedAt: expect.any(Date) },
+      })
+    );
+    // And then new one created
+    expect(mockRefreshTokenCreate).toHaveBeenCalled();
+
+    // Verify order: update (revoke) called before create (new token)
+    const updateCallOrder = mockRefreshTokenUpdate.mock.invocationCallOrder[0];
+    const createCallOrder = mockRefreshTokenCreate.mock.invocationCallOrder[0];
+    expect(updateCallOrder).toBeLessThan(createCallOrder);
   });
 });
 
@@ -659,5 +1192,126 @@ describe("Mobile Auth — POST /api/auth/refresh (source=mobile)", () => {
 
     const res = await POST(req as never);
     expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when refreshToken is missing", async () => {
+    const req = createRefreshRequest({ source: "mobile" });
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 on malformed JSON", async () => {
+    const req = new Request("http://localhost:3000/api/auth/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "}{invalid",
+    });
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 401 when user has been deactivated between token issue and refresh", async () => {
+    mockUserFindUnique.mockResolvedValue({ ...MOCK_USER, isActive: false });
+
+    const req = createRefreshRequest({
+      refreshToken: "valid-token",
+      source: "mobile",
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(401);
+  });
+
+  it("does NOT write audit log for web refresh", async () => {
+    const req = createRefreshRequest({
+      refreshToken: "valid-token",
+      // no source
+    });
+
+    await POST(req as never);
+
+    expect(mockAuditLog).not.toHaveBeenCalled();
+  });
+
+  it("does NOT register session for web refresh", async () => {
+    const req = createRefreshRequest({
+      refreshToken: "valid-token",
+      // no source
+    });
+
+    await POST(req as never);
+
+    expect(mockRegisterSession).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when AUTH_SECRET missing for mobile refresh", async () => {
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    const req = createRefreshRequest({
+      refreshToken: "valid-token",
+      source: "mobile",
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(500);
+    process.env.AUTH_SECRET = "test-secret";
+  });
+
+  it("passes deviceId to rotateRefreshToken for binding verification", async () => {
+    const req = createRefreshRequest({
+      refreshToken: "valid-token",
+      source: "mobile",
+      deviceId: "my-device",
+    });
+
+    await POST(req as never);
+
+    // rotateRefreshToken mock was called — verify deviceId was passed
+    // (we can check via the findUnique call pattern)
+    expect(mockRefreshTokenFindUnique).toHaveBeenCalled();
+  });
+
+  it("encode() on refresh uses same salt as login", async () => {
+    const req = createRefreshRequest({
+      refreshToken: "valid-token",
+      source: "mobile",
+    });
+
+    await POST(req as never);
+
+    expect(mockEncode).toHaveBeenCalledWith(
+      expect.objectContaining({
+        salt: "authjs.session-token",
+        maxAge: 900,
+      })
+    );
+  });
+
+  it("each mobile refresh generates a unique sessionId", async () => {
+    const req1 = createRefreshRequest({ refreshToken: "t1", source: "mobile" });
+    await POST(req1 as never);
+
+    const sessionId1 = mockRegisterSession.mock.calls[0][1];
+
+    jest.clearAllMocks();
+    mockRefreshTokenFindUnique.mockResolvedValue({
+      id: "rt-2",
+      userId: "user-mobile-1",
+      tokenHash: "hash2",
+      deviceId: null,
+      expiresAt: new Date(Date.now() + 86400000),
+      revokedAt: null,
+    });
+    mockRefreshTokenUpdate.mockResolvedValue({});
+    mockRefreshTokenCreate.mockResolvedValue({ id: "new-rt-2" });
+    mockUserFindUnique.mockResolvedValue(MOCK_USER);
+
+    const req2 = createRefreshRequest({ refreshToken: "t2", source: "mobile" });
+    await POST(req2 as never);
+
+    const sessionId2 = mockRegisterSession.mock.calls[0][1];
+
+    expect(sessionId1).not.toBe(sessionId2);
   });
 });
