@@ -4,11 +4,12 @@ import { TaskService } from "@/services/task-service";
 import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
 import { updateTaskSchema, updateTaskStatusSchema } from "@/validators/task-validators";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
 import { ForbiddenError, NotFoundError } from "@/services/errors";
+import { isDuplicateIdempotencyKey } from "@/lib/idempotency";
 
 const taskService = new TaskService(prisma);
 const auditService = new AuditService(prisma);
@@ -52,10 +53,27 @@ export const PUT = withAuth(async (
 ) => {
   const session = await requireAuth();
   const { id } = await context.params;
+
+  // X-Idempotency-Key: detect network retries that would cause duplicate writes.
+  // Returns 409 Conflict when a duplicate key is detected within 24 h.
+  const idempotencyKey = req.headers.get("X-Idempotency-Key");
+  if (idempotencyKey) {
+    const isDuplicate = await isDuplicateIdempotencyKey(idempotencyKey);
+    if (isDuplicate) {
+      return error("DuplicateRequest", "此請求已處理過，請勿重複提交", 409);
+    }
+  }
+
   await enforceTaskOwnership(session.user.id, session.user.role, id);
+
+  // If-Match header carries the client's cached updatedAt (ETag semantics).
+  // When present, enables optimistic concurrency control — returns 409 on mismatch.
+  const ifMatch = req.headers.get("If-Match");
+  const expectedUpdatedAt = ifMatch ? ifMatch : undefined;
+
   const raw = await req.json();
   const body = validateBody(updateTaskSchema, raw);
-  const task = await taskService.updateTask(id, body);
+  const task = await taskService.updateTask(id, body, expectedUpdatedAt);
   return success(task);
 });
 
@@ -85,6 +103,16 @@ export const PATCH = withAuth(async (
 ) => {
   const session = await requireAuth();
   const { id } = await context.params;
+
+  // X-Idempotency-Key for status transitions (prevents double-submit on retry)
+  const idempotencyKey = req.headers.get("X-Idempotency-Key");
+  if (idempotencyKey) {
+    const isDuplicate = await isDuplicateIdempotencyKey(idempotencyKey);
+    if (isDuplicate) {
+      return error("DuplicateRequest", "此請求已處理過，請勿重複提交", 409);
+    }
+  }
+
   await enforceTaskOwnership(session.user.id, session.user.role, id);
   const raw = await req.json();
   const { status } = validateBody(updateTaskStatusSchema, raw);

@@ -1,5 +1,5 @@
 import { PrismaClient, TaskStatus, Priority, TaskCategory } from "@prisma/client";
-import { NotFoundError, ValidationError } from "./errors";
+import { ConflictError, NotFoundError, ValidationError } from "./errors";
 import { ChangeTrackingService } from "./change-tracking-service";
 import { AuditService } from "./audit-service";
 import { logActivity, ActivityAction, ActivityModule } from "./activity-logger";
@@ -189,7 +189,16 @@ export class TaskService {
     });
   }
 
-  async updateTask(id: string, input: UpdateTaskInput) {
+  /**
+   * Update a task with optimistic concurrency control.
+   * @param expectedUpdatedAt - If provided, update fails with ConflictError when the
+   *        task's current updatedAt differs from the expected value (stale client cache).
+   */
+  async updateTask(id: string, input: UpdateTaskInput, expectedUpdatedAt?: string | Date) {
+    // Optimistic concurrency: use updatedAt in the WHERE clause so the update
+    // only succeeds when no other writer has changed the row since the client
+    // last fetched it (ETag semantics).
+    // ── Fetch existing for field-change tracking ────
     const existing = await this.prisma.task.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`Task not found: ${id}`);
 
@@ -211,16 +220,35 @@ export class TaskService {
     if (input.addedSource !== undefined) updates.addedSource = input.addedSource;
     if (input.progressPct !== undefined) updates.progressPct = input.progressPct;
 
-    const task = await this.prisma.task.update({
-      where: { id },
-      data: updates,
-      include: {
-        primaryAssignee: { select: { id: true, name: true, avatar: true } },
-        backupAssignee: { select: { id: true, name: true, avatar: true } },
-        subTasks: true,
-        deliverables: true,
-      },
-    });
+    // Optimistic concurrency: include updatedAt in WHERE clause so the update
+    // only succeeds when no other writer has changed the row since the client
+    // last fetched it (ETag semantics).  Prisma throws P2025 when 0 rows match.
+    const whereClause = expectedUpdatedAt
+      ? { id, updatedAt: new Date(expectedUpdatedAt) }
+      : { id };
+
+    let task: Awaited<ReturnType<typeof this.prisma.task.update>>;
+    try {
+      task = await this.prisma.task.update({
+        where: whereClause,
+        data: updates,
+        include: {
+          primaryAssignee: { select: { id: true, name: true, avatar: true } },
+          backupAssignee: { select: { id: true, name: true, avatar: true } },
+          subTasks: true,
+          deliverables: true,
+        },
+      });
+    } catch (err: unknown) {
+      // Prisma P2025 = "Record to update not found."
+      if ((err as { code?: string }).code === "P2025") {
+        // Record exists but updatedAt didn't match → concurrent modification
+        throw new ConflictError(
+          `任務已被其他人修改，請重新整理後再試（${id}）。`
+        );
+      }
+      throw err;
+    }
 
     // ── Record field-level changes for audit trail — Issue #806 (K-6) ────
 
