@@ -2,8 +2,9 @@
  * Component tests: Sidebar — Updated for 5-experience-group restructure (Issue #970)
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { render } from "@/__tests__/utils/test-utils";
 
 jest.mock("next-auth/react", () => ({
   useSession: () => ({ data: { user: { id: "u1", role: "MANAGER" } }, status: "authenticated" }),

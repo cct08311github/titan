@@ -2,8 +2,9 @@
  * Tests for responsive improvements (Task 25 — Issue #785)
  */
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { render } from "@/__tests__/utils/test-utils";
 
 // We test that the mobile nav includes all necessary items
 // by checking the Topbar's MOBILE_NAV constant coverage
