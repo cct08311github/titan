@@ -38,6 +38,10 @@ const config: Config = {
       },
     ],
   },
+  // next-auth v5 and @auth/core are ESM-only — must be transformed by SWC
+  transformIgnorePatterns: [
+    "/node_modules/(?!(next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi|preact-render-to-string|preact)/)",
+  ],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   // Allow Docker/CI to override the default test timeout
   testTimeout: parseInt(process.env.TEST_TIMEOUT ?? "10000", 10),
