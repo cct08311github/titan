@@ -1,9 +1,10 @@
 import React, { ReactElement } from "react";
 import { render, RenderOptions } from "@testing-library/react";
+import { TooltipProvider } from "@/app/components/ui/tooltip";
 
 // Wrapper with any necessary providers
 function AllProviders({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <TooltipProvider delayDuration={300}>{children}</TooltipProvider>;
 }
 
 function renderWithProviders(

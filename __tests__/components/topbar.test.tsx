@@ -2,8 +2,9 @@
  * Component tests: Topbar
  */
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import { render } from "@/__tests__/utils/test-utils";
 
 // Mock next/navigation
 jest.mock("next/navigation", () => ({
