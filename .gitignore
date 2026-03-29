@@ -1,7 +1,22 @@
 # 環境變數（含敏感資訊，絕對不可提交）
 .env
+.env.development
+.env.staging
+.env.production
 .env.local
 .env.*.local
+.env.backup*
+.env.backup
+
+# IDE 與編輯器
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS 系統檔案
+.DS_Store
 
 # macOS 系統檔案
 .DS_Store
