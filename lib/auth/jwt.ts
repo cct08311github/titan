@@ -33,8 +33,11 @@ async function hashToken(token: string): Promise<string> {
 /**
  * Issue a new refresh token for a user.
  * Returns the raw token (to send to client) — only the hash is stored.
+ *
+ * @param userId - The user ID
+ * @param deviceId - Optional mobile device ID for device binding (Issue #1085)
  */
-export async function issueRefreshToken(userId: string): Promise<string> {
+export async function issueRefreshToken(userId: string, deviceId?: string): Promise<string> {
   const rawToken = generateToken();
   const tokenHash = await hashToken(rawToken);
 
@@ -42,6 +45,7 @@ export async function issueRefreshToken(userId: string): Promise<string> {
     data: {
       userId,
       tokenHash,
+      deviceId: deviceId ?? null,
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
     },
   });
@@ -54,9 +58,14 @@ export async function issueRefreshToken(userId: string): Promise<string> {
  * Returns { userId, newToken } on success, null on failure.
  *
  * Implements refresh token rotation: each token is single-use.
+ *
+ * @param oldRawToken - The raw refresh token to rotate
+ * @param deviceId - Optional device ID for mobile device binding verification (Issue #1085).
+ *                   If provided, the token must have been issued to the same device.
  */
 export async function rotateRefreshToken(
-  oldRawToken: string
+  oldRawToken: string,
+  deviceId?: string,
 ): Promise<{ userId: string; newToken: string } | null> {
   const tokenHash = await hashToken(oldRawToken);
 
@@ -87,14 +96,30 @@ export async function rotateRefreshToken(
     return null;
   }
 
+  // Issue #1085: Device binding verification — stolen token cannot be used on another device
+  // [CR #4] If token was issued to a device (existing.deviceId set), caller MUST provide
+  // matching deviceId. Missing deviceId on a device-bound token = reject (prevents bypass).
+  if (existing.deviceId && (!deviceId || existing.deviceId !== deviceId)) {
+    logger.warn(
+      { userId: existing.userId, expected: existing.deviceId, actual: deviceId },
+      "[jwt] Refresh token device mismatch — possible stolen token"
+    );
+    // Revoke ALL tokens for this user as a precaution
+    await prisma.refreshToken.updateMany({
+      where: { userId: existing.userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    return null;
+  }
+
   // Revoke the old token
   await prisma.refreshToken.update({
     where: { id: existing.id },
     data: { revokedAt: new Date() },
   });
 
-  // Issue a new one
-  const newToken = await issueRefreshToken(existing.userId);
+  // Issue a new one (inherit deviceId from the old token)
+  const newToken = await issueRefreshToken(existing.userId, existing.deviceId ?? deviceId);
 
   return { userId: existing.userId, newToken };
 }
