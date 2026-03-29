@@ -104,7 +104,7 @@ test.describe('變更密碼頁面', () => {
     await expect(page.getByRole('button', { name: '變更密碼' })).toBeEnabled();
 
     await page.locator('#currentPassword').click();
-    await page.locator('#currentPassword').fill('Admin@2026!x');
+    await page.locator('#currentPassword').fill('1234');
     await page.locator('#newPassword').click();
     await page.locator('#newPassword').fill('ValidNewPass123!abc');
     await page.locator('#confirmPassword').click();
