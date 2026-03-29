@@ -98,6 +98,16 @@ jobs:
       - name: Check for outdated critical packages
         run: npm outdated --long || true
 
+      - name: Verify Auth.js version is pinned (no caret/tilde)
+        run: |
+          AUTHJS_VERSION=$(node -e "console.log(require('./package.json').dependencies['next-auth'])")
+          if [[ "$AUTHJS_VERSION" =~ ^[\^~] ]]; then
+            echo "::error::next-auth version must be pinned (no ^ or ~). Current: $AUTHJS_VERSION"
+            echo "See docs/auth-upgrade-sop.md for upgrade procedure."
+            exit 1
+          fi
+          echo "next-auth version pinned: $AUTHJS_VERSION ✓"
+
   codeql-analysis:
     runs-on: ubuntu-latest
     permissions:
