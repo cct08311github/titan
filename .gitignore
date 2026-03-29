@@ -43,6 +43,8 @@ config/homepage/cache/
 config/nginx/certs/*.crt
 config/nginx/certs/*.key
 config/nginx/certs/*.pem
+nginx/ssl/*.crt
+nginx/ssl/*.key
 config/nginx/certs/*.csr
 # 保留 .gitkeep 讓目錄被 git 追蹤
 !config/nginx/certs/.gitkeep
