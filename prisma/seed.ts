@@ -7,9 +7,9 @@ async function main() {
   console.log("開始建立種子資料...");
 
   // ── 建立使用者 ─────────────────────────────────────────
-  // Issue #180: passwords must meet policy (12+ chars, upper+lower+digit+special)
-  const adminPassword = await hash("Admin@2026!x", 12);
-  const engPassword = await hash("Admin@2026!x", 12);
+  // E2E test password — bypasses API-level policy check (seed writes directly to DB)
+  const adminPassword = await hash("1234", 12);
+  const engPassword = await hash("1234", 12);
 
   const admin = await prisma.user.upsert({
     where: { email: "admin@titan.local" },
@@ -446,8 +446,8 @@ async function main() {
   console.log(`  KPI：${kpiData.length} 個`);
   console.log(`  工時：${timeEntryData.length} 筆`);
   console.log("\n登入帳號：");
-  console.log("  主管：admin@titan.local / Admin@2026!x");
-  console.log("  工程師：eng-a ~ eng-d @titan.local / Admin@2026!x");
+  console.log("  主管：admin@titan.local / 1234");
+  console.log("  工程師：eng-a ~ eng-d @titan.local / 1234");
 }
 
 main()
