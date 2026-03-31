@@ -20,11 +20,10 @@ import { AuditService } from "@/services/audit-service";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
-// ── Module-level API rate limiter (singleton, in-memory fallback) ──────────
+// ── Module-level API rate limiter (singleton, Redis-backed in production) ──
 // In test/E2E environments, use a much higher limit to avoid flaky tests
 const isTestEnv = process.env.NODE_ENV === "test" || process.env.E2E_TESTING === "true";
 const apiLimiter = createApiRateLimiter({
-  useMemory: true,
   points: isTestEnv ? 10000 : undefined,
 });
 
@@ -92,7 +91,7 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
 
         // ── Auto-inject audit logging for mutating operations ──────────
         if (MUTATING_METHODS.has(req.method) && response.status >= 200 && response.status < 300) {
-          // Fire-and-forget: audit logging must never block the response
+          // Fire-and-forget with Redis fallback: audit logging must never block the response
           const url = new URL(req.url);
           const resourceType = extractResourceType(url.pathname);
           const ipAddress =
@@ -100,11 +99,11 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
             req.headers.get("x-real-ip") ||
             null;
 
-          // Extract userId from session (non-blocking)
+          // Resolve userId via auth() then use logAsync for Prisma-first + Redis fallback
           auth()
             .then((session: { user?: { id?: string } } | null) => {
               const userId = session?.user?.id ?? null;
-              return auditService.log({
+              return auditService.logAsync({
                 userId,
                 action: `${req.method}_${resourceType.toUpperCase()}`,
                 resourceType,
@@ -113,17 +112,8 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
               });
             })
             .catch((auditErr: unknown) => {
-              // Error-level logging for audit failures — these indicate data integrity risks
-              logger.error(
-                {
-                  err: auditErr,
-                  method: req.method,
-                  pathname: url.pathname,
-                  resourceType,
-                  ipAddress,
-                },
-                "[apiHandler] Audit log write failed (fire-and-forget) — investigate if recurring"
-              );
+              // logAsync handles its own errors internally; catch here only for unexpected failures
+              logger.error({ err: auditErr }, "[apiHandler] Unexpected audit error");
             });
         }
 

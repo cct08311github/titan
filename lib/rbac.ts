@@ -83,7 +83,7 @@ async function verifyMobileToken(jwe: string): Promise<AuthSession> {
 
   // [SA C-4] Check if session has been revoked via blacklist
   const sessionId = payload.sessionId as string | undefined;
-  if (sessionId && JwtBlacklist.has(`session:${sessionId}`)) {
+  if (sessionId && await JwtBlacklist.has(`session:${sessionId}`)) {
     throw new UnauthorizedError("Session 已撤銷");
   }
 
