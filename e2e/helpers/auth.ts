@@ -3,13 +3,13 @@ import path from 'path';
 
 export const MANAGER = {
   email: 'admin@titan.local',
-  password: 'Admin@2026!x',
+  password: '1234',
   role: 'MANAGER',
 };
 
 export const ENGINEER = {
   email: 'eng-a@titan.local',
-  password: 'Admin@2026!x',
+  password: '1234',
   role: 'ENGINEER',
 };
 

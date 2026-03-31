@@ -42,8 +42,8 @@ export default async function globalSetup(_config: FullConfig) {
   }
 
   // Login sequentially to avoid rate limiter
-  await loginAndSave('admin@titan.local', 'Admin@2026!x', MANAGER_STATE_FILE);
+  await loginAndSave('admin@titan.local', '1234', MANAGER_STATE_FILE);
   // Small delay between logins to avoid rate limiting
   await new Promise((r) => setTimeout(r, 500));
-  await loginAndSave('eng-a@titan.local', 'Admin@2026!x', ENGINEER_STATE_FILE);
+  await loginAndSave('eng-a@titan.local', '1234', ENGINEER_STATE_FILE);
 }
