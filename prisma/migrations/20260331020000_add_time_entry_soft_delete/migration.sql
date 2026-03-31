@@ -1,6 +1,7 @@
 -- Catch-up migration: time_entries soft delete columns
 -- isDeleted + deletedAt were added via db push without a migration file.
 -- Banking compliance: financial records must be retained (soft delete only).
+-- Ref: T1124 system hardening
 
 ALTER TABLE "time_entries" ADD COLUMN IF NOT EXISTS "isDeleted" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "time_entries" ADD COLUMN IF NOT EXISTS "deletedAt" TIMESTAMP(3);
