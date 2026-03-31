@@ -54,7 +54,7 @@ export class JwtBlacklist {
     if (redis) {
       try {
         const exists = await redis.sismember(`${REDIS_KEY_PREFIX}${token}`, "1");
-        if (exists === 1 || exists === "1") {
+        if (exists === 1 || Number(exists) === 1) {
           // Populate memory for next lookup
           this._memSet.add(token);
           return true;
