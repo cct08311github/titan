@@ -364,7 +364,7 @@ export function withJwtBlacklist<T extends AnyHandler>(fn: T): T {
     context?: RouteContext
   ): Promise<NextResponse<ApiResponse>> => {
     const token = extractBearer(req);
-    if (token && JwtBlacklist.has(token)) {
+    if (token && await JwtBlacklist.has(token)) {
       logger.warn("[withJwtBlacklist] Blacklisted JWT rejected");
       return error("UnauthorizedError", "Token has been revoked", 401) as NextResponse<ApiResponse>;
     }
@@ -372,7 +372,7 @@ export function withJwtBlacklist<T extends AnyHandler>(fn: T): T {
     // Check userId-based blacklist key (set by suspendUser).
     // Resolve userId from session to prevent header-spoofing bypass.
     const userId = await getSessionUserId(req);
-    if (userId && JwtBlacklist.has(`user:${userId}`)) {
+    if (userId && await JwtBlacklist.has(`user:${userId}`)) {
       logger.warn({ userId }, "[withJwtBlacklist] Suspended user JWT rejected");
       return error("UnauthorizedError", "Account suspended", 401) as NextResponse<ApiResponse>;
     }

@@ -36,12 +36,12 @@ describe("UserService", () => {
 
     // Pre-populate the blacklist as suspendUser would do
     JwtBlacklist.add("user:u1");
-    expect(JwtBlacklist.has("user:u1")).toBe(true);
+    await expect(JwtBlacklist.has("user:u1")).resolves.toBe(true);
 
     await service.unsuspendUser("u1");
 
     // After unsuspend, the blacklist entry must be removed
-    expect(JwtBlacklist.has("user:u1")).toBe(false);
+    await expect(JwtBlacklist.has("user:u1")).resolves.toBe(false);
 
     // Cleanup
     JwtBlacklist.clear();

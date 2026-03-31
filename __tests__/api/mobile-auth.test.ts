@@ -690,7 +690,7 @@ describe("Mobile Auth — requireAuth() Bearer path", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.AUTH_SECRET = "test-secret";
-    (JwtBlacklist.has as jest.Mock).mockReturnValue(false);
+    (JwtBlacklist.has as jest.Mock).mockResolvedValue(false);
   });
 
   it("decodes Bearer token and returns session", async () => {
@@ -727,7 +727,7 @@ describe("Mobile Auth — requireAuth() Bearer path", () => {
       role: "ENGINEER",
       sessionId: "revoked-sess",
     });
-    (JwtBlacklist.has as jest.Mock).mockReturnValue(true);
+    (JwtBlacklist.has as jest.Mock).mockResolvedValue(true);
 
     await expect(requireAuth()).rejects.toThrow("Session 已撤銷");
   });

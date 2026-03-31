@@ -34,11 +34,37 @@ export class JwtBlacklist {
     }
   }
 
-  /** Check whether a token/key is blacklisted. */
-  static has(token: string): boolean {
-    // Memory is always the primary source — synchronous O(1) lookup
-    // Redis serves as distributed backup (written asynchronously by add())
-    return this._memSet.has(token);
+  /**
+   * Check whether a token/key is blacklisted.
+   *
+   * Memory-first for O(1) hot-path performance.
+   * Falls back to Redis for cross-instance consistency (token may have been
+   * blacklisted on a different server instance).
+   *
+   * If found in Redis but not memory, populates memory for subsequent fast lookups.
+   */
+  static async has(token: string): Promise<boolean> {
+    // Fast path: memory lookup (synchronous)
+    if (this._memSet.has(token)) {
+      return true;
+    }
+
+    // Cross-instance path: check Redis (token may have been added by another instance)
+    const redis = getRedisClient();
+    if (redis) {
+      try {
+        const exists = await redis.sismember(`${REDIS_KEY_PREFIX}${token}`, "1");
+        if (exists === 1 || exists === "1") {
+          // Populate memory for next lookup
+          this._memSet.add(token);
+          return true;
+        }
+      } catch (err) {
+        logger.warn({ err, token }, "[jwt-blacklist] Redis SISMEMBER failed");
+      }
+    }
+
+    return false;
   }
 
   /** Remove a token/key from the blacklist (e.g. on unsuspend). */

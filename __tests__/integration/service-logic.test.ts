@@ -158,7 +158,7 @@ describe("B3: UserService — suspend/unsuspend lifecycle", () => {
     (prisma.user.update as jest.Mock).mockResolvedValue({ ...BASE_USER, isActive: false });
 
     await service.suspendUser("u-1");
-    expect(JwtBlacklist.has("user:u-1")).toBe(true);
+    await expect(JwtBlacklist.has("user:u-1")).resolves.toBe(true);
   });
 
   it("unsuspendUser sets isActive back to true", async () => {
@@ -175,7 +175,7 @@ describe("B3: UserService — suspend/unsuspend lifecycle", () => {
     (prisma.user.update as jest.Mock).mockResolvedValue({ ...BASE_USER, isActive: true });
 
     await service.unsuspendUser("u-1");
-    expect(JwtBlacklist.has("user:u-1")).toBe(false);
+    await expect(JwtBlacklist.has("user:u-1")).resolves.toBe(false);
   });
 
   it("suspendUser throws NotFoundError for unknown user", async () => {

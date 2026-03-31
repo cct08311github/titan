@@ -318,7 +318,7 @@ describe("UserService.suspendUser — JWT blacklist integration", () => {
     const service = new UserService(mockPrisma as never);
     await service.suspendUser("user-suspend-1");
 
-    expect(JwtBlacklist.has("user:user-suspend-1")).toBe(true);
+    await expect(JwtBlacklist.has("user:user-suspend-1")).resolves.toBe(true);
   });
 });
 
@@ -338,13 +338,13 @@ describe("UserService.unsuspendUser — JWT blacklist removal", () => {
 
     // Simulate prior suspension
     JwtBlacklist.add("user:user-unsuspend-1");
-    expect(JwtBlacklist.has("user:user-unsuspend-1")).toBe(true);
+    await expect(JwtBlacklist.has("user:user-unsuspend-1")).resolves.toBe(true);
 
     const service = new UserService(mockPrisma as never);
     await service.unsuspendUser("user-unsuspend-1");
 
     // Blacklist entry must be removed
-    expect(JwtBlacklist.has("user:user-unsuspend-1")).toBe(false);
+    await expect(JwtBlacklist.has("user:user-unsuspend-1")).resolves.toBe(false);
   });
 
   test("unsuspended user is no longer blocked by withJwtBlacklist", async () => {
