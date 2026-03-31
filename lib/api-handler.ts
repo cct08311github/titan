@@ -20,11 +20,10 @@ import { AuditService } from "@/services/audit-service";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
-// ── Module-level API rate limiter (singleton, in-memory fallback) ──────────
+// ── Module-level API rate limiter (singleton, Redis-backed in production) ──
 // In test/E2E environments, use a much higher limit to avoid flaky tests
 const isTestEnv = process.env.NODE_ENV === "test" || process.env.E2E_TESTING === "true";
 const apiLimiter = createApiRateLimiter({
-  useMemory: true,
   points: isTestEnv ? 10000 : undefined,
 });
 
