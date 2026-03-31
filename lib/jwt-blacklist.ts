@@ -14,15 +14,16 @@ import { getRedisClient } from "@/lib/redis";
 import { logger } from "@/lib/logger";
 
 const REDIS_KEY_PREFIX = "titan:jwt:blacklist:";
+const MEM_TTL_MS = 60 * 60 * 1000; // 1 hour — tokens expire from memory after this
 
 export class JwtBlacklist {
   /** In-memory fallback — used when Redis circuit-breaker is open. */
-  private static readonly _memSet = new Set<string>();
+  private static readonly _memMap = new Map<string, number>();
 
   /** Add a token or userId key to the blacklist. */
   static add(token: string): void {
     // Always add to memory first — synchronous, O(1), used by has() in hot path
-    this._memSet.add(token);
+    this._memMap.set(token, Date.now() + MEM_TTL_MS);
 
     const redis = getRedisClient();
     if (redis) {
@@ -42,11 +43,18 @@ export class JwtBlacklist {
    * blacklisted on a different server instance).
    *
    * If found in Redis but not memory, populates memory for subsequent fast lookups.
+   * Expired in-memory entries are purged on access.
    */
   static async has(token: string): Promise<boolean> {
     // Fast path: memory lookup (synchronous)
-    if (this._memSet.has(token)) {
-      return true;
+    const expiry = this._memMap.get(token);
+    if (expiry !== undefined) {
+      if (Date.now() < expiry) {
+        return true;
+      }
+      // Expired — remove synchronously
+      this._memMap.delete(token);
+      return false;
     }
 
     // Cross-instance path: check Redis (token may have been added by another instance)
@@ -56,7 +64,7 @@ export class JwtBlacklist {
         const exists = await redis.sismember(`${REDIS_KEY_PREFIX}${token}`, "1");
         if (exists === 1 || Number(exists) === 1) {
           // Populate memory for next lookup
-          this._memSet.add(token);
+          this._memMap.set(token, Date.now() + MEM_TTL_MS);
           return true;
         }
       } catch (err) {
@@ -70,7 +78,7 @@ export class JwtBlacklist {
   /** Remove a token/key from the blacklist (e.g. on unsuspend). */
   static remove(token: string): void {
     // Always remove from memory first — synchronous, O(1)
-    this._memSet.delete(token);
+    this._memMap.delete(token);
 
     const redis = getRedisClient();
     if (redis) {
@@ -84,13 +92,13 @@ export class JwtBlacklist {
 
   /** Clear all entries — used in tests. */
   static clear(): void {
-    this._memSet.clear();
+    this._memMap.clear();
     // Note: Redis keys are not cleared here as they are TTL-managed
     // For test isolation, tests should use unique session/user IDs
   }
 
   /** Return the current in-memory size — used in tests. */
   static get size(): number {
-    return this._memSet.size;
+    return this._memMap.size;
   }
 }

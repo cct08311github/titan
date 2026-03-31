@@ -206,7 +206,8 @@ export function withAuditLog<T extends AnyHandler>(fn: T): T {
         });
       } catch (auditErr) {
         // Audit failures must never block the response — log and continue.
-        logger.error({ err: auditErr }, "[withAuditLog] Failed to write audit log");
+        // Tagged with auditFailure:true for log-based alerting (Grafana/Loki/PagerDuty).
+        logger.error({ err: auditErr, auditFailure: true, type: "audit_failure", userId, action, resourceType }, "[withAuditLog] Failed to write audit log");
       }
     }
 
