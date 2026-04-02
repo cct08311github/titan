@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e8]: T
+          - generic [ref=e9]: TITAN
+        - paragraph [ref=e10]: 銀行 IT 團隊工作管理系統
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - text: 帳號
+          - textbox "帳號" [ref=e13]:
+            - /placeholder: 請輸入帳號
+            - text: admin@titan.local
+        - generic [ref=e14]:
+          - text: 密碼
+          - textbox "密碼" [ref=e15]:
+            - /placeholder: 請輸入密碼
+            - text: Admin123!
+        - generic [ref=e19]: 帳號或密碼錯誤
+        - button "登入" [ref=e16] [cursor=pointer]
+    - paragraph [ref=e17]: © 2026 TITAN v1.0.0-rc.1
+  - region "Notifications alt+T"
+  - alert [ref=e18]

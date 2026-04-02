@@ -139,8 +139,27 @@ function UtilizationReport({ from, to }: { from: string; to: string }) {
       );
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
-      const d = extractData<{ members?: UtilizationRow[]; users?: UtilizationRow[] }>(body);
-      setData(d?.members ?? d?.users ?? []);
+      const d = extractData<{ members?: UtilizationRow[]; users?: string[]; series?: Record<string, number[]>; from?: string; to?: string }>(body);
+      if (d?.members) {
+        setData(d.members);
+      } else if (d?.users && d?.series) {
+        // Transform time-distribution format to UtilizationRow
+        const userNames = d.users;
+        const fromD = new Date(d.from ?? from);
+        const toD = new Date(d.to ?? to);
+        let workdays = 0;
+        const dd = new Date(fromD);
+        while (dd <= toD) { if (dd.getDay() !== 0 && dd.getDay() !== 6) workdays++; dd.setDate(dd.getDate() + 1); }
+        const available = workdays * 8;
+        const rows: UtilizationRow[] = userNames.map((name, idx) => {
+          let total = 0;
+          for (const cat of Object.values(d.series!)) { total += (cat[idx] ?? 0); }
+          return { userId: name, userName: name, totalHours: Math.round(total * 10) / 10, availableHours: available, utilizationPct: available > 0 ? Math.round(total / available * 100) : 0 };
+        });
+        setData(rows);
+      } else {
+        setData([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {

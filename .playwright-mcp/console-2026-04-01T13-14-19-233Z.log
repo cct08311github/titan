@@ -1,0 +1,80 @@
+[     225ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://mac-mini.tailde842d.ts.net/api/auth.info:0
+[     230ms] [WARNING] Manifest: property 'scope' ignored. Start url should be within scope of scope URL. @ https://mac-mini.tailde842d.ts.net/outline/static/manifest.webmanifest:0
+[     328ms] iu
+[     585ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DYJp6F83.js:0
+[     596ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.BrRwYlpN.js:0
+[     597ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/rolldown-runtime.eihneIGD.js:0
+[     609ms] [ERROR] Refused to apply style from 'https://mac-mini.tailde842d.ts.net/static/assets/vendor-react.J4u_ju8H.css' because its MIME type ('text/html') is not a supported stylesheet MIME type, and strict MIME checking is enabled. @ https://mac-mini.tailde842d.ts.net/:0
+[     617ms] Error: Unable to preload CSS for /static/assets/vendor-react.J4u_ju8H.css
+    at HTMLLinkElement.<anonymous> (https://mac-mini.tailde842d.ts.net/outline/static/assets/vendor-shared.DwEiQ2jE.js:1:1922)
+[     617ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/vendor-lodash.XzcNXgWo.js:0
+[     632ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/LazyLoad.DJuQKVjL.js:0
+[     646ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.DE9WTY46.js:0
+[     655ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.B1RcHQ8b.js:0
+[     668ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DIqA18-Q.js:0
+[     675ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.efCIJhb9.js:0
+[     697ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.RRId9ddX.js:0
+[     707ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/vendor-shared.DwEiQ2jE.js:0
+[     722ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.CMI7-6ep.js:0
+[     736ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.D2wt6bHh.js:0
+[     749ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/vendor-react.ViTgrzW6.js:0
+[     756ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.BlJfDh4e.js:0
+[     768ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Scrollable.CKqX2Jro.js:0
+[     778ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/NudeButton.CTvmfSix.js:0
+[     792ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.cL64MWCb.js:0
+[     803ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon._QFtLG9V.js:0
+[     817ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.jA1nenIS.js:0
+[     825ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/vendor-framer-motion.DlSmCx-d.js:0
+[     838ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.BD0cMPJS.js:0
+[     844ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DTEjI1zp.js:0
+[     854ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/InputSelectPermission.ChRI6n11.js:0
+[     878ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/routeHelpers.DPcHBTR5.js:0
+[     879ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/dist.BIUlr4sZ.js:0
+[     888ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/InputSelect.CTXrG1zp.js:0
+[     898ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.CS70eF_E.js:0
+[     907ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.Zzu-hO3j.js:0
+[     916ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/dist.BgirTksm.js:0
+[     923ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DkLBhbZW.js:0
+[     945ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DjORKmRX.js:0
+[     956ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/vendor-styled.DXBwrUrg.js:0
+[     956ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/useCurrentTeam.wEzLtjzB.js:0
+[     978ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Drawer.jH0iZz7E.js:0
+[     989ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DghlnsEn.js:0
+[    1007ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/useWindowSize.CFlZwzOn.js:0
+[    1017ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/dist.B6NaJ15q.js:0
+[    1024ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/es2015.DO1Idlem.js:0
+[    1037ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.rzC8Wk85.js:0
+[    1040ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://mac-mini.tailde842d.ts.net/api/auth.delete:0
+[    1040ms] [ERROR] Failed to delete authentication {error: iu, extra: undefined} @ https://mac-mini.tailde842d.ts.net/outline/static/assets/index.DVSVbJAN.js:20
+[    1053ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.Xcn_1DvK.js:0
+[    1061ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.DNAgO6FY.js:0
+[    1070ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/dist.DitzDZer.js:0
+[    1084ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.CFYr2Daw.js:0
+[    1094ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Icon.BWBX741b.js:0
+[    1106ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/useBoolean.CoQ6EyKy.js:0
+[    1117ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/useCurrentUser.CHDaKoH2.js:0
+[    1127ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Authenticated.BaP482yM.js:0
+[    1136ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/language.BnEMHwtK.js:0
+[    1142ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/LoadingIndicator.bybfNs1a.js:0
+[    1149ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/client.vS6r4ydG.js:0
+[    1157ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/locales/en_US.json:0
+[    1168ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://mac-mini.tailde842d.ts.net/api/auth.config:0
+[    1181ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Login.B4-fmlTZ.js:0
+[    1186ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Squircle.7-8MP1ZX.js:0
+[    1202ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Notice.CRK969_t.js:0
+[    1202ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Avatar.BqsShAeK.js:0
+[    1210ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/PluginIcon.BwmrFBsI.js:0
+[    1214ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/OutlineIcon.C3SMZYJR.js:0
+[    1217ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Login.D6ILuEGs.js:0
+[    1219ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/ButtonLarge.DcsXv1uR.js:0
+[    1220ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/TeamLogo.C8YLgKbp.js:0
+[    1221ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/urls.BYXG9b61.js:0
+[    1223ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/Centered.5YPfB5UQ.js:0
+[    1226ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/dist.o9rjp70Q.js:0
+[    1226ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/static/assets/esm.Dqo2-OpH.js:0
+[    1229ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/images/icon-192.png:0
+[    1230ms] [WARNING] Error while trying to use the following icon from the Manifest: https://mac-mini.tailde842d.ts.net/images/icon-192.png (Download error or resource isn't a valid image) @ https://mac-mini.tailde842d.ts.net/:0
+[    1230ms] [ERROR] A bad HTTP response code (404) was received when fetching the script. @ :0
+[    1232ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://mac-mini.tailde842d.ts.net/locales/zh_TW.json:0
+[    4231ms] [WARNING] The resource https://mac-mini.tailde842d.ts.net/_next/static/media/78fec81b34c4a365.p.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://mac-mini.tailde842d.ts.net/:0
+[    4231ms] [WARNING] The resource https://mac-mini.tailde842d.ts.net/_next/static/media/27834908180db20f-s.p.woff2 was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. @ https://mac-mini.tailde842d.ts.net/:0
