@@ -221,6 +221,7 @@ export class ProjectService {
         coContacts: (input.coContacts as string[]) ?? [],
         devDept: (input.devDept as string) ?? null,
         ownerId: input.ownerId as string,
+        createdBy: input.createdBy as string,
         leadDevId: (input.leadDevId as string) ?? null,
         teamMembers: (input.teamMembers as string[]) ?? [],
         priority: (input.priority as string) ?? "P2",
@@ -231,6 +232,41 @@ export class ProjectService {
         vendorContact: (input.vendorContact as string) ?? null,
         vendorContract: (input.vendorContract as string) ?? null,
         vendorAmount: (input.vendorAmount as number) ?? null,
+        // Benefit scores
+        benefitRevenue: (input.benefitRevenue as number) ?? null,
+        benefitCompliance: (input.benefitCompliance as number) ?? null,
+        benefitEfficiency: (input.benefitEfficiency as number) ?? null,
+        benefitRisk: (input.benefitRisk as number) ?? null,
+        benefitScore: ((input.benefitRevenue as number) ?? 0) + ((input.benefitCompliance as number) ?? 0) + ((input.benefitEfficiency as number) ?? 0) + ((input.benefitRisk as number) ?? 0) || null,
+        // Feasibility
+        feasibility: (input.feasibility as string) ?? "PENDING",
+        techComplexity: (input.techComplexity as string) ?? null,
+        riskLevel: (input.riskLevel as string) ?? "MEDIUM",
+        // Man-days
+        mdProjectMgmt: (input.mdProjectMgmt as number) ?? null,
+        mdRequirements: (input.mdRequirements as number) ?? null,
+        mdDesign: (input.mdDesign as number) ?? null,
+        mdDevelopment: (input.mdDevelopment as number) ?? null,
+        mdTesting: (input.mdTesting as number) ?? null,
+        mdDeployment: (input.mdDeployment as number) ?? null,
+        mdDocumentation: (input.mdDocumentation as number) ?? null,
+        mdTraining: (input.mdTraining as number) ?? null,
+        mdMaintenance: (input.mdMaintenance as number) ?? null,
+        mdOther: (input.mdOther as number) ?? null,
+        mdTotalEstimated: [input.mdProjectMgmt, input.mdRequirements, input.mdDesign, input.mdDevelopment, input.mdTesting, input.mdDeployment, input.mdDocumentation, input.mdTraining, input.mdMaintenance, input.mdOther].reduce((s: number, v) => s + ((v as number) ?? 0), 0) || null,
+        // Budget
+        budgetExternal: (input.budgetExternal as number) ?? null,
+        costPerManDay: (input.costPerManDay as number) ?? 5000,
+        // Progress
+        progressPct: (input.progressPct as number) ?? 0,
+        progressNote: (input.progressNote as string) ?? null,
+        blockers: (input.blockers as string) ?? null,
+        // Post review
+        postReviewSchedule: (input.postReviewSchedule as number) ?? null,
+        postReviewQuality: (input.postReviewQuality as number) ?? null,
+        postReviewBudget: (input.postReviewBudget as number) ?? null,
+        postReviewSatisfy: (input.postReviewSatisfy as number) ?? null,
+        lessonsLearned: (input.lessonsLearned as string) ?? null,
         // Auto-create 5 default gates
         gates: {
           create: DEFAULT_GATES.map((g) => ({

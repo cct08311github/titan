@@ -76,6 +76,7 @@ model User {
   docReadLogs              DocumentReadLog[]    @relation("DocReadLogs")
   createdDocTemplates      DocumentTemplate[]   @relation("DocTemplateCreator")
   ownedProjects            Project[]            @relation("ProjectOwner")
+  createdProjects          Project[]            @relation("ProjectCreator")
   projectRisks             ProjectRisk[]        @relation("RiskOwner")
   projectIssues            ProjectIssue[]       @relation("IssueAssignee")
   gateReviews              ProjectGate[]        @relation("GateReviewer")
@@ -1582,12 +1583,14 @@ model Project {
   internalNote       String?     @db.Text
 
   // 系統欄位
+  createdBy          String
   archivedAt         DateTime?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
   // 關聯
   owner           User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+  creator         User              @relation("ProjectCreator", fields: [createdBy], references: [id])
   risks           ProjectRisk[]
   issues          ProjectIssue[]
   stakeholders    ProjectStakeholder[]

@@ -36,6 +36,7 @@ export const POST = withManager(async (req: NextRequest) => {
   const project = await projectService.createProject({
     ...body,
     ownerId: body.ownerId ?? session.user.id,
+    createdBy: session.user.id,
   });
 
   return success(project, 201);
