@@ -158,10 +158,15 @@ export class TaskService {
       throw new ValidationError("標題為必填");
     }
 
+    // Defense-in-depth: strip HTML tags from user text (Issue #1148)
+    const { sanitizeHtml } = await import("@/lib/security/sanitize");
+    const title = sanitizeHtml(input.title);
+    const description = input.description ? sanitizeHtml(input.description) : input.description;
+
     return this.prisma.task.create({
       data: {
-        title: input.title,
-        description: input.description,
+        title,
+        description,
         status: (input.status ?? "BACKLOG") as TaskStatus,
         priority: (input.priority ?? "P2") as Priority,
         category: (input.category ?? "PLANNED") as TaskCategory,

@@ -146,7 +146,7 @@ export function NotificationBell() {
           if (!open) fetchNotifications();
         }}
         className="relative p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        aria-label="通知"
+        aria-label={unreadCount > 0 ? `通知 (${unreadCount} 則未讀)` : "通知"}
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
