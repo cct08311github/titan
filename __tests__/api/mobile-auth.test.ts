@@ -244,7 +244,8 @@ describe("Mobile Auth — POST /api/auth/mobile/login", () => {
 
     expect(mockRegisterSession).toHaveBeenCalledWith(
       "user-mobile-1",
-      expect.any(String) // UUID sessionId
+      expect.any(String), // UUID sessionId
+      "mobile"
     );
   });
 
@@ -1178,7 +1179,8 @@ describe("Mobile Auth — POST /api/auth/refresh (source=mobile)", () => {
 
     expect(mockRegisterSession).toHaveBeenCalledWith(
       "user-mobile-1",
-      expect.any(String) // new UUID
+      expect.any(String), // new UUID
+      "mobile"
     );
   });
 
