@@ -202,6 +202,15 @@ export class TaskService {
     const existing = await this.prisma.task.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`Task not found: ${id}`);
 
+    // Enforce state machine when status is being changed — Issue #1156
+    if (input.status !== undefined && input.status !== existing.status) {
+      if (!isValidTaskTransition(existing.status as Parameters<typeof isValidTaskTransition>[0], input.status as Parameters<typeof isValidTaskTransition>[0])) {
+        throw new ValidationError(
+          `無法從 ${existing.status} 轉換為 ${input.status}，請參考狀態機定義`
+        );
+      }
+    }
+
     const updates: Record<string, unknown> = {};
     if (input.title !== undefined) updates.title = input.title;
     if (input.description !== undefined) updates.description = input.description;
@@ -365,11 +374,7 @@ export class TaskService {
     // Banking compliance: enforce state machine transitions
     if (!isValidTaskTransition(existing.status as Parameters<typeof isValidTaskTransition>[0], status as Parameters<typeof isValidTaskTransition>[0])) {
       throw new ValidationError(
-        `無法從 ${existing.status} 轉換為 ${status}。允許的轉換：${
-          existing.status === "DONE" ? "TODO" :
-          existing.status === "BACKLOG" ? "TODO, IN_PROGRESS" :
-          "請參考狀態機定義"
-        }`
+        `無法從 ${existing.status} 轉換為 ${status}，請參考狀態機定義`
       );
     }
 

@@ -4,7 +4,7 @@
  * Enforces valid status transitions to prevent arbitrary state changes.
  * Pattern follows change-state-machine.ts and KPI inline transitions.
  *
- * Task: Kanban-style workflow with ability to reopen from DONE
+ * Task: Forward-only workflow; DONE is terminal (Issue #1156)
  * Goal: Linear progression with terminal states
  * Milestone: Similar to Goal with DELAYED state
  */
@@ -14,18 +14,18 @@
 export type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
 
 /**
- * Task transitions allow flexible Kanban-style movement:
+ * Task transitions enforce forward-only workflow:
  * - Forward: BACKLOG → TODO → IN_PROGRESS → REVIEW → DONE
- * - Backward: Any non-DONE state can move to any earlier state
- * - Reopen: DONE → TODO (controlled, requires audit)
+ * - Revision: REVIEW → IN_PROGRESS (send back for rework)
  * - Skip: BACKLOG → IN_PROGRESS (common shortcut)
+ * - DONE is terminal: cannot revert to any earlier state
  */
 const TASK_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
   BACKLOG: ["TODO", "IN_PROGRESS"],
-  TODO: ["BACKLOG", "IN_PROGRESS", "REVIEW"],
-  IN_PROGRESS: ["TODO", "REVIEW", "DONE", "BACKLOG"],
-  REVIEW: ["IN_PROGRESS", "DONE", "TODO"],
-  DONE: ["TODO"], // Reopen only to TODO (controlled)
+  TODO: ["IN_PROGRESS"],
+  IN_PROGRESS: ["REVIEW", "DONE"],
+  REVIEW: ["IN_PROGRESS", "DONE"],  // IN_PROGRESS = revision
+  DONE: [],                          // Terminal — no backward transitions
 };
 
 export function isValidTaskTransition(

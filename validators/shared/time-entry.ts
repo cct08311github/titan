@@ -13,7 +13,7 @@ import { TimeCategoryEnum } from "./enums";
  * Validate hours is in 0.5hr increments.
  * Rounds to nearest 0.5 if within a small tolerance, else rejects.
  */
-const hoursSchema = z.number().min(0).max(24).refine(
+const hoursSchema = z.number().gt(0, "工時必須大於 0").max(24).refine(
   (val) => {
     // Allow exact 0.5 increments (with floating-point tolerance)
     const remainder = (val * 10) % 5;
@@ -22,8 +22,14 @@ const hoursSchema = z.number().min(0).max(24).refine(
   { message: "工時必須以 0.5 小時為最小單位" }
 );
 
+/** Date must be today or earlier — no future date entries (Issue #1157) */
+const pastOrTodayDate = z.string().date().refine(
+  (val) => val <= new Date().toISOString().slice(0, 10),
+  { message: "工時日期不可為未來日期" }
+);
+
 export const createTimeEntrySchema = z.object({
-  date: z.string().date(),
+  date: pastOrTodayDate,
   hours: hoursSchema,
   taskId: z.string().nullish(),
   subTaskId: z.string().nullish(),          // Issue #933: optional subtask
@@ -32,7 +38,7 @@ export const createTimeEntrySchema = z.object({
 });
 
 export const updateTimeEntrySchema = z.object({
-  date: z.string().date().optional(),
+  date: pastOrTodayDate.optional(),
   hours: hoursSchema.optional(),
   taskId: z.string().optional(),
   subTaskId: z.string().nullish(),          // Issue #933: optional subtask
