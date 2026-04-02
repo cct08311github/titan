@@ -32,6 +32,7 @@ export function buildCspWithNonce(nonce: string): string {
     "font-src 'self' data:",
     "connect-src 'self' wss: ws:",
     "worker-src 'self' blob:",
+    `frame-src 'self' ${process.env.NEXT_PUBLIC_OUTLINE_URL ?? ""}`.trim(),
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
