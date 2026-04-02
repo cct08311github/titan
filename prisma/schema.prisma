@@ -75,6 +75,10 @@ model User {
   docComments              DocumentComment[]    @relation("DocCommentAuthor")
   docReadLogs              DocumentReadLog[]    @relation("DocReadLogs")
   createdDocTemplates      DocumentTemplate[]   @relation("DocTemplateCreator")
+  ownedProjects            Project[]            @relation("ProjectOwner")
+  projectRisks             ProjectRisk[]        @relation("RiskOwner")
+  projectIssues            ProjectIssue[]       @relation("IssueAssignee")
+  gateReviews              ProjectGate[]        @relation("GateReviewer")
 
   @@map("users")
 }
@@ -359,10 +363,12 @@ model Task {
   flagReason        String?      // Issue #960: 標記原因
   flaggedAt         DateTime?    // Issue #960: 標記時間
   flaggedBy         String?      // Issue #960: 標記者 userId
+  projectId         String?      // Issue #1168: FK to Project (PMO)
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
   annualPlan      AnnualPlan?   @relation("PlanTasks", fields: [annualPlanId], references: [id], onDelete: SetNull)
+  project         Project?      @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: SetNull)
   monthlyGoal     MonthlyGoal?  @relation(fields: [monthlyGoalId], references: [id])
   primaryAssignee User?         @relation("TaskPrimaryAssignee", fields: [primaryAssigneeId], references: [id])
   backupAssignee  User?         @relation("TaskBackupAssignee", fields: [backupAssigneeId], references: [id])
@@ -385,6 +391,7 @@ model Task {
   @@index([primaryAssigneeId])
   @@index([backupAssigneeId])
   @@index([creatorId])
+  @@index([projectId])
   @@map("tasks")
 }
 
@@ -1421,4 +1428,272 @@ model DocumentTemplate {
   @@index([createdBy])
   @@index([category])
   @@map("document_templates")
+}
+
+// ═══════════════════════════════════════
+// PMO 項目管理 (Issue #1168)
+// ═══════════════════════════════════════
+
+enum ProjectStatus {
+  PROPOSED
+  EVALUATING
+  APPROVED
+  SCHEDULED
+  REQUIREMENTS
+  DESIGN
+  DEVELOPMENT
+  TESTING
+  DEPLOYMENT
+  WARRANTY
+  COMPLETED
+  POST_REVIEW
+  CLOSED
+  ON_HOLD
+  CANCELLED
+}
+
+model Project {
+  id              String        @id @default(cuid())
+  code            String        @unique        // PRJ-{year}-{seq:3}
+  year            Int
+  name            String
+  description     String?       @db.Text
+  category        String?
+  subCategory     String?
+  tags            String[]
+
+  // 需求方
+  requestDept     String
+  requestContact  String?
+  requestPhone    String?
+  requestDate     DateTime?
+  businessGoal    String?       @db.Text
+
+  // 協辦
+  coDepts         String[]
+  coContacts      String[]
+
+  // IT 開發方
+  devDept         String?
+  ownerId         String
+  leadDevId       String?
+  teamMembers     String[]
+
+  // 效益評估（4 × 0-25 = 100）
+  benefitRevenue    Int?
+  benefitCompliance Int?
+  benefitEfficiency Int?
+  benefitRisk       Int?
+  benefitScore      Int?        // 四項加總（自動計算）
+  benefitNote       String?     @db.Text
+  benefitEvaluator  String?
+  benefitDate       DateTime?
+
+  // 優先級
+  priority        String        @default("P2") // P0/P1/P2/P3
+  urgency         String?       @default("MEDIUM") // HIGH/MEDIUM/LOW
+  strategicAlign  Int?          // 0-10
+  priorityScore   Int?          // 自動計算
+  priorityNote    String?
+
+  // 可行性評估
+  feasibility     String?       @default("PENDING") // PENDING/FEASIBLE/CONDITIONAL/NOT_FEASIBLE
+  feasibilityNote String?       @db.Text
+  techComplexity  String?       // LOW/MEDIUM/HIGH/VERY_HIGH
+  techStack       String?
+  dependencies    String?       @db.Text
+  constraints     String?       @db.Text
+  assumptions     String?       @db.Text
+  riskLevel       String?       @default("MEDIUM") // LOW/MEDIUM/HIGH/CRITICAL
+  riskNote        String?       @db.Text
+
+  // 各階段人天（10 階段）
+  mdProjectMgmt     Float?      @default(0)
+  mdRequirements    Float?      @default(0)
+  mdDesign          Float?      @default(0)
+  mdDevelopment     Float?      @default(0)
+  mdTesting         Float?      @default(0)
+  mdDeployment      Float?      @default(0)
+  mdDocumentation   Float?      @default(0)
+  mdTraining        Float?      @default(0)
+  mdMaintenance     Float?      @default(0)
+  mdOther           Float?      @default(0)
+  mdTotalEstimated  Float?      // 10 項加總（自動計算）
+  mdActualTotal     Float?      // 從 TimeEntry 合計或手填
+
+  // 預算
+  budgetInternal    Float?      @default(0)
+  budgetExternal    Float?      @default(0)
+  budgetHardware    Float?      @default(0)
+  budgetLicense     Float?      @default(0)
+  budgetOther       Float?      @default(0)
+  budgetTotal       Float?      // 5 項加總（自動計算）
+  budgetActual      Float?
+  budgetApproved    Boolean     @default(false)
+  budgetApprovalNo  String?
+  costPerManDay     Float?      @default(5000)
+
+  // 廠商
+  vendor            String?
+  vendorContact     String?
+  vendorContract    String?
+  vendorAmount      Float?
+  vendorStartDate   DateTime?
+  vendorEndDate     DateTime?
+  subVendors        String[]
+
+  // 排期
+  plannedStart      DateTime?
+  plannedEnd        DateTime?
+  actualStart       DateTime?
+  actualEnd         DateTime?
+  goLiveDate        DateTime?
+  warrantyEndDate   DateTime?
+
+  // 狀態與進展
+  status            ProjectStatus @default(PROPOSED)
+  phase             String?
+  progressPct       Float         @default(0)
+  progressNote      String?       @db.Text
+  blockers          String?       @db.Text
+  nextSteps         String?       @db.Text
+  progressUpdatedAt DateTime?
+  currentGate       String?
+  gateStatus        String?       @default("PENDING") // PENDING/PASSED/BLOCKED
+
+  // 後評價（4 × 0-25 = 100）
+  postReviewSchedule Int?
+  postReviewQuality  Int?
+  postReviewBudget   Int?
+  postReviewSatisfy  Int?
+  postReviewScore    Int?        // 四項加總（自動計算）
+  postReviewNote     String?     @db.Text
+  lessonsLearned     String?     @db.Text
+  improvements       String?     @db.Text
+  postReviewBy       String?
+  postReviewDate     DateTime?
+
+  // 合規
+  approvalStatus     String?     @default("PENDING") // PENDING/APPROVED/REJECTED
+  approvedBy         String?
+  approvedDate       DateTime?
+  approvalNo         String?
+  relatedRegulation  String?
+  internalNote       String?     @db.Text
+
+  // 系統欄位
+  archivedAt         DateTime?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  // 關聯
+  owner           User              @relation("ProjectOwner", fields: [ownerId], references: [id])
+  risks           ProjectRisk[]
+  issues          ProjectIssue[]
+  stakeholders    ProjectStakeholder[]
+  gates           ProjectGate[]
+  tasks           Task[]            @relation("ProjectTasks")
+
+  @@index([ownerId])
+  @@index([year])
+  @@index([status])
+  @@index([requestDept])
+  @@index([priority])
+  @@map("projects")
+}
+
+model ProjectRisk {
+  id            String    @id @default(cuid())
+  projectId     String
+  code          String    // RISK-{seq:3}
+  title         String
+  description   String?   @db.Text
+  category      String?   // 技術/商業/資源/時程/外部/法規
+  probability   String    // LOW/MEDIUM/HIGH/VERY_HIGH
+  impact        String    // LOW/MEDIUM/HIGH/CRITICAL
+  riskScore     Int?      // probability × impact (1-16)
+  mitigation    String?   @db.Text
+  contingency   String?   @db.Text
+  ownerId       String
+  status        String    @default("OPEN") // OPEN/MITIGATING/CLOSED/ACCEPTED
+  dueDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner    User    @relation("RiskOwner", fields: [ownerId], references: [id])
+
+  @@index([projectId])
+  @@index([ownerId])
+  @@map("project_risks")
+}
+
+model ProjectIssue {
+  id            String    @id @default(cuid())
+  projectId     String
+  code          String    // ISS-{seq:3}
+  title         String
+  description   String?   @db.Text
+  category      String?   // 技術/流程/資源/需求/外部
+  severity      String    // LOW/MEDIUM/HIGH/CRITICAL
+  assigneeId    String
+  status        String    @default("OPEN") // OPEN/IN_PROGRESS/RESOLVED/ESCALATED
+  resolution    String?   @db.Text
+  dueDate       DateTime?
+  source        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignee User    @relation("IssueAssignee", fields: [assigneeId], references: [id])
+
+  @@index([projectId])
+  @@index([assigneeId])
+  @@map("project_issues")
+}
+
+model ProjectStakeholder {
+  id            String    @id @default(cuid())
+  projectId     String
+  name          String
+  department    String?
+  role          String?   // 發起人/使用者代表/技術審查/合規審查/高層贊助/外部夥伴
+  influence     String?   // HIGH/MEDIUM/LOW
+  interest      String?   // HIGH/MEDIUM/LOW
+  engagement    String?   // CHAMPION/SUPPORTER/NEUTRAL/RESISTANT
+  commStrategy  String?   @db.Text
+  contactInfo   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_stakeholders")
+}
+
+model ProjectGate {
+  id              String    @id @default(cuid())
+  projectId       String
+  name            String
+  phase           String
+  order           Int
+  checklist       Json?     // [{item:"需求文件完成", checked:false, note:""}]
+  checklistPassed Boolean   @default(false)
+  status          String    @default("PENDING") // PENDING/PASSED/BLOCKED/WAIVED
+  reviewerId      String?
+  reviewedAt      DateTime?
+  reviewNote      String?   @db.Text
+  blockerNote     String?   @db.Text
+  waiverReason    String?   @db.Text
+  attachments     String[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  reviewer User?   @relation("GateReviewer", fields: [reviewerId], references: [id])
+
+  @@index([projectId])
+  @@index([reviewerId])
+  @@map("project_gates")
 }
