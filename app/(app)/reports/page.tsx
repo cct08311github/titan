@@ -139,8 +139,8 @@ function UtilizationReport({ from, to }: { from: string; to: string }) {
       );
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
-      const d = extractData<{ members?: UtilizationRow[] }>(body);
-      setData(d?.members ?? []);
+      const d = extractData<{ members?: UtilizationRow[]; users?: UtilizationRow[] }>(body);
+      setData(d?.members ?? d?.users ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -240,8 +240,8 @@ function VelocityReport({ from, to }: { from: string; to: string }) {
       );
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
-      const d = extractData<{ weeks?: VelocityPoint[] }>(body);
-      setData(d?.weeks ?? []);
+      const d = extractData<{ weeks?: VelocityPoint[]; data?: VelocityPoint[] }>(body);
+      setData(d?.weeks ?? d?.data ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -332,8 +332,15 @@ function KPITrendReport({ from, to }: { from: string; to: string }) {
       );
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
-      const d = extractData<{ months?: KPITrendPoint[] }>(body);
-      setData(d?.months ?? []);
+      const d = extractData<{ months?: KPITrendPoint[]; kpis?: Array<{ title: string; actual: number; target: number }> }>(body);
+      if (d?.months) {
+        setData(d.months);
+      } else if (d?.kpis) {
+        // Transform flat kpis to single-month view
+        setData([{ month: from.slice(0, 7), label: "目前", kpis: d.kpis.map(k => ({ id: k.title, name: k.title, achievementPct: k.target > 0 ? Math.round((k.actual ?? 0) / k.target * 100) : 0, target: k.target })) }]);
+      } else {
+        setData([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -469,8 +476,15 @@ function UnplannedTrendReport({ from, to }: { from: string; to: string }) {
       );
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
-      const d = extractData<{ months?: UnplannedPoint[] }>(body);
-      setData(d?.months ?? []);
+      const d = extractData<{ months?: UnplannedPoint[]; unplannedRate?: number; plannedRate?: number; period?: { start: string } }>(body);
+      if (d?.months) {
+        setData(d.months);
+      } else if (d?.period) {
+        // Transform single-period to single point
+        setData([{ month: d.period.start?.slice(0, 7) ?? from.slice(0, 7), label: "期間", totalTasks: 0, unplannedTasks: 0, unplannedPct: Math.round((d.unplannedRate ?? 0) * 100) / 100 }]);
+      } else {
+        setData([]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {
@@ -541,46 +555,106 @@ function UnplannedTrendReport({ from, to }: { from: string; to: string }) {
 
 // ─── Time Summary Report (Issue #1161) ───────────────────────────────────────
 
-interface TimeSummaryRow { userName: string; category: string; totalHours: number; }
+// ─── Time Summary Report — HR Grade (Issue #1161) ───────────────────────────
+
+interface TimeSummaryUser { userName: string; email: string; planned: number; added: number; incident: number; support: number; admin: number; learning: number; total: number; workdays: number; target: number; utilizationPct: number; }
 
 function TimeSummaryReport({ from, to }: { from: string; to: string }) {
-  const [data, setData] = useState<TimeSummaryRow[]>([]);
+  const [data, setData] = useState<TimeSummaryUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/time-summary?from=${from}&to=${to}`)
-      .then(r => r.json()).then(d => setData(d.data ?? []))
+    fetch(`/api/reports/time-summary?from=${from}&to=${to}&mode=by-user`)
+      .then(r => r.json()).then(d => setData(d.data?.users ?? d.data ?? []))
       .catch(() => setData([]))
       .finally(() => setLoading(false));
   }, [from, to]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無工時資料</div>;
+  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無工時資料<br/><span className="text-xs">團隊成員開始登記工時後，摘要將自動產生</span></div>;
+
+  // Aggregate totals
+  const totals = data.reduce((acc, r) => ({ planned: acc.planned + r.planned, added: acc.added + r.added, incident: acc.incident + r.incident, support: acc.support + r.support, admin: acc.admin + r.admin, learning: acc.learning + r.learning, total: acc.total + r.total, target: acc.target + r.target }), { planned: 0, added: 0, incident: 0, support: 0, admin: 0, learning: 0, total: 0, target: 0 });
+
+  const handleExport = () => exportCSV(
+    ["姓名","Email","計畫工時","追加","事件","支援","行政","學習","合計","工作天","目標(h)","達成率(%)"],
+    data.map(r => [r.userName, r.email, r.planned, r.added, r.incident, r.support, r.admin, r.learning, r.total, r.workdays, r.target, r.utilizationPct].map(String)),
+    `time-summary-${from}-${to}.csv`
+  );
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold">工時摘要</h3>
-        <button onClick={() => exportCSV(["姓名","分類","時數"], data.map(r => [r.userName, r.category, String(r.totalHours)]), `time-summary-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div><h3 className="font-semibold">工時摘要</h3><p className="text-xs text-muted-foreground">按成員彙總各分類工時、目標達成率</p></div>
+        <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
       </div>
-      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">姓名</th><th className="text-left py-2">分類</th><th className="text-right py-2">時數</th></tr></thead><tbody>
-        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2">{r.userName}</td><td className="py-2">{r.category}</td><td className="text-right py-2">{r.totalHours}h</td></tr>)}
-      </tbody></table>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead><tr className="border-b bg-muted/30">
+            <th className="text-left py-2 px-2">姓名</th>
+            <th className="text-right py-2 px-1" title="計畫任務">計畫</th>
+            <th className="text-right py-2 px-1" title="追加任務">追加</th>
+            <th className="text-right py-2 px-1" title="事件處理">事件</th>
+            <th className="text-right py-2 px-1" title="用戶支援">支援</th>
+            <th className="text-right py-2 px-1" title="行政庶務">行政</th>
+            <th className="text-right py-2 px-1" title="學習成長">學習</th>
+            <th className="text-right py-2 px-2 font-bold">合計</th>
+            <th className="text-right py-2 px-1">工作天</th>
+            <th className="text-right py-2 px-1">目標(h)</th>
+            <th className="text-right py-2 px-2">達成率</th>
+          </tr></thead>
+          <tbody>
+            {data.map((r, i) => {
+              const pct = r.utilizationPct;
+              const pctColor = pct >= 100 ? "text-green-600" : pct >= 80 ? "text-foreground" : pct >= 60 ? "text-amber-600" : "text-red-600";
+              return (
+                <tr key={i} className="border-b border-border/30 hover:bg-accent/30">
+                  <td className="py-1.5 px-2 font-medium">{r.userName}</td>
+                  <td className="text-right py-1.5 px-1">{r.planned || "-"}</td>
+                  <td className="text-right py-1.5 px-1">{r.added || "-"}</td>
+                  <td className="text-right py-1.5 px-1">{r.incident || "-"}</td>
+                  <td className="text-right py-1.5 px-1">{r.support || "-"}</td>
+                  <td className="text-right py-1.5 px-1">{r.admin || "-"}</td>
+                  <td className="text-right py-1.5 px-1">{r.learning || "-"}</td>
+                  <td className="text-right py-1.5 px-2 font-bold">{r.total}h</td>
+                  <td className="text-right py-1.5 px-1">{r.workdays}</td>
+                  <td className="text-right py-1.5 px-1">{r.target}h</td>
+                  <td className={`text-right py-1.5 px-2 font-bold ${pctColor}`}>{pct}%</td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot><tr className="border-t-2 border-border font-bold bg-muted/20">
+            <td className="py-2 px-2">全團隊</td>
+            <td className="text-right py-2 px-1">{totals.planned}</td>
+            <td className="text-right py-2 px-1">{totals.added}</td>
+            <td className="text-right py-2 px-1">{totals.incident}</td>
+            <td className="text-right py-2 px-1">{totals.support}</td>
+            <td className="text-right py-2 px-1">{totals.admin}</td>
+            <td className="text-right py-2 px-1">{totals.learning}</td>
+            <td className="text-right py-2 px-2">{totals.total}h</td>
+            <td className="text-right py-2 px-1" colSpan={2}>{totals.target}h</td>
+            <td className="text-right py-2 px-2">{totals.target > 0 ? Math.round(totals.total / totals.target * 100) : 0}%</td>
+          </tr></tfoot>
+        </table>
+      </div>
     </div>
   );
 }
 
-// ─── Overtime Report (Issue #1161) ──────────────────────────────────────────
+// ─── Overtime Report — HR Compliance Grade (Issue #1161) ─────────────────────
+
+interface OvertimeUser { userName: string; email: string; normal: number; weekdayOT: number; holidayOT: number; totalOT: number; totalHours: number; otRatio: number; monthlyOTLimit: number; overLimit: boolean; }
 
 function OvertimeReport({ from, to }: { from: string; to: string }) {
-  const [data, setData] = useState<{ userName: string; normal: number; overtime: number; holiday: number }[]>([]);
+  const [data, setData] = useState<OvertimeUser[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/overtime?from=${from}&to=${to}`)
-      .then(r => r.json()).then(d => setData(d.data ?? []))
+    fetch(`/api/reports/overtime?from=${from}&to=${to}&mode=compliance`)
+      .then(r => r.json()).then(d => setData(d.data?.users ?? d.data ?? []))
       .catch(() => setData([]))
       .finally(() => setLoading(false));
   }, [from, to]);
@@ -588,15 +662,60 @@ function OvertimeReport({ from, to }: { from: string; to: string }) {
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
   if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無加班資料</div>;
 
+  const overLimitCount = data.filter(r => r.overLimit).length;
+  const totalOT = data.reduce((s, r) => s + r.totalOT, 0);
+
+  const handleExport = () => exportCSV(
+    ["姓名","Email","正常工時","平日加班","假日加班","加班合計","總工時","加班佔比(%)","月加班上限(h)","超標"],
+    data.map(r => [r.userName, r.email, r.normal, r.weekdayOT, r.holidayOT, r.totalOT, r.totalHours, r.otRatio, r.monthlyOTLimit, r.overLimit ? "是" : "否"].map(String)),
+    `overtime-${from}-${to}.csv`
+  );
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold">加班分析</h3>
-        <button onClick={() => exportCSV(["姓名","正常","平日加班","假日加班"], data.map(r => [r.userName, String(r.normal), String(r.overtime), String(r.holiday)]), `overtime-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div>
+          <h3 className="font-semibold">加班分析</h3>
+          <p className="text-xs text-muted-foreground">正常/平日加班/假日加班明細，含法規上限警示</p>
+        </div>
+        <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
       </div>
-      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">姓名</th><th className="text-right py-2">正常</th><th className="text-right py-2">平日 OT</th><th className="text-right py-2">假日 OT</th></tr></thead><tbody>
-        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2">{r.userName}</td><td className="text-right py-2">{r.normal}h</td><td className="text-right py-2 text-amber-600">{r.overtime}h</td><td className="text-right py-2 text-red-600">{r.holiday}h</td></tr>)}
-      </tbody></table>
+      {/* Summary cards */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="border border-border rounded-lg p-3 text-center"><div className="text-lg font-bold">{totalOT}h</div><div className="text-[10px] text-muted-foreground">團隊加班總計</div></div>
+        <div className="border border-border rounded-lg p-3 text-center"><div className="text-lg font-bold">{data.length > 0 ? Math.round(totalOT / data.length * 10) / 10 : 0}h</div><div className="text-[10px] text-muted-foreground">人均加班</div></div>
+        <div className={`border rounded-lg p-3 text-center ${overLimitCount > 0 ? "border-red-500 bg-red-50 dark:bg-red-950/30" : "border-border"}`}><div className={`text-lg font-bold ${overLimitCount > 0 ? "text-red-600" : ""}`}>{overLimitCount}</div><div className="text-[10px] text-muted-foreground">超標人數</div></div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead><tr className="border-b bg-muted/30">
+            <th className="text-left py-2 px-2">姓名</th>
+            <th className="text-right py-2 px-2">正常</th>
+            <th className="text-right py-2 px-2">平日 OT</th>
+            <th className="text-right py-2 px-2">假日 OT</th>
+            <th className="text-right py-2 px-2 font-bold">OT 合計</th>
+            <th className="text-right py-2 px-2">總工時</th>
+            <th className="text-right py-2 px-2">OT 佔比</th>
+            <th className="text-right py-2 px-2">月上限</th>
+            <th className="text-center py-2 px-2">狀態</th>
+          </tr></thead>
+          <tbody>
+            {data.map((r, i) => (
+              <tr key={i} className={`border-b border-border/30 hover:bg-accent/30 ${r.overLimit ? "bg-red-50/50 dark:bg-red-950/20" : ""}`}>
+                <td className="py-1.5 px-2 font-medium">{r.userName}</td>
+                <td className="text-right py-1.5 px-2">{r.normal}h</td>
+                <td className="text-right py-1.5 px-2 text-amber-600 dark:text-amber-400">{r.weekdayOT}h</td>
+                <td className="text-right py-1.5 px-2 text-red-600 dark:text-red-400">{r.holidayOT}h</td>
+                <td className="text-right py-1.5 px-2 font-bold">{r.totalOT}h</td>
+                <td className="text-right py-1.5 px-2">{r.totalHours}h</td>
+                <td className="text-right py-1.5 px-2">{r.otRatio}%</td>
+                <td className="text-right py-1.5 px-2">{r.monthlyOTLimit}h</td>
+                <td className="text-center py-1.5 px-2">{r.overLimit ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 font-medium">超標</span> : <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">正常</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
