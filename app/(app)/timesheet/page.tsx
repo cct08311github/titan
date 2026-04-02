@@ -93,7 +93,7 @@ export default function TimesheetPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col gap-4">
       {/* Timer — sticky on top */}
       <TimesheetTimer
         timer={ts.timer}
@@ -183,7 +183,7 @@ export default function TimesheetPage() {
       )}
 
       {/* Content area */}
-      <div className={cn("flex-1 flex flex-col gap-4 min-h-0", summaryTab !== "timesheet" && "hidden")}>
+      <div className={cn("flex flex-col gap-4", summaryTab !== "timesheet" && "hidden")}>
         {/* Stats summary */}
         <div className="flex-shrink-0">
           {ts.statsLoading ? (
@@ -202,7 +202,7 @@ export default function TimesheetPage() {
 
         {/* Grid, List, or Calendar */}
         <div className={cn(
-          "border border-border rounded-xl overflow-hidden bg-card",
+          "border border-border rounded-xl overflow-hidden bg-card min-h-[400px]",
           (viewMode === "calendar" || viewMode === "calendar-week" || viewMode === "calendar-month") && "p-4"
         )}>
           {ts.loading ? (
