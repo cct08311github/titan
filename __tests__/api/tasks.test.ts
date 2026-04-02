@@ -311,13 +311,13 @@ describe("PATCH /api/tasks/[id]", () => {
     expect(res.status).toBe(200);
   });
 
-  it("returns 400 when status missing", async () => {
+  it("returns 200 when empty body (no-op partial update)", async () => {
     const { PATCH } = await import("@/app/api/tasks/[id]/route");
     const res = await PATCH(
       createMockRequest("/api/tasks/task-1", { method: "PATCH", body: {} }),
       { params: Promise.resolve({ id: "task-1" }) }
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
   });
 
   it("returns 401 when no session", async () => {

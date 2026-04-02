@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { TaskService } from "@/services/task-service";
 import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
-import { updateTaskSchema, updateTaskStatusSchema } from "@/validators/task-validators";
+import { updateTaskSchema } from "@/validators/task-validators";
 import { success, error } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth, requireRole } from "@/lib/rbac";
@@ -115,7 +115,7 @@ export const PATCH = withAuth(async (
 
   await enforceTaskOwnership(session.user.id, session.user.role, id);
   const raw = await req.json();
-  const { status } = validateBody(updateTaskStatusSchema, raw);
-  const task = await taskService.updateTaskStatus(id, status, session.user.id);
+  const body = validateBody(updateTaskSchema, raw);
+  const task = await taskService.updateTask(id, { ...body, changedBy: session.user.id });
   return success(task);
 });
