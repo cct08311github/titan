@@ -2,6 +2,7 @@ import {
   KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair,
   Activity, Settings, ShieldCheck, Gauge, Sun,
+  Briefcase,
   type LucideIcon,
 } from "lucide-react";
 
@@ -37,6 +38,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/plans", label: "年度計畫", icon: Target },
       { href: "/kpi", label: "KPI", icon: Crosshair },
+      { href: "/projects", label: "項目管理", icon: Briefcase, roles: ["MANAGER", "ADMIN"] },
       { href: "/gantt", label: "甘特圖", icon: GanttChartSquare },
     ],
   },
