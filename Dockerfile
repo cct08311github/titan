@@ -13,8 +13,9 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
 # Copy pre-built standalone output from host
+# standalone output nests under relativeAppDir (.openclaw/shared/projects/titan)
 COPY --chown=nextjs:nodejs public ./public
-COPY --chown=nextjs:nodejs .next/standalone ./
+COPY --chown=nextjs:nodejs .next/standalone/.openclaw/shared/projects/titan/ ./
 COPY --chown=nextjs:nodejs .next/static ./.next/static
 
 USER nextjs

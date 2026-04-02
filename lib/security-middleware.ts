@@ -191,12 +191,12 @@ export function withAuditLog<T extends AnyHandler>(fn: T): T {
     const response = await fn(req, context);
 
     if (MUTATING_METHODS.has(method) && response.status >= 200 && response.status < 300) {
+      const { pathname } = new URL(req.url);
+      const resourceType = resourceTypeFromPath(pathname);
+      const action = `${method}_${resourceType.toUpperCase()}`;
       try {
-        const { pathname } = new URL(req.url);
         const userId = await getSessionUserId(req);
-        const resourceType = resourceTypeFromPath(pathname);
         const resourceId = resourceIdFromPath(pathname);
-        const action = `${method}_${resourceType.toUpperCase()}`;
 
         await auditService.log({
           userId,
@@ -207,7 +207,7 @@ export function withAuditLog<T extends AnyHandler>(fn: T): T {
       } catch (auditErr) {
         // Audit failures must never block the response — log and continue.
         // Tagged with auditFailure:true for log-based alerting (Grafana/Loki/PagerDuty).
-        logger.error({ err: auditErr, auditFailure: true, type: "audit_failure", userId, action, resourceType }, "[withAuditLog] Failed to write audit log");
+        logger.error({ err: auditErr, auditFailure: true, type: "audit_failure", action, resourceType }, "[withAuditLog] Failed to write audit log");
       }
     }
 
