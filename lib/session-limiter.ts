@@ -1,72 +1,134 @@
 /**
- * Concurrent session limiter — Issue #184, #387
+ * Concurrent session limiter — Issue #184, #387, #1086
  *
- * Enforces a maximum number of concurrent sessions per user (default: 2).
+ * Enforces a maximum number of concurrent sessions per user per platform.
  * When a user logs in and the limit is exceeded, the oldest session is
  * invalidated via the JWT blacklist.
  *
  * Uses Redis when available, falls back to in-memory store.
  *
- * Redis storage: sorted set per user, score = timestamp, member = sessionId.
- * In-memory storage: Map<userId, Array<{ sessionId, createdAt }>>.
+ * Redis storage: sorted set per user+platform, score = timestamp, member = sessionId.
+ *   - Lua script for atomic ZADD + EXPIRE + ZCARD + evict flow.
+ * In-memory storage: Map<userId:platform, Array<{ sessionId, createdAt }>>.
+ *
+ * Issue #1086: Platform separation — web and mobile have independent limits.
  */
 
 import { logger } from "@/lib/logger";
 import { getRedisClient } from "@/lib/redis";
 import { JwtBlacklist } from "@/lib/jwt-blacklist";
 
+/** Supported session platforms */
+export type SessionPlatform = "web" | "mobile";
+
 const REDIS_PREFIX = "titan:sessions:";
 const SESSION_TTL = 8 * 60 * 60; // 8 hours (matches JWT maxAge)
 
-/** Maximum concurrent sessions per user — configurable via env */
-const MAX_CONCURRENT_SESSIONS = parseInt(
-  process.env.MAX_CONCURRENT_SESSIONS ?? "2",
+/** Maximum concurrent sessions per user per platform — configurable via env */
+const WEB_MAX_SESSIONS = parseInt(
+  process.env.WEB_MAX_SESSIONS ?? process.env.MAX_CONCURRENT_SESSIONS ?? "2",
+  10
+);
+const MOBILE_MAX_SESSIONS = parseInt(
+  process.env.MOBILE_MAX_SESSIONS ?? "2",
   10
 );
 
-/** In-memory fallback: userId → list of { sessionId, createdAt } */
+/** Resolve the max sessions limit for a given platform */
+function getMaxSessions(platform: SessionPlatform): number {
+  return platform === "mobile" ? MOBILE_MAX_SESSIONS : WEB_MAX_SESSIONS;
+}
+
+/** Build the Redis key for a user + platform combination */
+function redisKey(userId: string, platform: SessionPlatform): string {
+  return `${REDIS_PREFIX}${userId}:${platform}`;
+}
+
+/** Build the in-memory store key for a user + platform combination */
+function memKey(userId: string, platform: SessionPlatform): string {
+  return `${userId}:${platform}`;
+}
+
+/** In-memory fallback: userId:platform -> list of { sessionId, createdAt } */
 const memStore = new Map<string, Array<{ sessionId: string; createdAt: number }>>();
 
 /**
- * Register a new session for a user.
- * If the user already has MAX_CONCURRENT_SESSIONS, the oldest is invalidated.
+ * Lua script for atomic session registration in Redis.
+ *
+ * KEYS[1] = sorted set key
+ * ARGV[1] = sessionId
+ * ARGV[2] = current timestamp (score)
+ * ARGV[3] = maxSessions
+ * ARGV[4] = TTL in seconds
+ *
+ * Returns: array of evicted session IDs (empty if none evicted)
+ *
+ * Note: redis.eval() is the standard Redis Lua scripting API (server-side
+ * execution), not JavaScript eval(). The Lua script runs atomically on
+ * the Redis server.
+ */
+const REGISTER_SESSION_LUA = `
+local key = KEYS[1]
+local sessionId = ARGV[1]
+local now = ARGV[2]
+local maxSessions = tonumber(ARGV[3])
+local ttl = tonumber(ARGV[4])
+
+redis.call('ZADD', key, now, sessionId)
+redis.call('EXPIRE', key, ttl)
+local count = redis.call('ZCARD', key)
+if count > maxSessions then
+  local toRemove = redis.call('ZRANGE', key, 0, count - maxSessions - 1)
+  for _, sid in ipairs(toRemove) do
+    redis.call('ZREM', key, sid)
+  end
+  return toRemove
+end
+return {}
+`;
+
+/**
+ * Register a new session for a user on a given platform.
+ * If the user already has the max allowed sessions for that platform,
+ * the oldest is invalidated.
+ *
+ * @param platform - defaults to 'web' for backwards compatibility
  */
 export async function registerSession(
   userId: string,
-  sessionId: string
+  sessionId: string,
+  platform: SessionPlatform = "web"
 ): Promise<void> {
   const now = Date.now();
+  const maxSessions = getMaxSessions(platform);
   const redis = getRedisClient();
 
   if (redis) {
     try {
-      const key = `${REDIS_PREFIX}${userId}`;
+      const key = redisKey(userId, platform);
 
-      // Add the new session with current timestamp as score
-      await redis.zadd(key, now, sessionId);
-      await redis.expire(key, SESSION_TTL);
+      // Atomic Lua: ZADD + EXPIRE + ZCARD + evict oldest if over limit
+      // Uses redis.eval() — the standard Redis Lua scripting API for
+      // server-side atomic execution (not JavaScript eval).
+      const evicted = (await redis.eval(
+        REGISTER_SESSION_LUA,
+        1,
+        key,
+        sessionId,
+        String(now),
+        String(maxSessions),
+        String(SESSION_TTL)
+      )) as string[];
 
-      // Check if we exceed the limit
-      const count = await redis.zcard(key);
-      if (count > MAX_CONCURRENT_SESSIONS) {
-        // Get the oldest sessions that exceed the limit
-        const excess = count - MAX_CONCURRENT_SESSIONS;
-        const oldSessions = await redis.zrange(key, 0, excess - 1);
-
-        // Remove them from the sorted set
-        if (oldSessions.length > 0) {
-          await redis.zrem(key, ...oldSessions);
-
-          // Blacklist each evicted session
-          for (const oldId of oldSessions) {
-            JwtBlacklist.add(`session:${oldId}`);
-          }
-
-          logger.info(
-            { userId, evictedCount: oldSessions.length, maxAllowed: MAX_CONCURRENT_SESSIONS },
-            "[session-limiter] Oldest session(s) invalidated — concurrent limit exceeded"
-          );
+      if (evicted && evicted.length > 0) {
+        for (const oldId of evicted) {
+          JwtBlacklist.add(`session:${oldId}`);
         }
+
+        logger.info(
+          { userId, platform, evictedCount: evicted.length, maxAllowed: maxSessions },
+          "[session-limiter] Oldest session(s) invalidated — concurrent limit exceeded"
+        );
       }
       return;
     } catch (err) {
@@ -76,20 +138,21 @@ export async function registerSession(
   }
 
   // In-memory fallback
-  let sessions = memStore.get(userId);
+  const mk = memKey(userId, platform);
+  let sessions = memStore.get(mk);
   if (!sessions) {
     sessions = [];
-    memStore.set(userId, sessions);
+    memStore.set(mk, sessions);
   }
 
   sessions.push({ sessionId, createdAt: now });
 
   // Evict oldest if over limit
-  if (sessions.length > MAX_CONCURRENT_SESSIONS) {
+  if (sessions.length > maxSessions) {
     // Sort ascending by createdAt
     sessions.sort((a, b) => a.createdAt - b.createdAt);
 
-    const excess = sessions.length - MAX_CONCURRENT_SESSIONS;
+    const excess = sessions.length - maxSessions;
     const evicted = sessions.splice(0, excess);
 
     for (const old of evicted) {
@@ -97,7 +160,7 @@ export async function registerSession(
     }
 
     logger.info(
-      { userId, evictedCount: evicted.length, maxAllowed: MAX_CONCURRENT_SESSIONS },
+      { userId, platform, evictedCount: evicted.length, maxAllowed: maxSessions },
       "[session-limiter] Oldest session(s) invalidated — concurrent limit exceeded"
     );
   }
@@ -114,17 +177,20 @@ async function pruneStaleMembers(redis: NonNullable<ReturnType<typeof getRedisCl
 }
 
 /**
- * Check if a session is still active for its user.
+ * Check if a session is still active for its user on a given platform.
+ *
+ * @param platform - defaults to 'web' for backwards compatibility
  */
 export async function isSessionActive(
   userId: string,
-  sessionId: string
+  sessionId: string,
+  platform: SessionPlatform = "web"
 ): Promise<boolean> {
   const redis = getRedisClient();
 
   if (redis) {
     try {
-      const key = `${REDIS_PREFIX}${userId}`;
+      const key = redisKey(userId, platform);
 
       // Prune stale members before checking
       await pruneStaleMembers(redis, key);
@@ -141,31 +207,36 @@ export async function isSessionActive(
   }
 
   // In-memory fallback: also prune stale entries
-  const sessions = memStore.get(userId);
+  const mk = memKey(userId, platform);
+  const sessions = memStore.get(mk);
   if (!sessions) return false;
   const cutoff = Date.now() - SESSION_TTL * 1000;
   const active = sessions.filter((s) => s.createdAt > cutoff);
   if (active.length !== sessions.length) {
-    memStore.set(userId, active);
+    memStore.set(mk, active);
   }
   return active.some((s) => s.sessionId === sessionId);
 }
 
 /**
  * Clear a specific session for a user (on logout).
+ *
+ * @param platform - defaults to 'web' for backwards compatibility
  */
 export async function clearSession(
   userId: string,
-  sessionId?: string
+  sessionId?: string,
+  platform: SessionPlatform = "web"
 ): Promise<void> {
   const redis = getRedisClient();
 
   if (redis) {
     try {
+      const key = redisKey(userId, platform);
       if (sessionId) {
-        await redis.zrem(`${REDIS_PREFIX}${userId}`, sessionId);
+        await redis.zrem(key, sessionId);
       } else {
-        await redis.del(`${REDIS_PREFIX}${userId}`);
+        await redis.del(key);
       }
       return;
     } catch {
@@ -173,28 +244,34 @@ export async function clearSession(
     }
   }
 
+  const mk = memKey(userId, platform);
   if (sessionId) {
-    const sessions = memStore.get(userId);
+    const sessions = memStore.get(mk);
     if (sessions) {
       const idx = sessions.findIndex((s) => s.sessionId === sessionId);
       if (idx >= 0) sessions.splice(idx, 1);
-      if (sessions.length === 0) memStore.delete(userId);
+      if (sessions.length === 0) memStore.delete(mk);
     }
   } else {
-    memStore.delete(userId);
+    memStore.delete(mk);
   }
 }
 
 /**
- * Get the count of active sessions for a user.
+ * Get the count of active sessions for a user on a given platform.
  * Prunes stale entries before counting.
+ *
+ * @param platform - defaults to 'web' for backwards compatibility
  */
-export async function getActiveSessionCount(userId: string): Promise<number> {
+export async function getActiveSessionCount(
+  userId: string,
+  platform: SessionPlatform = "web"
+): Promise<number> {
   const redis = getRedisClient();
 
   if (redis) {
     try {
-      const key = `${REDIS_PREFIX}${userId}`;
+      const key = redisKey(userId, platform);
       await pruneStaleMembers(redis, key);
       return await redis.zcard(key);
     } catch {
@@ -203,19 +280,26 @@ export async function getActiveSessionCount(userId: string): Promise<number> {
   }
 
   // In-memory fallback: prune stale entries
-  const sessions = memStore.get(userId);
+  const mk = memKey(userId, platform);
+  const sessions = memStore.get(mk);
   if (!sessions) return 0;
   const cutoff = Date.now() - SESSION_TTL * 1000;
   const active = sessions.filter((s) => s.createdAt > cutoff);
   if (active.length !== sessions.length) {
-    memStore.set(userId, active);
+    memStore.set(mk, active);
   }
   return active.length;
 }
 
-/** Exported for testing — allows overriding the max concurrent sessions */
+/** Exported for testing — allows inspecting the max concurrent sessions config */
 export const _config = {
   get maxConcurrentSessions() {
-    return MAX_CONCURRENT_SESSIONS;
+    return WEB_MAX_SESSIONS;
+  },
+  get webMaxSessions() {
+    return WEB_MAX_SESSIONS;
+  },
+  get mobileMaxSessions() {
+    return MOBILE_MAX_SESSIONS;
   },
 };

@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
   // 7. Generate session ID and register (for concurrent session limiting)
   const sessionId = crypto.randomUUID();
-  await registerSession(user.id, sessionId);
+  await registerSession(user.id, sessionId, "mobile");
 
   // 8. Produce JWE access token using Auth.js encode()
   //    This produces the exact same JWE format that checkEdgeJwt() expects,

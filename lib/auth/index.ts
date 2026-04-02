@@ -10,6 +10,7 @@ export {
   isSessionActive,
   clearSession,
   getActiveSessionCount,
+  type SessionPlatform,
 } from "@/lib/session-limiter";
 export { requireAuth, requireMinRole, requireRole } from "@/lib/rbac";
 export { hasMinimumRole, type RoleName } from "@/lib/auth/permissions";

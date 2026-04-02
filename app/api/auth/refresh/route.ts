@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     // Old session entry expires naturally via SESSION_TTL (8h) in session-limiter.
     // The new session registration will evict the oldest if limit exceeded.
     const newSessionId = crypto.randomUUID();
-    await registerSession(user.id, newSessionId);
+    await registerSession(user.id, newSessionId, "mobile");
 
     const accessToken = await encode({
       token: {
