@@ -639,7 +639,7 @@ function AuditSummaryReport({ from, to }: { from: string; to: string }) {
           <span className="text-xs text-muted-foreground">共 {total} 筆</span>
         </div>
         <div className="flex items-center gap-2">
-          <input type="text" value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(0); }} placeholder="篩選操作類型..." className="text-xs px-2 py-1 border border-border rounded-md w-40" />
+          <input type="text" value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(0); }} placeholder="篩選操作類型..." className="text-xs px-2 py-1 border border-border rounded-md w-40 bg-background text-foreground placeholder:text-muted-foreground" />
           <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
         </div>
       </div>
@@ -721,7 +721,7 @@ function LoginActivityReport({ from, to }: { from: string; to: string }) {
           <span className="text-xs text-muted-foreground">共 {total} 筆</span>
         </div>
         <div className="flex items-center gap-2">
-          <select value={resultFilter} onChange={e => { setResultFilter(e.target.value); setPage(0); }} className="text-xs px-2 py-1 border border-border rounded-md">
+          <select value={resultFilter} onChange={e => { setResultFilter(e.target.value); setPage(0); }} className="text-xs px-2 py-1 border border-border rounded-md bg-background text-foreground">
             <option value="">全部</option><option value="success">成功</option><option value="failure">失敗</option>
           </select>
           <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
