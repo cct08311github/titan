@@ -1,3 +1,0 @@
-[   40321ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://mac-mini.tailde842d.ts.net:3100/api/documents:0
-[   71532ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://mac-mini.tailde842d.ts.net:3100/api/time-entries:0
-[  120186ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://mac-mini.tailde842d.ts.net:3100/api/users/admin-001/notification-preferences:0
