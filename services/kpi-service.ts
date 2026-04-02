@@ -1,5 +1,5 @@
-import { PrismaClient, KPIStatus } from "@prisma/client";
-import { NotFoundError, ValidationError } from "./errors";
+import { PrismaClient, Prisma, KPIStatus } from "@prisma/client";
+import { NotFoundError, ValidationError, ConflictError } from "./errors";
 import { calculateAchievement as calcAchievement } from "../lib/kpi-calculator";
 
 export interface ListKPIsFilter {
@@ -88,18 +88,28 @@ export class KPIService {
       throw new ValidationError("目標值為必填");
     }
 
-    return this.prisma.kPI.create({
-      data: {
-        year: input.year,
-        code: input.code,
-        title: input.title,
-        description: input.description ?? null,
-        target: input.target,
-        weight: input.weight ?? 1,
-        autoCalc: input.autoCalc ?? false,
-        createdBy: input.createdBy,
-      },
-    });
+    try {
+      return await this.prisma.kPI.create({
+        data: {
+          year: input.year,
+          code: input.code,
+          title: input.title,
+          description: input.description ?? null,
+          target: input.target,
+          weight: input.weight ?? 1,
+          autoCalc: input.autoCalc ?? false,
+          createdBy: input.createdBy,
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        throw new ConflictError("KPI code 已存在");
+      }
+      throw err;
+    }
   }
 
   async updateKPI(id: string, input: UpdateKPIInput) {

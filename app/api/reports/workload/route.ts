@@ -11,8 +11,8 @@ export const GET = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
 
   const { searchParams } = new URL(req.url);
-  const startParam = searchParams.get("startDate");
-  const endParam = searchParams.get("endDate");
+  const startParam = searchParams.get("from");
+  const endParam = searchParams.get("to");
   const now = new Date();
 
   const startDate = startParam

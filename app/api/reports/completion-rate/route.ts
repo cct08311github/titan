@@ -1,5 +1,5 @@
 /**
- * GET /api/reports/completion-rate?granularity=week|month&dateFrom=&dateTo=&userId=
+ * GET /api/reports/completion-rate?granularity=week|month&from=&to=&userId=
  *
  * R-1: Task completion rate report — returns completion rate data points
  * for rendering a line chart (weekly or monthly aggregation).
@@ -26,8 +26,8 @@ export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
 
   const granularity = (searchParams.get("granularity") ?? "month") as "week" | "month";
-  const dateFrom = searchParams.get("dateFrom");
-  const dateTo = searchParams.get("dateTo");
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
   const filterUserId = searchParams.get("userId");
 
   const isManager = session.user.role === "MANAGER";
@@ -35,8 +35,8 @@ export const GET = withAuth(async (req: NextRequest) => {
   // Default range: last 6 months
   const now = new Date();
   const defaultFrom = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-  const startDate = dateFrom ? new Date(dateFrom) : defaultFrom;
-  const endDate = dateTo ? new Date(dateTo + "T23:59:59.999Z") : now;
+  const startDate = fromParam ? new Date(fromParam) : defaultFrom;
+  const endDate = toParam ? new Date(toParam + "T23:59:59.999Z") : now;
 
   // Determine user filter
   const userFilter: { primaryAssigneeId?: string } = {};
@@ -54,5 +54,5 @@ export const GET = withAuth(async (req: NextRequest) => {
     userFilter,
   );
 
-  return success({ granularity, dateFrom: startDate.toISOString(), dateTo: endDate.toISOString(), data });
+  return success({ granularity, from: startDate.toISOString(), to: endDate.toISOString(), data });
 });
