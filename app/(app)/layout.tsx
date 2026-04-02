@@ -5,6 +5,7 @@ import { CommandPalette } from "@/app/components/command-palette";
 import { FeedbackButton } from "@/app/components/feedback-button";
 import { KeyboardShortcutsDialog } from "@/app/components/keyboard-shortcuts-dialog";
 import { NextAuthSessionProvider } from "@/app/components/session-provider";
+import { SessionTimeoutWarning } from "@/app/components/session-timeout-warning";
 import { PasswordChangeGuard } from "@/app/components/password-change-guard";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/app/components/ui/tooltip";
@@ -30,6 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <KeyboardShortcutsDialog />
         <FeedbackButton />
         <Toaster richColors position="top-right" />
+        <SessionTimeoutWarning />
       </PasswordChangeGuard>
       </TooltipProvider>
     </NextAuthSessionProvider>

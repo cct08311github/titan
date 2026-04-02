@@ -1,11 +1,15 @@
 "use client";
 
 /**
- * Session Timeout Warning — Issue #798 (AU-4)
+ * Session Timeout Warning — Issue #798 (AU-4), enhanced by Issue #1137
  *
  * Displays a warning modal 5 minutes before session expires.
  * User can click "延長" to extend the session.
  * On timeout, redirects to login page.
+ *
+ * Cross-tab sync via BroadcastChannel (Issue #1137):
+ * - When a tab extends the session, all tabs reset their timers.
+ * - When a tab times out, all tabs redirect to login.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -15,6 +19,13 @@ import { useSession } from "next-auth/react";
 const DEFAULT_TIMEOUT_MINUTES = 30;
 const WARNING_BEFORE_MINUTES = 5;
 
+/** BroadcastChannel name for cross-tab session sync */
+const CHANNEL_NAME = "titan-session-sync";
+
+type SyncMessage =
+  | { type: "session_extended" }
+  | { type: "session_timeout" };
+
 export function SessionTimeoutWarning() {
   const { data: session, update } = useSession();
   const [showWarning, setShowWarning] = useState(false);
@@ -23,17 +34,34 @@ export function SessionTimeoutWarning() {
   const warningRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRef = useRef<NodeJS.Timeout | null>(null);
   const lastActivityRef = useRef(Date.now());
+  const channelRef = useRef<BroadcastChannel | null>(null);
 
   const timeoutMs = DEFAULT_TIMEOUT_MINUTES * 60 * 1000;
   const warningMs = (DEFAULT_TIMEOUT_MINUTES - WARNING_BEFORE_MINUTES) * 60 * 1000;
 
-  const resetTimers = useCallback(() => {
-    lastActivityRef.current = Date.now();
-    setShowWarning(false);
+  /** Broadcast a message to other tabs (no-op if BroadcastChannel unavailable) */
+  const broadcast = useCallback((msg: SyncMessage) => {
+    try {
+      channelRef.current?.postMessage(msg);
+    } catch {
+      // Silently ignore — channel may be closed
+    }
+  }, []);
 
+  const clearAllTimers = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (warningRef.current) clearTimeout(warningRef.current);
     if (countdownRef.current) clearInterval(countdownRef.current);
+  }, []);
+
+  const redirectToLogin = useCallback(() => {
+    window.location.href = "/login?reason=session_timeout";
+  }, []);
+
+  const resetTimers = useCallback(() => {
+    lastActivityRef.current = Date.now();
+    setShowWarning(false);
+    clearAllTimers();
 
     // Set warning timer
     warningRef.current = setTimeout(() => {
@@ -44,8 +72,8 @@ export function SessionTimeoutWarning() {
       countdownRef.current = setInterval(() => {
         setRemainingSeconds((prev) => {
           if (prev <= 1) {
-            // Session expired — redirect to login
-            window.location.href = "/login?reason=session_timeout";
+            broadcast({ type: "session_timeout" });
+            redirectToLogin();
             return 0;
           }
           return prev - 1;
@@ -55,15 +83,43 @@ export function SessionTimeoutWarning() {
 
     // Set absolute timeout
     timeoutRef.current = setTimeout(() => {
-      window.location.href = "/login?reason=session_timeout";
+      broadcast({ type: "session_timeout" });
+      redirectToLogin();
     }, timeoutMs);
-  }, [timeoutMs, warningMs]);
+  }, [timeoutMs, warningMs, clearAllTimers, broadcast, redirectToLogin]);
 
   const handleExtend = useCallback(async () => {
     // Extend session via NextAuth update
     await update();
     resetTimers();
-  }, [update, resetTimers]);
+    broadcast({ type: "session_extended" });
+  }, [update, resetTimers, broadcast]);
+
+  // BroadcastChannel setup for cross-tab sync
+  useEffect(() => {
+    // SSR safety: BroadcastChannel is browser-only
+    if (typeof BroadcastChannel === "undefined") return;
+
+    const channel = new BroadcastChannel(CHANNEL_NAME);
+    channelRef.current = channel;
+
+    channel.onmessage = (event: MessageEvent<SyncMessage>) => {
+      const msg = event.data;
+      if (msg.type === "session_extended") {
+        // Another tab extended the session — reset our timers
+        resetTimers();
+      } else if (msg.type === "session_timeout") {
+        // Another tab detected timeout — redirect immediately
+        clearAllTimers();
+        redirectToLogin();
+      }
+    };
+
+    return () => {
+      channel.close();
+      channelRef.current = null;
+    };
+  }, [resetTimers, clearAllTimers, redirectToLogin]);
 
   // Track user activity
   useEffect(() => {
@@ -84,11 +140,9 @@ export function SessionTimeoutWarning() {
 
     return () => {
       events.forEach((e) => window.removeEventListener(e, onActivity));
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (warningRef.current) clearTimeout(warningRef.current);
-      if (countdownRef.current) clearInterval(countdownRef.current);
+      clearAllTimers();
     };
-  }, [session, resetTimers]);
+  }, [session, resetTimers, clearAllTimers]);
 
   if (!session || !showWarning) return null;
 
@@ -97,11 +151,11 @@ export function SessionTimeoutWarning() {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
-        <h2 className="text-lg font-semibold text-gray-900">
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl max-w-md w-full mx-4">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
           Session 即將逾時
         </h2>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-600 dark:text-gray-300">
           您的 Session 將在{" "}
           <span className="font-mono font-bold text-red-600">
             {minutes}:{seconds.toString().padStart(2, "0")}
@@ -113,7 +167,7 @@ export function SessionTimeoutWarning() {
             onClick={() => {
               window.location.href = "/login";
             }}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
           >
             登出
           </button>

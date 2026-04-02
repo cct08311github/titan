@@ -2,7 +2,7 @@
  * @jest-environment node
  */
 /**
- * Session Timeout tests — Issue #798 (AU-4)
+ * Session Timeout tests — Issue #798 (AU-4), extended for Issue #1137
  */
 import path from "path";
 
@@ -52,5 +52,67 @@ describe("Session timeout configuration", () => {
     expect(content).toContain("mousedown");
     expect(content).toContain("keydown");
     expect(content).toContain("resetTimers");
+  });
+});
+
+describe("Cross-tab session sync (Issue #1137)", () => {
+  it("uses BroadcastChannel for cross-tab communication", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      path.resolve(ROOT, "app/components/session-timeout-warning.tsx"), "utf8"
+    );
+    expect(content).toContain("BroadcastChannel");
+    expect(content).toContain("titan-session-sync");
+  });
+
+  it("SSR safety: checks typeof BroadcastChannel before usage", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      path.resolve(ROOT, "app/components/session-timeout-warning.tsx"), "utf8"
+    );
+    expect(content).toContain('typeof BroadcastChannel');
+  });
+
+  it("broadcasts session_extended when user extends session", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      path.resolve(ROOT, "app/components/session-timeout-warning.tsx"), "utf8"
+    );
+    expect(content).toContain("session_extended");
+    expect(content).toMatch(/broadcast.*session_extended/s);
+  });
+
+  it("broadcasts session_timeout when session expires", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      path.resolve(ROOT, "app/components/session-timeout-warning.tsx"), "utf8"
+    );
+    expect(content).toContain("session_timeout");
+    expect(content).toMatch(/broadcast.*session_timeout/s);
+  });
+
+  it("cleans up BroadcastChannel on unmount", async () => {
+    const fs = await import("fs");
+    const content = fs.readFileSync(
+      path.resolve(ROOT, "app/components/session-timeout-warning.tsx"), "utf8"
+    );
+    expect(content).toContain("channel.close()");
+    expect(content).toContain("channelRef.current = null");
+  });
+
+  it("is rendered inside NextAuthSessionProvider in app layout", async () => {
+    const fs = await import("fs");
+    const layout = fs.readFileSync(
+      path.resolve(ROOT, "app/(app)/layout.tsx"), "utf8"
+    );
+    expect(layout).toContain("SessionTimeoutWarning");
+    // Verify it's imported from the correct module
+    expect(layout).toContain("session-timeout-warning");
+    // Verify it appears after NextAuthSessionProvider open and before its close
+    const providerOpen = layout.indexOf("NextAuthSessionProvider>");
+    const componentPos = layout.indexOf("<SessionTimeoutWarning");
+    const providerClose = layout.indexOf("</NextAuthSessionProvider>");
+    expect(providerOpen).toBeLessThan(componentPos);
+    expect(componentPos).toBeLessThan(providerClose);
   });
 });
