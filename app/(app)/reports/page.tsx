@@ -603,60 +603,159 @@ function OvertimeReport({ from, to }: { from: string; to: string }) {
 
 // ─── Audit Summary Report (Issue #1161) ─────────────────────────────────────
 
+interface AuditEntry { id: string; timestamp: string; user: { name: string; email: string; role: string } | null; action: string; module: string; resourceType: string; resourceId: string | null; detail: string | null; ipAddress: string | null; userAgent: string | null; }
+
 function AuditSummaryReport({ from, to }: { from: string; to: string }) {
-  const [data, setData] = useState<{ action: string; count: number }[]>([]);
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [actionFilter, setActionFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 50;
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/audit-summary?from=${from}&to=${to}`)
-      .then(r => r.json()).then(d => setData(d.data ?? []))
-      .catch(() => setData([]))
+    const params = new URLSearchParams({ from, to, mode: "detail", limit: String(pageSize), offset: String(page * pageSize) });
+    if (actionFilter) params.set("action", actionFilter);
+    fetch(`/api/reports/audit-summary?${params}`)
+      .then(r => r.json()).then(d => { setEntries(d.data?.entries ?? []); setTotal(d.data?.total ?? 0); })
+      .catch(() => { setEntries([]); setTotal(0); })
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, actionFilter, page]);
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無稽核紀錄</div>;
+  const handleExport = () => {
+    exportCSV(
+      ["時間","操作者","Email","角色","操作","模組","資源類型","資源ID","詳情","IP","User-Agent"],
+      entries.map(e => [e.timestamp, e.user?.name ?? "匿名", e.user?.email ?? "-", e.user?.role ?? "-", e.action, e.module, e.resourceType, e.resourceId ?? "-", (e.detail ?? "").replace(/,/g, ";"), e.ipAddress ?? "-", (e.userAgent ?? "").replace(/,/g, ";")]),
+      `audit-detail-${from}-${to}.csv`
+    );
+  };
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold">操作日誌統計</h3>
-        <button onClick={() => exportCSV(["操作類型","次數"], data.map(r => [r.action, String(r.count)]), `audit-summary-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold">稽核日誌明細</h3>
+          <span className="text-xs text-muted-foreground">共 {total} 筆</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="text" value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(0); }} placeholder="篩選操作類型..." className="text-xs px-2 py-1 border border-border rounded-md w-40" />
+          <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+        </div>
       </div>
-      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">操作類型</th><th className="text-right py-2">次數</th></tr></thead><tbody>
-        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2 font-mono text-xs">{r.action}</td><td className="text-right py-2">{r.count}</td></tr>)}
-      </tbody></table>
+      {loading ? <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : !entries.length ? <div className="text-center text-muted-foreground py-12">此期間無稽核紀錄</div> : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead><tr className="border-b bg-muted/30"><th className="text-left py-2 px-2 whitespace-nowrap">時間</th><th className="text-left py-2 px-2">操作者</th><th className="text-left py-2 px-2">角色</th><th className="text-left py-2 px-2">操作</th><th className="text-left py-2 px-2">模組</th><th className="text-left py-2 px-2">資源</th><th className="text-left py-2 px-2">IP</th><th className="text-left py-2 px-2 max-w-[200px]">詳情</th></tr></thead>
+              <tbody>
+                {entries.map(e => (
+                  <tr key={e.id} className="border-b border-border/30 hover:bg-accent/30">
+                    <td className="py-1.5 px-2 font-mono whitespace-nowrap">{new Date(e.timestamp).toLocaleString("zh-TW")}</td>
+                    <td className="py-1.5 px-2">{e.user?.name ?? <span className="text-muted-foreground">匿名</span>}</td>
+                    <td className="py-1.5 px-2"><span className={`text-[10px] px-1.5 py-0.5 rounded ${e.user?.role === "MANAGER" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}>{e.user?.role ?? "-"}</span></td>
+                    <td className="py-1.5 px-2 font-mono">{e.action}</td>
+                    <td className="py-1.5 px-2">{e.module}</td>
+                    <td className="py-1.5 px-2 font-mono text-[10px]">{e.resourceType}{e.resourceId ? `:${e.resourceId.slice(0,8)}` : ""}</td>
+                    <td className="py-1.5 px-2 font-mono text-[10px]">{e.ipAddress ?? "-"}</td>
+                    <td className="py-1.5 px-2 text-[10px] max-w-[200px] truncate" title={e.detail ?? ""}>{e.detail ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-between items-center mt-3 text-xs text-muted-foreground">
+            <span>{page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} / {total}</span>
+            <div className="flex gap-2">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="px-2 py-1 border rounded disabled:opacity-30">上一頁</button>
+              <button disabled={(page + 1) * pageSize >= total} onClick={() => setPage(p => p + 1)} className="px-2 py-1 border rounded disabled:opacity-30">下一頁</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-// ─── Login Activity Report (Issue #1161) ────────────────────────────────────
+// ─── Login Activity Report — Compliance Grade (Issue #1161) ─────────────────
+
+interface LoginEntry { id: string; timestamp: string; user: { name: string; email: string; role: string } | null; action: string; detail: string | null; ipAddress: string | null; userAgent: string | null; }
 
 function LoginActivityReport({ from, to }: { from: string; to: string }) {
-  const [data, setData] = useState<{ userName: string; success: number; failure: number }[]>([]);
+  const [entries, setEntries] = useState<LoginEntry[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [resultFilter, setResultFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const pageSize = 50;
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/login-activity?from=${from}&to=${to}`)
-      .then(r => r.json()).then(d => setData(d.data ?? []))
-      .catch(() => setData([]))
+    const params = new URLSearchParams({ from, to, mode: "detail", limit: String(pageSize), offset: String(page * pageSize) });
+    if (resultFilter) params.set("result", resultFilter);
+    fetch(`/api/reports/login-activity?${params}`)
+      .then(r => r.json()).then(d => { setEntries(d.data?.entries ?? []); setTotal(d.data?.total ?? 0); })
+      .catch(() => { setEntries([]); setTotal(0); })
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, resultFilter, page]);
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
-  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無登入紀錄</div>;
+  const handleExport = () => {
+    exportCSV(
+      ["時間","操作者","Email","角色","事件","詳情","IP","User-Agent"],
+      entries.map(e => [e.timestamp, e.user?.name ?? "匿名", e.user?.email ?? "-", e.user?.role ?? "-", e.action, (e.detail ?? "").replace(/,/g, ";"), e.ipAddress ?? "-", (e.userAgent ?? "").replace(/,/g, ";")]),
+      `login-activity-${from}-${to}.csv`
+    );
+  };
+
+  const actionLabel = (a: string) => {
+    const m: Record<string, string> = { LOGIN_SUCCESS: "登入成功", LOGIN_FAILURE: "登入失敗", MOBILE_LOGIN_SUCCESS: "行動登入成功", MOBILE_LOGIN_FAILURE: "行動登入失敗", LOGOUT: "登出", MOBILE_LOGOUT: "行動登出", SESSION_TIMEOUT: "Session 逾時", ACCOUNT_LOCKED: "帳號鎖定", PASSWORD_CHANGE: "密碼變更" };
+    return m[a] ?? a;
+  };
+  const actionColor = (a: string) => a.includes("SUCCESS") ? "text-green-600" : a.includes("FAILURE") || a === "ACCOUNT_LOCKED" ? "text-red-600" : "text-amber-600";
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="font-semibold">登入活動</h3>
-        <button onClick={() => exportCSV(["使用者","成功","失敗"], data.map(r => [r.userName, String(r.success), String(r.failure)]), `login-activity-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold">登入活動明細</h3>
+          <span className="text-xs text-muted-foreground">共 {total} 筆</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <select value={resultFilter} onChange={e => { setResultFilter(e.target.value); setPage(0); }} className="text-xs px-2 py-1 border border-border rounded-md">
+            <option value="">全部</option><option value="success">成功</option><option value="failure">失敗</option>
+          </select>
+          <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+        </div>
       </div>
-      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">使用者</th><th className="text-right py-2">成功</th><th className="text-right py-2">失敗</th></tr></thead><tbody>
-        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2">{r.userName}</td><td className="text-right py-2 text-green-600">{r.success}</td><td className="text-right py-2 text-red-600">{r.failure}</td></tr>)}
-      </tbody></table>
+      {loading ? <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : !entries.length ? <div className="text-center text-muted-foreground py-12">此期間無登入紀錄</div> : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead><tr className="border-b bg-muted/30"><th className="text-left py-2 px-2 whitespace-nowrap">時間</th><th className="text-left py-2 px-2">操作者</th><th className="text-left py-2 px-2">Email</th><th className="text-left py-2 px-2">事件</th><th className="text-left py-2 px-2">IP</th><th className="text-left py-2 px-2 max-w-[200px]">詳情</th><th className="text-left py-2 px-2 max-w-[150px]">裝置</th></tr></thead>
+              <tbody>
+                {entries.map(e => (
+                  <tr key={e.id} className="border-b border-border/30 hover:bg-accent/30">
+                    <td className="py-1.5 px-2 font-mono whitespace-nowrap">{new Date(e.timestamp).toLocaleString("zh-TW")}</td>
+                    <td className="py-1.5 px-2">{e.user?.name ?? <span className="text-muted-foreground">匿名</span>}</td>
+                    <td className="py-1.5 px-2 text-[10px]">{e.user?.email ?? "-"}</td>
+                    <td className={`py-1.5 px-2 font-medium ${actionColor(e.action)}`}>{actionLabel(e.action)}</td>
+                    <td className="py-1.5 px-2 font-mono text-[10px]">{e.ipAddress ?? "-"}</td>
+                    <td className="py-1.5 px-2 text-[10px] max-w-[200px] truncate" title={e.detail ?? ""}>{e.detail ?? "-"}</td>
+                    <td className="py-1.5 px-2 text-[10px] max-w-[150px] truncate" title={e.userAgent ?? ""}>{e.userAgent ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex justify-between items-center mt-3 text-xs text-muted-foreground">
+            <span>{page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} / {total}</span>
+            <div className="flex gap-2">
+              <button disabled={page === 0} onClick={() => setPage(p => p - 1)} className="px-2 py-1 border rounded disabled:opacity-30">上一頁</button>
+              <button disabled={(page + 1) * pageSize >= total} onClick={() => setPage(p => p + 1)} className="px-2 py-1 border rounded disabled:opacity-30">下一頁</button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
