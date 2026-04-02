@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { NotFoundError, ValidationError } from "./errors";
+import { NotFoundError, ValidationError, ConflictError } from "./errors";
 import { calculatePlanProgress } from "@/lib/progress-calc";
 
 /**
@@ -93,6 +93,13 @@ export class PlanService {
     }
     if (!input.year || input.year < 2000) {
       throw new ValidationError("年份為必填");
+    }
+
+    const existing = await this.prisma.annualPlan.findFirst({
+      where: { year: input.year },
+    });
+    if (existing) {
+      throw new ConflictError("該年度計畫已存在");
     }
 
     return this.prisma.annualPlan.create({

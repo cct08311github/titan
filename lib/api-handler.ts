@@ -150,6 +150,9 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
             });
         }
 
+        if (err instanceof SyntaxError) {
+          return error("ValidationError", "無效的請求格式", 400);
+        }
         if (err instanceof CsrfError) {
           return error("ForbiddenError", err.message, 403);
         }
