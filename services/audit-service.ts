@@ -143,6 +143,40 @@ export class AuditService {
   }
 
   /**
+   * Returns the current audit failure queue status.
+   * Useful for monitoring whether audit writes are failing.
+   */
+  async getQueueStatus(): Promise<{ depth: number; oldestEntryAt: string | null }> {
+    const redis = getRedisClient();
+    if (!redis) {
+      return { depth: 0, oldestEntryAt: null };
+    }
+
+    try {
+      const depth = await redis.llen(AUDIT_QUEUE_KEY);
+      let oldestEntryAt: string | null = null;
+
+      if (depth > 0) {
+        // LINDEX -1 returns the oldest entry (rpop processes from tail)
+        const oldest = await redis.lindex(AUDIT_QUEUE_KEY, -1);
+        if (oldest) {
+          try {
+            const parsed = JSON.parse(oldest) as { failedAt?: string };
+            oldestEntryAt = parsed.failedAt ?? null;
+          } catch {
+            // Malformed entry — report depth but no timestamp
+          }
+        }
+      }
+
+      return { depth, oldestEntryAt };
+    } catch (err) {
+      logger.error({ err }, "[audit] Failed to read queue status");
+      return { depth: 0, oldestEntryAt: null };
+    }
+  }
+
+  /**
    * Query audit logs. Only MANAGER role may call this.
    * Audit logs are read-only — no update or delete methods are exposed.
    */
