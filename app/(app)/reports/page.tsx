@@ -73,12 +73,18 @@ const REPORT_CATEGORIES: ReportCategory[] = [
   {
     label: "工時",
     icon: Clock,
-    reports: [],
+    reports: [
+      { id: "time-summary", label: "工時摘要", icon: Clock, description: "個人/團隊工時統計" },
+      { id: "overtime", label: "加班分析", icon: TrendingUp, description: "正常/加班/假日工時佔比" },
+    ],
   },
   {
     label: "稽核",
     icon: Shield,
-    reports: [],
+    reports: [
+      { id: "audit-summary", label: "操作日誌統計", icon: Shield, description: "按操作類型統計" },
+      { id: "login-activity", label: "登入活動", icon: Users, description: "登入成功/失敗統計" },
+    ],
   },
 ];
 
@@ -532,6 +538,128 @@ function UnplannedTrendReport({ from, to }: { from: string; to: string }) {
   );
 }
 
+// ─── Time Summary Report (Issue #1161) ───────────────────────────────────────
+
+interface TimeSummaryRow { userName: string; category: string; totalHours: number; }
+
+function TimeSummaryReport({ from, to }: { from: string; to: string }) {
+  const [data, setData] = useState<TimeSummaryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/reports/time-summary?from=${from}&to=${to}`)
+      .then(r => r.json()).then(d => setData(d.data ?? []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無工時資料</div>;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold">工時摘要</h3>
+        <button onClick={() => exportCSV(["姓名","分類","時數"], data.map(r => [r.userName, r.category, String(r.totalHours)]), `time-summary-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      </div>
+      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">姓名</th><th className="text-left py-2">分類</th><th className="text-right py-2">時數</th></tr></thead><tbody>
+        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2">{r.userName}</td><td className="py-2">{r.category}</td><td className="text-right py-2">{r.totalHours}h</td></tr>)}
+      </tbody></table>
+    </div>
+  );
+}
+
+// ─── Overtime Report (Issue #1161) ──────────────────────────────────────────
+
+function OvertimeReport({ from, to }: { from: string; to: string }) {
+  const [data, setData] = useState<{ userName: string; normal: number; overtime: number; holiday: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/reports/overtime?from=${from}&to=${to}`)
+      .then(r => r.json()).then(d => setData(d.data ?? []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無加班資料</div>;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold">加班分析</h3>
+        <button onClick={() => exportCSV(["姓名","正常","平日加班","假日加班"], data.map(r => [r.userName, String(r.normal), String(r.overtime), String(r.holiday)]), `overtime-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      </div>
+      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">姓名</th><th className="text-right py-2">正常</th><th className="text-right py-2">平日 OT</th><th className="text-right py-2">假日 OT</th></tr></thead><tbody>
+        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2">{r.userName}</td><td className="text-right py-2">{r.normal}h</td><td className="text-right py-2 text-amber-600">{r.overtime}h</td><td className="text-right py-2 text-red-600">{r.holiday}h</td></tr>)}
+      </tbody></table>
+    </div>
+  );
+}
+
+// ─── Audit Summary Report (Issue #1161) ─────────────────────────────────────
+
+function AuditSummaryReport({ from, to }: { from: string; to: string }) {
+  const [data, setData] = useState<{ action: string; count: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/reports/audit-summary?from=${from}&to=${to}`)
+      .then(r => r.json()).then(d => setData(d.data ?? []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無稽核紀錄</div>;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold">操作日誌統計</h3>
+        <button onClick={() => exportCSV(["操作類型","次數"], data.map(r => [r.action, String(r.count)]), `audit-summary-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      </div>
+      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">操作類型</th><th className="text-right py-2">次數</th></tr></thead><tbody>
+        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2 font-mono text-xs">{r.action}</td><td className="text-right py-2">{r.count}</td></tr>)}
+      </tbody></table>
+    </div>
+  );
+}
+
+// ─── Login Activity Report (Issue #1161) ────────────────────────────────────
+
+function LoginActivityReport({ from, to }: { from: string; to: string }) {
+  const [data, setData] = useState<{ userName: string; success: number; failure: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/reports/login-activity?from=${from}&to=${to}`)
+      .then(r => r.json()).then(d => setData(d.data ?? []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [from, to]);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無登入紀錄</div>;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="font-semibold">登入活動</h3>
+        <button onClick={() => exportCSV(["使用者","成功","失敗"], data.map(r => [r.userName, String(r.success), String(r.failure)]), `login-activity-${from}-${to}.csv`)} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+      </div>
+      <table className="w-full text-sm"><thead><tr className="border-b"><th className="text-left py-2">使用者</th><th className="text-right py-2">成功</th><th className="text-right py-2">失敗</th></tr></thead><tbody>
+        {data.map((r, i) => <tr key={i} className="border-b border-border/50"><td className="py-2">{r.userName}</td><td className="text-right py-2 text-green-600">{r.success}</td><td className="text-right py-2 text-red-600">{r.failure}</td></tr>)}
+      </tbody></table>
+    </div>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function ReportsV2Page() {
@@ -628,6 +756,18 @@ export default function ReportsV2Page() {
           )}
           {activeReport === "unplanned" && (
             <UnplannedTrendReport from={dateRange.from} to={dateRange.to} />
+          )}
+          {activeReport === "time-summary" && (
+            <TimeSummaryReport from={dateRange.from} to={dateRange.to} />
+          )}
+          {activeReport === "overtime" && (
+            <OvertimeReport from={dateRange.from} to={dateRange.to} />
+          )}
+          {activeReport === "audit-summary" && (
+            <AuditSummaryReport from={dateRange.from} to={dateRange.to} />
+          )}
+          {activeReport === "login-activity" && (
+            <LoginActivityReport from={dateRange.from} to={dateRange.to} />
           )}
         </div>
       </div>
