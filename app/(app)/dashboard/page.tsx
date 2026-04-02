@@ -152,8 +152,8 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
     <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
       {/* Left column — Task sections */}
       <div className="space-y-4">
-        {/* Flagged tasks (red top) */}
-        {data.flaggedTasks.length > 0 && (
+        {/* Flagged tasks (red top) — always reserve space to prevent CLS (#1149) */}
+        {data.flaggedTasks.length > 0 ? (
           <div className="bg-card rounded-xl shadow-card p-5 border-l-[3px] border-l-red-500">
             <h2 className="text-sm font-medium mb-3 flex items-center gap-2 text-red-600 dark:text-red-400">
               <Flame className="h-4 w-4 fill-current" />
@@ -165,7 +165,7 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
               ))}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Due today (yellow) */}
         <div className="bg-card rounded-xl shadow-card p-5">
@@ -285,31 +285,33 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
 function ManagerMyDay({ data }: { data: ManagerData }) {
   return (
     <div className="space-y-6">
-      {/* Alerts bar */}
-      {data.alerts.length > 0 && (
-        <div className="space-y-2">
-          {data.alerts.map((alert, i) => (
-            <div
-              key={i}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium",
-                alert.type === "CRITICAL"
-                  ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
-                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
-              )}
-            >
-              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-              {alert.message}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Alerts bar — min-h prevents CLS when alerts load (#1149) */}
+      <div className="min-h-[2.75rem]">
+        {data.alerts.length > 0 && (
+          <div className="space-y-2">
+            {data.alerts.map((alert, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium",
+                  alert.type === "CRITICAL"
+                    ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200"
+                    : "bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
+                )}
+              >
+                <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                {alert.message}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
         {/* Left — Team health + flagged items */}
         <div className="space-y-4">
-          {/* Team health snapshot */}
-          <div className="bg-card rounded-xl shadow-card p-5">
+          {/* Team health snapshot — min-h prevents CLS (#1149) */}
+          <div className="bg-card rounded-xl shadow-card p-5 min-h-[12rem]">
             <h2 className="text-sm font-medium mb-4 flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" />
               團隊健康快照
@@ -552,7 +554,7 @@ export default function DashboardPage() {
   const [greeting, setGreeting] = useState("");
   const userName = session?.user?.name ?? "";
 
-  // Set greeting on client only to avoid hydration mismatch
+  // Set greeting on client only to avoid hydration mismatch (#1150)
   useEffect(() => {
     setGreeting(getGreeting());
   }, []);
@@ -565,7 +567,7 @@ export default function DashboardPage() {
     <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Header */}
       <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">
+        <h1 className="text-xl font-semibold tracking-tight" suppressHydrationWarning>
           {greeting}，{userName}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
@@ -576,27 +578,29 @@ export default function DashboardPage() {
         <DashboardTabs activeTab={activeTab} onTabChange={handleTabChange} />
       )}
 
-      {/* Progressive loading with skeletons */}
-      {status === "loading" || loading ? (
-        <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
-          <div className="space-y-4">
-            <SectionSkeleton rows={2} />
-            <SectionSkeleton rows={3} />
+      {/* Progressive loading with skeletons — min-h prevents CLS during load (#1149) */}
+      <div className="min-h-[32rem]">
+        {status === "loading" || loading ? (
+          <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
+            <div className="space-y-4">
+              <SectionSkeleton rows={2} />
+              <SectionSkeleton rows={3} />
+            </div>
+            <div className="space-y-4">
+              <SectionSkeleton rows={1} />
+              <SectionSkeleton rows={2} />
+            </div>
           </div>
-          <div className="space-y-4">
-            <SectionSkeleton rows={1} />
-            <SectionSkeleton rows={2} />
-          </div>
-        </div>
-      ) : error ? (
-        <PageError message={error} onRetry={() => fetchMyDay()} />
-      ) : !data ? (
-        <PageEmpty title="尚無資料" description="無法載入 My Day 資料" />
-      ) : data.role === "MANAGER" ? (
-        <ManagerMyDay data={data} />
-      ) : (
-        <EngineerMyDay data={data} />
-      )}
+        ) : error ? (
+          <PageError message={error} onRetry={() => fetchMyDay()} />
+        ) : !data ? (
+          <PageEmpty title="尚無資料" description="無法載入 My Day 資料" />
+        ) : data.role === "MANAGER" ? (
+          <ManagerMyDay data={data} />
+        ) : (
+          <EngineerMyDay data={data} />
+        )}
+      </div>
     </div>
   );
 }
