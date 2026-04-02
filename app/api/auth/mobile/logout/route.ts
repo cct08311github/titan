@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { deviceId } = body;
-  if (!deviceId) {
-    return error("ValidationError", "缺少 deviceId", 400);
+  if (!deviceId || typeof deviceId !== "string" || deviceId.length > 128) {
+    return error("ValidationError", "無效的 deviceId", 400);
   }
 
   const userId = payload.id as string;
@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
   // 4. Revoke refresh tokens for user+device
   await revokeRefreshTokensByDevice(userId, deviceId);
 
-  // 5. Clear session from session limiter
+  // 5. Clear session from session limiter (platform=mobile for T1086 compat)
   if (sessionId) {
-    await clearSession(userId, sessionId);
+    await clearSession(userId, sessionId, "mobile");
   }
 
   // 6. Blacklist the JWT so it cannot be used within the 15-min window
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       logger.error({ err, userId }, "[mobile-logout] Audit log write failed");
     });
 
-  logger.info({ userId, deviceId, sessionId }, "[mobile-logout] Successful logout");
+  logger.info({ userId, deviceId }, "[mobile-logout] Successful logout");
 
   return success({ ok: true });
 }
