@@ -8,9 +8,12 @@ const reportService = new ReportService(prisma);
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
-  const year = searchParams.get("year")
-    ? parseInt(searchParams.get("year")!)
-    : new Date().getFullYear();
+  const fromParam = searchParams.get("from");
+  const year = fromParam
+    ? new Date(fromParam).getFullYear()
+    : searchParams.get("year")
+      ? parseInt(searchParams.get("year")!)
+      : new Date().getFullYear();
 
   const data = await reportService.getKPIReport(year);
 

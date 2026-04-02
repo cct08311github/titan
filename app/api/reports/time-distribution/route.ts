@@ -1,5 +1,5 @@
 /**
- * GET /api/reports/time-distribution?dateFrom=&dateTo=
+ * GET /api/reports/time-distribution?from=&to=
  *
  * R-2: Time distribution report — returns hours by user and category
  * for rendering a stacked bar chart.
@@ -20,15 +20,15 @@ export const GET = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
   const { searchParams } = new URL(req.url);
 
-  const dateFrom = searchParams.get("dateFrom");
-  const dateTo = searchParams.get("dateTo");
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
 
   const isManager = session.user.role === "MANAGER";
 
   // Default range: current month
   const now = new Date();
-  const startDate = dateFrom ? new Date(dateFrom) : new Date(now.getFullYear(), now.getMonth(), 1);
-  const endDate = dateTo ? new Date(dateTo + "T23:59:59.999Z") : now;
+  const startDate = fromParam ? new Date(fromParam) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const endDate = toParam ? new Date(toParam + "T23:59:59.999Z") : now;
 
   const where: Record<string, unknown> = {
     date: { gte: startDate, lte: endDate },
@@ -47,8 +47,8 @@ export const GET = withAuth(async (req: NextRequest) => {
   const result = aggregateTimeDistribution(entries);
 
   return success({
-    dateFrom: startDate.toISOString(),
-    dateTo: endDate.toISOString(),
+    from: startDate.toISOString(),
+    to: endDate.toISOString(),
     ...result,
   });
 });
