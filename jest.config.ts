@@ -42,6 +42,7 @@ const config: Config = {
   transformIgnorePatterns: [
     "/node_modules/(?!(next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi|preact-render-to-string|preact)/)",
   ],
+  modulePathIgnorePatterns: ["<rootDir>/.claude/worktrees/"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   // Allow Docker/CI to override the default test timeout
   testTimeout: parseInt(process.env.TEST_TIMEOUT ?? "10000", 10),

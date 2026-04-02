@@ -15,6 +15,7 @@ import { logger } from "@/lib/logger";
 
 const REDIS_KEY_PREFIX = "titan:jwt:blacklist:";
 const MEM_TTL_MS = 60 * 60 * 1000; // 1 hour — tokens expire from memory after this
+const REDIS_TTL_SECONDS = 60 * 60; // 1 hour — matches in-memory TTL; exceeds 15min access token max age
 
 export class JwtBlacklist {
   /** In-memory fallback — used when Redis circuit-breaker is open. */
@@ -27,11 +28,18 @@ export class JwtBlacklist {
 
     const redis = getRedisClient();
     if (redis) {
-      // Fire-and-forget Redis add — do not await
+      const key = `${REDIS_KEY_PREFIX}${token}`;
+      // Fire-and-forget Redis add with TTL — do not await
+      // Pipeline ensures SADD + EXPIRE are sent as a single round-trip
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      redis.sadd(`${REDIS_KEY_PREFIX}${token}`, "1").catch((err) => {
-        logger.warn({ err, token }, "[jwt-blacklist] Redis SADD failed");
-      });
+      redis
+        .pipeline()
+        .sadd(key, "1")
+        .expire(key, REDIS_TTL_SECONDS)
+        .exec()
+        .catch((err) => {
+          logger.warn({ err, token }, "[jwt-blacklist] Redis pipeline failed");
+        });
     }
   }
 
@@ -93,7 +101,7 @@ export class JwtBlacklist {
   /** Clear all entries — used in tests. */
   static clear(): void {
     this._memMap.clear();
-    // Note: Redis keys are not cleared here as they are TTL-managed
+    // Redis keys auto-expire via REDIS_TTL_SECONDS (set in add())
     // For test isolation, tests should use unique session/user IDs
   }
 

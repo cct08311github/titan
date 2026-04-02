@@ -1391,7 +1391,7 @@ describe("Mobile Auth — POST /api/auth/mobile/logout", () => {
     const req = createLogoutRequest({ deviceId: "device-abc" });
     await POST(req as never);
 
-    expect(mockClearSession).toHaveBeenCalledWith("user-mobile-1", "sess-logout-1");
+    expect(mockClearSession).toHaveBeenCalledWith("user-mobile-1", "sess-logout-1", "mobile");
   });
 
   it("blacklists the JWT session", async () => {
