@@ -144,3 +144,20 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
     data: { revokedAt: new Date() },
   });
 }
+
+/**
+ * Revoke all refresh tokens for a user+device pair (on mobile logout).
+ * More targeted than revokeAllRefreshTokens — only revokes tokens
+ * bound to the specific device, leaving other device sessions intact.
+ *
+ * Issue #1087: Mobile logout endpoint
+ */
+export async function revokeRefreshTokensByDevice(
+  userId: string,
+  deviceId: string
+): Promise<void> {
+  await prisma.refreshToken.updateMany({
+    where: { userId, deviceId, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+}

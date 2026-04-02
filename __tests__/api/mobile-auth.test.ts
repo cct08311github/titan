@@ -68,8 +68,11 @@ jest.mock("@/lib/password-expiry", () => ({
 }));
 
 const mockRegisterSession = jest.fn();
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- used in logout tests
+const mockClearSession = jest.fn();
 jest.mock("@/lib/session-limiter", () => ({
   registerSession: (...a: unknown[]) => mockRegisterSession(...a),
+  clearSession: (...a: unknown[]) => mockClearSession(...a),
 }));
 
 jest.mock("@/lib/redis", () => ({
@@ -1313,5 +1316,218 @@ describe("Mobile Auth — POST /api/auth/refresh (source=mobile)", () => {
     const sessionId2 = mockRegisterSession.mock.calls[0][1];
 
     expect(sessionId1).not.toBe(sessionId2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// Mobile Logout — POST /api/auth/mobile/logout (Issue #1087)
+// ═══════════════════════════════════════════════════════════════════════
+
+describe("Mobile Auth — POST /api/auth/mobile/logout", () => {
+  let POST: typeof import("@/app/api/auth/mobile/logout/route").POST;
+  let JwtBlacklist: typeof import("@/lib/jwt-blacklist").JwtBlacklist;
+
+  beforeAll(async () => {
+    const mod = await import("@/app/api/auth/mobile/logout/route");
+    POST = mod.POST;
+    const bl = await import("@/lib/jwt-blacklist");
+    JwtBlacklist = bl.JwtBlacklist;
+  });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.AUTH_SECRET = "test-secret-for-mobile-auth";
+    mockDecode.mockResolvedValue({
+      id: "user-mobile-1",
+      role: "ENGINEER",
+      sessionId: "sess-logout-1",
+      exp: Math.floor(Date.now() / 1000) + 900,
+    });
+    mockRefreshTokenUpdateMany.mockResolvedValue({ count: 1 });
+  });
+
+  afterAll(() => {
+    delete process.env.AUTH_SECRET;
+  });
+
+  function createLogoutRequest(
+    body: Record<string, unknown>,
+    token = "valid-jwe-token",
+  ): Request {
+    return new Request("http://localhost:3000/api/auth/mobile/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  }
+
+  // ── Happy path ──────────────────────────────────────────────────────
+
+  it("returns { ok: true } on successful logout", async () => {
+    const req = createLogoutRequest({ deviceId: "device-abc" });
+    const res = await POST(req as never);
+    const json = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(json.ok).toBe(true);
+  });
+
+  it("revokes refresh tokens for user+device", async () => {
+    const req = createLogoutRequest({ deviceId: "device-abc" });
+    await POST(req as never);
+
+    expect(mockRefreshTokenUpdateMany).toHaveBeenCalledWith({
+      where: { userId: "user-mobile-1", deviceId: "device-abc", revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+  });
+
+  it("clears session from session limiter", async () => {
+    const req = createLogoutRequest({ deviceId: "device-abc" });
+    await POST(req as never);
+
+    expect(mockClearSession).toHaveBeenCalledWith("user-mobile-1", "sess-logout-1");
+  });
+
+  it("blacklists the JWT session", async () => {
+    const req = createLogoutRequest({ deviceId: "device-abc" });
+    await POST(req as never);
+
+    expect(JwtBlacklist.add).toHaveBeenCalledWith("session:sess-logout-1");
+  });
+
+  it("writes MOBILE_LOGOUT audit log", async () => {
+    const req = createLogoutRequest({ deviceId: "device-audit" });
+    await POST(req as never);
+
+    expect(mockAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-mobile-1",
+        action: "MOBILE_LOGOUT",
+        resourceType: "Auth",
+        resourceId: "user-mobile-1",
+        ipAddress: "127.0.0.1",
+      })
+    );
+
+    const detail = JSON.parse(mockAuditLog.mock.calls[0][0].detail);
+    expect(detail.deviceId).toBe("device-audit");
+    expect(detail.sessionId).toBe("sess-logout-1");
+  });
+
+  // ── Error paths ─────────────────────────────────────────────────────
+
+  it("returns 401 when Authorization header is missing", async () => {
+    const req = new Request("http://localhost:3000/api/auth/mobile/logout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deviceId: "d" }),
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 when Bearer token is empty", async () => {
+    const req = new Request("http://localhost:3000/api/auth/mobile/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer ",
+      },
+      body: JSON.stringify({ deviceId: "d" }),
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 when token decode fails", async () => {
+    mockDecode.mockRejectedValue(new Error("JWE decryption failed"));
+
+    const req = createLogoutRequest({ deviceId: "d" });
+    const res = await POST(req as never);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 when token payload has no id", async () => {
+    mockDecode.mockResolvedValue({ role: "ENGINEER", sessionId: "s" });
+
+    const req = createLogoutRequest({ deviceId: "d" });
+    const res = await POST(req as never);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when deviceId is missing", async () => {
+    const req = createLogoutRequest({});
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+
+    const json = await res.json();
+    expect(json.message).toContain("deviceId");
+  });
+
+  it("returns 400 on malformed JSON body", async () => {
+    const req = new Request("http://localhost:3000/api/auth/mobile/logout", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer valid-jwe",
+      },
+      body: "not-json{{{",
+    });
+
+    const res = await POST(req as never);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 500 when AUTH_SECRET is missing", async () => {
+    delete process.env.AUTH_SECRET;
+    delete process.env.NEXTAUTH_SECRET;
+
+    const req = createLogoutRequest({ deviceId: "d" });
+    const res = await POST(req as never);
+    expect(res.status).toBe(500);
+  });
+
+  // ── Edge cases ──────────────────────────────────────────────────────
+
+  it("handles token without sessionId gracefully (no blacklist, no clearSession)", async () => {
+    mockDecode.mockResolvedValue({
+      id: "user-mobile-1",
+      role: "ENGINEER",
+      // no sessionId
+    });
+
+    const req = createLogoutRequest({ deviceId: "d" });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(200);
+    // Should still revoke refresh tokens
+    expect(mockRefreshTokenUpdateMany).toHaveBeenCalled();
+    // Should NOT call clearSession or blacklist (no sessionId)
+    expect(mockClearSession).not.toHaveBeenCalled();
+    expect(JwtBlacklist.add).not.toHaveBeenCalled();
+  });
+
+  it("audit log failure does not block response", async () => {
+    mockAuditLog.mockRejectedValue(new Error("DB write failed"));
+
+    const req = createLogoutRequest({ deviceId: "d" });
+    const res = await POST(req as never);
+
+    expect(res.status).toBe(200);
+  });
+
+  it("does NOT leak token payload in response", async () => {
+    const req = createLogoutRequest({ deviceId: "d" });
+    const res = await POST(req as never);
+    const text = await res.clone().text();
+
+    expect(text).not.toContain("sess-logout-1");
+    expect(text).not.toContain("ENGINEER");
   });
 });
