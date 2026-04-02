@@ -24,6 +24,7 @@ import {
   FolderKanban,
   Clock,
   Shield,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
@@ -32,7 +33,7 @@ import { safeFixed, safePct } from "@/lib/safe-number";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ReportId = "utilization" | "velocity" | "kpi-trend" | "unplanned";
+type ReportId = "utilization" | "velocity" | "kpi-trend" | "unplanned" | "time-summary" | "overtime" | "audit-summary" | "login-activity";
 
 interface ReportNav {
   id: ReportId;

@@ -4,7 +4,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireManager } from "@/lib/auth";
+import { requireManagerOrAbove as requireManager } from "@/lib/auth";
 import { success, error } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {
