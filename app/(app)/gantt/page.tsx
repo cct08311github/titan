@@ -180,10 +180,12 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
       setDragTooltip(null);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
     }
 
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
   }
 
   return (
@@ -365,14 +367,14 @@ function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange
       const dx = ev.clientX - dragging.current.startX;
       const daysDelta = Math.round((dx / totalWidth) * totalDays);
       if (dragging.current.type === "resize-end") {
-        const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
+        const newEnd = Math.min(totalDays, Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta));
         setDragTooltip(`結束日：${dayToDate(newEnd, year)}`);
       } else if (dragging.current.type === "resize-start") {
         const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
         setDragTooltip(`開始日：${dayToDate(newStart, year)}`);
       } else {
         const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
-        const newEnd = dragging.current.origEndDay + daysDelta;
+        const newEnd = Math.min(totalDays, dragging.current.origEndDay + daysDelta);
         setDragTooltip(`${dayToDate(newStart, year)} → ${dayToDate(newEnd, year)}`);
       }
     }
@@ -383,14 +385,14 @@ function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange
       const daysDelta = Math.round((dx / totalWidth) * totalDays);
       if (daysDelta !== 0 && onDateChange) {
         if (dragging.current.type === "resize-end") {
-          const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
+          const newEnd = Math.min(totalDays, Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta));
           onDateChange(proj.id, proj.plannedStart, dayToDate(newEnd, year));
         } else if (dragging.current.type === "resize-start") {
           const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
           onDateChange(proj.id, dayToDate(newStart, year), proj.plannedEnd);
         } else {
           const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
-          const newEnd = dragging.current.origEndDay + daysDelta;
+          const newEnd = Math.min(totalDays, dragging.current.origEndDay + daysDelta);
           onDateChange(proj.id, dayToDate(newStart, year), dayToDate(newEnd, year));
         }
       }
@@ -398,10 +400,12 @@ function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange
       setDragTooltip(null);
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
     }
 
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
   }
 
   return (

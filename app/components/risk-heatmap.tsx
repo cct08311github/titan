@@ -49,17 +49,19 @@ function cellColor(score: number): string {
 export function RiskHeatmap({ year }: Props) {
   const [cells, setCells] = useState<RiskSummaryCell[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [expandedCell, setExpandedCell] = useState<string | null>(null); // "prob|impact"
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const res = await fetch(`/api/projects/risks-summary?year=${year}`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("fetch failed");
       const body = await res.json();
       setCells(body.data ?? []);
     } catch {
-      // silently fail
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -73,6 +75,14 @@ export function RiskHeatmap({ year }: Props) {
   const cellMap = new Map<string, RiskSummaryCell>();
   for (const c of cells) {
     cellMap.set(`${c.probability}|${c.impact}`, c);
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-8 text-sm text-destructive">
+        載入風險熱力圖失敗，請稍後再試
+      </div>
+    );
   }
 
   if (loading) {

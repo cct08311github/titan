@@ -18,8 +18,9 @@ const IMPACT_NUM: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICA
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
-  const year = searchParams.get("year")
-    ? parseInt(searchParams.get("year")!)
+  const rawYear = parseInt(searchParams.get("year") ?? "", 10);
+  const year = Number.isFinite(rawYear) && rawYear >= 2000 && rawYear <= 2100
+    ? rawYear
     : new Date().getFullYear();
 
   // Fetch all open/mitigating risks for the year with project info
