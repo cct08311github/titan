@@ -38,11 +38,13 @@ const config: Config = {
       },
     ],
   },
-  // next-auth v5 and @auth/core are ESM-only — must be transformed by SWC
+  // ESM-only packages — must be transformed by SWC
+  // next-auth v5, @auth/core, and Prisma 7 client runtime deps
   transformIgnorePatterns: [
-    "/node_modules/(?!(next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi|preact-render-to-string|preact)/)",
+    "/node_modules/(?!(next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi|preact-render-to-string|preact|@paralleldrive|@prisma/client-engine-runtime)/)",
   ],
   modulePathIgnorePatterns: ["<rootDir>/.claude/worktrees/"],
+  setupFiles: ["<rootDir>/jest.polyfills.ts"],
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
   // Allow Docker/CI to override the default test timeout
   testTimeout: parseInt(process.env.TEST_TIMEOUT ?? "10000", 10),
