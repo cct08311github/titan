@@ -14,6 +14,7 @@ export interface ProjectListItem {
   benefitScore: number | null;
   mdTotalEstimated: number | null;
   mdActualTotal: number | null;
+  budgetTotal: number | null;
   progressPct: number;
   plannedEnd: string | null;
   owner: { id: string; name: string; avatar?: string | null };
