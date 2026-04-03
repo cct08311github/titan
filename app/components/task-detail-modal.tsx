@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Save, Loader2, History, MessageSquare, FileText } from "lucide-react";
+import { X, Save, Loader2, History, MessageSquare, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
@@ -64,6 +64,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
@@ -174,6 +175,23 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
     }
   }
 
+  async function deleteTask() {
+    if (!window.confirm("確定要刪除此任務嗎？此操作無法復原。")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (res.ok) {
+        toast.success("任務已刪除");
+        onUpdated?.();
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        toast.error(errBody?.message ?? errBody?.error ?? "刪除失敗");
+      }
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -239,6 +257,18 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={deleteTask}
+              disabled={deleting || loading}
+              data-testid="delete-task-btn"
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-medium h-8 px-3 rounded-lg transition-all",
+                "bg-red-500/10 text-red-500 border border-red-500/30 hover:bg-red-500/20 disabled:opacity-40"
+              )}
+            >
+              {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
+              刪除
+            </button>
             <button
               onClick={save}
               disabled={saving || loading}

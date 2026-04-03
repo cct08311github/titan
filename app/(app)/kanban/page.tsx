@@ -14,6 +14,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   Kanban,
@@ -33,6 +34,7 @@ import {
   type TaskFilters as FiltersType,
   emptyFilters,
   hasActiveFilters,
+  parseFiltersFromUrl,
 } from "@/app/components/task-filters";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -111,6 +113,7 @@ function saveColumnNames(names: Record<string, string>) {
 }
 
 export default function KanbanPage() {
+  const searchParams = useSearchParams();
   const [tasks, setTasks] = useState<
     (TaskCardData & { position?: number })[]
   >([]);
@@ -119,7 +122,9 @@ export default function KanbanPage() {
   const [allTasks, setAllTasks] = useState<
     (TaskCardData & { position?: number })[]
   >([]);
-  const [filters, setFilters] = useState<FiltersType>({ ...emptyFilters });
+  const [filters, setFilters] = useState<FiltersType>(() =>
+    parseFiltersFromUrl(new URLSearchParams(searchParams.toString()))
+  );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showDragHint, setShowDragHint] = useState(false);
 

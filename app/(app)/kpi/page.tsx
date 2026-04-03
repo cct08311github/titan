@@ -606,9 +606,21 @@ export default function KPIPage() {
     setShowForm(false);
   }
 
+  // Client-side instant filter so search feels real-time while API fetches
+  const filteredKpis = searchQuery.trim()
+    ? kpis.filter((k) => {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          k.title.toLowerCase().includes(q) ||
+          k.code.toLowerCase().includes(q) ||
+          (k.description ?? "").toLowerCase().includes(q)
+        );
+      })
+    : kpis;
+
   const avgRate =
-    kpis.length > 0
-      ? kpis.reduce((s, k) => s + achievementRate(k), 0) / kpis.length
+    filteredKpis.length > 0
+      ? filteredKpis.reduce((s, k) => s + achievementRate(k), 0) / filteredKpis.length
       : 0;
 
   return (
@@ -704,15 +716,15 @@ export default function KPIPage() {
         <PageLoading message="載入 KPI..." />
       ) : fetchError ? (
         <PageError message={fetchError} onRetry={fetchKPIs} />
-      ) : kpis.length === 0 ? (
+      ) : filteredKpis.length === 0 ? (
         <PageEmpty
           icon={<Target className="h-10 w-10" />}
-          title="尚無 KPI"
-          description={isManager ? "請點擊「新增 KPI」建立" : "請聯絡主管建立 KPI"}
+          title={searchQuery.trim() ? "無符合結果" : "尚無 KPI"}
+          description={searchQuery.trim() ? `找不到包含「${searchQuery}」的 KPI` : isManager ? "請點擊「新增 KPI」建立" : "請聯絡主管建立 KPI"}
         />
       ) : (
         <div className="space-y-3">
-          {kpis.map((kpi) => (
+          {filteredKpis.map((kpi) => (
             <KPICard
               key={kpi.id}
               kpi={kpi}
