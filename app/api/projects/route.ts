@@ -18,6 +18,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     status: searchParams.get("status") as ProjectStatus | undefined,
     requestDept: searchParams.get("requestDept") ?? undefined,
     priority: searchParams.get("priority") ?? undefined,
+    ownerId: searchParams.get("ownerId") ?? undefined, // Issue #1176
     search: searchParams.get("search") ?? undefined,
     page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : undefined,
     limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined,

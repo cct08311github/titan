@@ -11,6 +11,7 @@ import {
   Target,
   BarChart3,
   ArrowRight,
+  FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
@@ -36,6 +37,32 @@ function SectionSkeleton({ rows = 3 }: { rows?: number }) {
       ))}
     </div>
   );
+}
+
+// ── Project status labels & colors (Issue #1176) ────────────────────────
+
+const PROJECT_STATUS_LABELS: Record<string, string> = {
+  PROPOSED: "提案", EVALUATING: "評估中", APPROVED: "已核准", SCHEDULED: "已排程",
+  REQUIREMENTS: "需求分析", DESIGN: "系統設計", DEVELOPMENT: "開發中",
+  TESTING: "測試中", DEPLOYMENT: "部署中", WARRANTY: "保固期",
+  COMPLETED: "已完成", POST_REVIEW: "後評價", CLOSED: "已關閉",
+  ON_HOLD: "暫停", CANCELLED: "已取消",
+};
+
+const PROJECT_STATUS_COLORS: Record<string, string> = {
+  REQUIREMENTS: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
+  DESIGN: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
+  DEVELOPMENT: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
+  TESTING: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
+  DEPLOYMENT: "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
+};
+
+interface MyProjectItem {
+  id: string;
+  name: string;
+  status: string;
+  progressPct: number;
+  nextSteps: string | null;
 }
 
 // ── Shared types ────────────────────────────────────────────────────────
@@ -140,6 +167,70 @@ function TaskRow({ task }: { task: TaskItem }) {
         </span>
       )}
     </Link>
+  );
+}
+
+// ── My Projects Card (Issue #1176) ──────────────────────────────────────
+
+function MyProjectsCard() {
+  const { data: session } = useSession();
+  const [projects, setProjects] = useState<MyProjectItem[]>([]);
+
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const activeStatuses = "REQUIREMENTS,DESIGN,DEVELOPMENT,TESTING,DEPLOYMENT";
+    fetch(`/api/projects?ownerId=${session.user.id}&status=${activeStatuses}&limit=5`)
+      .then((r) => r.json())
+      .then((body) => {
+        const data = body?.data ?? body;
+        const items = (data?.items ?? []) as MyProjectItem[];
+        setProjects(items.slice(0, 5));
+      })
+      .catch(() => {});
+  }, [session?.user?.id]);
+
+  if (projects.length === 0) return null;
+
+  return (
+    <div className="bg-card rounded-xl shadow-card p-5">
+      <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+        <FolderKanban className="h-4 w-4 text-primary" />
+        我的項目
+      </h2>
+      <div className="space-y-3">
+        {projects.map((p) => (
+          <Link key={p.id} href="/projects" className="block space-y-1.5 hover:bg-accent/40 -mx-2 px-2 py-1 rounded transition-colors">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-foreground truncate flex-1">{p.name}</span>
+              <span className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0",
+                PROJECT_STATUS_COLORS[p.status] ?? "bg-muted text-muted-foreground"
+              )}>
+                {PROJECT_STATUS_LABELS[p.status] ?? p.status}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-1.5 flex-1 bg-accent rounded-full overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    p.progressPct >= 80 ? "bg-green-500" : p.progressPct >= 40 ? "bg-blue-500" : "bg-yellow-500"
+                  )}
+                  style={{ width: `${Math.min(p.progressPct, 100)}%` }}
+                />
+              </div>
+              <span className="tabular-nums text-[11px] text-muted-foreground w-8 text-right">{p.progressPct}%</span>
+            </div>
+            {p.nextSteps && (
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                <span className="truncate">{p.nextSteps}</span>
+              </p>
+            )}
+          </Link>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -275,6 +366,9 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
             </div>
           </div>
         )}
+
+        {/* My projects — Issue #1176 */}
+        <MyProjectsCard />
       </div>
     </div>
   );

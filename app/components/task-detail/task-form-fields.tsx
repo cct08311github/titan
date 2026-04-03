@@ -9,6 +9,7 @@ import { extractData } from "@/lib/api-client";
 type User = { id: string; name: string; avatar?: string | null };
 type MonthlyGoal = { id: string; title: string; month: number };
 type TagOption = { name: string; color: string; isDefault: boolean };
+type ProjectOption = { id: string; code: string; name: string };
 
 export type TaskForm = {
   title: string;
@@ -19,6 +20,7 @@ export type TaskForm = {
   primaryAssigneeId: string;
   backupAssigneeId: string;
   monthlyGoalId: string;
+  projectId: string; // Issue #1176
   dueDate: string;
   estimatedHours: string;
   tags: string[];
@@ -33,6 +35,7 @@ export const initialForm: TaskForm = {
   primaryAssigneeId: "",
   backupAssigneeId: "",
   monthlyGoalId: "",
+  projectId: "",
   dueDate: "",
   estimatedHours: "",
   tags: [],
@@ -79,6 +82,7 @@ interface TaskFormFieldsProps {
   onFieldChange: <K extends keyof TaskForm>(field: K, value: TaskForm[K]) => void;
   users: User[];
   goals: MonthlyGoal[];
+  projects?: ProjectOption[]; // Issue #1176
   errors?: FormErrors;
 }
 
@@ -87,7 +91,7 @@ function FieldError({ message }: { message?: string }) {
   return <p className="text-[11px] text-danger mt-1">{message}</p>;
 }
 
-export function TaskFormFields({ form, onFieldChange, users, goals, errors }: TaskFormFieldsProps) {
+export function TaskFormFields({ form, onFieldChange, users, goals, projects, errors }: TaskFormFieldsProps) {
   const [availableTags, setAvailableTags] = useState<TagOption[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [showTagDropdown, setShowTagDropdown] = useState(false);
@@ -361,6 +365,29 @@ export function TaskFormFields({ form, onFieldChange, users, goals, errors }: Ta
           ))}
         </select>
       </div>
+
+      {/* Project link — Issue #1176 */}
+      {projects && projects.length > 0 && (
+        <div>
+          <Label>
+            <span className="flex items-center gap-1">
+              <Link2 className="h-3 w-3" />
+              連結項目
+              {form.projectId && (
+                <Link href="/projects" className="text-primary hover:text-primary/80 transition-colors" title="前往項目管理">
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              )}
+            </span>
+          </Label>
+          <select value={form.projectId} onChange={(e) => onFieldChange("projectId", e.target.value)} className={selectCls}>
+            <option value="">不連結</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>{p.code} — {p.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </>
   );
 }
