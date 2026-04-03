@@ -83,8 +83,8 @@ export async function POST(req: NextRequest) {
     return error("AccountLockedError", `帳號已鎖定，請於 ${Math.ceil((remaining ?? 0) / 60)} 分鐘後再試`, 423);
   }
 
-  // 2. Rate limiting (skip in dev)
-  if (process.env.NODE_ENV !== "development") {
+  // 2. Rate limiting (Issue #1214: only skip in test env, not development)
+  if (process.env.NODE_ENV !== "test") {
     try {
       await checkRateLimit(loginRateLimiter, rateLimitKey);
     } catch {

@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
+import { createApiRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { getRedisClient } from "@/lib/redis";
+import { getClientIp } from "@/lib/get-client-ip";
+
+// Issue #1217: rate limit unauthenticated error reports (10 per minute per IP)
+const redis = getRedisClient();
+const errorReportLimiter = createApiRateLimiter({
+  redisClient: redis ?? undefined,
+  useMemory: !redis,
+  points: 10,
+  duration: 60,
+});
 
 /**
  * POST /api/error-report — Client-side error reporting (Issue #196).
@@ -8,6 +20,14 @@ import { logger } from "@/lib/logger";
  * No auth required — errors may occur before/during auth flows.
  */
 export async function POST(req: NextRequest) {
+  // Rate limit check
+  const ip = getClientIp(req) ?? "unknown";
+  try {
+    await checkRateLimit(errorReportLimiter, `error_report_${ip}`);
+  } catch {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const body = await req.json();
     const { message, digest, source, url } = body as {

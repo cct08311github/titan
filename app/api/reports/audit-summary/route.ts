@@ -12,8 +12,10 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireManagerOrAbove as requireManager } from "@/lib/auth";
 import { success, error } from "@/lib/api-response";
+import { apiHandler } from "@/lib/api-handler";
 
-export async function GET(req: NextRequest) {
+// Issue #1212: wrap with apiHandler for rate limiting and error handling
+export const GET = apiHandler(async (req: NextRequest) => {
   try {
     await requireManager();
   } catch {
@@ -88,4 +90,4 @@ export async function GET(req: NextRequest) {
     limit,
     offset,
   });
-}
+});

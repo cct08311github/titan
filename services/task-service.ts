@@ -218,9 +218,12 @@ export class TaskService {
       }
     }
 
+    // Defense-in-depth: strip HTML tags from user text (Issue #1209)
+    const { sanitizeHtml } = await import("@/lib/security/sanitize");
+
     const updates: Record<string, unknown> = {};
-    if (input.title !== undefined) updates.title = input.title;
-    if (input.description !== undefined) updates.description = input.description;
+    if (input.title !== undefined) updates.title = sanitizeHtml(input.title);
+    if (input.description !== undefined) updates.description = input.description != null ? sanitizeHtml(input.description) : input.description;
     if (input.status !== undefined) updates.status = input.status;
     if (input.priority !== undefined) updates.priority = input.priority;
     if (input.category !== undefined) updates.category = input.category;
@@ -440,17 +443,23 @@ export class TaskService {
 
   async deleteTask(id: string, deletedBy?: string, ipAddress?: string) {
     const task = await this.prisma.task.findUnique({ where: { id }, select: { id: true, title: true } });
-    const result = await this.prisma.task.delete({ where: { id } });
 
-    await this.auditor.log({
-      userId: deletedBy ?? null,
-      action: "DELETE_TASK",
-      resourceType: "Task",
-      resourceId: id,
-      detail: task ? `Deleted task: ${task.title}` : `Deleted task: ${id}`,
-      ipAddress: ipAddress ?? null,
+    // Issue #1213: wrap delete + audit in transaction for atomicity
+    return this.prisma.$transaction(async (tx) => {
+      const result = await tx.task.delete({ where: { id } });
+
+      await tx.auditLog.create({
+        data: {
+          userId: deletedBy ?? null,
+          action: "DELETE_TASK",
+          resourceType: "Task",
+          resourceId: id,
+          detail: task ? `Deleted task: ${task.title}` : `Deleted task: ${id}`,
+          ipAddress: ipAddress ?? null,
+        },
+      });
+
+      return result;
     });
-
-    return result;
   }
 }
