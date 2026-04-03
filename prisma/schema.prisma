@@ -1700,3 +1700,18 @@ model ProjectGate {
   @@index([reviewerId])
   @@map("project_gates")
 }
+
+// ═══════════════════════════════════════
+// 項目類別
+// ═══════════════════════════════════════
+
+model ProjectCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([isActive, sortOrder])
+  @@map("project_categories")
+}
