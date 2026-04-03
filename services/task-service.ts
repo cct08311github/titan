@@ -165,6 +165,11 @@ export class TaskService {
     const title = sanitizeHtml(input.title);
     const description = input.description ? sanitizeHtml(input.description) : input.description;
 
+    // Post-sanitize validation: title may become empty after stripping all tags (Issue #1226)
+    if (!title.trim()) {
+      throw new ValidationError("標題為必填");
+    }
+
     return this.prisma.task.create({
       data: {
         title,
