@@ -776,9 +776,26 @@ export class ProjectService {
     }
 
     if (input.status !== undefined) {
+      // BLOCKED requires a non-empty blockerNote (from request body or already stored)
+      if (input.status === "BLOCKED") {
+        const note = (input.blockerNote as string | null | undefined) ?? (existing.blockerNote as string | null | undefined);
+        if (!note?.trim()) {
+          throw new ValidationError("狀態為 BLOCKED 時必須填寫 blockerNote");
+        }
+      }
+
       // CRITICAL: enforce sequential gate order — cannot PASS a gate unless
       // all previous gates (lower order) are already PASSED or WAIVED
       if (input.status === "PASSED") {
+        // Checklist must be fully completed before passing
+        const effectiveChecklistPassed =
+          input.checklist !== undefined
+            ? data.checklistPassed  // just computed above from the incoming checklist
+            : (existing.checklistPassed as boolean | null);
+        if (!effectiveChecklistPassed) {
+          throw new ValidationError("無法通過此 Gate：Checklist 尚未全部勾選完成");
+        }
+
         const previousGates = await this.prisma.projectGate.findMany({
           where: {
             projectId: existing.projectId,
