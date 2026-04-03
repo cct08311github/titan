@@ -311,6 +311,54 @@ function MilestoneMarker({ milestone, year, totalDays }: MilestoneMarkerProps) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+type GanttView = "goals" | "projects";
+
+type ProjectRow = {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  plannedStart: string | null;
+  plannedEnd: string | null;
+  progressPct: number;
+};
+
+const PROJECT_STATUS_BAR: Record<string, string> = {
+  PROPOSED: "bg-muted",
+  EVALUATING: "bg-blue-400/60",
+  APPROVED: "bg-blue-500/70",
+  SCHEDULED: "bg-indigo-500/70",
+  REQUIREMENTS: "bg-violet-500/70",
+  DESIGN: "bg-purple-500/70",
+  DEVELOPMENT: "bg-amber-500/80",
+  TESTING: "bg-orange-500/80",
+  DEPLOYMENT: "bg-rose-500/80",
+  WARRANTY: "bg-pink-400/70",
+  COMPLETED: "bg-emerald-500/80",
+  POST_REVIEW: "bg-teal-500/70",
+  CLOSED: "bg-gray-500/60",
+  ON_HOLD: "bg-muted",
+  CANCELLED: "bg-muted/50",
+};
+
+const PROJECT_STATUS_LABEL: Record<string, string> = {
+  PROPOSED: "提案",
+  EVALUATING: "評估中",
+  APPROVED: "已核准",
+  SCHEDULED: "已排程",
+  REQUIREMENTS: "需求分析",
+  DESIGN: "系統設計",
+  DEVELOPMENT: "開發中",
+  TESTING: "測試中",
+  DEPLOYMENT: "部署中",
+  WARRANTY: "保固期",
+  COMPLETED: "已完成",
+  POST_REVIEW: "後評價",
+  CLOSED: "已關閉",
+  ON_HOLD: "暫停",
+  CANCELLED: "已取消",
+};
+
 export default function GanttPage() {
   const { data: session } = useSession();
   const isManager = session?.user?.role === "MANAGER";
@@ -321,6 +369,9 @@ export default function GanttPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [view, setView] = useState<GanttView>("goals");
+  const [projectRows, setProjectRows] = useState<ProjectRow[]>([]);
+  const [projectLoading, setProjectLoading] = useState(false);
 
   const handleDateChange = useCallback(async (taskId: string, startDate: string | null, dueDate: string | null) => {
     try {
@@ -365,6 +416,26 @@ export default function GanttPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Fetch projects for project view
+  const fetchProjects = useCallback(async () => {
+    setProjectLoading(true);
+    try {
+      const res = await fetch(`/api/projects?year=${year}&limit=100`);
+      if (!res.ok) throw new Error("項目資料載入失敗");
+      const body = await res.json();
+      const items = body?.data?.items ?? body?.items ?? [];
+      setProjectRows(items);
+    } catch {
+      setProjectRows([]);
+    } finally {
+      setProjectLoading(false);
+    }
+  }, [year]);
+
+  useEffect(() => {
+    if (view === "projects") fetchProjects();
+  }, [view, fetchProjects]);
+
   useEffect(() => {
     fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
   }, []);
@@ -384,7 +455,30 @@ export default function GanttPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          {/* Assignee filter */}
+          {/* View toggle */}
+          <div className="flex items-center bg-background border border-border rounded-md overflow-hidden">
+            <button
+              onClick={() => setView("goals")}
+              className={cn(
+                "px-3 py-1.5 text-sm transition-colors",
+                view === "goals" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              月度目標
+            </button>
+            <button
+              onClick={() => setView("projects")}
+              className={cn(
+                "px-3 py-1.5 text-sm transition-colors",
+                view === "projects" ? "bg-primary text-primary-foreground font-medium" : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              項目
+            </button>
+          </div>
+
+          {/* Assignee filter (only in goals view) */}
+          {view === "goals" && (
           <select
             aria-label="篩選負責人"
             value={assigneeFilter}
@@ -394,6 +488,7 @@ export default function GanttPage() {
             <option value="">全部成員</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
+          )}
 
           {/* Year picker */}
           <div className="flex items-center gap-1 bg-background border border-border rounded-md">
@@ -414,7 +509,109 @@ export default function GanttPage() {
         </div>
       </div>
 
-      {loading ? (
+      {/* ── Project View ─────────────────────────────────────────────── */}
+      {view === "projects" ? (
+        projectLoading ? (
+          <div className="flex-1">
+            <PageLoading message="載入項目..." />
+          </div>
+        ) : projectRows.length === 0 ? (
+          <div className="flex-1">
+            <PageEmpty
+              icon={<BarChart2 className="h-10 w-10" />}
+              title={`${year} 年度無項目`}
+              description="請先在項目管理頁面建立項目"
+            />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto">
+            <div className="min-w-[900px]">
+              {/* Month header */}
+              <div className="flex">
+                <div className="w-56 flex-shrink-0" />
+                <div className="flex-1 relative">
+                  <div className="flex border-b border-border">
+                    {MONTHS.map((m, i) => {
+                      const widthPct = ((new Date(year, i + 1, 0).getDate()) / totalDays) * 100;
+                      return (
+                        <div
+                          key={i}
+                          className="text-center text-xs text-muted-foreground py-2 border-r border-border/50 last:border-0"
+                          style={{ width: `${widthPct}%` }}
+                        >
+                          {m}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Project rows */}
+              {projectRows.map((proj) => {
+                const hasRange = proj.plannedStart || proj.plannedEnd;
+                const startDay = proj.plannedStart
+                  ? Math.max(0, dayOfYear(proj.plannedStart, year))
+                  : (proj.plannedEnd ? Math.max(0, dayOfYear(proj.plannedEnd, year) - 30) : 0);
+                const endDay = proj.plannedEnd
+                  ? Math.min(totalDays, dayOfYear(proj.plannedEnd, year))
+                  : Math.min(totalDays, startDay + 30);
+                const leftPct = (startDay / totalDays) * 100;
+                const widthPct = Math.max(0.5, ((endDay - startDay) / totalDays) * 100);
+
+                return (
+                  <div key={proj.id} className="flex border-b border-border/20 hover:bg-accent/20 transition-colors group">
+                    <div className="w-56 flex-shrink-0 px-3 py-1.5 flex items-center gap-2">
+                      <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", PROJECT_STATUS_BAR[proj.status] ?? "bg-muted")} />
+                      <span className="text-xs text-muted-foreground group-hover:text-foreground truncate transition-colors" title={`${proj.code} ${proj.name}`}>
+                        <span className="font-mono text-[10px] mr-1">{proj.code}</span>
+                        {proj.name}
+                      </span>
+                    </div>
+                    <div className="flex-1 relative py-1.5 px-1">
+                      {MONTHS.map((_, i) => (
+                        <div
+                          key={i}
+                          className="absolute top-0 bottom-0 w-px bg-border/20"
+                          style={{ left: `${(monthStartDay(i, year) / totalDays) * 100}%` }}
+                        />
+                      ))}
+                      {hasRange ? (
+                        <div className="h-5 relative">
+                          <div
+                            title={`${proj.name} — ${PROJECT_STATUS_LABEL[proj.status] ?? proj.status} (${proj.progressPct}%)`}
+                            className={cn(
+                              "absolute h-5 rounded-sm flex items-center px-1.5 overflow-hidden cursor-default",
+                              PROJECT_STATUS_BAR[proj.status] ?? "bg-muted"
+                            )}
+                            style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "4px" }}
+                          >
+                            {widthPct > 5 && (
+                              <span className="text-[10px] text-white/80 font-medium truncate leading-none">
+                                {PROJECT_STATUS_LABEL[proj.status] ?? proj.status}
+                              </span>
+                            )}
+                            {proj.progressPct > 0 && (
+                              <div
+                                className="absolute inset-0 left-0 bg-white/10 rounded-sm"
+                                style={{ width: `${proj.progressPct}%` }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="h-5 flex items-center">
+                          <span className="text-xs text-muted-foreground/50 italic">無日期</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
+      ) : loading ? (
         <div className="flex-1">
           <PageLoading message="載入甘特圖..." />
         </div>
