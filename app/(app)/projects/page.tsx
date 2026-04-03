@@ -36,323 +36,37 @@ import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 
-// ── Types ──────────────────────────────────────────────────────────────────
-
-interface ProjectListItem {
-  id: string;
-  code: string;
-  year: number;
-  name: string;
-  category: string | null;
-  requestDept: string;
-  status: string;
-  priority: string;
-  benefitScore: number | null;
-  mdTotalEstimated: number | null;
-  mdActualTotal: number | null;
-  progressPct: number;
-  plannedEnd: string | null;
-  owner: { id: string; name: string; avatar?: string | null };
-  _count: {
-    risks: number;
-    issues: number;
-    stakeholders: number;
-    gates: number;
-    tasks: number;
-  };
-}
-
-interface ProjectDetail {
-  id: string;
-  code: string;
-  year: number;
-  name: string;
-  description: string | null;
-  category: string | null;
-  subCategory: string | null;
-  tags: string[];
-  requestDept: string;
-  requestContact: string | null;
-  requestPhone: string | null;
-  requestDate: string | null;
-  businessGoal: string | null;
-  coDepts: string[];
-  coContacts: string[];
-  devDept: string | null;
-  ownerId: string;
-  leadDevId: string | null;
-  teamMembers: string[];
-  benefitRevenue: number | null;
-  benefitCompliance: number | null;
-  benefitEfficiency: number | null;
-  benefitRisk: number | null;
-  benefitScore: number | null;
-  benefitNote: string | null;
-  priority: string;
-  urgency: string | null;
-  strategicAlign: number | null;
-  priorityScore: number | null;
-  feasibility: string | null;
-  feasibilityNote: string | null;
-  techComplexity: string | null;
-  riskLevel: string | null;
-  mdProjectMgmt: number | null;
-  mdRequirements: number | null;
-  mdDesign: number | null;
-  mdDevelopment: number | null;
-  mdTesting: number | null;
-  mdDeployment: number | null;
-  mdDocumentation: number | null;
-  mdTraining: number | null;
-  mdMaintenance: number | null;
-  mdOther: number | null;
-  mdTotalEstimated: number | null;
-  mdActualTotal: number | null;
-  budgetInternal: number | null;
-  budgetExternal: number | null;
-  budgetHardware: number | null;
-  budgetLicense: number | null;
-  budgetOther: number | null;
-  budgetTotal: number | null;
-  budgetActual: number | null;
-  costPerManDay: number | null;
-  vendor: string | null;
-  vendorContact: string | null;
-  vendorContract: string | null;
-  vendorAmount: number | null;
-  plannedStart: string | null;
-  plannedEnd: string | null;
-  actualStart: string | null;
-  actualEnd: string | null;
-  goLiveDate: string | null;
-  warrantyEndDate: string | null;
-  status: string;
-  phase: string | null;
-  progressPct: number;
-  progressNote: string | null;
-  blockers: string | null;
-  nextSteps: string | null;
-  currentGate: string | null;
-  gateStatus: string | null;
-  postReviewSchedule: number | null;
-  postReviewQuality: number | null;
-  postReviewBudget: number | null;
-  postReviewSatisfy: number | null;
-  postReviewScore: number | null;
-  postReviewNote: string | null;
-  lessonsLearned: string | null;
-  improvements: string | null;
-  owner: { id: string; name: string; avatar?: string | null };
-  risks: ProjectRisk[];
-  issues: ProjectIssue[];
-  stakeholders: ProjectStakeholder[];
-  gates: ProjectGate[];
-  _count: { tasks: number };
-}
-
-interface ProjectRisk {
-  id: string;
-  code: string;
-  title: string;
-  description: string | null;
-  category: string | null;
-  probability: string;
-  impact: string;
-  riskScore: number;
-  mitigation: string | null;
-  contingency: string | null;
-  status: string;
-  dueDate: string | null;
-  owner: { id: string; name: string };
-}
-
-interface ProjectIssue {
-  id: string;
-  code: string;
-  title: string;
-  description: string | null;
-  category: string | null;
-  severity: string;
-  status: string;
-  resolution: string | null;
-  dueDate: string | null;
-  source: string | null;
-  assignee: { id: string; name: string };
-}
-
-interface ProjectStakeholder {
-  id: string;
-  name: string;
-  department: string | null;
-  role: string | null;
-  influence: string | null;
-  interest: string | null;
-  engagement: string | null;
-}
-
-interface ChecklistItem {
-  item: string;
-  checked: boolean;
-  note: string;
-}
-
-interface ProjectGate {
-  id: string;
-  name: string;
-  phase: string;
-  order: number;
-  checklist: ChecklistItem[];
-  checklistPassed: boolean;
-  status: string;
-  reviewerId: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
-  blockerNote: string | null;
-  waiverReason: string | null;
-  reviewer: { id: string; name: string } | null;
-}
-
-interface DashboardStats {
-  year: number;
-  total: number;
-  byStatus: { status: string; count: number }[];
-  byPriority: { priority: string; count: number }[];
-  byDept: { dept: string; count: number }[];
-  avgProgress: number;
-  openRisks: number;
-  openIssues: number;
-}
-
-interface UserOption {
-  id: string;
-  name: string;
-}
-
-// ── Constants ──────────────────────────────────────────────────────────────
-
-const STATUS_LABELS: Record<string, string> = {
-  PROPOSED: "提案",
-  EVALUATING: "評估中",
-  APPROVED: "已核准",
-  SCHEDULED: "已排程",
-  REQUIREMENTS: "需求分析",
-  DESIGN: "系統設計",
-  DEVELOPMENT: "開發中",
-  TESTING: "測試中",
-  DEPLOYMENT: "部署中",
-  WARRANTY: "保固期",
-  COMPLETED: "已完成",
-  POST_REVIEW: "後評價",
-  CLOSED: "已關閉",
-  ON_HOLD: "暫停",
-  CANCELLED: "已取消",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  PROPOSED:
-    "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
-  EVALUATING:
-    "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
-  APPROVED:
-    "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400",
-  SCHEDULED:
-    "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
-  REQUIREMENTS:
-    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
-  DESIGN:
-    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
-  DEVELOPMENT:
-    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
-  TESTING:
-    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
-  DEPLOYMENT:
-    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
-  WARRANTY:
-    "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400",
-  COMPLETED:
-    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  POST_REVIEW:
-    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  CLOSED: "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
-  ON_HOLD:
-    "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400",
-  CANCELLED:
-    "bg-red-200 text-red-500 dark:bg-red-900/40 dark:text-red-500",
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  P0: "P0 緊急",
-  P1: "P1 高",
-  P2: "P2 中",
-  P3: "P3 低",
-};
-
-const PRIORITY_COLORS: Record<string, string> = {
-  P0: "text-red-500",
-  P1: "text-orange-500",
-  P2: "text-blue-500",
-  P3: "text-gray-400",
-};
-
-const RISK_SCORE_COLOR = (score: number) => {
-  if (score >= 12) return "bg-red-500/10 text-red-500";
-  if (score >= 8) return "bg-orange-500/10 text-orange-500";
-  if (score >= 4) return "bg-yellow-500/10 text-yellow-600";
-  return "bg-emerald-500/10 text-emerald-500";
-};
-
-const SEVERITY_COLORS: Record<string, string> = {
-  LOW: "text-emerald-500",
-  MEDIUM: "text-yellow-500",
-  HIGH: "text-orange-500",
-  CRITICAL: "text-red-500",
-};
-
-const GATE_STATUS_COLORS: Record<string, string> = {
-  PENDING: "border-border bg-muted text-muted-foreground",
-  PASSED: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
-  BLOCKED: "border-red-500/30 bg-red-500/10 text-red-500",
-  WAIVED: "border-amber-500/30 bg-amber-500/10 text-amber-500",
-};
-
-const STATUS_FLOW = [
-  "PROPOSED",
-  "EVALUATING",
-  "APPROVED",
-  "SCHEDULED",
-  "REQUIREMENTS",
-  "DESIGN",
-  "DEVELOPMENT",
-  "TESTING",
-  "DEPLOYMENT",
-  "WARRANTY",
-  "COMPLETED",
-  "POST_REVIEW",
-  "CLOSED",
-];
-
-const MD_STAGES = [
-  { key: "mdProjectMgmt", label: "專案管理" },
-  { key: "mdRequirements", label: "需求分析" },
-  { key: "mdDesign", label: "系統設計/架構" },
-  { key: "mdDevelopment", label: "程式開發" },
-  { key: "mdTesting", label: "測試(SIT+UAT)" },
-  { key: "mdDeployment", label: "部署上線" },
-  { key: "mdDocumentation", label: "文件撰寫" },
-  { key: "mdTraining", label: "教育訓練" },
-  { key: "mdMaintenance", label: "維護保固" },
-  { key: "mdOther", label: "其他" },
-] as const;
-
-const BUDGET_FIELDS = [
-  { key: "budgetInternal", label: "內部人力" },
-  { key: "budgetExternal", label: "外部委外" },
-  { key: "budgetHardware", label: "硬體/設備" },
-  { key: "budgetLicense", label: "軟體授權" },
-  { key: "budgetOther", label: "其他" },
-] as const;
+// ── Types & Constants (extracted to separate files) ──────────────────────
+import type {
+  ProjectListItem,
+  ProjectDetail,
+  ProjectRisk,
+  ProjectIssue,
+  ProjectStakeholder,
+  ChecklistItem,
+  ProjectGate,
+  DashboardStats,
+  UserOption,
+} from "./types";
+import {
+  STATUS_LABELS,
+  STATUS_COLORS,
+  PRIORITY_LABELS,
+  PRIORITY_COLORS,
+  RISK_SCORE_COLOR,
+  SEVERITY_COLORS,
+  GATE_STATUS_COLORS,
+  STATUS_FLOW,
+  MD_STAGES,
+  BUDGET_FIELDS,
+} from "./constants";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+function checkIsManager(session: { user?: { role?: string } } | null): boolean {
+  const role = session?.user?.role;
+  return role === "MANAGER" || role === "ADMIN";
+}
 
 function fmtDate(d: string | null | undefined) {
   if (!d) return "—";
@@ -364,9 +78,10 @@ function fmtNum(n: number | null | undefined) {
   return n.toLocaleString("zh-TW");
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getNumField(obj: any, key: string): number {
-  return (obj?.[key] as number) ?? 0;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic key access on typed objects
+function getNumField(obj: { [k: string]: any } | null | undefined, key: string): number {
+  const v = obj?.[key];
+  return typeof v === "number" ? v : 0;
 }
 
 // ── Dashboard Summary Bar ──────────────────────────────────────────────────
@@ -1890,11 +1605,13 @@ function GateCard({
   const [localChecklist, setLocalChecklist] = useState<ChecklistItem[]>(
     Array.isArray(gate.checklist) ? gate.checklist : []
   );
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     setLocalChecklist(
       Array.isArray(gate.checklist) ? gate.checklist : []
     );
+    setDirty(false);
   }, [gate.checklist]);
 
   function toggleItem(index: number) {
@@ -1902,7 +1619,12 @@ function GateCard({
       i === index ? { ...item, checked: !item.checked } : item
     );
     setLocalChecklist(updated);
-    onUpdate({ checklist: updated });
+    setDirty(true);
+  }
+
+  function saveChecklist() {
+    onUpdate({ checklist: localChecklist });
+    setDirty(false);
   }
 
   return (
@@ -1949,6 +1671,19 @@ function GateCard({
           </label>
         ))}
       </div>
+
+      {/* Save checklist changes */}
+      {dirty && isManager && (
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-[11px] text-amber-500">未儲存的變更</span>
+          <button
+            onClick={saveChecklist}
+            className="px-2.5 py-1 text-xs bg-primary/10 text-primary border border-primary/30 rounded-md hover:bg-primary/20"
+          >
+            儲存
+          </button>
+        </div>
+      )}
 
       {/* Reviewer info */}
       {gate.reviewer && (
@@ -2043,8 +1778,7 @@ function SimpleBadge({ label, value }: { label: string; value: string }) {
 
 export default function ProjectsPage() {
   const { data: session } = useSession();
-  const isManager =
-    session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
+  const isManager = checkIsManager(session);
 
   const currentYear = new Date().getFullYear();
 
