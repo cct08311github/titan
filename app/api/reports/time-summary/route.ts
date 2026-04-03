@@ -6,7 +6,7 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAuth } from "@/lib/auth";
+import { requireManagerOrAbove as requireManager } from "@/lib/auth";
 import { success, error } from "@/lib/api-response";
 
 const HOURS_PER_DAY = 8;
@@ -23,7 +23,7 @@ function countWorkdays(from: Date, to: Date): number {
 }
 
 export async function GET(req: NextRequest) {
-  try { await requireAuth(); } catch { return error("UnauthorizedError", "未授權", 401); }
+  try { await requireManager(); } catch { return error("ForbiddenError", "權限不足", 403); }
 
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
