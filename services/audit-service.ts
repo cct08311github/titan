@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { ForbiddenError } from "./errors";
 import { getRedisClient } from "@/lib/redis";
 import { logger } from "@/lib/logger";
-import { isManagerOrAbove } from "@/lib/middleware/role-guard";
+import { hasMinimumRole } from "@/lib/auth/permissions";
 
 const AUDIT_QUEUE_KEY = "titan:audit:failed:queue";
 const MAX_QUEUE_SIZE = 10000;
@@ -182,7 +182,7 @@ export class AuditService {
    * Audit logs are read-only — no update or delete methods are exposed.
    */
   async queryLogs(input: QueryAuditLogsInput) {
-    if (!isManagerOrAbove(input.callerRole)) {
+    if (!hasMinimumRole(input.callerRole, "MANAGER")) {
       throw new ForbiddenError("權限不足：僅限管理員查詢稽核日誌");
     }
 
