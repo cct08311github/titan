@@ -96,7 +96,7 @@ function BackupStatusSection() {
           備份狀態
         </h2>
         <button
-          onClick={load}
+          onClick={() => load()}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm transition-all"
         >
           <RefreshCw className="h-3 w-3" />
@@ -199,53 +199,46 @@ function AuditLogSection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
   const [actionFilter, setActionFilter] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (requestedPage = 0) => {
     setLoading(true);
     setError(null);
     try {
-      const params = new URLSearchParams({ limit: "500" });
+      const params = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        offset: String(requestedPage * PAGE_SIZE),
+      });
       if (actionFilter) params.set("action", actionFilter);
+      if (dateFrom) params.set("from", dateFrom);
+      if (dateTo) params.set("to", dateTo);
       const res = await fetch(`/api/audit?${params.toString()}`);
       if (!res.ok) throw new Error("稽核日誌載入失敗");
       const body = await res.json();
       setLogs(extractItems<AuditLogEntry>(body));
-      setPage(0);
+      setTotal(body?.data?.total ?? body?.total ?? extractItems<AuditLogEntry>(body).length);
+      setPage(requestedPage);
     } catch (e) {
       setError(e instanceof Error ? e.message : "載入失敗");
     } finally {
       setLoading(false);
     }
-  }, [actionFilter]);
+  }, [actionFilter, dateFrom, dateTo]);
 
   useEffect(() => { load(); }, [load]);
 
-  // Client-side date filtering and pagination
-  const filteredLogs = logs.filter((log) => {
-    if (dateFrom) {
-      const from = new Date(dateFrom);
-      from.setHours(0, 0, 0, 0);
-      if (new Date(log.createdAt) < from) return false;
-    }
-    if (dateTo) {
-      const to = new Date(dateTo);
-      to.setHours(23, 59, 59, 999);
-      if (new Date(log.createdAt) > to) return false;
-    }
-    return true;
-  });
-
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
-  const pagedLogs = filteredLogs.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  // Server-side pagination — logs already represent the current page
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pagedLogs = logs;
 
   // Derive unique actions for filter dropdown
   const uniqueActions = Array.from(new Set(logs.map((l) => l.action))).sort();
 
   if (loading) return <PageLoading message="載入稽核日誌..." className="py-8" />;
-  if (error) return <PageError message={error} onRetry={load} className="py-8" />;
+  if (error) return <PageError message={error} onRetry={() => load(0)} className="py-8" />;
 
   return (
     <div className="space-y-4">
@@ -255,7 +248,7 @@ function AuditLogSection() {
           稽核日誌
         </h2>
         <button
-          onClick={load}
+          onClick={() => load()}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm transition-all"
         >
           <RefreshCw className="h-3 w-3" />
@@ -289,7 +282,7 @@ function AuditLogSection() {
           <input
             type="date"
             value={dateFrom}
-            onChange={(e) => { setDateFrom(e.target.value); setPage(0); }}
+            onChange={(e) => { setDateFrom(e.target.value); }}
             className="px-3 py-1.5 text-sm bg-card border border-border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
@@ -300,13 +293,13 @@ function AuditLogSection() {
           <input
             type="date"
             value={dateTo}
-            onChange={(e) => { setDateTo(e.target.value); setPage(0); }}
+            onChange={(e) => { setDateTo(e.target.value); }}
             className="px-3 py-1.5 text-sm bg-card border border-border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
         {(actionFilter || dateFrom || dateTo) && (
           <button
-            onClick={() => { setActionFilter(""); setDateFrom(""); setDateTo(""); setPage(0); }}
+            onClick={() => { setActionFilter(""); setDateFrom(""); setDateTo(""); }}
             className="px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             清除篩選
@@ -315,7 +308,7 @@ function AuditLogSection() {
       </div>
 
       {/* Table */}
-      {filteredLogs.length === 0 ? (
+      {logs.length === 0 ? (
         <PageEmpty
           icon={<Shield className="h-6 w-6" />}
           title="尚無稽核紀錄"
@@ -372,19 +365,19 @@ function AuditLogSection() {
           {/* Pagination */}
           <div className="flex items-center justify-between px-4 py-3 border-t border-border">
             <p className="text-xs text-muted-foreground">
-              共 {filteredLogs.length} 筆，第 {page + 1} / {totalPages} 頁
+              共 {total} 筆，第 {page + 1} / {totalPages} 頁
             </p>
             <div className="flex items-center gap-2">
               <button
-                disabled={page === 0}
-                onClick={() => setPage((p) => p - 1)}
+                disabled={page === 0 || loading}
+                onClick={() => load(page - 1)}
                 className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
-                disabled={page >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= totalPages - 1 || loading}
+                onClick={() => load(page + 1)}
                 className="p-1.5 rounded-lg hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 <ChevronRight className="h-4 w-4" />
@@ -573,7 +566,7 @@ function UserManagementSection() {
         </h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={load}
+            onClick={() => load()}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm transition-all"
           >
             <RefreshCw className="h-3 w-3" />
@@ -946,7 +939,7 @@ function CategoryManagementSection() {
             顯示停用
           </label>
           <button
-            onClick={load}
+            onClick={() => load()}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm transition-all"
           >
             <RefreshCw className="h-3 w-3" />

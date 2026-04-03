@@ -1,14 +1,16 @@
-import { ZodSchema, ZodError } from "zod";
+import { z } from "zod";
 import { ValidationError } from "@/services/errors";
 
 /**
  * Parses and validates request body against a Zod schema.
  * Throws ValidationError (caught by route handlers) on failure.
+ *
+ * Note: Zod 4 removed the named export `ZodSchema` — use `z.ZodType` instead.
  */
-export function validateBody<T>(schema: ZodSchema<T>, body: unknown): T {
+export function validateBody<T>(schema: z.ZodType<T>, body: unknown): T {
   const result = schema.safeParse(body);
   if (!result.success) {
-    const flat = (result.error as ZodError).flatten();
+    const flat = result.error.flatten();
     throw new ValidationError(
       JSON.stringify({
         error: "輸入驗證失敗",

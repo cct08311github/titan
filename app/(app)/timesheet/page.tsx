@@ -38,11 +38,14 @@ export default function TimesheetPage() {
 
   const ts = useTimesheet(userFilter || undefined);
 
-  // Issue #933: pre-fetch subtasks for all task rows
+  // Issue #933 + #1202: batch pre-fetch subtasks for all task rows (avoid N+1)
   useEffect(() => {
-    for (const row of ts.taskRows) {
-      if (row.taskId) ts.fetchSubTasks(row.taskId);
-    }
+    const taskIds = ts.taskRows
+      .map((row) => row.taskId)
+      .filter((id): id is string => !!id && !ts.subTasksMap.has(id));
+    if (taskIds.length === 0) return;
+    // Batch: fetch all uncached subtasks in parallel (single Promise.all)
+    Promise.all(taskIds.map((id) => ts.fetchSubTasks(id))).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ts.taskRows]);
 

@@ -739,6 +739,27 @@ export class ProjectService {
     }
 
     if (input.status !== undefined) {
+      // CRITICAL: enforce sequential gate order — cannot PASS a gate unless
+      // all previous gates (lower order) are already PASSED or WAIVED
+      if (input.status === "PASSED") {
+        const previousGates = await this.prisma.projectGate.findMany({
+          where: {
+            projectId: existing.projectId,
+            order: { lt: existing.order },
+          },
+          orderBy: { order: "asc" },
+        });
+        const unpassedGates = previousGates.filter(
+          (g) => g.status !== "PASSED" && g.status !== "WAIVED"
+        );
+        if (unpassedGates.length > 0) {
+          const gateNames = unpassedGates.map((g) => g.name).join(", ");
+          throw new ValidationError(
+            `無法通過此 Gate：前置 Gate 尚未通過 (${gateNames})`
+          );
+        }
+      }
+
       data.status = input.status;
       if (input.status === "PASSED" || input.status === "BLOCKED" || input.status === "WAIVED") {
         data.reviewerId = reviewerId;
