@@ -111,6 +111,11 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
   const barRef = useRef<HTMLDivElement>(null);
   const [dragTooltip, setDragTooltip] = useState<string | null>(null);
   const dragging = useRef<{ type: "move" | "resize-start" | "resize-end"; startX: number; origStartDay: number; origEndDay: number } | null>(null);
+  // Track active listeners for cleanup on unmount (#1200)
+  const cleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    return () => { cleanupRef.current?.(); };
+  }, []);
 
   if (!task.startDate && !task.dueDate) {
     return (
@@ -178,6 +183,7 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
       }
       dragging.current = null;
       setDragTooltip(null);
+      cleanupRef.current = null;
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
       document.removeEventListener("pointercancel", onUp);
@@ -186,6 +192,12 @@ function GanttBar({ task, year, totalDays, onClick, canDrag, onDateChange }: Gan
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
     document.addEventListener("pointercancel", onUp);
+    // Store cleanup so unmount can remove listeners (#1200)
+    cleanupRef.current = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
   }
 
   return (
@@ -330,6 +342,11 @@ function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange
     origStartDay: number;
     origEndDay: number;
   } | null>(null);
+  // Track active listeners for cleanup on unmount (#1200)
+  const cleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    return () => { cleanupRef.current?.(); };
+  }, []);
 
   const hasRange = proj.plannedStart || proj.plannedEnd;
 
@@ -398,6 +415,7 @@ function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange
       }
       dragging.current = null;
       setDragTooltip(null);
+      cleanupRef.current = null;
       document.removeEventListener("pointermove", onMove);
       document.removeEventListener("pointerup", onUp);
       document.removeEventListener("pointercancel", onUp);
@@ -406,6 +424,12 @@ function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange
     document.addEventListener("pointermove", onMove);
     document.addEventListener("pointerup", onUp);
     document.addEventListener("pointercancel", onUp);
+    // Store cleanup so unmount can remove listeners (#1200)
+    cleanupRef.current = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+    };
   }
 
   return (

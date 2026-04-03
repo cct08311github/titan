@@ -147,6 +147,10 @@ export default function KanbanPage() {
   const [projectFilter, setProjectFilter] = useState("");
   const [projectOptions, setProjectOptions] = useState<{ id: string; code: string; name: string }[]>([]);
 
+  // Ref to always access latest tasks (avoids stale closures in keyboard handlers)
+  const tasksRef = useRef(tasks);
+  useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+
   // Snapshot for rollback
   const tasksSnapshot = useRef<(TaskCardData & { position?: number })[]>([]);
 
@@ -415,7 +419,8 @@ export default function KanbanPage() {
 
   const handleKeyboardMove = useCallback(
     (taskId: string, direction: "left" | "right") => {
-      const task = tasks.find((t) => t.id === taskId);
+      const currentTasks = tasksRef.current;
+      const task = currentTasks.find((t) => t.id === taskId);
       if (!task) return;
 
       const currentIdx = COLUMN_ORDER.indexOf(task.status as TaskStatus);
@@ -425,15 +430,16 @@ export default function KanbanPage() {
       const newStatus = COLUMN_ORDER[newIdx];
       moveTask(taskId, newStatus);
     },
-    [tasks] // eslint-disable-line react-hooks/exhaustive-deps
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleKeyboardReorder = useCallback(
     (taskId: string, direction: "up" | "down") => {
-      const task = tasks.find((t) => t.id === taskId);
+      const currentTasks = tasksRef.current;
+      const task = currentTasks.find((t) => t.id === taskId);
       if (!task) return;
 
-      const columnTasks = tasks
+      const columnTasks = currentTasks
         .filter((t) => t.status === task.status)
         .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
 
@@ -443,7 +449,7 @@ export default function KanbanPage() {
 
       reorderInColumn(taskId, task.status as TaskStatus, newIdx);
     },
-    [tasks] // eslint-disable-line react-hooks/exhaustive-deps
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   // ── Multi-select mode toggle (Issue #1023) ─────────────────────────────

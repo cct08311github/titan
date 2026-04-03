@@ -642,7 +642,8 @@ export default function DashboardPage() {
   const handleTabChange = (tab: DashboardTab) => {
     setActiveTab(tab);
     storeTab(tab);
-    fetchMyDay(tab);
+    // fetchMyDay is triggered by the useEffect watching fetchMyDay (which depends on activeTab)
+    // so we do NOT call fetchMyDay(tab) here to avoid a double fetch
   };
 
   const [greeting, setGreeting] = useState("");
