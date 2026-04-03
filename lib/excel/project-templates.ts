@@ -350,6 +350,19 @@ export async function generateQuarterlyReport(
   quarter: number,
   year: number
 ): Promise<Buffer> {
+  // Filter projects that overlap with the quarter date range
+  const quarterStart = new Date(year, (quarter - 1) * 3, 1);
+  const quarterEnd = new Date(year, quarter * 3, 0, 23, 59, 59);
+  const filtered = projects.filter(p => {
+    const start = p.plannedStart ? new Date(p.plannedStart) : null;
+    const end = p.plannedEnd ? new Date(p.plannedEnd) : null;
+    // Include if project's date range overlaps with the quarter
+    if (!start && !end) return true; // no dates = include
+    if (start && start > quarterEnd) return false;
+    if (end && end < quarterStart) return false;
+    return true;
+  });
+
   const wb = new ExcelJS.Workbook();
   wb.creator = "TITAN PMO";
   wb.created = new Date();
@@ -379,16 +392,16 @@ export async function generateQuarterlyReport(
   ws1.getRow(2).height = 24;
 
   // Row 4-7: Summary stats
-  const completed = projects.filter((p) => ["COMPLETED", "CLOSED"].includes(p.status)).length;
-  const totalBudget = projects.reduce((s, p) => s + (p.budgetTotal ?? 0), 0);
-  const totalActual = projects.reduce((s, p) => s + (p.budgetActual ?? 0), 0);
+  const completed = filtered.filter((p) => ["COMPLETED", "CLOSED"].includes(p.status)).length;
+  const totalBudget = filtered.reduce((s, p) => s + (p.budgetTotal ?? 0), 0);
+  const totalActual = filtered.reduce((s, p) => s + (p.budgetActual ?? 0), 0);
   const executionRate = totalBudget > 0 ? Math.round((totalActual / totalBudget) * 100) : 0;
-  const avgBenefit = projects.length > 0
-    ? Math.round(projects.reduce((s, p) => s + (p.benefitScore ?? 0), 0) / projects.length)
+  const avgBenefit = filtered.length > 0
+    ? Math.round(filtered.reduce((s, p) => s + (p.benefitScore ?? 0), 0) / filtered.length)
     : 0;
 
   const summaryStats: [string, string | number][] = [
-    ["項目總數", projects.length],
+    ["項目總數", filtered.length],
     ["已完成", completed],
     ["預算執行率", `${executionRate}%`],
     ["平均效益分", avgBenefit],
@@ -419,7 +432,7 @@ export async function generateQuarterlyReport(
   });
 
   const statusCounts: Record<string, number> = {};
-  projects.forEach((p) => {
+  filtered.forEach((p) => {
     const label = STATUS_LABELS[p.status] ?? p.status;
     statusCounts[label] = (statusCounts[label] ?? 0) + 1;
   });
@@ -436,7 +449,7 @@ export async function generateQuarterlyReport(
   ws1.getRow(currentRow).getCell(1).font = { bold: true, size: 11 };
   currentRow++;
 
-  const highRiskProjects = projects.filter(
+  const highRiskProjects = filtered.filter(
     (p) => p.riskLevel === "HIGH" || p.riskLevel === "CRITICAL"
   );
 
@@ -466,7 +479,7 @@ export async function generateQuarterlyReport(
   }
 
   // ── Sheet 2: 項目明細 (reuse full sheet logic) ────────────────────────
-  buildFullSheet(wb, projects, year);
+  buildFullSheet(wb, filtered, year);
 
   // ── Sheet 3: 效益追蹤 ─────────────────────────────────────────────────
   const ws3 = wb.addWorksheet("效益追蹤");
@@ -490,7 +503,7 @@ export async function generateQuarterlyReport(
     cell.border = { bottom: { style: "thin", color: { argb: "FF000000" } } };
   });
 
-  projects.forEach((p) => {
+  filtered.forEach((p) => {
     const est = p.mdTotalEstimated ?? 0;
     const act = p.mdActualTotal ?? 0;
     const diff = act - est;

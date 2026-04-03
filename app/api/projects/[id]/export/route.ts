@@ -18,6 +18,10 @@ export const GET = withManager(async (
     return apiError("NotFound", "項目不存在", 404);
   }
 
+  if (project.archivedAt) {
+    return apiError("NotFoundError", "項目不存在", 404);
+  }
+
   const buffer = await generateProjectReport({
     code: project.code,
     name: project.name,
@@ -81,12 +85,13 @@ export const GET = withManager(async (
   });
 
   const filename = `project-${project.code}-${new Date().toISOString().split("T")[0]}.xlsx`;
+  const safeName = filename.replace(/[^\w\-\.]/g, "_");
 
   return new NextResponse(new Uint8Array(buffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${safeName}"`,
     },
   });
 });

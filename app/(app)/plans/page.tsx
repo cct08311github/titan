@@ -106,7 +106,14 @@ function LinkedProjects({ planYear, planTitle }: { planYear: number; planTitle: 
       .finally(() => setLoading(false));
   }, [planYear]);
 
-  if (loading || projects.length === 0) return null;
+  if (loading && projects.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  if (projects.length === 0) return null;
 
   return (
     <div className="bg-card border border-border rounded-xl">
