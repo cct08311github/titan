@@ -309,6 +309,148 @@ function MilestoneMarker({ milestone, year, totalDays }: MilestoneMarkerProps) {
   );
 }
 
+// ─── Project Gantt Bar (with drag-to-resize) ────────────────────────────────
+
+type ProjectGanttBarProps = {
+  project: ProjectRow;
+  year: number;
+  totalDays: number;
+  canDrag: boolean;
+  onDateChange?: (projectId: string, plannedStart: string | null, plannedEnd: string | null) => void;
+};
+
+function ProjectGanttBar({ project: proj, year, totalDays, canDrag, onDateChange }: ProjectGanttBarProps) {
+  const barRef = useRef<HTMLDivElement>(null);
+  const [dragTooltip, setDragTooltip] = useState<string | null>(null);
+  const dragging = useRef<{
+    type: "move" | "resize-start" | "resize-end";
+    startX: number;
+    origStartDay: number;
+    origEndDay: number;
+  } | null>(null);
+
+  const hasRange = proj.plannedStart || proj.plannedEnd;
+
+  if (!hasRange) {
+    return (
+      <div className="h-5 flex items-center">
+        <span className="text-xs text-muted-foreground/50 italic">無日期</span>
+      </div>
+    );
+  }
+
+  const startDay = proj.plannedStart
+    ? Math.max(0, dayOfYear(proj.plannedStart, year))
+    : (proj.plannedEnd ? Math.max(0, dayOfYear(proj.plannedEnd, year) - 30) : 0);
+  const endDay = proj.plannedEnd
+    ? Math.min(totalDays, dayOfYear(proj.plannedEnd, year))
+    : Math.min(totalDays, startDay + 30);
+  const leftPct = (startDay / totalDays) * 100;
+  const widthPct = Math.max(0.5, ((endDay - startDay) / totalDays) * 100);
+
+  const terminalStatuses = ["COMPLETED", "CLOSED", "CANCELLED"];
+  const isDraggable = canDrag && !terminalStatuses.includes(proj.status);
+
+  function handlePointerDown(e: React.PointerEvent, type: "move" | "resize-start" | "resize-end") {
+    if (!isDraggable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragging.current = { type, startX: e.clientX, origStartDay: startDay, origEndDay: endDay };
+    const el = barRef.current?.parentElement;
+    if (!el) return;
+    const totalWidth = el.clientWidth;
+
+    function onMove(ev: PointerEvent) {
+      if (!dragging.current) return;
+      const dx = ev.clientX - dragging.current.startX;
+      const daysDelta = Math.round((dx / totalWidth) * totalDays);
+      if (dragging.current.type === "resize-end") {
+        const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
+        setDragTooltip(`結束日：${dayToDate(newEnd, year)}`);
+      } else if (dragging.current.type === "resize-start") {
+        const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
+        setDragTooltip(`開始日：${dayToDate(newStart, year)}`);
+      } else {
+        const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
+        const newEnd = dragging.current.origEndDay + daysDelta;
+        setDragTooltip(`${dayToDate(newStart, year)} → ${dayToDate(newEnd, year)}`);
+      }
+    }
+
+    function onUp(ev: PointerEvent) {
+      if (!dragging.current) return;
+      const dx = ev.clientX - dragging.current.startX;
+      const daysDelta = Math.round((dx / totalWidth) * totalDays);
+      if (daysDelta !== 0 && onDateChange) {
+        if (dragging.current.type === "resize-end") {
+          const newEnd = Math.max(dragging.current.origStartDay + 1, dragging.current.origEndDay + daysDelta);
+          onDateChange(proj.id, proj.plannedStart, dayToDate(newEnd, year));
+        } else if (dragging.current.type === "resize-start") {
+          const newStart = Math.min(dragging.current.origEndDay - 1, Math.max(0, dragging.current.origStartDay + daysDelta));
+          onDateChange(proj.id, dayToDate(newStart, year), proj.plannedEnd);
+        } else {
+          const newStart = Math.max(0, dragging.current.origStartDay + daysDelta);
+          const newEnd = dragging.current.origEndDay + daysDelta;
+          onDateChange(proj.id, dayToDate(newStart, year), dayToDate(newEnd, year));
+        }
+      }
+      dragging.current = null;
+      setDragTooltip(null);
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    }
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+  }
+
+  return (
+    <div className="h-5 relative" ref={barRef}>
+      <div
+        onPointerDown={(e) => handlePointerDown(e, "move")}
+        title={`${proj.name} — ${PROJECT_STATUS_LABEL[proj.status] ?? proj.status} (${proj.progressPct}%)`}
+        className={cn(
+          "absolute h-5 rounded-sm flex items-center px-1.5 overflow-hidden",
+          isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-default",
+          "transition-opacity hover:opacity-90",
+          PROJECT_STATUS_BAR[proj.status] ?? "bg-muted"
+        )}
+        style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "4px" }}
+      >
+        {widthPct > 5 && (
+          <span className="text-[10px] text-white/80 font-medium truncate leading-none">
+            {PROJECT_STATUS_LABEL[proj.status] ?? proj.status}
+          </span>
+        )}
+        {proj.progressPct > 0 && (
+          <div
+            className="absolute inset-0 left-0 bg-white/10 rounded-sm"
+            style={{ width: `${proj.progressPct}%` }}
+          />
+        )}
+        {/* Drag handles */}
+        {isDraggable && (
+          <div
+            className="absolute left-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+            onPointerDown={(e) => handlePointerDown(e, "resize-start")}
+          />
+        )}
+        {isDraggable && (
+          <div
+            className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize hover:bg-white/20"
+            onPointerDown={(e) => handlePointerDown(e, "resize-end")}
+          />
+        )}
+      </div>
+      {dragTooltip && (
+        <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] px-2 py-0.5 rounded whitespace-nowrap z-20">
+          {dragTooltip}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 type GanttView = "goals" | "projects";
@@ -432,6 +574,34 @@ export default function GanttPage() {
     }
   }, [year]);
 
+  // Handle project date change via drag — Issue #1194 (Gantt drag)
+  const handleProjectDateChange = useCallback(async (
+    projectId: string,
+    plannedStart: string | null,
+    plannedEnd: string | null
+  ) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plannedStart: plannedStart ? new Date(plannedStart).toISOString() : null,
+          plannedEnd: plannedEnd ? new Date(plannedEnd).toISOString() : null,
+        }),
+      });
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        toast.error(errBody?.message ?? "日期更新失敗");
+        fetchProjects();
+        return;
+      }
+      toast.success("日期已更新");
+      fetchProjects();
+    } catch {
+      fetchProjects();
+    }
+  }, [fetchProjects]);
+
   useEffect(() => {
     if (view === "projects") fetchProjects();
   }, [view, fetchProjects]);
@@ -548,18 +718,7 @@ export default function GanttPage() {
               </div>
 
               {/* Project rows */}
-              {projectRows.map((proj) => {
-                const hasRange = proj.plannedStart || proj.plannedEnd;
-                const startDay = proj.plannedStart
-                  ? Math.max(0, dayOfYear(proj.plannedStart, year))
-                  : (proj.plannedEnd ? Math.max(0, dayOfYear(proj.plannedEnd, year) - 30) : 0);
-                const endDay = proj.plannedEnd
-                  ? Math.min(totalDays, dayOfYear(proj.plannedEnd, year))
-                  : Math.min(totalDays, startDay + 30);
-                const leftPct = (startDay / totalDays) * 100;
-                const widthPct = Math.max(0.5, ((endDay - startDay) / totalDays) * 100);
-
-                return (
+              {projectRows.map((proj) => (
                   <div key={proj.id} className="flex border-b border-border/20 hover:bg-accent/20 transition-colors group">
                     <div className="w-56 flex-shrink-0 px-3 py-1.5 flex items-center gap-2">
                       <div className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", PROJECT_STATUS_BAR[proj.status] ?? "bg-muted")} />
@@ -576,38 +735,16 @@ export default function GanttPage() {
                           style={{ left: `${(monthStartDay(i, year) / totalDays) * 100}%` }}
                         />
                       ))}
-                      {hasRange ? (
-                        <div className="h-5 relative">
-                          <div
-                            title={`${proj.name} — ${PROJECT_STATUS_LABEL[proj.status] ?? proj.status} (${proj.progressPct}%)`}
-                            className={cn(
-                              "absolute h-5 rounded-sm flex items-center px-1.5 overflow-hidden cursor-default",
-                              PROJECT_STATUS_BAR[proj.status] ?? "bg-muted"
-                            )}
-                            style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "4px" }}
-                          >
-                            {widthPct > 5 && (
-                              <span className="text-[10px] text-white/80 font-medium truncate leading-none">
-                                {PROJECT_STATUS_LABEL[proj.status] ?? proj.status}
-                              </span>
-                            )}
-                            {proj.progressPct > 0 && (
-                              <div
-                                className="absolute inset-0 left-0 bg-white/10 rounded-sm"
-                                style={{ width: `${proj.progressPct}%` }}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="h-5 flex items-center">
-                          <span className="text-xs text-muted-foreground/50 italic">無日期</span>
-                        </div>
-                      )}
+                      <ProjectGanttBar
+                        project={proj}
+                        year={year}
+                        totalDays={totalDays}
+                        canDrag={isManager}
+                        onDateChange={handleProjectDateChange}
+                      />
                     </div>
                   </div>
-                );
-              })}
+              ))}
             </div>
           </div>
         )
