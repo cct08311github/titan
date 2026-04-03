@@ -165,10 +165,13 @@ export const DELETE = withAuth(async (
     return error("ForbiddenError", "只有上傳者或管理員可以刪除附件", 403);
   }
 
-  // Delete file from disk
+  // Delete file from disk — validate path stays within UPLOAD_ROOT (Issue #1207)
   try {
-    const fullPath = path.join(UPLOAD_ROOT, attachment.storagePath);
-    await unlink(fullPath);
+    const resolved = path.resolve(UPLOAD_ROOT, attachment.storagePath);
+    if (!resolved.startsWith(UPLOAD_ROOT)) {
+      return error("ValidationError", "Invalid storage path", 400);
+    }
+    await unlink(resolved);
   } catch {
     // File may already be gone — proceed with DB cleanup
   }

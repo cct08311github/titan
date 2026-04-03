@@ -6,7 +6,33 @@
  */
 
 import { PrismaClient, Prisma, ProjectStatus } from "@prisma/client";
-import { NotFoundError, ValidationError } from "./errors";
+import { NotFoundError, ValidationError, ConflictError } from "./errors";
+
+// ── Project Status State Machine — Issue #1204 ──────────────────────────────
+
+const VALID_PROJECT_TRANSITIONS: Record<string, string[]> = {
+  PROPOSED: ["EVALUATING", "CANCELLED"],
+  EVALUATING: ["APPROVED", "ON_HOLD", "CANCELLED"],
+  APPROVED: ["SCHEDULED", "ON_HOLD", "CANCELLED"],
+  SCHEDULED: ["REQUIREMENTS", "ON_HOLD", "CANCELLED"],
+  REQUIREMENTS: ["DESIGN", "ON_HOLD", "CANCELLED"],
+  DESIGN: ["DEVELOPMENT", "REQUIREMENTS", "ON_HOLD", "CANCELLED"],
+  DEVELOPMENT: ["TESTING", "DESIGN", "ON_HOLD", "CANCELLED"],
+  TESTING: ["DEPLOYMENT", "DEVELOPMENT", "ON_HOLD", "CANCELLED"],
+  DEPLOYMENT: ["WARRANTY", "TESTING", "ON_HOLD", "CANCELLED"],
+  WARRANTY: ["COMPLETED", "DEPLOYMENT", "ON_HOLD", "CANCELLED"],
+  COMPLETED: ["POST_REVIEW", "CLOSED"],
+  POST_REVIEW: ["CLOSED"],
+  ON_HOLD: ["PROPOSED", "EVALUATING", "APPROVED", "SCHEDULED", "REQUIREMENTS", "DESIGN", "DEVELOPMENT", "TESTING", "DEPLOYMENT", "WARRANTY", "CANCELLED"],
+  CLOSED: [],
+  CANCELLED: [],
+};
+
+function isValidProjectTransition(current: string, target: string): boolean {
+  if (current === target) return true;
+  const allowed = VALID_PROJECT_TRANSITIONS[current];
+  return allowed ? allowed.includes(target) : false;
+}
 
 // ── Default Gate definitions ────────────────────────────────────────────────
 
@@ -374,9 +400,11 @@ export class ProjectService {
 
         return project;
       } catch (e) {
-        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002" && retries > 1) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
           retries--;
-          continue;
+          if (retries > 0) continue;
+          // All retries exhausted — duplicate code collision, surface as ConflictError
+          throw new ConflictError("項目編號衝突，請重試");
         }
         throw e;
       }
@@ -391,6 +419,15 @@ export class ProjectService {
     const existing = await this.prisma.project.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`項目不存在: ${id}`);
     if (existing.archivedAt) throw new ValidationError("項目已封存，不可編輯");
+
+    // Issue #1204: enforce project status state machine
+    if (input.status !== undefined && input.status !== existing.status) {
+      if (!isValidProjectTransition(existing.status, input.status as string)) {
+        throw new ValidationError(
+          `無法從 ${existing.status} 轉換為 ${input.status}，請參考專案狀態機定義`
+        );
+      }
+    }
 
     // Build update data — only set provided fields
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

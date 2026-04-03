@@ -109,4 +109,35 @@ export class JwtBlacklist {
   static get size(): number {
     return this._memMap.size;
   }
+
+  /**
+   * Purge expired entries from the in-memory Map.
+   * Called periodically by the GC interval below (Issue #1215).
+   */
+  static gc(): number {
+    const now = Date.now();
+    let purged = 0;
+    for (const [key, expiry] of this._memMap) {
+      if (now >= expiry) {
+        this._memMap.delete(key);
+        purged++;
+      }
+    }
+    return purged;
+  }
+}
+
+// Issue #1215: periodic GC of expired in-memory entries (every 5 minutes)
+const GC_INTERVAL_MS = 5 * 60 * 1000;
+if (typeof setInterval !== "undefined") {
+  const timer = setInterval(() => {
+    const purged = JwtBlacklist.gc();
+    if (purged > 0) {
+      logger.info({ purged }, "[jwt-blacklist] GC purged expired entries");
+    }
+  }, GC_INTERVAL_MS);
+  // Ensure the interval does not prevent Node.js from exiting
+  if (timer && typeof timer === "object" && "unref" in timer) {
+    timer.unref();
+  }
 }

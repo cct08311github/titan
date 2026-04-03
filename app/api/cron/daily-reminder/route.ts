@@ -15,12 +15,14 @@ import { NotificationService } from "@/services/notification-service";
 import { apiHandler } from "@/lib/api-handler";
 
 export const POST = apiHandler(async (req: NextRequest) => {
+  // Issue #1210: always enforce CRON_SECRET — reject if not configured
   const expectedSecret = process.env.CRON_SECRET;
-  if (expectedSecret) {
-    const provided = req.headers.get("x-cron-secret");
-    if (provided !== expectedSecret) {
-      return error("UnauthorizedError", "Invalid cron secret", 401);
-    }
+  if (!expectedSecret) {
+    return error("ServerError", "CRON_SECRET not configured", 500);
+  }
+  const provided = req.headers.get("x-cron-secret");
+  if (provided !== expectedSecret) {
+    return error("UnauthorizedError", "Invalid cron secret", 401);
   }
   const service = new NotificationService(prisma);
   const now = new Date();
