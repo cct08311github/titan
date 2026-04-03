@@ -35,6 +35,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
+import { StakeholderMatrix } from "@/app/components/stakeholder-matrix";
+import { RiskHeatmap } from "@/app/components/risk-heatmap";
 
 // ── Types & Constants (extracted to separate files) ──────────────────────
 import type {
@@ -738,6 +740,7 @@ const DETAIL_TABS = [
   { key: "manday", label: "人天與預算" },
   { key: "schedule", label: "排期" },
   { key: "progress", label: "進展" },
+  { key: "stakeholder", label: "利害關係人" },
   { key: "risk", label: "風險與議題" },
   { key: "gate", label: "Gate Review" },
   { key: "review", label: "後評價" },
@@ -1242,7 +1245,47 @@ function DetailPanel({
           </div>
         )}
 
-        {/* Tab 7: Risks & Issues */}
+        {/* Tab 7: Stakeholders */}
+        {tab === "stakeholder" && (
+          <div className="space-y-4">
+            <StakeholderMatrix stakeholders={p.stakeholders} />
+            <div>
+              <p className="text-sm font-medium mb-3">利害關係人清單（{p.stakeholders.length}）</p>
+              {p.stakeholders.length === 0 ? (
+                <p className="text-sm text-muted-foreground">尚無利害關係人記錄</p>
+              ) : (
+                <div className="space-y-2">
+                  {p.stakeholders.map((s) => (
+                    <div key={s.id} className="flex items-center gap-3 p-3 bg-accent/30 rounded-lg">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{s.name}</p>
+                        <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                          {s.department && <span>{s.department}</span>}
+                          {s.role && <span>{s.role}</span>}
+                          {s.influence && <span>影響力:{s.influence}</span>}
+                          {s.interest && <span>關注度:{s.interest}</span>}
+                          {s.engagement && (
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded-full",
+                              s.engagement === "CHAMPION" ? "bg-emerald-500/10 text-emerald-500" :
+                              s.engagement === "SUPPORTER" ? "bg-blue-500/10 text-blue-500" :
+                              s.engagement === "RESISTANT" ? "bg-red-500/10 text-red-500" :
+                              "bg-gray-500/10 text-gray-400"
+                            )}>
+                              {s.engagement}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab 8: Risks & Issues */}
         {tab === "risk" && (
           <div className="space-y-6">
             {/* Risks */}
@@ -1819,6 +1862,7 @@ export default function ProjectsPage() {
 
   // Modal / Panel
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRiskHeatmap, setShowRiskHeatmap] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null
   );
@@ -2008,6 +2052,27 @@ export default function ProjectsPage() {
 
       {/* Dashboard summary */}
       <DashboardBar stats={stats} />
+
+      {/* Risk Heatmap toggle + panel */}
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={() => setShowRiskHeatmap((v) => !v)}
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-md border transition-colors",
+            showRiskHeatmap
+              ? "bg-orange-500/10 border-orange-500/30 text-orange-600 dark:text-orange-400"
+              : "bg-background border-border text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <ShieldAlert className="h-3.5 w-3.5" />
+          風險總覽
+        </button>
+      </div>
+      {showRiskHeatmap && (
+        <div className="bg-card rounded-xl shadow-card p-4 mb-4">
+          <RiskHeatmap year={yearFilter} />
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
