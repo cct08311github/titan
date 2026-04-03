@@ -5,7 +5,7 @@
  * and post-review scoring.
  */
 
-import { PrismaClient, ProjectStatus } from "@prisma/client";
+import { PrismaClient, Prisma, ProjectStatus } from "@prisma/client";
 import { NotFoundError, ValidationError } from "./errors";
 
 // ── Default Gate definitions ────────────────────────────────────────────────
@@ -113,7 +113,8 @@ export class ProjectService {
   async listProjects(filter: ListProjectsFilter) {
     const page = filter.page ?? 1;
     const limit = Math.min(filter.limit ?? 20, 100);
-    const sortBy = filter.sortBy ?? "createdAt";
+    const VALID_SORT_FIELDS = new Set(["code","name","year","status","priority","progressPct","plannedEnd","createdAt","benefitScore","priorityScore"]);
+    const safeSortBy = VALID_SORT_FIELDS.has(filter.sortBy ?? "") ? filter.sortBy! : "createdAt";
     const sortOrder = filter.sortOrder ?? "desc";
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,7 +143,66 @@ export class ProjectService {
     const [items, total] = await Promise.all([
       this.prisma.project.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          code: true,
+          year: true,
+          name: true,
+          description: true,
+          category: true,
+          subCategory: true,
+          tags: true,
+          requestDept: true,
+          requestContact: true,
+          requestPhone: true,
+          requestDate: true,
+          coDepts: true,
+          coContacts: true,
+          devDept: true,
+          ownerId: true,
+          leadDevId: true,
+          teamMembers: true,
+          priority: true,
+          urgency: true,
+          strategicAlign: true,
+          priorityScore: true,
+          benefitRevenue: true,
+          benefitCompliance: true,
+          benefitEfficiency: true,
+          benefitRisk: true,
+          benefitScore: true,
+          feasibility: true,
+          techComplexity: true,
+          riskLevel: true,
+          mdTotalEstimated: true,
+          mdActualTotal: true,
+          budgetTotal: true,
+          budgetActual: true,
+          budgetApproved: true,
+          costPerManDay: true,
+          vendor: true,
+          vendorAmount: true,
+          plannedStart: true,
+          plannedEnd: true,
+          actualStart: true,
+          actualEnd: true,
+          goLiveDate: true,
+          warrantyEndDate: true,
+          status: true,
+          phase: true,
+          progressPct: true,
+          progressNote: true,
+          blockers: true,
+          nextSteps: true,
+          currentGate: true,
+          gateStatus: true,
+          progressUpdatedAt: true,
+          approvalStatus: true,
+          postReviewScore: true,
+          postReviewDate: true,
+          createdAt: true,
+          updatedAt: true,
+          archivedAt: true,
           owner: { select: { id: true, name: true, avatar: true } },
           _count: {
             select: {
@@ -154,7 +214,7 @@ export class ProjectService {
             },
           },
         },
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [safeSortBy]: sortOrder },
         skip: (page - 1) * limit,
         take: limit,
       }),
@@ -197,102 +257,117 @@ export class ProjectService {
   async createProject(input: Record<string, unknown>) {
     const year = (input.year as number) ?? new Date().getFullYear();
 
-    // Auto-generate code: PRJ-{year}-{seq:3}
-    const lastProject = await this.prisma.project.findFirst({
-      where: { year },
-      orderBy: { code: "desc" },
-      select: { code: true },
-    });
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const project = await this.prisma.$transaction(async (tx) => {
+          // Auto-generate code: PRJ-{year}-{seq:3}
+          const lastProject = await tx.project.findFirst({
+            where: { year },
+            orderBy: { code: "desc" },
+            select: { code: true },
+          });
 
-    let seq = 1;
-    if (lastProject?.code) {
-      const parts = lastProject.code.split("-");
-      const lastSeq = parseInt(parts[parts.length - 1]);
-      if (!isNaN(lastSeq)) seq = lastSeq + 1;
+          let seq = 1;
+          if (lastProject?.code) {
+            const parts = lastProject.code.split("-");
+            const lastSeq = parseInt(parts[parts.length - 1]);
+            if (!isNaN(lastSeq)) seq = lastSeq + 1;
+          }
+          const code = `PRJ-${year}-${String(seq).padStart(3, "0")}`;
+
+          return tx.project.create({
+            data: {
+              code,
+              year,
+              name: input.name as string,
+              description: (input.description as string) ?? null,
+              category: (input.category as string) ?? null,
+              subCategory: (input.subCategory as string) ?? null,
+              tags: (input.tags as string[]) ?? [],
+              requestDept: input.requestDept as string,
+              requestContact: (input.requestContact as string) ?? null,
+              requestPhone: (input.requestPhone as string) ?? null,
+              requestDate: input.requestDate ? new Date(input.requestDate as string) : null,
+              businessGoal: (input.businessGoal as string) ?? null,
+              coDepts: (input.coDepts as string[]) ?? [],
+              coContacts: (input.coContacts as string[]) ?? [],
+              devDept: (input.devDept as string) ?? null,
+              ownerId: input.ownerId as string,
+              createdBy: input.createdBy as string,
+              leadDevId: (input.leadDevId as string) ?? null,
+              teamMembers: (input.teamMembers as string[]) ?? [],
+              priority: (input.priority as string) ?? "P2",
+              urgency: (input.urgency as string) ?? "MEDIUM",
+              plannedStart: input.plannedStart ? new Date(input.plannedStart as string) : null,
+              plannedEnd: input.plannedEnd ? new Date(input.plannedEnd as string) : null,
+              vendor: (input.vendor as string) ?? null,
+              vendorContact: (input.vendorContact as string) ?? null,
+              vendorContract: (input.vendorContract as string) ?? null,
+              vendorAmount: (input.vendorAmount as number) ?? null,
+              // Benefit scores
+              benefitRevenue: (input.benefitRevenue as number) ?? null,
+              benefitCompliance: (input.benefitCompliance as number) ?? null,
+              benefitEfficiency: (input.benefitEfficiency as number) ?? null,
+              benefitRisk: (input.benefitRisk as number) ?? null,
+              benefitScore: ((input.benefitRevenue as number) ?? 0) + ((input.benefitCompliance as number) ?? 0) + ((input.benefitEfficiency as number) ?? 0) + ((input.benefitRisk as number) ?? 0) || null,
+              // Feasibility
+              feasibility: (input.feasibility as string) ?? "PENDING",
+              techComplexity: (input.techComplexity as string) ?? null,
+              riskLevel: (input.riskLevel as string) ?? "MEDIUM",
+              // Man-days
+              mdProjectMgmt: (input.mdProjectMgmt as number) ?? null,
+              mdRequirements: (input.mdRequirements as number) ?? null,
+              mdDesign: (input.mdDesign as number) ?? null,
+              mdDevelopment: (input.mdDevelopment as number) ?? null,
+              mdTesting: (input.mdTesting as number) ?? null,
+              mdDeployment: (input.mdDeployment as number) ?? null,
+              mdDocumentation: (input.mdDocumentation as number) ?? null,
+              mdTraining: (input.mdTraining as number) ?? null,
+              mdMaintenance: (input.mdMaintenance as number) ?? null,
+              mdOther: (input.mdOther as number) ?? null,
+              mdTotalEstimated: [input.mdProjectMgmt, input.mdRequirements, input.mdDesign, input.mdDevelopment, input.mdTesting, input.mdDeployment, input.mdDocumentation, input.mdTraining, input.mdMaintenance, input.mdOther].reduce((s: number, v) => s + ((v as number) ?? 0), 0) || null,
+              // Budget
+              budgetExternal: (input.budgetExternal as number) ?? null,
+              costPerManDay: (input.costPerManDay as number) ?? 5000,
+              // Progress
+              progressPct: (input.progressPct as number) ?? 0,
+              progressNote: (input.progressNote as string) ?? null,
+              blockers: (input.blockers as string) ?? null,
+              // Post review
+              postReviewSchedule: (input.postReviewSchedule as number) ?? null,
+              postReviewQuality: (input.postReviewQuality as number) ?? null,
+              postReviewBudget: (input.postReviewBudget as number) ?? null,
+              postReviewSatisfy: (input.postReviewSatisfy as number) ?? null,
+              lessonsLearned: (input.lessonsLearned as string) ?? null,
+              // Auto-create 5 default gates
+              gates: {
+                create: DEFAULT_GATES.map((g) => ({
+                  name: g.name,
+                  phase: g.phase,
+                  order: g.order,
+                  checklist: g.checklist,
+                })),
+              },
+            },
+            include: {
+              owner: { select: { id: true, name: true } },
+              gates: { orderBy: { order: "asc" } },
+            },
+          });
+        });
+
+        return project;
+      } catch (e) {
+        if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002" && retries > 1) {
+          retries--;
+          continue;
+        }
+        throw e;
+      }
     }
-    const code = `PRJ-${year}-${String(seq).padStart(3, "0")}`;
-
-    const project = await this.prisma.project.create({
-      data: {
-        code,
-        year,
-        name: input.name as string,
-        description: (input.description as string) ?? null,
-        category: (input.category as string) ?? null,
-        subCategory: (input.subCategory as string) ?? null,
-        tags: (input.tags as string[]) ?? [],
-        requestDept: input.requestDept as string,
-        requestContact: (input.requestContact as string) ?? null,
-        requestPhone: (input.requestPhone as string) ?? null,
-        requestDate: input.requestDate ? new Date(input.requestDate as string) : null,
-        businessGoal: (input.businessGoal as string) ?? null,
-        coDepts: (input.coDepts as string[]) ?? [],
-        coContacts: (input.coContacts as string[]) ?? [],
-        devDept: (input.devDept as string) ?? null,
-        ownerId: input.ownerId as string,
-        createdBy: input.createdBy as string,
-        leadDevId: (input.leadDevId as string) ?? null,
-        teamMembers: (input.teamMembers as string[]) ?? [],
-        priority: (input.priority as string) ?? "P2",
-        urgency: (input.urgency as string) ?? "MEDIUM",
-        plannedStart: input.plannedStart ? new Date(input.plannedStart as string) : null,
-        plannedEnd: input.plannedEnd ? new Date(input.plannedEnd as string) : null,
-        vendor: (input.vendor as string) ?? null,
-        vendorContact: (input.vendorContact as string) ?? null,
-        vendorContract: (input.vendorContract as string) ?? null,
-        vendorAmount: (input.vendorAmount as number) ?? null,
-        // Benefit scores
-        benefitRevenue: (input.benefitRevenue as number) ?? null,
-        benefitCompliance: (input.benefitCompliance as number) ?? null,
-        benefitEfficiency: (input.benefitEfficiency as number) ?? null,
-        benefitRisk: (input.benefitRisk as number) ?? null,
-        benefitScore: ((input.benefitRevenue as number) ?? 0) + ((input.benefitCompliance as number) ?? 0) + ((input.benefitEfficiency as number) ?? 0) + ((input.benefitRisk as number) ?? 0) || null,
-        // Feasibility
-        feasibility: (input.feasibility as string) ?? "PENDING",
-        techComplexity: (input.techComplexity as string) ?? null,
-        riskLevel: (input.riskLevel as string) ?? "MEDIUM",
-        // Man-days
-        mdProjectMgmt: (input.mdProjectMgmt as number) ?? null,
-        mdRequirements: (input.mdRequirements as number) ?? null,
-        mdDesign: (input.mdDesign as number) ?? null,
-        mdDevelopment: (input.mdDevelopment as number) ?? null,
-        mdTesting: (input.mdTesting as number) ?? null,
-        mdDeployment: (input.mdDeployment as number) ?? null,
-        mdDocumentation: (input.mdDocumentation as number) ?? null,
-        mdTraining: (input.mdTraining as number) ?? null,
-        mdMaintenance: (input.mdMaintenance as number) ?? null,
-        mdOther: (input.mdOther as number) ?? null,
-        mdTotalEstimated: [input.mdProjectMgmt, input.mdRequirements, input.mdDesign, input.mdDevelopment, input.mdTesting, input.mdDeployment, input.mdDocumentation, input.mdTraining, input.mdMaintenance, input.mdOther].reduce((s: number, v) => s + ((v as number) ?? 0), 0) || null,
-        // Budget
-        budgetExternal: (input.budgetExternal as number) ?? null,
-        costPerManDay: (input.costPerManDay as number) ?? 5000,
-        // Progress
-        progressPct: (input.progressPct as number) ?? 0,
-        progressNote: (input.progressNote as string) ?? null,
-        blockers: (input.blockers as string) ?? null,
-        // Post review
-        postReviewSchedule: (input.postReviewSchedule as number) ?? null,
-        postReviewQuality: (input.postReviewQuality as number) ?? null,
-        postReviewBudget: (input.postReviewBudget as number) ?? null,
-        postReviewSatisfy: (input.postReviewSatisfy as number) ?? null,
-        lessonsLearned: (input.lessonsLearned as string) ?? null,
-        // Auto-create 5 default gates
-        gates: {
-          create: DEFAULT_GATES.map((g) => ({
-            name: g.name,
-            phase: g.phase,
-            order: g.order,
-            checklist: g.checklist,
-          })),
-        },
-      },
-      include: {
-        owner: { select: { id: true, name: true } },
-        gates: { orderBy: { order: "asc" } },
-      },
-    });
-
-    return project;
+    // Unreachable, but TypeScript needs it
+    throw new Error("createProject: exhausted retries");
   }
 
   // ── Update ──────────────────────────────────────────────────────────────
@@ -417,6 +492,10 @@ export class ProjectService {
   async submitReview(id: string, input: Record<string, unknown>, reviewerId: string) {
     const existing = await this.prisma.project.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`項目不存在: ${id}`);
+    if (existing.archivedAt) throw new ValidationError("項目已封存");
+    if (existing.postReviewDate) throw new ValidationError("後評價已提交，不可重複");
+    const allowedStatuses = ["COMPLETED", "WARRANTY"];
+    if (!allowedStatuses.includes(existing.status)) throw new ValidationError("只有已完成的專案才能提交後評價");
 
     const schedule = input.postReviewSchedule as number;
     const quality = input.postReviewQuality as number;
@@ -483,9 +562,10 @@ export class ProjectService {
     });
   }
 
-  async updateRisk(riskId: string, input: Record<string, unknown>) {
+  async updateRisk(riskId: string, input: Record<string, unknown>, projectId?: string) {
     const existing = await this.prisma.projectRisk.findUnique({ where: { id: riskId } });
     if (!existing) throw new NotFoundError(`風險不存在: ${riskId}`);
+    if (projectId && existing.projectId !== projectId) throw new ValidationError("資源不屬於此項目");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = {};
@@ -510,9 +590,10 @@ export class ProjectService {
     });
   }
 
-  async deleteRisk(riskId: string) {
+  async deleteRisk(riskId: string, projectId?: string) {
     const existing = await this.prisma.projectRisk.findUnique({ where: { id: riskId } });
     if (!existing) throw new NotFoundError(`風險不存在: ${riskId}`);
+    if (projectId && existing.projectId !== projectId) throw new ValidationError("資源不屬於此項目");
     return this.prisma.projectRisk.delete({ where: { id: riskId } });
   }
 
@@ -551,9 +632,10 @@ export class ProjectService {
     });
   }
 
-  async updateIssue(issueId: string, input: Record<string, unknown>) {
+  async updateIssue(issueId: string, input: Record<string, unknown>, projectId?: string) {
     const existing = await this.prisma.projectIssue.findUnique({ where: { id: issueId } });
     if (!existing) throw new NotFoundError(`議題不存在: ${issueId}`);
+    if (projectId && existing.projectId !== projectId) throw new ValidationError("資源不屬於此項目");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = {};
@@ -573,9 +655,10 @@ export class ProjectService {
     });
   }
 
-  async deleteIssue(issueId: string) {
+  async deleteIssue(issueId: string, projectId?: string) {
     const existing = await this.prisma.projectIssue.findUnique({ where: { id: issueId } });
     if (!existing) throw new NotFoundError(`議題不存在: ${issueId}`);
+    if (projectId && existing.projectId !== projectId) throw new ValidationError("資源不屬於此項目");
     return this.prisma.projectIssue.delete({ where: { id: issueId } });
   }
 
@@ -607,9 +690,10 @@ export class ProjectService {
     });
   }
 
-  async deleteStakeholder(stakeholderId: string) {
+  async deleteStakeholder(stakeholderId: string, projectId?: string) {
     const existing = await this.prisma.projectStakeholder.findUnique({ where: { id: stakeholderId } });
     if (!existing) throw new NotFoundError(`利害關係人不存在: ${stakeholderId}`);
+    if (projectId && existing.projectId !== projectId) throw new ValidationError("資源不屬於此項目");
     return this.prisma.projectStakeholder.delete({ where: { id: stakeholderId } });
   }
 
@@ -624,9 +708,10 @@ export class ProjectService {
     });
   }
 
-  async updateGate(gateId: string, input: Record<string, unknown>, reviewerId: string) {
+  async updateGate(gateId: string, input: Record<string, unknown>, reviewerId: string, projectId?: string) {
     const existing = await this.prisma.projectGate.findUnique({ where: { id: gateId } });
     if (!existing) throw new NotFoundError(`Gate 不存在: ${gateId}`);
+    if (projectId && existing.projectId !== projectId) throw new ValidationError("資源不屬於此項目");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const data: Record<string, any> = {};
@@ -784,8 +869,9 @@ export class ProjectService {
   private async ensureProject(projectId: string) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: { id: true },
+      select: { id: true, archivedAt: true },
     });
     if (!project) throw new NotFoundError(`項目不存在: ${projectId}`);
+    if (project.archivedAt) throw new ValidationError("項目已封存，不可操作");
   }
 }

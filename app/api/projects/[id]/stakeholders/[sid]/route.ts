@@ -10,7 +10,7 @@ export const DELETE = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const { sid } = await context.params;
-  await projectService.deleteStakeholder(sid);
+  const { id, sid } = await context.params;
+  await projectService.deleteStakeholder(sid, id);
   return success({ success: true });
 });
