@@ -836,6 +836,7 @@ export class ProjectService {
         owner: { select: { name: true } },
       },
       orderBy: { code: "asc" },
+      take: 5000,
     });
   }
 

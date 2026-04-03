@@ -373,6 +373,23 @@ export default function GanttPage() {
   const [projectRows, setProjectRows] = useState<ProjectRow[]>([]);
   const [projectLoading, setProjectLoading] = useState(false);
 
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const params = new URLSearchParams({ year: year.toString() });
+      if (assigneeFilter) params.set("assignee", assigneeFilter);
+      const res = await fetch(`/api/tasks/gantt?${params}`);
+      if (!res.ok) throw new Error("甘特圖資料載入失敗");
+      const body = await res.json();
+      setData(extractData<{ annualPlan: AnnualPlan | null; year: number }>(body));
+    } catch (e) {
+      setFetchError(e instanceof Error ? e.message : "載入失敗");
+    } finally {
+      setLoading(false);
+    }
+  }, [year, assigneeFilter]);
+
   const handleDateChange = useCallback(async (taskId: string, startDate: string | null, dueDate: string | null) => {
     try {
       // Use dedicated dates endpoint — Issue #844 (G-3)
@@ -395,24 +412,7 @@ export default function GanttPage() {
     } catch {
       fetchData(); // Revert by re-fetching
     }
-  }, []);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setFetchError(null);
-    try {
-      const params = new URLSearchParams({ year: year.toString() });
-      if (assigneeFilter) params.set("assignee", assigneeFilter);
-      const res = await fetch(`/api/tasks/gantt?${params}`);
-      if (!res.ok) throw new Error("甘特圖資料載入失敗");
-      const body = await res.json();
-      setData(extractData<{ annualPlan: AnnualPlan | null; year: number }>(body));
-    } catch (e) {
-      setFetchError(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-    }
-  }, [year, assigneeFilter]);
+  }, [fetchData]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 

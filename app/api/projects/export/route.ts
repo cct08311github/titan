@@ -12,8 +12,13 @@ export const GET = withManager(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") as "full" | "summary" | "quarterly" | null;
 
+  const rawYear = parseInt(searchParams.get("year") ?? "", 10);
+  const parsedYear = Number.isFinite(rawYear) && rawYear > 2000 && rawYear < 2100
+    ? rawYear
+    : undefined;
+
   const filter = {
-    year: searchParams.get("year") ? parseInt(searchParams.get("year")!) : undefined,
+    year: parsedYear,
     status: searchParams.get("status") as ProjectStatus | undefined,
     requestDept: searchParams.get("requestDept") ?? undefined,
   };
@@ -28,12 +33,13 @@ export const GET = withManager(async (req: NextRequest) => {
     const projects = await projectService.getProjectsForExport({ ...filter, year });
     const buffer = await generateQuarterlyReport(projects, quarter, year);
     const filename = `quarterly-report-${year}-Q${quarter}.xlsx`;
+    const safeName = filename.replace(/[^\w\-\.]/g, "_");
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${safeName}"`,
       },
     });
   }
@@ -46,12 +52,13 @@ export const GET = withManager(async (req: NextRequest) => {
     const filename = type === "full"
       ? `projects-full-${dateStr}.xlsx`
       : `projects-summary-${dateStr}.xlsx`;
+    const safeName = filename.replace(/[^\w\-\.]/g, "_");
 
     return new NextResponse(new Uint8Array(buffer), {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${safeName}"`,
       },
     });
   }
@@ -63,7 +70,7 @@ export const GET = withManager(async (req: NextRequest) => {
     status: 200,
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="projects-${new Date().toISOString().split("T")[0]}.csv"`,
+      "Content-Disposition": `attachment; filename="projects-${new Date().toISOString().split("T")[0].replace(/[^\w\-\.]/g, "_")}.csv"`,
     },
   });
 });

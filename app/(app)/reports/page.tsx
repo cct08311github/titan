@@ -106,8 +106,12 @@ function defaultDateRange(): { from: string; to: string } {
 }
 
 function exportCSV(headers: string[], rows: string[][], filename: string) {
+  const sanitize = (s: string) => /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   const bom = "\uFEFF";
-  const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+  const csv = [
+    headers.map(sanitize).join(","),
+    ...rows.map(r => r.map(v => sanitize(v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v)).join(","))
+  ].join("\n");
   const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
