@@ -175,6 +175,17 @@ function CreateProjectModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Fetch project categories for dropdown
+  const [categoryOptions, setCategoryOptions] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    if (open) {
+      fetch("/api/project-categories")
+        .then((r) => r.json())
+        .then((body) => setCategoryOptions(body.data ?? []))
+        .catch(() => {});
+    }
+  }, [open]);
+
   const [form, setForm] = useState({
     // Step 1 — basic
     name: "",
@@ -360,13 +371,18 @@ function CreateProjectModal({
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">類別</label>
-                  <input
-                    type="text"
+                  <select
                     value={form.category}
                     onChange={(e) => setField("category", e.target.value)}
                     className="w-full mt-1 px-3 py-2 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
-                    placeholder="如：一行一策"
-                  />
+                  >
+                    <option value="">請選擇類別</option>
+                    {categoryOptions.map((cat) => (
+                      <option key={cat.id} value={cat.name}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
