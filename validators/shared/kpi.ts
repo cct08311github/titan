@@ -59,7 +59,7 @@ export const updateKpiSchema = z.object({
 /** Schema for KPI achievement reporting (KP-2: Issue #822) */
 export const createKpiAchievementSchema = z.object({
   period: z.string().min(1, "填報週期為必填"),
-  actualValue: z.number({ required_error: "實際值為必填" }),
+  actualValue: z.number({ error: "實際值為必填" }),
   note: z.string().optional(),
 });
 
