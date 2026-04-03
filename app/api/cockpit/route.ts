@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { success } from "@/lib/api-response";
 import { withManager } from "@/lib/auth-middleware";
 import { requireMinRole } from "@/lib/rbac";
+import { parseYear } from "@/lib/query-params";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -57,9 +58,7 @@ export function calculateHealthStatus(
 export const GET = withManager(async (req: NextRequest) => {
   const session = await requireMinRole("MANAGER");
   const { searchParams } = new URL(req.url);
-  const year = searchParams.get("year")
-    ? parseInt(searchParams.get("year")!)
-    : new Date().getFullYear();
+  const year = parseYear(searchParams.get("year"));
 
   // Fetch plan with goals, tasks, KPI links, time entries, milestones
   const plans = await prisma.annualPlan.findMany({

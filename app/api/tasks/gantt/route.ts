@@ -2,11 +2,12 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
+import { parseYear } from "@/lib/query-params";
 
 export const GET = withAuth(async (req: NextRequest) => {
 
   const { searchParams } = new URL(req.url);
-  const year = searchParams.get("year") ? parseInt(searchParams.get("year")!) : new Date().getFullYear();
+  const year = parseYear(searchParams.get("year"));
   const assignee = searchParams.get("assignee");
 
   const annualPlan = await prisma.annualPlan.findFirst({

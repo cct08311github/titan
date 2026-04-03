@@ -6,6 +6,7 @@ import {
   NotFoundError,
   ConflictError,
 } from "@/services/errors";
+import { InvalidParamError } from "@/lib/query-params";
 import { success, error } from "@/lib/api-response";
 import type { ApiResponse } from "@/lib/api-response";
 import { logger } from "@/lib/logger";
@@ -160,6 +161,9 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
           const res = error("RateLimitError", err.message, 429);
           res.headers.set("Retry-After", String(err.retryAfter));
           return res;
+        }
+        if (err instanceof InvalidParamError) {
+          return error("InvalidParamError", err.message, 422);
         }
         if (err instanceof ValidationError) {
           return error("ValidationError", err.message, 400);

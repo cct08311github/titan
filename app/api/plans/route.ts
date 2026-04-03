@@ -6,6 +6,7 @@ import { createPlanSchema } from "@/validators/plan-validators";
 import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
+import { parseYearOptional } from "@/lib/query-params";
 
 const planService = new PlanService(prisma);
 
@@ -14,7 +15,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const year = searchParams.get("year");
 
   const plans = await planService.listPlans({
-    year: year ? parseInt(year) : undefined,
+    year: parseYearOptional(year),
   });
 
   return success(plans);

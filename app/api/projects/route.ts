@@ -7,6 +7,7 @@ import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import type { ProjectStatus } from "@prisma/client";
+import { parseYearOptional, parsePage, parseLimit } from "@/lib/query-params";
 
 const projectService = new ProjectService(prisma);
 
@@ -14,14 +15,14 @@ export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
 
   const items = await projectService.listProjects({
-    year: searchParams.get("year") ? parseInt(searchParams.get("year")!) : undefined,
+    year: parseYearOptional(searchParams.get("year")),
     status: searchParams.get("status") as ProjectStatus | undefined,
     requestDept: searchParams.get("requestDept") ?? undefined,
     priority: searchParams.get("priority") ?? undefined,
     ownerId: searchParams.get("ownerId") ?? undefined, // Issue #1176
     search: searchParams.get("search") ?? undefined,
-    page: searchParams.get("page") ? parseInt(searchParams.get("page")!) : undefined,
-    limit: searchParams.get("limit") ? parseInt(searchParams.get("limit")!) : undefined,
+    page: parsePage(searchParams.get("page")),
+    limit: parseLimit(searchParams.get("limit"), 50, 500),
     sortBy: searchParams.get("sortBy") ?? undefined,
     sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") ?? undefined,
   });

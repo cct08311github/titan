@@ -2,13 +2,11 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
+import { parseYear } from "@/lib/query-params";
 
 export const GET = withManager(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
-  const rawYear = parseInt(searchParams.get("year") ?? "", 10);
-  const year = Number.isFinite(rawYear) && rawYear > 2000 && rawYear < 2100
-    ? rawYear
-    : new Date().getFullYear();
+  const year = parseYear(searchParams.get("year"));
 
   const projects = await prisma.project.findMany({
     where: { year, archivedAt: null },
