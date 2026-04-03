@@ -11,7 +11,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   const annualPlan = await prisma.annualPlan.findFirst({
     where: { year, archivedAt: null },
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ monthlyGoals: { _count: "desc" } }, { createdAt: "desc" }],
     include: {
       milestones: { orderBy: { plannedEnd: "asc" } },
       monthlyGoals: {
