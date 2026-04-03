@@ -5,6 +5,7 @@ import { createGoalSchema } from "@/validators/plan-validators";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 import { ValidationError } from "@/services/errors";
+import { parseMonth } from "@/lib/query-params";
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
@@ -14,7 +15,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const goals = await prisma.monthlyGoal.findMany({
     where: {
       ...(planId && { annualPlanId: planId }),
-      ...(month && { month: parseInt(month) }),
+      ...(month !== null && { month: parseMonth(month) }),
     },
     include: {
       annualPlan: { select: { id: true, title: true, year: true, archivedAt: true } },

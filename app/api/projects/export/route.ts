@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ProjectService } from "@/services/project-service";
 import { withManager } from "@/lib/auth-middleware";
-import { error as apiError } from "@/lib/api-response";
 import { generateProjectExcel, generateQuarterlyReport } from "@/lib/excel/project-templates";
 import type { ProjectStatus } from "@prisma/client";
+import { parseYearOptional, parseQuarter } from "@/lib/query-params";
 
 const projectService = new ProjectService(prisma);
 
@@ -12,24 +12,16 @@ export const GET = withManager(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") as "full" | "summary" | "quarterly" | null;
 
-  const rawYear = parseInt(searchParams.get("year") ?? "", 10);
-  const parsedYear = Number.isFinite(rawYear) && rawYear > 2000 && rawYear < 2100
-    ? rawYear
-    : undefined;
-
   const filter = {
-    year: parsedYear,
+    year: parseYearOptional(searchParams.get("year")),
     status: searchParams.get("status") as ProjectStatus | undefined,
     requestDept: searchParams.get("requestDept") ?? undefined,
   };
 
   // Quarterly report (type=quarterly&quarter=1&year=2026)
   if (type === "quarterly") {
-    const quarter = parseInt(searchParams.get("quarter") ?? "1");
+    const quarter = parseQuarter(searchParams.get("quarter"));
     const year = filter.year ?? new Date().getFullYear();
-    if (quarter < 1 || quarter > 4) {
-      return apiError("ValidationError", "quarter 必須為 1-4", 400);
-    }
     const projects = await projectService.getProjectsForExport({ ...filter, year });
     const buffer = await generateQuarterlyReport(projects, quarter, year);
     const filename = `quarterly-report-${year}-Q${quarter}.xlsx`;

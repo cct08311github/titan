@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { requireManagerOrAbove as requireManager } from "@/lib/auth";
 import { success, error } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
+import { parseLimit, parseOffset } from "@/lib/query-params";
 
 // Issue #1212: wrap with apiHandler for rate limiting and error handling
 export const GET = apiHandler(async (req: NextRequest) => {
@@ -30,8 +31,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const action = searchParams.get("action");
   const module = searchParams.get("module");
   const resourceType = searchParams.get("resourceType");
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "200"), 5000);
-  const offset = parseInt(searchParams.get("offset") ?? "0");
+  const limit = parseLimit(searchParams.get("limit"), 200, 5000);
+  const offset = parseOffset(searchParams.get("offset"));
 
   // Build where clause
   const where: Record<string, unknown> = {};

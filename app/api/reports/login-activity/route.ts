@@ -13,6 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { requireManagerOrAbove as requireManager } from "@/lib/auth";
 import { success, error } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
+import { parseLimit, parseOffset } from "@/lib/query-params";
 
 const LOGIN_ACTIONS = [
   "LOGIN_SUCCESS", "LOGIN_FAILURE",
@@ -30,8 +31,8 @@ export const GET = apiHandler(async (req: NextRequest) => {
   const to = searchParams.get("to");
   const userId = searchParams.get("userId");
   const result = searchParams.get("result");
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "200"), 5000);
-  const offset = parseInt(searchParams.get("offset") ?? "0");
+  const limit = parseLimit(searchParams.get("limit"), 200, 5000);
+  const offset = parseOffset(searchParams.get("offset"));
 
   const where: Record<string, unknown> = { action: { in: LOGIN_ACTIONS } };
   if (from || to) {

@@ -4,6 +4,7 @@ import { success, error } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import type { Prisma } from "@prisma/client";
+import { parsePage, parseLimit } from "@/lib/query-params";
 
 const VALID_CATEGORIES = ["PLANNED", "ADDED", "INCIDENT", "SUPPORT", "ADMIN", "LEARNING"];
 const VALID_STATUSES = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"];
@@ -72,8 +73,8 @@ export const GET = withAuth(async (req: NextRequest) => {
     : [];
 
   // Pagination
-  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
-  const limit = Math.min(200, Math.max(1, parseInt(searchParams.get("limit") ?? "50", 10)));
+  const page = parsePage(searchParams.get("page"));
+  const limit = parseLimit(searchParams.get("limit"), 50, 200);
   const skip = (page - 1) * limit;
 
   // Sorting
