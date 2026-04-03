@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { sanitizeMarkdown } from "@/lib/security/sanitize";
 import { NotFoundError, ValidationError } from "./errors";
 
 export interface ListDocumentsFilter {
@@ -81,7 +82,7 @@ export class DocumentService {
       data: {
         parentId: input.parentId ?? null,
         title: input.title,
-        content: input.content,
+        content: sanitizeMarkdown(input.content ?? ""),
         slug: input.slug,
         createdBy: input.createdBy,
         updatedBy: input.updatedBy,
@@ -118,7 +119,7 @@ export class DocumentService {
         };
         if (input.title !== undefined) updates.title = input.title;
         if (input.content !== undefined) {
-          updates.content = input.content;
+          updates.content = sanitizeMarkdown(input.content);
         }
         if (contentChanged || titleChanged) {
           updates.version = existing.version + 1;
