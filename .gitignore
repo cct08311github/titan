@@ -59,3 +59,7 @@ playwright-report/
 dump.rdb
 .claude/worktrees/
 .playwright-mcp/
+
+# Test artifacts
+test-screenshots/
+auth-test-screenshots/
