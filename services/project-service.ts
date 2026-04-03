@@ -824,6 +824,13 @@ export class ProjectService {
     });
   }
 
+  /** Escape CSV text fields to prevent formula injection (=, +, -, @, \t, \r) */
+  private csvSafe(val: string | null | undefined): string {
+    const s = String(val ?? "");
+    if (/^[=+\-@\t\r]/.test(s)) return `'${s}`;
+    return s;
+  }
+
   async exportCsv(filter: ListProjectsFilter) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = { archivedAt: null };
@@ -846,13 +853,13 @@ export class ProjectService {
     ];
 
     const rows = projects.map((p) => [
-      p.code,
-      `"${(p.name || "").replace(/"/g, '""')}"`,
+      this.csvSafe(p.code),
+      `"${this.csvSafe(p.name).replace(/"/g, '""')}"`,
       p.year,
-      p.requestDept,
-      p.status,
-      p.priority,
-      p.owner.name,
+      this.csvSafe(p.requestDept),
+      this.csvSafe(p.status),
+      this.csvSafe(p.priority),
+      this.csvSafe(p.owner.name),
       p.benefitScore ?? "",
       p.mdTotalEstimated ?? "",
       p.budgetTotal ?? "",
