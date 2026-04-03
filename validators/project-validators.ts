@@ -18,7 +18,7 @@ export const createProjectSchema = z.object({
   requestDept: z.string().min(1, "需求部門為必填"),
   requestContact: z.string().max(50).optional(),
   requestPhone: z.string().max(20).optional(),
-  requestDate: z.string().datetime().optional(),
+  requestDate: z.string().optional(),
   businessGoal: z.string().max(5000).optional(),
 
   // 協辦
@@ -31,13 +31,40 @@ export const createProjectSchema = z.object({
   leadDevId: z.string().optional(),
   teamMembers: z.array(z.string()).optional(),
 
+  // 效益評估
+  benefitRevenue: z.number().int().min(0).max(25).optional(),
+  benefitCompliance: z.number().int().min(0).max(25).optional(),
+  benefitEfficiency: z.number().int().min(0).max(25).optional(),
+  benefitRisk: z.number().int().min(0).max(25).optional(),
+
   // 優先級
   priority: z.enum(["P0", "P1", "P2", "P3"]).optional(),
   urgency: z.enum(["HIGH", "MEDIUM", "LOW"]).optional(),
 
+  // 可行性
+  feasibility: z.enum(["PENDING", "FEASIBLE", "CONDITIONAL", "NOT_FEASIBLE"]).optional(),
+  techComplexity: z.enum(["LOW", "MEDIUM", "HIGH", "VERY_HIGH"]).optional(),
+  riskLevel: z.enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"]).optional(),
+
+  // 人天
+  mdProjectMgmt: z.number().min(0).max(9999).optional(),
+  mdRequirements: z.number().min(0).max(9999).optional(),
+  mdDesign: z.number().min(0).max(9999).optional(),
+  mdDevelopment: z.number().min(0).max(9999).optional(),
+  mdTesting: z.number().min(0).max(9999).optional(),
+  mdDeployment: z.number().min(0).max(9999).optional(),
+  mdDocumentation: z.number().min(0).max(9999).optional(),
+  mdTraining: z.number().min(0).max(9999).optional(),
+  mdMaintenance: z.number().min(0).max(9999).optional(),
+  mdOther: z.number().min(0).max(9999).optional(),
+
+  // 預算
+  budgetExternal: z.number().min(0).optional(),
+  costPerManDay: z.number().min(0).optional(),
+
   // 排期
-  plannedStart: z.string().datetime().optional(),
-  plannedEnd: z.string().datetime().optional(),
+  plannedStart: z.string().optional(),
+  plannedEnd: z.string().optional(),
 
   // 廠商
   vendor: z.string().optional(),
@@ -58,7 +85,7 @@ export const updateProjectSchema = z.object({
   requestDept: z.string().min(1).optional(),
   requestContact: z.string().max(50).nullable().optional(),
   requestPhone: z.string().max(20).nullable().optional(),
-  requestDate: z.string().datetime().nullable().optional(),
+  requestDate: z.string().nullable().optional(),
   businessGoal: z.string().max(5000).nullable().optional(),
 
   // 協辦
@@ -78,7 +105,7 @@ export const updateProjectSchema = z.object({
   benefitRisk: z.number().int().min(0).max(25).nullable().optional(),
   benefitNote: z.string().max(5000).nullable().optional(),
   benefitEvaluator: z.string().nullable().optional(),
-  benefitDate: z.string().datetime().nullable().optional(),
+  benefitDate: z.string().nullable().optional(),
 
   // 優先級
   priority: z.enum(["P0", "P1", "P2", "P3"]).optional(),
@@ -126,17 +153,17 @@ export const updateProjectSchema = z.object({
   vendorContact: z.string().nullable().optional(),
   vendorContract: z.string().nullable().optional(),
   vendorAmount: z.number().min(0).nullable().optional(),
-  vendorStartDate: z.string().datetime().nullable().optional(),
-  vendorEndDate: z.string().datetime().nullable().optional(),
+  vendorStartDate: z.string().nullable().optional(),
+  vendorEndDate: z.string().nullable().optional(),
   subVendors: z.array(z.string()).optional(),
 
   // 排期
-  plannedStart: z.string().datetime().nullable().optional(),
-  plannedEnd: z.string().datetime().nullable().optional(),
-  actualStart: z.string().datetime().nullable().optional(),
-  actualEnd: z.string().datetime().nullable().optional(),
-  goLiveDate: z.string().datetime().nullable().optional(),
-  warrantyEndDate: z.string().datetime().nullable().optional(),
+  plannedStart: z.string().nullable().optional(),
+  plannedEnd: z.string().nullable().optional(),
+  actualStart: z.string().nullable().optional(),
+  actualEnd: z.string().nullable().optional(),
+  goLiveDate: z.string().nullable().optional(),
+  warrantyEndDate: z.string().nullable().optional(),
 
   // 狀態
   status: z.enum([
@@ -156,7 +183,7 @@ export const updateProjectSchema = z.object({
   // 合規
   approvalStatus: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
   approvedBy: z.string().nullable().optional(),
-  approvedDate: z.string().datetime().nullable().optional(),
+  approvedDate: z.string().nullable().optional(),
   approvalNo: z.string().nullable().optional(),
   relatedRegulation: z.string().nullable().optional(),
   internalNote: z.string().nullable().optional(),
@@ -174,7 +201,7 @@ export const createRiskSchema = z.object({
   contingency: z.string().max(5000).optional(),
   ownerId: z.string().min(1, "負責人為必填"),
   status: z.enum(["OPEN", "MITIGATING", "CLOSED", "ACCEPTED"]).optional(),
-  dueDate: z.string().datetime().optional(),
+  dueDate: z.string().optional(),
 });
 
 export const updateRiskSchema = z.object({
@@ -187,7 +214,7 @@ export const updateRiskSchema = z.object({
   contingency: z.string().max(5000).nullable().optional(),
   ownerId: z.string().min(1).optional(),
   status: z.enum(["OPEN", "MITIGATING", "CLOSED", "ACCEPTED"]).optional(),
-  dueDate: z.string().datetime().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
 });
 
 // ── Issue ───────────────────────────────────────────────────────────────────
@@ -200,7 +227,7 @@ export const createIssueSchema = z.object({
   assigneeId: z.string().min(1, "負責人為必填"),
   status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED", "ESCALATED"]).optional(),
   resolution: z.string().max(5000).optional(),
-  dueDate: z.string().datetime().optional(),
+  dueDate: z.string().optional(),
   source: z.string().optional(),
 });
 
@@ -212,7 +239,7 @@ export const updateIssueSchema = z.object({
   assigneeId: z.string().min(1).optional(),
   status: z.enum(["OPEN", "IN_PROGRESS", "RESOLVED", "ESCALATED"]).optional(),
   resolution: z.string().max(5000).nullable().optional(),
-  dueDate: z.string().datetime().nullable().optional(),
+  dueDate: z.string().nullable().optional(),
   source: z.string().nullable().optional(),
 });
 

@@ -14,9 +14,9 @@ export const PATCH = withManager(async (
   context: { params: Promise<Record<string, string>> }
 ) => {
   const session = await requireAuth();
-  const { gid } = await context.params;
+  const { id, gid } = await context.params;
   const raw = await req.json();
   const body = validateBody(updateGateSchema, raw);
-  const gate = await projectService.updateGate(gid, body, session.user.id);
+  const gate = await projectService.updateGate(gid, body, session.user.id, id);
   return success(gate);
 });

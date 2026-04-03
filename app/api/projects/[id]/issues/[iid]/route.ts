@@ -12,10 +12,10 @@ export const PATCH = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const { iid } = await context.params;
+  const { id, iid } = await context.params;
   const raw = await req.json();
   const body = validateBody(updateIssueSchema, raw);
-  const issue = await projectService.updateIssue(iid, body);
+  const issue = await projectService.updateIssue(iid, body, id);
   return success(issue);
 });
 
@@ -23,7 +23,7 @@ export const DELETE = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
-  const { iid } = await context.params;
-  await projectService.deleteIssue(iid);
+  const { id, iid } = await context.params;
+  await projectService.deleteIssue(iid, id);
   return success({ success: true });
 });
