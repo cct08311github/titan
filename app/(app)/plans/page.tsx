@@ -61,6 +61,98 @@ const statusColors: Record<TaskStatus, string> = {
 
 const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
+// ─── Linked Projects ─────────────────────────────────────────────────────────
+
+const PROJECT_STATUS_LABEL: Record<string, string> = {
+  PROPOSED: "提案", EVALUATING: "評估中", APPROVED: "已核准", SCHEDULED: "已排程",
+  REQUIREMENTS: "需求分析", DESIGN: "系統設計", DEVELOPMENT: "開發中", TESTING: "測試中",
+  DEPLOYMENT: "部署中", WARRANTY: "保固期", COMPLETED: "已完成", POST_REVIEW: "後評價",
+  CLOSED: "已關閉", ON_HOLD: "暫停", CANCELLED: "已取消",
+};
+
+const PROJECT_STATUS_COLOR: Record<string, string> = {
+  COMPLETED: "text-emerald-400", CLOSED: "text-muted-foreground", CANCELLED: "text-muted-foreground/50",
+  DEVELOPMENT: "text-amber-400", TESTING: "text-orange-400", DEPLOYMENT: "text-rose-400",
+};
+
+type LinkedProject = {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  progressPct: number;
+};
+
+function LinkedProjects({ planYear, planTitle }: { planYear: number; planTitle: string }) {
+  const [projects, setProjects] = useState<LinkedProject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/projects?year=${planYear}&limit=50`)
+      .then(r => r.json())
+      .then(d => {
+        const items = d?.data?.items ?? d?.items ?? [];
+        setProjects(items.map((p: Record<string, unknown>) => ({
+          id: p.id,
+          code: p.code,
+          name: p.name,
+          status: p.status,
+          progressPct: p.progressPct ?? 0,
+        })));
+      })
+      .catch(() => setProjects([]))
+      .finally(() => setLoading(false));
+  }, [planYear]);
+
+  if (loading || projects.length === 0) return null;
+
+  return (
+    <div className="bg-card border border-border rounded-xl">
+      <button
+        onClick={() => setExpanded(v => !v)}
+        className="flex items-center justify-between w-full px-4 py-3 hover:bg-accent/30 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <ChevronRight className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", expanded && "rotate-90")} />
+          <span className="text-sm font-medium">關聯項目</span>
+          <span className="text-xs text-muted-foreground">({planTitle} — {projects.length} 個項目)</span>
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border/50">
+                <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">編號</th>
+                <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">名稱</th>
+                <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">狀態</th>
+                <th className="text-right py-1.5 px-2 text-muted-foreground font-medium">進度</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.map((p) => (
+                <tr key={p.id} className="border-b border-border/20 hover:bg-accent/20">
+                  <td className="py-1.5 px-2 font-mono">{p.code}</td>
+                  <td className="py-1.5 px-2">{p.name}</td>
+                  <td className={cn("py-1.5 px-2", PROJECT_STATUS_COLOR[p.status] ?? "text-blue-400")}>
+                    {PROJECT_STATUS_LABEL[p.status] ?? p.status}
+                  </td>
+                  <td className="text-right py-1.5 px-2 tabular-nums">{p.progressPct}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export default function PlansPage() {
   const [plans, setPlans] = useState<AnnualPlan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,6 +548,11 @@ export default function PlansPage() {
           archivingId={archiving}
         />
       )}
+
+      {/* Linked projects */}
+      {!loading && plans.filter(p => !p.archivedAt).map((plan) => (
+        <LinkedProjects key={plan.id} planYear={plan.year} planTitle={plan.title} />
+      ))}
 
       {/* Goal detail panel */}
       {selectedGoal && (

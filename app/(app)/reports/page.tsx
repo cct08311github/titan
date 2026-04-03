@@ -33,7 +33,7 @@ import { safeFixed, safePct } from "@/lib/safe-number";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ReportId = "utilization" | "velocity" | "kpi-trend" | "unplanned" | "time-summary" | "overtime" | "audit-summary" | "login-activity";
+type ReportId = "utilization" | "velocity" | "kpi-trend" | "unplanned" | "time-summary" | "overtime" | "audit-summary" | "login-activity" | "project-status" | "project-budget";
 
 interface ReportNav {
   id: ReportId;
@@ -62,6 +62,8 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     icon: FolderKanban,
     reports: [
       { id: "unplanned", label: "計畫外工作趨勢", icon: AlertTriangle, description: "計畫外占比月趨勢" },
+      { id: "project-status", label: "項目狀態分佈", icon: FolderKanban, description: "按狀態統計項目數量" },
+      { id: "project-budget", label: "預算執行率", icon: TrendingUp, description: "各項目預算 vs 實際花費" },
     ],
   },
   {
@@ -898,6 +900,144 @@ function LoginActivityReport({ from, to }: { from: string; to: string }) {
   );
 }
 
+// ─── Project Status Distribution Report ────────────────────────────────────
+
+const PROJECT_STATUS_LABELS: Record<string, string> = {
+  PROPOSED: "提案", EVALUATING: "評估中", APPROVED: "已核准", SCHEDULED: "已排程",
+  REQUIREMENTS: "需求分析", DESIGN: "系統設計", DEVELOPMENT: "開發中", TESTING: "測試中",
+  DEPLOYMENT: "部署中", WARRANTY: "保固期", COMPLETED: "已完成", POST_REVIEW: "後評價",
+  CLOSED: "已關閉", ON_HOLD: "暫停", CANCELLED: "已取消",
+};
+
+function ProjectStatusReport() {
+  const [data, setData] = useState<{ status: string; count: number }[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/reports/project-status?year=${reportYear}`)
+      .then(r => r.json())
+      .then(d => { setData(d.data?.byStatus ?? []); setTotal(d.data?.total ?? 0); })
+      .catch(() => { setData([]); setTotal(0); })
+      .finally(() => setLoading(false));
+  }, [reportYear]);
+
+  const handleExport = () => exportCSV(
+    ["狀態", "數量"],
+    data.map(r => [PROJECT_STATUS_LABELS[r.status] ?? r.status, String(r.count)]),
+    `project-status-${reportYear}.csv`
+  );
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  const maxCount = Math.max(1, ...data.map(d => d.count));
+
+  return (
+    <div>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div>
+          <h3 className="font-semibold">項目狀態分佈</h3>
+          <p className="text-xs text-muted-foreground">共 {total} 個項目</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="number" value={reportYear} onChange={e => setReportYear(parseInt(e.target.value) || new Date().getFullYear())} className="text-sm px-2 py-1 border border-border rounded-md w-20 bg-background text-foreground" />
+          <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+        </div>
+      </div>
+      {data.length === 0 ? (
+        <div className="text-center text-muted-foreground py-12">此年度無項目資料</div>
+      ) : (
+        <div className="space-y-2">
+          {data.map(r => (
+            <div key={r.status} className="flex items-center gap-3">
+              <span className="text-xs w-20 flex-shrink-0 text-right text-muted-foreground">{PROJECT_STATUS_LABELS[r.status] ?? r.status}</span>
+              <div className="flex-1 h-6 bg-muted/30 rounded overflow-hidden">
+                <div className="h-full bg-primary/60 rounded transition-all" style={{ width: `${(r.count / maxCount) * 100}%` }} />
+              </div>
+              <span className="text-sm font-medium tabular-nums w-10">{r.count}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Project Budget Execution Report ──────────────────────────────────────
+
+interface BudgetRow { id: string; code: string; name: string; budgetTotal: number; budgetActual: number; executionRate: number; status: string; }
+
+function ProjectBudgetReport() {
+  const [data, setData] = useState<BudgetRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/reports/project-budget?year=${reportYear}`)
+      .then(r => r.json())
+      .then(d => setData(d.data?.items ?? []))
+      .catch(() => setData([]))
+      .finally(() => setLoading(false));
+  }, [reportYear]);
+
+  const handleExport = () => exportCSV(
+    ["編號", "名稱", "預算", "實際花費", "執行率(%)", "狀態"],
+    data.map(r => [r.code, r.name, String(r.budgetTotal), String(r.budgetActual), String(r.executionRate), PROJECT_STATUS_LABELS[r.status] ?? r.status]),
+    `project-budget-${reportYear}.csv`
+  );
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div>
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+        <div>
+          <h3 className="font-semibold">預算執行率</h3>
+          <p className="text-xs text-muted-foreground">各項目預算 vs 實際花費</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <input type="number" value={reportYear} onChange={e => setReportYear(parseInt(e.target.value) || new Date().getFullYear())} className="text-sm px-2 py-1 border border-border rounded-md w-20 bg-background text-foreground" />
+          <button onClick={handleExport} className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border rounded-md hover:bg-accent"><Download className="h-3.5 w-3.5" />CSV</button>
+        </div>
+      </div>
+      {data.length === 0 ? (
+        <div className="text-center text-muted-foreground py-12">此年度無項目資料</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b bg-muted/30">
+              <th className="text-left py-2 px-2">編號</th>
+              <th className="text-left py-2 px-2">名稱</th>
+              <th className="text-right py-2 px-2">預算</th>
+              <th className="text-right py-2 px-2">實際花費</th>
+              <th className="text-right py-2 px-2">執行率</th>
+              <th className="text-left py-2 px-2">狀態</th>
+            </tr></thead>
+            <tbody>
+              {data.map(r => {
+                const rateColor = r.executionRate > 100 ? "text-red-600" : r.executionRate >= 80 ? "text-amber-600" : "text-foreground";
+                return (
+                  <tr key={r.id} className="border-b border-border/30 hover:bg-accent/30">
+                    <td className="py-1.5 px-2 font-mono">{r.code}</td>
+                    <td className="py-1.5 px-2">{r.name}</td>
+                    <td className="text-right py-1.5 px-2 tabular-nums">{r.budgetTotal.toLocaleString()}</td>
+                    <td className="text-right py-1.5 px-2 tabular-nums">{r.budgetActual.toLocaleString()}</td>
+                    <td className={`text-right py-1.5 px-2 font-bold tabular-nums ${rateColor}`}>{r.executionRate}%</td>
+                    <td className="py-1.5 px-2">{PROJECT_STATUS_LABELS[r.status] ?? r.status}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function ReportsV2Page() {
@@ -1006,6 +1146,12 @@ export default function ReportsV2Page() {
           )}
           {activeReport === "login-activity" && (
             <LoginActivityReport from={dateRange.from} to={dateRange.to} />
+          )}
+          {activeReport === "project-status" && (
+            <ProjectStatusReport />
+          )}
+          {activeReport === "project-budget" && (
+            <ProjectBudgetReport />
           )}
         </div>
       </div>
