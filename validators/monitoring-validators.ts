@@ -4,7 +4,7 @@ export const webhookPayloadSchema = z.object({
   alertName: z.string().min(1),
   severity: z.string().min(1),
   status: z.enum(["firing", "resolved"]),
-  labels: z.record(z.unknown()).optional(),
+  labels: z.record(z.string(), z.unknown()).optional(),
   annotations: z.object({
     summary: z.string().optional(),
     description: z.string().optional(),
