@@ -32,6 +32,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     category: (searchParams.get("category") as TaskCategory) ?? undefined,
     annualPlanId: searchParams.get("planId") ?? searchParams.get("annualPlanId") ?? undefined, // Issue #835
     monthlyGoalId: searchParams.get("monthlyGoalId") ?? searchParams.get("goalId") ?? undefined, // Issue #835: also accept goalId
+    projectId: searchParams.get("projectId") ?? undefined, // Issue #1176
     skip,
     take: limit,
   });

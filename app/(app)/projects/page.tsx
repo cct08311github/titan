@@ -254,28 +254,28 @@ const STATUS_COLORS: Record<string, string> = {
   EVALUATING:
     "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400",
   APPROVED:
-    "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400",
-  SCHEDULED:
-    "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/40 dark:text-cyan-400",
-  REQUIREMENTS:
-    "bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400",
-  DESIGN:
     "bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400",
+  SCHEDULED:
+    "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
+  REQUIREMENTS:
+    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
+  DESIGN:
+    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
   DEVELOPMENT:
-    "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400",
+    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
   TESTING:
     "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
   DEPLOYMENT:
-    "bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400",
+    "bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400",
   WARRANTY:
     "bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400",
   COMPLETED:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
   POST_REVIEW:
-    "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/40 dark:text-indigo-400",
+    "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
   CLOSED: "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500",
   ON_HOLD:
-    "bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400",
+    "bg-yellow-100 text-yellow-600 dark:bg-yellow-900/40 dark:text-yellow-400",
   CANCELLED:
     "bg-red-200 text-red-500 dark:bg-red-900/40 dark:text-red-500",
 };
@@ -2154,12 +2154,13 @@ export default function ProjectsPage() {
     fetchProjects();
   }, [fetchProjects]);
 
-  // CSV export
-  async function handleExport() {
+  // Export (CSV or Excel)
+  async function handleExport(type?: "full" | "summary") {
     const params = new URLSearchParams();
     if (yearFilter) params.set("year", yearFilter);
     if (statusFilter) params.set("status", statusFilter);
     if (deptFilter) params.set("requestDept", deptFilter);
+    if (type) params.set("type", type);
 
     const res = await fetch(`/api/projects/export?${params}`);
     if (!res.ok) {
@@ -2171,11 +2172,18 @@ export default function ProjectsPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `projects-${new Date().toISOString().split("T")[0]}.csv`;
+    const dateStr = new Date().toISOString().split("T")[0];
+    if (type) {
+      a.download = `projects-${type}-${dateStr}.xlsx`;
+    } else {
+      a.download = `projects-${dateStr}.csv`;
+    }
     a.click();
     URL.revokeObjectURL(url);
-    toast.success("CSV 已匯出");
+    toast.success(type ? "Excel 已匯出" : "CSV 已匯出");
   }
+
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   // Sort toggle
   function toggleSort(col: string) {
@@ -2204,13 +2212,38 @@ export default function ProjectsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-background border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all"
-          >
-            <Download className="h-3.5 w-3.5" />
-            匯出 CSV
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu((v) => !v)}
+              className="flex items-center gap-1.5 text-sm px-3 py-1.5 bg-background border border-border rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-all"
+            >
+              <Download className="h-3.5 w-3.5" />
+              匯出
+            </button>
+            {showExportMenu && (
+              <div className="absolute top-full mt-1 right-0 z-50 w-48 bg-card border border-border rounded-lg shadow-xl p-1">
+                <button
+                  onClick={() => { handleExport("full"); setShowExportMenu(false); }}
+                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent/50 transition-colors"
+                >
+                  Excel 完整版
+                </button>
+                <button
+                  onClick={() => { handleExport("summary"); setShowExportMenu(false); }}
+                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent/50 transition-colors"
+                >
+                  Excel 摘要版
+                </button>
+                <div className="border-t border-border my-1" />
+                <button
+                  onClick={() => { handleExport(); setShowExportMenu(false); }}
+                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent/50 transition-colors text-muted-foreground"
+                >
+                  CSV
+                </button>
+              </div>
+            )}
+          </div>
           {isManager && (
             <button
               onClick={() => setShowCreateModal(true)}

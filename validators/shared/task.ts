@@ -21,6 +21,7 @@ export const createTaskSchema = z.object({
   description: z.string().max(10000, "描述不得超過 10,000 字元").optional(),
   annualPlanId: z.string().nullable().optional(), // Issue #835
   monthlyGoalId: z.string().optional(),
+  projectId: z.string().nullable().optional(), // Issue #1176
   primaryAssigneeId: z.string().optional(),
   backupAssigneeId: z.string().optional(),
   status: TaskStatusEnum.optional().default("BACKLOG"),
@@ -44,6 +45,7 @@ export const createTaskFullSchema = z.object({
   description: z.string().max(10000, "描述不得超過 10,000 字元").optional(),
   annualPlanId: z.string().nullable().optional(), // Issue #835
   monthlyGoalId: z.string().optional(),
+  projectId: z.string().nullable().optional(), // Issue #1176
   primaryAssigneeId: z.string().min(1, "指派人為必填"),
   backupAssigneeId: z.string().optional(),
   status: TaskStatusEnum.optional().default("BACKLOG"),
@@ -63,6 +65,7 @@ export const updateTaskSchema = z.object({
   description: z.string().max(10000, "描述不得超過 10,000 字元").nullable().optional(),
   annualPlanId: z.string().nullable().optional(), // Issue #835
   monthlyGoalId: z.string().nullable().optional(),
+  projectId: z.string().nullable().optional(), // Issue #1176
   primaryAssigneeId: z.string().nullable().optional(),
   backupAssigneeId: z.string().nullable().optional(),
   status: TaskStatusEnum.optional(),

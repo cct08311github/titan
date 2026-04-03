@@ -13,6 +13,7 @@ export interface ListTasksFilter {
   category?: TaskCategory | TaskCategory[] | string;
   annualPlanId?: string; // Issue #835
   monthlyGoalId?: string;
+  projectId?: string; // Issue #1176
   skip?: number;
   take?: number;
 }
@@ -88,6 +89,7 @@ export class TaskService {
     }
     if (filter.annualPlanId) where.annualPlanId = filter.annualPlanId; // Issue #835
     if (filter.monthlyGoalId) where.monthlyGoalId = filter.monthlyGoalId;
+    if (filter.projectId) where.projectId = filter.projectId; // Issue #1176
 
     const [tasks, total] = await Promise.all([
       this.prisma.task.findMany({

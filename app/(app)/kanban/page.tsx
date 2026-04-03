@@ -143,6 +143,10 @@ export default function KanbanPage() {
   } | null>(null);
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
 
+  // Project filter state (Issue #1176)
+  const [projectFilter, setProjectFilter] = useState("");
+  const [projectOptions, setProjectOptions] = useState<{ id: string; code: string; name: string }[]>([]);
+
   // Snapshot for rollback
   const tasksSnapshot = useRef<(TaskCardData & { position?: number })[]>([]);
 
@@ -159,6 +163,7 @@ export default function KanbanPage() {
       if (filters.assignee) params.set("assignee", filters.assignee);
       if (filters.priority) params.set("priority", filters.priority);
       if (filters.category) params.set("category", filters.category);
+      if (projectFilter) params.set("projectId", projectFilter);
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
       const body = await res.json();
@@ -198,7 +203,7 @@ export default function KanbanPage() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, projectFilter]);
 
   useEffect(() => {
     fetchTasks();
@@ -211,6 +216,15 @@ export default function KanbanPage() {
       .then((body) => {
         const list = extractItems<{ id: string; name: string }>(body);
         setUsers(list.map((u) => ({ id: u.id, name: u.name })));
+      })
+      .catch(() => {});
+    // Fetch project options for filter (Issue #1176)
+    fetch("/api/projects?limit=100")
+      .then((r) => r.json())
+      .then((body) => {
+        const data = body?.data ?? body;
+        const items = data?.items ?? [];
+        setProjectOptions(items.map((p: { id: string; code: string; name: string }) => ({ id: p.id, code: p.code, name: p.name })));
       })
       .catch(() => {});
   }, []);
@@ -604,7 +618,7 @@ export default function KanbanPage() {
       )}
 
       {/* Filters */}
-      <div className="flex-shrink-0">
+      <div className="flex-shrink-0 space-y-2">
         <TaskFilters
           filters={filters}
           onChange={setFilters}
@@ -612,6 +626,32 @@ export default function KanbanPage() {
           filteredCount={tasks.length}
           syncUrl
         />
+        {/* Project filter — Issue #1176 */}
+        {projectOptions.length > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              aria-label="篩選項目"
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="h-9 bg-card border border-border text-foreground text-sm rounded-lg px-3 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 cursor-pointer hover:border-muted-foreground/30 transition-all shadow-sm"
+            >
+              <option value="">所有項目</option>
+              {projectOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.code} {p.name}
+                </option>
+              ))}
+            </select>
+            {projectFilter && (
+              <button
+                onClick={() => setProjectFilter("")}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bulk action bar — visible when tasks are selected in multi-select mode */}

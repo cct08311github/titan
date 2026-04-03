@@ -92,9 +92,10 @@ const IMPACT_NUM: Record<string, number> = {
 
 export interface ListProjectsFilter {
   year?: number;
-  status?: ProjectStatus;
+  status?: ProjectStatus | string; // supports comma-separated for multi-status (Issue #1176)
   requestDept?: string;
   priority?: string;
+  ownerId?: string; // Issue #1176
   search?: string;
   page?: number;
   limit?: number;
@@ -119,9 +120,17 @@ export class ProjectService {
     const where: any = { archivedAt: null };
 
     if (filter.year) where.year = filter.year;
-    if (filter.status) where.status = filter.status;
+    if (filter.status) {
+      const statusStr = String(filter.status);
+      if (statusStr.includes(",")) {
+        where.status = { in: statusStr.split(",") };
+      } else {
+        where.status = filter.status;
+      }
+    }
     if (filter.requestDept) where.requestDept = filter.requestDept;
     if (filter.priority) where.priority = filter.priority;
+    if (filter.ownerId) where.ownerId = filter.ownerId; // Issue #1176
     if (filter.search) {
       where.OR = [
         { name: { contains: filter.search, mode: "insensitive" } },
@@ -711,6 +720,24 @@ export class ProjectService {
   }
 
   // ── Export (CSV) ──────────────────────────────────────────────────────
+
+  // ── Excel export data ────────────────────────────────────────────────────
+
+  async getProjectsForExport(filter: ListProjectsFilter) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const where: any = { archivedAt: null };
+    if (filter.year) where.year = filter.year;
+    if (filter.status) where.status = filter.status;
+    if (filter.requestDept) where.requestDept = filter.requestDept;
+
+    return this.prisma.project.findMany({
+      where,
+      include: {
+        owner: { select: { name: true } },
+      },
+      orderBy: { code: "asc" },
+    });
+  }
 
   async exportCsv(filter: ListProjectsFilter) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -22,6 +22,7 @@ import { CommentList } from "./comment-list";
 
 type User = { id: string; name: string; avatar?: string | null };
 type MonthlyGoal = { id: string; title: string; month: number };
+type ProjectOption = { id: string; code: string; name: string };
 
 type TaskDetail = {
   id: string;
@@ -33,6 +34,7 @@ type TaskDetail = {
   primaryAssigneeId?: string | null;
   backupAssigneeId?: string | null;
   monthlyGoalId?: string | null;
+  projectId?: string | null;
   dueDate?: string | null;
   estimatedHours?: number | null;
   tags?: string[];
@@ -64,6 +66,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [saving, setSaving] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [form, setForm] = useState<TaskForm>(initialForm);
   const [activeTab, setActiveTab] = useState<ModalTab>("detail");
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -93,6 +96,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           primaryAssigneeId: data.primaryAssigneeId ?? "",
           backupAssigneeId: data.backupAssigneeId ?? "",
           monthlyGoalId: data.monthlyGoalId ?? "",
+          projectId: data.projectId ?? "",
           dueDate: data.dueDate ? data.dueDate.split("T")[0] : "",
           estimatedHours: data.estimatedHours?.toString() ?? "",
           tags: data.tags ?? [],
@@ -107,6 +111,12 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
     loadTask();
     fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
     fetch("/api/goals").then((r) => r.json()).then((body) => setGoals(extractItems<MonthlyGoal>(body))).catch(() => {});
+    // Fetch projects for linking (Issue #1176)
+    fetch("/api/projects?limit=100").then((r) => r.json()).then((body) => {
+      const data = body?.data ?? body;
+      const items = (data?.items ?? []) as ProjectOption[];
+      setProjects(items.map((p) => ({ id: p.id, code: p.code, name: p.name })));
+    }).catch(() => {});
     // Get current user for comment ownership
     fetch("/api/auth/session")
       .then((r) => r.json())
@@ -145,6 +155,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
           primaryAssigneeId: form.primaryAssigneeId || null,
           backupAssigneeId: form.backupAssigneeId || null,
           monthlyGoalId: form.monthlyGoalId || null,
+          projectId: form.projectId || null,
           dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
           estimatedHours: form.estimatedHours ? parseFloat(form.estimatedHours) : null,
           tags: form.tags,
@@ -261,6 +272,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
                   onFieldChange={updateField}
                   users={users}
                   goals={goals}
+                  projects={projects}
                   errors={formErrors}
                 />
 
