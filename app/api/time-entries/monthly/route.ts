@@ -10,8 +10,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
-import { success } from "@/lib/api-response";
-import { validateBody } from "@/lib/validate";
+import { success, error as apiError } from "@/lib/api-response";
 
 const monthParamSchema = z.string().regex(/^\d{4}-\d{2}$/, "格式須為 YYYY-MM");
 
@@ -24,7 +23,7 @@ export const GET = withManager(async (req: NextRequest) => {
   // Validate month param
   const monthResult = monthParamSchema.safeParse(monthRaw);
   if (!monthResult.success) {
-    return success({ error: "month 參數格式須為 YYYY-MM" }, 400) as never;
+    return apiError("INVALID_PARAM", "month 參數格式須為 YYYY-MM", 400) as never;
   }
   const month = monthResult.data;
 
