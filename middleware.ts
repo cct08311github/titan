@@ -16,11 +16,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateNonce, applyCsp } from "@/lib/middleware/csp";
 import { resolveCorrelationId, applyCorrelationId } from "@/lib/middleware/correlation";
 import { checkAuth } from "@/lib/middleware/auth";
+import { checkMobileVersion } from "@/lib/middleware/mobile-version";
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   // 1. Generate per-request identifiers
   const requestId = resolveCorrelationId(req);
   const nonce = generateNonce();
+
+  // 1.5. Mobile version check — reject outdated mobile apps before auth (Issue #1090)
+  const versionResult = checkMobileVersion(req);
+  if (versionResult !== null) {
+    return versionResult;
+  }
 
   // 2. Auth check — may return redirect or 401
   const authResult = await checkAuth(req, requestId);
