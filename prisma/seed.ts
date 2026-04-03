@@ -3,7 +3,9 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { hash } from "bcryptjs";
 import "dotenv/config";
 
-const adapter = new PrismaPg(process.env.DATABASE_URL!);
+const dbUrl = process.env.DATABASE_URL;
+if (!dbUrl) throw new Error("DATABASE_URL environment variable is not set");
+const adapter = new PrismaPg(dbUrl);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
