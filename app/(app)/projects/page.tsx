@@ -2134,6 +2134,9 @@ export default function ProjectsPage() {
                 <th className="text-right py-3 px-3 font-medium">
                   實際人天
                 </th>
+                <th className="text-right py-3 px-3 font-medium">
+                  預算(千)
+                </th>
                 <SortHeader
                   label="進度%"
                   col="progressPct"
@@ -2190,6 +2193,9 @@ export default function ProjectsPage() {
                   </td>
                   <td className="py-3 px-3 text-right tabular-nums">
                     {fmtNum(proj.mdActualTotal)}
+                  </td>
+                  <td className="py-3 px-3 text-right tabular-nums text-xs">
+                    {proj.budgetTotal ? `${Math.round(proj.budgetTotal / 1000)}K` : "—"}
                   </td>
                   <td className="py-3 px-3 text-right">
                     <div className="flex items-center gap-2 justify-end">
