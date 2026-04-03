@@ -1507,6 +1507,8 @@ model Project {
   assumptions     String?       @db.Text
   riskLevel       String?       @default("MEDIUM") // LOW/MEDIUM/HIGH/CRITICAL
   riskNote        String?       @db.Text
+  feasibilityBy    String?
+  feasibilityDate  DateTime?
 
   // 各階段人天（10 階段）
   mdProjectMgmt     Float?      @default(0)
