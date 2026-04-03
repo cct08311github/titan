@@ -128,6 +128,14 @@ export default function KanbanPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showDragHint, setShowDragHint] = useState(false);
 
+  // Issue #1231: auto-open task detail modal from URL ?task= parameter
+  useEffect(() => {
+    const taskParam = searchParams.get("task");
+    if (taskParam) {
+      setSelectedTaskId(taskParam);
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     if (typeof window !== "undefined" && !localStorage.getItem("titan-kanban-onboarded")) {
       setShowDragHint(true);
