@@ -43,8 +43,8 @@ const ENGAGEMENT_COLOR: Record<string, string> = {
 };
 
 const ENGAGEMENT_LABEL: Record<string, string> = {
-  CHAMPION: "支持者",
-  SUPPORTER: "擁護者",
+  CHAMPION: "倡導者",
+  SUPPORTER: "支持者",
   NEUTRAL: "中立",
   RESISTANT: "抵觸",
 };
@@ -52,7 +52,9 @@ const ENGAGEMENT_LABEL: Record<string, string> = {
 export function StakeholderMatrix({ stakeholders }: Props) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  if (stakeholders.length === 0) return null;
+  if (stakeholders.length === 0) return (
+    <div className="text-center text-muted-foreground py-8 text-sm">尚未設定利害關係人</div>
+  );
 
   // Quadrant labels
   const quadrants = [
