@@ -24,6 +24,7 @@ import {
   MousePointerSquareDashed,
   Check,
   GripVertical,
+  FileInput,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -160,6 +161,12 @@ export default function KanbanPage() {
   const [projectFilter, setProjectFilter] = useState("");
   const [projectOptions, setProjectOptions] = useState<{ id: string; code: string; name: string }[]>([]);
 
+  // Template import dialog state (Issue #1266)
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importJson, setImportJson] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
   // Ref to always access latest tasks (avoids stale closures in keyboard handlers)
   const tasksRef = useRef(tasks);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
@@ -181,6 +188,8 @@ export default function KanbanPage() {
       if (filters.priority) params.set("priority", filters.priority);
       if (filters.category) params.set("category", filters.category);
       if (projectFilter) params.set("projectId", projectFilter);
+      if (filters.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters.sortOrder) params.set("order", filters.sortOrder);
       const res = await fetch(`/api/tasks?${params}`);
       if (!res.ok) throw new Error("任務載入失敗");
       const body = await res.json();
@@ -549,6 +558,57 @@ export default function KanbanPage() {
     }
   }
 
+  // ── Template import (Issue #1266) ────────────────────────────────────────
+
+  async function handleImportTemplate() {
+    setImportError(null);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(importJson);
+    } catch {
+      setImportError("JSON 格式錯誤，請確認格式正確");
+      return;
+    }
+
+    // Accept either { tasks: [...] } or direct array
+    const tasks = Array.isArray(parsed)
+      ? parsed
+      : (parsed as { tasks?: unknown[] }).tasks;
+
+    if (!Array.isArray(tasks) || tasks.length === 0) {
+      setImportError("請提供至少一筆任務（tasks 陣列）");
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      const res = await fetch("/api/tasks/import-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tasks }),
+      });
+      const body = await res.json();
+      if (!res.ok) {
+        setImportError(body?.message ?? body?.error ?? "匯入失敗");
+        return;
+      }
+      const created = body?.data?.created ?? body?.created ?? 0;
+      const failed = body?.data?.failed ?? body?.failed ?? 0;
+      setImportDialogOpen(false);
+      setImportJson("");
+      await fetchTasks();
+      if (failed === 0) {
+        toast.success(`已匯入 ${created} 筆任務`);
+      } else {
+        toast.warning(`匯入完成：${created} 筆成功，${failed} 筆失敗`);
+      }
+    } catch {
+      setImportError("網路錯誤，請稍後再試");
+    } finally {
+      setImportLoading(false);
+    }
+  }
+
   // ── Derived data ────────────────────────────────────────────────────────
 
   const tasksByStatus = (status: TaskStatus) =>
@@ -585,6 +645,16 @@ export default function KanbanPage() {
             <MousePointerSquareDashed className="h-3.5 w-3.5" />
             多選
           </button>
+          {/* Import template button (Issue #1266) */}
+          <button
+            onClick={() => { setImportDialogOpen(true); setImportError(null); setImportJson(""); }}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-background border border-border text-muted-foreground rounded-lg shadow-sm transition-all hover:text-foreground hover:bg-accent/50"
+            title="從範本匯入"
+          >
+            <FileInput className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">從範本匯入</span>
+          </button>
+
           <button
             onClick={async () => {
               const res = await fetch("/api/tasks", {
@@ -848,6 +918,68 @@ export default function KanbanPage() {
             fetchTasks();
           }}
         />
+      )}
+
+      {/* Template import dialog (Issue #1266) */}
+      {importDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setImportDialogOpen(false); }}
+        >
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileInput className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-semibold">從範本匯入任務</h2>
+              </div>
+              <button
+                onClick={() => setImportDialogOpen(false)}
+                className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>貼上 JSON 範本（陣列或含 tasks 欄位的物件）。每筆任務支援欄位：</p>
+              <code className="block bg-muted/50 rounded px-2 py-1 text-[11px] leading-relaxed">
+                {`{ "title": "任務名稱", "priority": "P1", "category": "PLANNED", "status": "BACKLOG", "offsetDays": 7 }`}
+              </code>
+            </div>
+
+            <textarea
+              value={importJson}
+              onChange={(e) => { setImportJson(e.target.value); setImportError(null); }}
+              placeholder={`[\n  { "title": "任務一", "priority": "P1" },\n  { "title": "任務二", "offsetDays": 3 }\n]`}
+              rows={8}
+              className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono resize-y focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all"
+            />
+
+            {importError && (
+              <p className="text-xs text-red-400 flex items-center gap-1">
+                <X className="h-3 w-3 shrink-0" />
+                {importError}
+              </p>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <button
+                onClick={() => setImportDialogOpen(false)}
+                className="text-sm px-4 py-1.5 rounded-lg border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleImportTemplate}
+                disabled={importLoading || !importJson.trim()}
+                className="flex items-center gap-1.5 text-sm font-medium px-4 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {importLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                匯入
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Bulk operation toast (Issue #1023) */}
