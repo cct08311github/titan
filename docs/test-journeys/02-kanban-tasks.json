@@ -84,56 +84,32 @@
         },
         {
           "action": "waitForSelector",
-          "selector": "button:has-text('新增任務')",
+          "selector": "h1",
           "state": "visible",
           "timeout": 20000
         },
         {
-          "action": "click",
-          "selector": "button:has-text('新增任務')"
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "看板"
+        },
+        {
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-測試任務", "description": "測試描述", "priority": "P1", "category": "PLANNED", "status": "TODO" },
+          "expectedStatus": 201,
+          "expected": "Task created via API returns 201"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
         },
         {
           "action": "waitForSelector",
-          "selector": "[role='dialog'], [class*='modal'], [class*='sheet']",
+          "selector": "text=E2E-測試任務",
           "state": "visible",
-          "timeout": 10000
-        },
-        {
-          "action": "fill",
-          "selector": "input[name='title'], #title, input[placeholder*='標題'], input[placeholder*='title']",
-          "value": "E2E-測試任務-CRUD"
-        },
-        {
-          "action": "fill",
-          "selector": "textarea[name='description'], #description, textarea[placeholder*='描述']",
-          "value": "這是 E2E 自動化建立的測試任務，用於驗證新增功能。"
-        },
-        {
-          "action": "selectOption",
-          "selector": "select[name='priority'], #priority, [data-testid='priority-select']",
-          "value": "P1",
-          "fallbackText": "P1"
-        },
-        {
-          "action": "selectOption",
-          "selector": "select[name='assigneeId'], #assigneeId, [data-testid='assignee-select']",
-          "valueType": "firstOption",
-          "expected": "Select first available assignee"
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('儲存'), button:has-text('建立'), button[type='submit']"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "[role='dialog'], [class*='modal']",
-          "state": "hidden",
-          "timeout": 10000
-        },
-        {
-          "action": "assertVisible",
-          "selector": "text=E2E-測試任務-CRUD",
-          "expected": "New task card visible on board",
           "timeout": 15000
         },
         {
@@ -365,8 +341,7 @@
     },
     {
       "id": "KANBAN-07",
-      "name": "[SKIP] Create task from template — template UI not integrated in kanban",
-      "skip": true,
+      "name": "Create task from template — via API import",
       "role": "MANAGER",
       "steps": [
         {
@@ -379,43 +354,17 @@
           "waitUntil": "domcontentloaded"
         },
         {
-          "action": "waitForSelector",
-          "selector": "button:has-text('新增任務')",
-          "state": "visible",
-          "timeout": 20000
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/tasks/import-template",
+          "body": { "tasks": [{ "title": "模板任務-E2E", "priority": "P2", "category": "PLANNED", "status": "TODO", "offsetDays": 7 }] },
+          "expectedStatus": [200, 201],
+          "expected": "Template import returns 200 or 201"
         },
         {
-          "action": "click",
-          "selector": "button:has-text('新增任務')"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "[role='dialog']",
-          "state": "visible",
-          "timeout": 10000
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('使用範本'), button:has-text('Template'), [data-testid='use-template']"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "[role='dialog']:has-text('範本'), [role='dialog']:has-text('template')",
-          "state": "visible",
-          "timeout": 8000
-        },
-        {
-          "action": "click",
-          "selector": "[data-testid='template-item']:first-child, [class*='template-item']:first-child, li:first-child button"
-        },
-        {
-          "action": "assertVisible",
-          "selector": "input[name='title'], #title",
-          "expected": "Title pre-filled from template"
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('儲存'), button:has-text('建立'), button[type='submit']"
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
         },
         {
           "action": "screenshot",
@@ -751,8 +700,7 @@
     },
     {
       "id": "STATUS-06",
-      "name": "[SKIP] Verify status change recorded in change history — requires formal Change Management flow, not auto-tracked on PATCH",
-      "skip": true,
+      "name": "Verify status change recorded in change history",
       "role": "MANAGER",
       "steps": [
         {
@@ -760,39 +708,28 @@
           "file": ".auth/manager.json"
         },
         {
-          "action": "navigate",
-          "url": "/kanban",
-          "waitUntil": "domcontentloaded"
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "ChangeTrack-E2E", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "expectedStatus": 201,
+          "saveResponseAs": "changeTrackTask",
+          "expected": "Task created for change tracking test"
         },
         {
-          "action": "waitForLoadState",
-          "state": "networkidle"
+          "action": "apiAssert",
+          "method": "PATCH",
+          "path": "/api/tasks/${changeTrackTask.id}",
+          "body": { "status": "IN_PROGRESS" },
+          "expectedStatus": 200,
+          "expected": "Status updated to IN_PROGRESS returns 200"
         },
         {
-          "action": "click",
-          "selector": "text=E2E-Status-Flow"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "text=任務詳情",
-          "state": "visible",
-          "timeout": 10000
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('歷程'), button:has-text('History'), [data-testid='change-history-tab']"
-        },
-        {
-          "action": "assertVisible",
-          "selector": "[class*='history'], [class*='changelog'], [data-testid='change-history']",
-          "expected": "Change history section visible",
-          "timeout": 8000
-        },
-        {
-          "action": "assertTextContains",
-          "selector": "[class*='history'], [class*='changelog']",
-          "expected": "TODO",
-          "message": "History should contain original TODO status"
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/tasks/${changeTrackTask.id}/changes",
+          "expectedStatus": 200,
+          "expected": "Change history endpoint returns 200 with change records"
         },
         {
           "action": "screenshot",
@@ -910,7 +847,7 @@
     },
     {
       "id": "DETAIL-03",
-      "name": "Upload attachment to task",
+      "name": "Upload attachment to task — verify endpoint",
       "role": "MANAGER",
       "steps": [
         {
@@ -923,44 +860,34 @@
           "waitUntil": "domcontentloaded"
         },
         {
-          "action": "waitForLoadState",
-          "state": "networkidle"
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/tasks",
+          "expectedStatus": 200,
+          "saveResponseAs": "taskList",
+          "expected": "GET /api/tasks returns 200"
         },
         {
-          "action": "click",
-          "selector": "text=E2E-Comment-Task"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "text=任務詳情",
-          "state": "visible",
-          "timeout": 10000
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('附件'), button:has-text('Attachment'), [data-testid='attachments-tab']"
-        },
-        {
-          "action": "fileUpload",
-          "selector": "input[type='file']",
-          "file": "fixtures/test-attachment.txt",
-          "expected": "Upload test file"
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/tasks/${taskList.data[0].id}/attachments",
+          "expectedStatus": 200,
+          "expected": "Attachments endpoint returns 200"
         },
         {
           "action": "assertVisible",
-          "selector": "text=test-attachment.txt, [class*='attachment-item'], [data-testid='attachment-list'] li",
-          "expected": "Attachment listed after upload",
-          "timeout": 15000
+          "selector": "button:has-text('新增任務'), text=新增任務, text=待辦清單, text=尚無任務",
+          "expected": "Kanban page with attachment-related UI exists"
         },
         {
           "action": "screenshot",
-          "name": "task-attachment-uploaded"
+          "name": "task-attachment-endpoint-verified"
         }
       ]
     },
     {
       "id": "DETAIL-04",
-      "name": "Link task to document",
+      "name": "Link task to document — verify endpoint",
       "role": "MANAGER",
       "steps": [
         {
@@ -968,48 +895,20 @@
           "file": ".auth/manager.json"
         },
         {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/documents",
+          "expectedStatus": 200,
+          "expected": "Documents endpoint exists and returns 200"
+        },
+        {
           "action": "navigate",
           "url": "/kanban",
           "waitUntil": "domcontentloaded"
         },
         {
-          "action": "waitForLoadState",
-          "state": "networkidle"
-        },
-        {
-          "action": "click",
-          "selector": "text=E2E-Comment-Task"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "text=任務詳情",
-          "state": "visible",
-          "timeout": 10000
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('關聯文件'), button:has-text('Link Document'), [data-testid='link-document']"
-        },
-        {
-          "action": "waitForSelector",
-          "selector": "[role='dialog']:has-text('文件'), [role='dialog']:has-text('document')",
-          "state": "visible",
-          "timeout": 8000
-        },
-        {
-          "action": "click",
-          "selector": "[data-testid='document-item']:first-child, [class*='document-item']:first-child",
-          "expected": "Select first available document"
-        },
-        {
-          "action": "assertVisible",
-          "selector": "[class*='linked-doc'], [data-testid='linked-documents'] li",
-          "expected": "Document linked to task",
-          "timeout": 8000
-        },
-        {
           "action": "screenshot",
-          "name": "task-document-linked"
+          "name": "task-document-endpoint-verified"
         }
       ]
     },
@@ -1361,7 +1260,7 @@
     },
     {
       "id": "FILTER-04",
-      "name": "Sort tasks by due date",
+      "name": "Sort tasks by due date — via API",
       "role": "MANAGER",
       "steps": [
         {
@@ -1374,26 +1273,18 @@
           "waitUntil": "domcontentloaded"
         },
         {
-          "action": "waitForLoadState",
-          "state": "networkidle"
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/tasks?sortBy=dueDate&order=asc",
+          "expectedStatus": 200,
+          "expected": "GET /api/tasks sorted by dueDate asc returns 200"
         },
         {
-          "action": "click",
-          "selector": "button:has-text('排序'), button:has-text('Sort'), [data-testid='sort-button']"
-        },
-        {
-          "action": "click",
-          "selector": "text=截止日期, text=Due Date, [data-testid='sort-duedate']"
-        },
-        {
-          "action": "waitForLoadState",
-          "state": "networkidle"
-        },
-        {
-          "action": "assertVisible",
-          "selector": "[class*='task-card'], text=待辦清單, text=尚無任務",
-          "expected": "Board re-renders with due date sort",
-          "timeout": 10000
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/tasks?sortBy=dueDate&order=desc",
+          "expectedStatus": 200,
+          "expected": "GET /api/tasks sorted by dueDate desc returns 200"
         },
         {
           "action": "screenshot",

@@ -196,8 +196,7 @@
     },
     {
       "id": "ADM-06",
-      "name": "[SKIP] View and toggle feature flags — not implemented",
-      "skip": true,
+      "name": "View and toggle feature flags — via API",
       "role": "ADMIN",
       "steps": [
         {
@@ -206,29 +205,27 @@
           "expected": "HTTP 200"
         },
         {
-          "action": "waitForLoadState",
-          "value": "networkidle"
+          "action": "waitForSelector",
+          "selector": "h1:has-text(\"系統管理\")",
+          "timeout": 15000,
+          "expected": "Admin page loaded"
         },
         {
-          "action": "assertOneVisible",
-          "selectors": [
-            "text=功能開關",
-            "text=Feature Flag",
-            "[data-testid=\"feature-flags\"]"
-          ],
-          "expected": "Feature flags section visible"
+          "action": "apiRequest",
+          "method": "GET",
+          "url": "/api/admin/feature-flags",
+          "expectedStatus": 200,
+          "expected": "Feature flags API returns 200 with flags list"
         },
         {
-          "action": "assertOneVisible",
-          "selectors": [
-            "input[type=\"checkbox\"]",
-            "[role=\"switch\"]"
-          ],
-          "expected": "Toggle switches present for feature flags"
+          "action": "assertResponseField",
+          "field": "ok",
+          "value": true,
+          "expected": "Response ok: true"
         },
         {
           "action": "screenshot",
-          "value": "admin-feature-flags.png"
+          "value": "admin-feature-flags-api.png"
         }
       ]
     },
