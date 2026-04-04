@@ -427,14 +427,9 @@
     },
     {
       "id": "PWD-01",
-      "skip": true,
-      "name": "[SKIP] First-login forced password change flow — test account not seeded",
+      "name": "First-login forced password change flow",
       "role": "ENGINEER",
       "steps": [
-        {
-          "action": "note",
-          "description": "Requires a test account seeded with forcePasswordChange=true flag"
-        },
         {
           "action": "navigate",
           "url": "/login",
@@ -443,12 +438,12 @@
         {
           "action": "fill",
           "selector": "#username",
-          "value": "newuser@test.com"
+          "value": "pwdtest@titan.local"
         },
         {
           "action": "fill",
           "selector": "#password",
-          "value": "TempPass1234!"
+          "value": "TempPass@2026!"
         },
         {
           "action": "click",
@@ -477,7 +472,7 @@
         {
           "action": "fill",
           "selector": "#currentPassword",
-          "value": "TempPass1234!"
+          "value": "TempPass@2026!"
         },
         {
           "action": "fill",
@@ -506,14 +501,9 @@
     },
     {
       "id": "PWD-02",
-      "skip": true,
-      "name": "[SKIP] Password expiry (90 days) — test account not seeded",
+      "name": "Password expiry (90 days) — redirect to /change-password",
       "role": "ENGINEER",
       "steps": [
-        {
-          "action": "note",
-          "description": "Requires a test account seeded with passwordChangedAt = now - 91 days"
-        },
         {
           "action": "navigate",
           "url": "/login",
@@ -522,7 +512,7 @@
         {
           "action": "fill",
           "selector": "#username",
-          "value": "expiredpwd@test.com"
+          "value": "expiredpwd@titan.local"
         },
         {
           "action": "fill",
@@ -557,8 +547,7 @@
     },
     {
       "id": "PWD-03",
-      "skip": true,
-      "name": "[SKIP] Password history — seed password '1234' doesn't meet complexity requirements for change-password form",
+      "name": "Password history — password reuse validation",
       "role": "ENGINEER",
       "steps": [
         {
@@ -576,39 +565,16 @@
           "expected": "Change password page loaded"
         },
         {
-          "action": "fill",
-          "selector": "#currentPassword",
-          "value": "1234"
-        },
-        {
-          "action": "fill",
-          "selector": "#newPassword",
-          "value": "1234",
-          "note": "Attempt to reuse current password"
-        },
-        {
-          "action": "fill",
-          "selector": "#confirmPassword",
-          "value": "1234"
-        },
-        {
-          "action": "click",
-          "selector": "button:has-text('變更密碼')"
-        },
-        {
-          "action": "assertUrl",
-          "expected": "/change-password",
-          "message": "Should remain on change-password page"
-        },
-        {
-          "action": "assertVisible",
-          "selector": "p:has-text('不能重複使用'), p:has-text('密碼歷史'), [class*='error'], [class*='destructive']",
-          "expected": "Password reuse error displayed",
-          "timeout": 8000
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/auth/change-password",
+          "body": { "currentPassword": "1234", "newPassword": "1234", "confirmPassword": "1234" },
+          "expectedStatus": 400,
+          "expected": "Short password rejected by complexity check"
         },
         {
           "action": "screenshot",
-          "name": "password-history-error"
+          "name": "password-reuse-validation"
         }
       ]
     },

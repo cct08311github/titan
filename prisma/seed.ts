@@ -80,8 +80,35 @@ async function main() {
     }),
   ]);
 
+  // E2E test accounts for password policy tests (PWD-01, PWD-02)
+  await prisma.user.upsert({
+    where: { email: "pwdtest@titan.local" },
+    update: {},
+    create: {
+      name: "密碼測試用戶",
+      email: "pwdtest@titan.local",
+      password: await hash("TempPass@2026!", 12),
+      role: "ENGINEER",
+      mustChangePassword: true,  // PWD-01: first-login forced change
+      passwordChangedAt: new Date(),
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: "expiredpwd@titan.local" },
+    update: {},
+    create: {
+      name: "過期密碼用戶",
+      email: "expiredpwd@titan.local",
+      password: await hash("OldPass@2026!", 12),
+      role: "ENGINEER",
+      mustChangePassword: false,
+      passwordChangedAt: new Date(Date.now() - 91 * 24 * 60 * 60 * 1000), // 91 days ago
+    },
+  });
+
   const allUsers = [admin, ...engineers];
-  console.log(`建立使用者：1 位主管 + ${engineers.length} 位工程師`);
+  console.log(`建立使用者：1 位主管 + ${engineers.length} 位工程師 + 2 個 PWD 測試帳號`);
 
   // ── 建立 3 個年度計畫 ───────────────────────────────────
   const existing2026 = await prisma.annualPlan.findFirst({ where: { year: 2026 } });
