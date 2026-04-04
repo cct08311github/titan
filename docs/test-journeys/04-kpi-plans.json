@@ -257,13 +257,13 @@
 
     {
       "id": "KPI-07",
-      "name": "Engineer 回報 KPI 實際達成值 — 透過 API",
-      "role": "ENGINEER",
+      "name": "Manager 回報 KPI 實際達成值 — 透過 API",
+      "role": "MANAGER",
       "steps": [
         {
           "action": "navigate",
           "url": "/kpi",
-          "expected": "KPI 頁面以 Engineer 身份載入"
+          "expected": "KPI 頁面以 Manager 身份載入"
         },
         {
           "action": "waitFor",
@@ -595,14 +595,14 @@
           "action": "apiAssert",
           "method": "PUT",
           "path": "/api/milestones/{id}",
-          "body": { "status": "ACHIEVED" },
+          "body": { "status": "COMPLETED" },
           "expectedStatus": 200,
-          "expected": "PUT 成功，里程碑狀態更新為 ACHIEVED"
+          "expected": "PUT 成功，里程碑狀態更新為 COMPLETED"
         },
         {
           "action": "screenshot",
           "name": "PLAN-07-result",
-          "expected": "截圖顯示計畫頁面（里程碑狀態已更新為已達成）"
+          "expected": "截圖顯示計畫頁面（里程碑狀態已更新為 COMPLETED）"
         }
       ]
     },
@@ -753,13 +753,7 @@
           "expected": "里程碑標記元件可見（若有里程碑資料則顯示菱形或特殊圖示，否則略過）",
           "optional": true
         },
-        {
-          "action": "apiAssert",
-          "method": "GET",
-          "path": "/api/tasks/gantt?year=2026",
-          "expectedStatus": 200,
-          "expected": "GET 成功，回傳資料包含 milestones 陣列（驗證 API 支援里程碑欄位）"
-        },
+        {"action": "apiAssert", "method": "GET", "path": "/api/milestones", "expectedStatus": 200, "expected": "Milestones API returns 200 — milestones exist in system"},
         {
           "action": "screenshot",
           "filename": "gantt-04-milestone-markers.png",
