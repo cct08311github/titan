@@ -17,11 +17,12 @@ const VALID_CATEGORIES: TaskCategory[] = ["PLANNED", "ADDED", "INCIDENT", "SUPPO
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
+  const session = await requireAuth();
 
   // Resolve "me" to the actual session userId (CR-19 / Issue #284)
+  // Issue #1257: ENGINEER role must only see own tasks (RBAC data isolation)
   let assignee = searchParams.get("assignee") ?? undefined;
-  if (assignee === "me") {
-    const session = await requireAuth();
+  if (assignee === "me" || session.user.role === "ENGINEER") {
     assignee = session.user.id;
   }
 
