@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Filter, X } from "lucide-react";
+import { Filter, X, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { useRouter, usePathname } from "next/navigation";
@@ -17,6 +17,8 @@ export type TaskFilters = {
   createdAtTo: string;
   completedAtFrom: string;
   completedAtTo: string;
+  sortBy: string;
+  sortOrder: string;
 };
 
 export const emptyFilters: TaskFilters = {
@@ -30,7 +32,17 @@ export const emptyFilters: TaskFilters = {
   createdAtTo: "",
   completedAtFrom: "",
   completedAtTo: "",
+  sortBy: "",
+  sortOrder: "",
 };
+
+const SORT_OPTIONS = [
+  { value: "", label: "預設排序" },
+  { value: "dueDate:asc", label: "到期日（近→遠）" },
+  { value: "dueDate:desc", label: "到期日（遠→近）" },
+  { value: "priority:asc", label: "優先度（高→低）" },
+  { value: "createdAt:desc", label: "建立日期（新→舊）" },
+];
 
 type User = { id: string; name: string };
 type TagOption = { name: string; color: string };
@@ -68,6 +80,8 @@ const categories = [
  * Parse filters from URL search params.
  */
 export function parseFiltersFromUrl(searchParams: URLSearchParams): TaskFilters {
+  const sortBy = searchParams.get("sortBy") ?? "";
+  const sortOrder = searchParams.get("order") ?? "";
   return {
     assignee: searchParams.get("assignee") ?? "",
     priority: searchParams.get("priority") ?? "",
@@ -79,6 +93,8 @@ export function parseFiltersFromUrl(searchParams: URLSearchParams): TaskFilters 
     createdAtTo: searchParams.get("createdAtTo") ?? "",
     completedAtFrom: searchParams.get("completedAtFrom") ?? "",
     completedAtTo: searchParams.get("completedAtTo") ?? "",
+    sortBy,
+    sortOrder,
   };
 }
 
@@ -97,6 +113,8 @@ export function serializeFiltersToUrl(filters: TaskFilters): string {
   if (filters.createdAtTo) params.set("createdAtTo", filters.createdAtTo);
   if (filters.completedAtFrom) params.set("completedAtFrom", filters.completedAtFrom);
   if (filters.completedAtTo) params.set("completedAtTo", filters.completedAtTo);
+  if (filters.sortBy) params.set("sortBy", filters.sortBy);
+  if (filters.sortOrder) params.set("order", filters.sortOrder);
   return params.toString();
 }
 
@@ -111,7 +129,8 @@ export function hasActiveFilters(filters: TaskFilters): boolean {
     filters.createdAtFrom ||
     filters.createdAtTo ||
     filters.completedAtFrom ||
-    filters.completedAtTo
+    filters.completedAtTo ||
+    filters.sortBy
   );
 }
 
@@ -323,6 +342,31 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
               {label}
             </button>
           ))}
+        </div>
+
+        {/* Sort */}
+        <div className="flex items-center gap-1.5">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <select
+            aria-label="排序方式"
+            value={filters.sortBy && filters.sortOrder ? `${filters.sortBy}:${filters.sortOrder}` : filters.sortBy}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!val) {
+                onChange({ ...filters, sortBy: "", sortOrder: "" });
+              } else {
+                const [sortBy, sortOrder] = val.split(":");
+                onChange({ ...filters, sortBy, sortOrder: sortOrder ?? "" });
+              }
+            }}
+            className={selectCls}
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Clear */}
