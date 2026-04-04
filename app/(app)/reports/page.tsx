@@ -167,11 +167,19 @@ function defaultDateRange(): { from: string; to: string } {
 }
 
 function exportCSV(headers: string[], rows: string[][], filename: string) {
-  const sanitize = (s: string) => /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+  const sanitize = (s: string) => /^[=+\-@\t\r|]/.test(s) ? `'${s}` : s;
+  const escapeCell = (v: string) => {
+    const s = sanitize(v);
+    // Quote if contains comma, double-quote, newline, or was sanitized (starts with ')
+    if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r") || s.startsWith("'")) {
+      return `"${s.replace(/"/g, '""')}"`;
+    }
+    return s;
+  };
   const bom = "\uFEFF";
   const csv = [
-    headers.map(sanitize).join(","),
-    ...rows.map(r => r.map(v => sanitize(v.includes(",") || v.includes('"') ? `"${v.replace(/"/g, '""')}"` : v)).join(","))
+    headers.map(escapeCell).join(","),
+    ...rows.map(r => r.map(escapeCell).join(","))
   ].join("\n");
   const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -202,7 +210,7 @@ function UtilizationReport({ from, to }: { from: string; to: string }) {
     setError(null);
     try {
       const res = await fetch(
-        `/api/reports/time-distribution?from=${from}&to=${to}&view=utilization`
+        `/api/reports/time-distribution?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&view=utilization`
       );
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
@@ -648,16 +656,21 @@ interface TimeSummaryUser { userName: string; email: string; planned: number; ad
 function TimeSummaryReport({ from, to }: { from: string; to: string }) {
   const [data, setData] = useState<TimeSummaryUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/time-summary?from=${from}&to=${to}&mode=by-user`)
-      .then(r => r.json()).then(d => setData(d.data?.users ?? d.data ?? []))
-      .catch(() => setData([]))
+    setError(null);
+    fetch(`/api/reports/time-summary?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=by-user`)
+      .then(r => { if (!r.ok) throw new Error("載入失敗"); return r.json(); })
+      .then(d => setData(d.data?.users ?? d.data ?? []))
+      .catch((e) => { setData([]); setError(e instanceof Error ? e.message : "載入失敗"); })
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, reloadKey]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (error) return <PageError message={error} onRetry={() => setReloadKey(k => k + 1)} className="py-8" />;
   if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無工時資料<br/><span className="text-xs">團隊成員開始登記工時後，摘要將自動產生</span></div>;
 
   // Aggregate totals
@@ -695,7 +708,7 @@ function TimeSummaryReport({ from, to }: { from: string; to: string }) {
               const pct = r.utilizationPct;
               const pctColor = pct >= 100 ? "text-green-600" : pct >= 80 ? "text-foreground" : pct >= 60 ? "text-amber-600" : "text-red-600";
               return (
-                <tr key={i} className="border-b border-border/30 hover:bg-accent/30">
+                <tr key={r.email || r.userName || i} className="border-b border-border/30 hover:bg-accent/30">
                   <td className="py-1.5 px-2 font-medium">{r.userName}</td>
                   <td className="text-right py-1.5 px-1">{r.planned || "-"}</td>
                   <td className="text-right py-1.5 px-1">{r.added || "-"}</td>
@@ -736,16 +749,21 @@ interface OvertimeUser { userName: string; email: string; normal: number; weekda
 function OvertimeReport({ from, to }: { from: string; to: string }) {
   const [data, setData] = useState<OvertimeUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/reports/overtime?from=${from}&to=${to}&mode=compliance`)
-      .then(r => r.json()).then(d => setData(d.data?.users ?? d.data ?? []))
-      .catch(() => setData([]))
+    setError(null);
+    fetch(`/api/reports/overtime?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&mode=compliance`)
+      .then(r => { if (!r.ok) throw new Error("載入失敗"); return r.json(); })
+      .then(d => setData(d.data?.users ?? d.data ?? []))
+      .catch((e) => { setData([]); setError(e instanceof Error ? e.message : "載入失敗"); })
       .finally(() => setLoading(false));
-  }, [from, to]);
+  }, [from, to, reloadKey]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;
+  if (error) return <PageError message={error} onRetry={() => setReloadKey(k => k + 1)} className="py-8" />;
   if (!data.length) return <div className="text-center text-muted-foreground py-12">此期間無加班資料</div>;
 
   const overLimitCount = data.filter(r => r.overLimit).length;
@@ -787,7 +805,7 @@ function OvertimeReport({ from, to }: { from: string; to: string }) {
           </tr></thead>
           <tbody>
             {data.map((r, i) => (
-              <tr key={i} className={`border-b border-border/30 hover:bg-accent/30 ${r.overLimit ? "bg-red-50/50 dark:bg-red-950/20" : ""}`}>
+              <tr key={r.email || r.userName || i} className={`border-b border-border/30 hover:bg-accent/30 ${r.overLimit ? "bg-red-50/50 dark:bg-red-950/20" : ""}`}>
                 <td className="py-1.5 px-2 font-medium">{r.userName}</td>
                 <td className="text-right py-1.5 px-2">{r.normal}h</td>
                 <td className="text-right py-1.5 px-2 text-amber-600 dark:text-amber-400">{r.weekdayOT}h</td>

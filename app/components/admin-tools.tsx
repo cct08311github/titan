@@ -124,6 +124,15 @@ function ResetTokenCard({ users }: { users: User[] }) {
     userName: string;
   } | null>(null);
 
+  // Auto-clear OTP from UI when it expires (security: don't leave OTP on screen indefinitely)
+  useEffect(() => {
+    if (!result) return;
+    const ms = new Date(result.expiresAt).getTime() - Date.now();
+    if (ms <= 0) { setResult(null); return; }
+    const timer = setTimeout(() => setResult(null), ms);
+    return () => clearTimeout(timer);
+  }, [result]);
+
   async function generateToken() {
     if (!selectedUserId) {
       toast.error("請選擇使用者");
@@ -282,7 +291,7 @@ function UnlockAccountCard({ users }: { users: User[] }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function AdminTools() {
+export function AdminTools({ role }: { role?: string }) {
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
 
@@ -304,6 +313,9 @@ export function AdminTools() {
       }
     })();
   }, []);
+
+  // OTP generation and account unlock are ADMIN-only operations
+  if (role !== "ADMIN") return null;
 
   return (
     <div className="space-y-4">
