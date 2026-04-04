@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { AdminPermissions } from "@/app/components/admin-permissions";
 import { AdminMonitoringAlerts } from "@/app/components/admin-monitoring-alerts";
+import { AdminTools } from "@/app/components/admin-tools";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { hasMinimumRole } from "@/lib/auth/permissions";
@@ -1366,6 +1367,7 @@ export default function AdminPage() {
       {activeTab === "system" && (
         <div className="space-y-10">
           <BackupStatusSection />
+          <AdminTools />
           <AuditLogSection />
         </div>
       )}

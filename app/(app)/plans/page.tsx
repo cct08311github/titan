@@ -8,6 +8,7 @@ import { PlanTree } from "@/app/components/plan-tree";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageEmpty } from "@/app/components/page-states";
 import { MilestoneSection } from "@/app/components/milestone-section";
+import { RetrospectiveGenerator } from "@/app/components/retrospective-generator";
 
 type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
@@ -604,6 +605,9 @@ export default function PlansPage() {
       {!loading && plans.filter(p => !p.archivedAt).length > 0 && (
         <MilestoneSection plans={plans.filter(p => !p.archivedAt).map(p => ({ id: p.id, year: p.year, title: p.title }))} />
       )}
+
+      {/* Retrospective Generator */}
+      {!loading && plans.length > 0 && <RetrospectiveGenerator />}
 
       {/* Goal detail panel */}
       {selectedGoal && (

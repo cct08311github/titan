@@ -30,10 +30,25 @@ import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { safeFixed, safePct } from "@/lib/safe-number";
+import { ReportsExtended } from "@/app/components/reports-extended";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ReportId = "utilization" | "velocity" | "kpi-trend" | "unplanned" | "time-summary" | "overtime" | "audit-summary" | "login-activity" | "project-status" | "project-budget";
+type ReportId =
+  // Original P0 reports
+  | "utilization" | "velocity" | "kpi-trend" | "unplanned"
+  // Existing wired reports
+  | "time-summary" | "overtime" | "audit-summary" | "login-activity" | "project-status" | "project-budget"
+  // 完成率
+  | "completion-rate"
+  // 工時詳細
+  | "department-timesheet" | "time-distribution" | "timesheet-compliance" | "weekly" | "monthly"
+  // 分析
+  | "delay-change" | "workload" | "custom" | "trends" | "kpi"
+  // V2 進階
+  | "v2-change-summary" | "v2-earned-value" | "v2-incident-sla" | "v2-kpi-composite"
+  | "v2-kpi-correlation" | "v2-milestone-achievement" | "v2-overdue-analysis"
+  | "v2-overtime-analysis" | "v2-permission-audit" | "v2-time-efficiency" | "v2-workload-distribution";
 
 interface ReportNav {
   id: ReportId;
@@ -87,6 +102,52 @@ const REPORT_CATEGORIES: ReportCategory[] = [
     reports: [
       { id: "audit-summary", label: "操作日誌統計", icon: Shield, description: "按操作類型統計" },
       { id: "login-activity", label: "登入活動", icon: Users, description: "登入成功/失敗統計" },
+    ],
+  },
+  {
+    label: "完成率",
+    icon: Target,
+    reports: [
+      { id: "completion-rate", label: "任務完成率趨勢", icon: TrendingUp, description: "月度任務完成比率" },
+    ],
+  },
+  {
+    label: "工時詳細",
+    icon: Clock,
+    reports: [
+      { id: "department-timesheet", label: "部門工時表", icon: Clock, description: "部門週工時彙整" },
+      { id: "time-distribution", label: "工時分佈", icon: BarChart3, description: "各類工時分佈比較" },
+      { id: "timesheet-compliance", label: "工時合規", icon: Shield, description: "填報合規率統計" },
+      { id: "weekly", label: "週報", icon: Calendar, description: "週度工作摘要" },
+      { id: "monthly", label: "月報", icon: Calendar, description: "月度工作摘要" },
+    ],
+  },
+  {
+    label: "分析",
+    icon: BarChart3,
+    reports: [
+      { id: "delay-change", label: "延遲變化分析", icon: AlertTriangle, description: "延遲任務統計與趨勢" },
+      { id: "workload", label: "工作量分析", icon: Users, description: "個人任務負荷分佈" },
+      { id: "custom", label: "自訂查詢", icon: FolderKanban, description: "按類別與狀態過濾" },
+      { id: "trends", label: "跨年趨勢", icon: TrendingUp, description: "指標跨年度對比" },
+      { id: "kpi", label: "KPI 報表", icon: Target, description: "年度 KPI 達成概況" },
+    ],
+  },
+  {
+    label: "V2 進階",
+    icon: BarChart3,
+    reports: [
+      { id: "v2-change-summary", label: "變更摘要", icon: FolderKanban, description: "任務/計畫變更記錄" },
+      { id: "v2-earned-value", label: "實獲值分析", icon: TrendingUp, description: "EVM 績效指標" },
+      { id: "v2-incident-sla", label: "事件 SLA", icon: AlertTriangle, description: "事件處理時效達標率" },
+      { id: "v2-kpi-composite", label: "KPI 綜合", icon: Target, description: "各類別 KPI 綜合統計" },
+      { id: "v2-kpi-correlation", label: "KPI 相關性", icon: TrendingUp, description: "KPI 指標相關係數" },
+      { id: "v2-milestone-achievement", label: "里程碑達成", icon: Target, description: "里程碑按時完成情況" },
+      { id: "v2-overdue-analysis", label: "逾期分析", icon: AlertTriangle, description: "逾期任務明細統計" },
+      { id: "v2-overtime-analysis", label: "加班分析 v2", icon: Clock, description: "詳細加班工時分析" },
+      { id: "v2-permission-audit", label: "權限稽核", icon: Shield, description: "權限存取事件記錄" },
+      { id: "v2-time-efficiency", label: "時間效率", icon: TrendingUp, description: "預估 vs 實際工時效率" },
+      { id: "v2-workload-distribution", label: "工作量分佈 v2", icon: Users, description: "詳細工作負荷分析" },
     ],
   },
 ];
@@ -1044,9 +1105,17 @@ function ProjectBudgetReport() {
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
+// Reports handled by the original inline components
+const ORIGINAL_REPORT_IDS = new Set<ReportId>([
+  "utilization", "velocity", "kpi-trend", "unplanned",
+  "time-summary", "overtime", "audit-summary", "login-activity",
+  "project-status", "project-budget",
+]);
+
 export default function ReportsV2Page() {
   const [activeReport, setActiveReport] = useState<ReportId>("utilization");
   const [dateRange, setDateRange] = useState(defaultDateRange);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
 
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4">
@@ -1123,6 +1192,14 @@ export default function ReportsV2Page() {
             onChange={(e) => setDateRange((prev) => ({ ...prev, to: e.target.value }))}
             className="bg-background border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
+          <span className="text-xs text-muted-foreground ml-2">年度</span>
+          <input
+            type="number"
+            aria-label="報表年度"
+            value={reportYear}
+            onChange={(e) => setReportYear(parseInt(e.target.value) || new Date().getFullYear())}
+            className="bg-background border border-border rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring w-20"
+          />
         </div>
 
         {/* Report content */}
@@ -1156,6 +1233,14 @@ export default function ReportsV2Page() {
           )}
           {activeReport === "project-budget" && (
             <ProjectBudgetReport />
+          )}
+          {!ORIGINAL_REPORT_IDS.has(activeReport) && (
+            <ReportsExtended
+              activeReport={activeReport}
+              from={dateRange.from}
+              to={dateRange.to}
+              year={reportYear}
+            />
           )}
         </div>
       </div>
