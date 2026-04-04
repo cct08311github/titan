@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Loader2, ChevronRight, X, Target, Copy, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Loader2, ChevronRight, X, Target, Copy, Archive, ArchiveRestore, Milestone, CheckCircle2, Circle, Clock, XCircle, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { PlanTree } from "@/app/components/plan-tree";
@@ -10,6 +10,17 @@ import { PageEmpty } from "@/app/components/page-states";
 
 type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
+type MilestoneStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "DELAYED" | "CANCELLED";
+type MilestoneType = "LAUNCH" | "AUDIT" | "CUSTOM";
+
+type MilestoneItem = {
+  id: string;
+  title: string;
+  type: MilestoneType;
+  status: MilestoneStatus;
+  plannedEnd: string;
+  annualPlanId: string;
+};
 
 type Task = {
   id: string;
@@ -60,6 +71,50 @@ const statusColors: Record<TaskStatus, string> = {
 };
 
 const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+
+const goalStatusLabels: Record<GoalStatus, string> = {
+  NOT_STARTED: "未開始",
+  IN_PROGRESS: "進行中",
+  COMPLETED: "已完成",
+  CANCELLED: "已取消",
+};
+
+const goalStatusColors: Record<GoalStatus, string> = {
+  NOT_STARTED: "text-muted-foreground",
+  IN_PROGRESS: "text-yellow-400",
+  COMPLETED: "text-emerald-400",
+  CANCELLED: "text-rose-400",
+};
+
+// Valid goal status transitions (mirrors server-side state machine)
+const GOAL_TRANSITIONS: Record<GoalStatus, GoalStatus[]> = {
+  NOT_STARTED: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
+};
+
+const milestoneStatusLabels: Record<MilestoneStatus, string> = {
+  PENDING: "待執行",
+  IN_PROGRESS: "進行中",
+  COMPLETED: "已完成",
+  DELAYED: "已延遲",
+  CANCELLED: "已取消",
+};
+
+const milestoneStatusColors: Record<MilestoneStatus, string> = {
+  PENDING: "text-muted-foreground",
+  IN_PROGRESS: "text-yellow-400",
+  COMPLETED: "text-emerald-400",
+  DELAYED: "text-orange-400",
+  CANCELLED: "text-rose-400",
+};
+
+const milestoneTypeLabels: Record<MilestoneType, string> = {
+  LAUNCH: "上線",
+  AUDIT: "稽核",
+  CUSTOM: "自訂",
+};
 
 // ─── Linked Projects ─────────────────────────────────────────────────────────
 
@@ -196,6 +251,24 @@ export default function PlansPage() {
   const [copyingTemplate, setCopyingTemplate] = useState(false);
   const [copyError, setCopyError] = useState("");
 
+  // Create milestone form
+  const [showMilestoneForm, setShowMilestoneForm] = useState(false);
+  const [milestonePlanId, setMilestonePlanId] = useState("");
+  const [milestoneTitle, setMilestoneTitle] = useState("");
+  const [milestonePlannedEnd, setMilestonePlannedEnd] = useState("");
+  const [milestoneType, setMilestoneType] = useState<MilestoneType>("CUSTOM");
+  const [creatingMilestone, setCreatingMilestone] = useState(false);
+  const [milestoneError, setMilestoneError] = useState("");
+
+  // Milestones display
+  const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
+  const [milestonesLoading, setMilestonesLoading] = useState(false);
+  const [updatingMilestoneStatus, setUpdatingMilestoneStatus] = useState<string | null>(null);
+
+  // Goal status update
+  const [updatingGoalStatus, setUpdatingGoalStatus] = useState(false);
+  const [goalStatusMsg, setGoalStatusMsg] = useState("");
+
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     try {
@@ -318,6 +391,93 @@ export default function PlansPage() {
     }
   }
 
+  const fetchMilestones = useCallback(async () => {
+    setMilestonesLoading(true);
+    try {
+      const res = await fetch("/api/milestones");
+      if (res.ok) {
+        const body = await res.json();
+        const items = body?.data?.items ?? body?.data ?? body?.items ?? [];
+        setMilestones(Array.isArray(items) ? items : []);
+      }
+    } finally {
+      setMilestonesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchMilestones(); }, [fetchMilestones]);
+
+  async function createMilestone() {
+    if (!milestoneTitle.trim() || !milestonePlanId || !milestonePlannedEnd) return;
+    setCreatingMilestone(true);
+    setMilestoneError("");
+    try {
+      const res = await fetch("/api/milestones", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          annualPlanId: milestonePlanId,
+          title: milestoneTitle.trim(),
+          type: milestoneType,
+          plannedEnd: milestonePlannedEnd,
+        }),
+      });
+      if (res.ok) {
+        setMilestoneTitle("");
+        setMilestonePlannedEnd("");
+        setMilestoneType("CUSTOM");
+        setShowMilestoneForm(false);
+        setMilestoneError("");
+        fetchMilestones();
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        setMilestoneError(errBody?.message ?? errBody?.error ?? "里程碑建立失敗，請再試一次");
+      }
+    } finally {
+      setCreatingMilestone(false);
+    }
+  }
+
+  async function updateMilestoneStatus(milestoneId: string, status: MilestoneStatus) {
+    setUpdatingMilestoneStatus(milestoneId);
+    try {
+      const res = await fetch(`/api/milestones/${milestoneId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setMilestones((prev) => prev.map((m) => m.id === milestoneId ? { ...m, status } : m));
+      }
+    } finally {
+      setUpdatingMilestoneStatus(null);
+    }
+  }
+
+  async function updateGoalStatus(status: GoalStatus) {
+    if (!selectedGoal) return;
+    setUpdatingGoalStatus(true);
+    setGoalStatusMsg("");
+    try {
+      const res = await fetch(`/api/goals/${selectedGoal.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        const body = await res.json();
+        const updated = extractData<MonthlyGoal>(body);
+        setSelectedGoal((prev) => prev ? { ...prev, status: updated.status } : prev);
+        fetchPlans();
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        setGoalStatusMsg(errBody?.message ?? errBody?.error ?? "狀態更新失敗");
+      }
+    } finally {
+      setUpdatingGoalStatus(false);
+    }
+  }
+
   async function toggleArchive(planId: string, isArchived: boolean) {
     setArchiving(planId);
     try {
@@ -359,6 +519,13 @@ export default function PlansPage() {
           <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">管理年度計畫與月度目標</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => { setShowMilestoneForm((v) => !v); setShowGoalForm(false); setShowPlanForm(false); setShowCopyForm(false); setMilestoneError(""); }}
+            className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
+          >
+            <Flag className="h-3.5 w-3.5" />
+            新增里程碑
+          </button>
           <button
             onClick={() => { setShowGoalForm(true); setGoalError(""); }}
             className="flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-card hover:bg-accent text-foreground rounded-md transition-colors border border-border"
@@ -480,6 +647,69 @@ export default function PlansPage() {
         </div>
       )}
 
+      {/* Create milestone form */}
+      {showMilestoneForm && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-sm font-medium text-foreground">新增里程碑</h3>
+            <button onClick={() => setShowMilestoneForm(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <select
+              aria-label="年度計畫"
+              value={milestonePlanId}
+              onChange={(e) => setMilestonePlanId(e.target.value)}
+              className={cn(selectCls, "flex-1 min-w-40")}
+            >
+              <option value="">選擇年度計畫</option>
+              {plans.map((p) => (
+                <option key={p.id} value={p.id}>{p.year} — {p.title}</option>
+              ))}
+            </select>
+            <select
+              aria-label="里程碑類型"
+              value={milestoneType}
+              onChange={(e) => setMilestoneType(e.target.value as MilestoneType)}
+              className={cn(selectCls, "w-28")}
+            >
+              <option value="CUSTOM">自訂</option>
+              <option value="LAUNCH">上線</option>
+              <option value="AUDIT">稽核</option>
+            </select>
+          </div>
+          <div className="flex gap-3 flex-wrap">
+            <input
+              type="text"
+              value={milestoneTitle}
+              onChange={(e) => setMilestoneTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && createMilestone()}
+              placeholder="里程碑標題"
+              className={cn(inputCls, "flex-1 min-w-48")}
+              autoFocus
+            />
+            <input
+              type="date"
+              value={milestonePlannedEnd}
+              onChange={(e) => setMilestonePlannedEnd(e.target.value)}
+              aria-label="預計完成日"
+              className={cn(inputCls, "w-40")}
+            />
+            <button
+              onClick={createMilestone}
+              disabled={creatingMilestone || !milestoneTitle.trim() || !milestonePlanId || !milestonePlannedEnd}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md disabled:opacity-40 transition-colors"
+            >
+              {creatingMilestone ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
+            </button>
+          </div>
+          {milestoneError && (
+            <p className="text-xs text-danger">{milestoneError}</p>
+          )}
+        </div>
+      )}
+
       {/* Create goal form */}
       {showGoalForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
@@ -561,6 +791,66 @@ export default function PlansPage() {
         <LinkedProjects key={plan.id} planYear={plan.year} planTitle={plan.title} />
       ))}
 
+      {/* Milestones section */}
+      {!loading && milestones.length > 0 && (
+        <div className="bg-card border border-border rounded-xl">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Flag className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">里程碑</span>
+              <span className="text-xs text-muted-foreground">({milestones.length})</span>
+            </div>
+            {milestonesLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+          </div>
+          <div className="p-4">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">標題</th>
+                  <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">類型</th>
+                  <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">預計完成</th>
+                  <th className="text-left py-1.5 px-2 text-muted-foreground font-medium">狀態</th>
+                </tr>
+              </thead>
+              <tbody>
+                {milestones.map((m) => (
+                  <tr key={m.id} className="border-b border-border/20 hover:bg-accent/20">
+                    <td className="py-1.5 px-2 font-medium text-foreground">{m.title}</td>
+                    <td className="py-1.5 px-2 text-muted-foreground">{milestoneTypeLabels[m.type] ?? m.type}</td>
+                    <td className="py-1.5 px-2 text-muted-foreground tabular-nums">
+                      {m.plannedEnd ? new Date(m.plannedEnd).toLocaleDateString("zh-TW") : "—"}
+                    </td>
+                    <td className="py-1.5 px-2">
+                      <div className="relative flex items-center gap-1.5">
+                        {updatingMilestoneStatus === m.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                        ) : (
+                          <select
+                            aria-label="里程碑狀態"
+                            value={m.status}
+                            onChange={(e) => updateMilestoneStatus(m.id, e.target.value as MilestoneStatus)}
+                            className={cn(
+                              "bg-transparent border-none text-xs focus:outline-none cursor-pointer pr-1",
+                              milestoneStatusColors[m.status]
+                            )}
+                          >
+                            {(Object.keys(milestoneStatusLabels) as MilestoneStatus[]).map((s) => (
+                              <option key={s} value={s} className="text-foreground bg-background">
+                                {milestoneStatusLabels[s]}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Goal detail panel */}
       {selectedGoal && (
         <div className="bg-card border border-border rounded-xl">
@@ -572,15 +862,46 @@ export default function PlansPage() {
               </h2>
             </div>
             <div className="flex items-center gap-3">
+              {/* Goal status toggle */}
+              <div className="flex items-center gap-1.5">
+                {updatingGoalStatus ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : (
+                  <select
+                    aria-label="目標狀態"
+                    value={selectedGoal.status}
+                    onChange={(e) => updateGoalStatus(e.target.value as GoalStatus)}
+                    disabled={GOAL_TRANSITIONS[selectedGoal.status].length === 0}
+                    className={cn(
+                      "bg-background border border-border rounded-md px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors",
+                      goalStatusColors[selectedGoal.status]
+                    )}
+                  >
+                    <option value={selectedGoal.status} className="text-foreground bg-background">
+                      {goalStatusLabels[selectedGoal.status]}
+                    </option>
+                    {GOAL_TRANSITIONS[selectedGoal.status].map((s) => (
+                      <option key={s} value={s} className="text-foreground bg-background">
+                        {goalStatusLabels[s]}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
               {goalLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               <button
-                onClick={() => setSelectedGoal(null)}
+                onClick={() => { setSelectedGoal(null); setGoalStatusMsg(""); }}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </div>
+          {goalStatusMsg && (
+            <div className="px-4 py-2 text-xs text-danger border-b border-border">
+              {goalStatusMsg}
+            </div>
+          )}
 
           {/* Tasks in this goal */}
           <div className="p-4">
