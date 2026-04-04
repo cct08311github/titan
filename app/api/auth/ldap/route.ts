@@ -16,9 +16,11 @@ import { getRedisClient } from "@/lib/redis";
 import { getClientIp } from "@/lib/get-client-ip";
 
 const redis = getRedisClient();
+const isTestEnv = process.env.NODE_ENV === "test" || process.env.E2E_TESTING === "true";
 const ldapRateLimiter = createLoginRateLimiter({
   redisClient: redis ?? undefined,
   useMemory: !redis,
+  points: isTestEnv ? 10000 : undefined,
 });
 
 export async function POST(request: NextRequest) {

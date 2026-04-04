@@ -29,9 +29,11 @@ import { registerSession } from "@/lib/session-limiter";
  * Issue #178: Use Redis when available, fallback to in-memory.
  */
 const redis = getRedisClient();
+const isTestEnv = process.env.NODE_ENV === "test" || process.env.E2E_TESTING === "true";
 const loginRateLimiter = createLoginRateLimiter({
   redisClient: redis ?? undefined,
   useMemory: !redis,
+  points: isTestEnv ? 10000 : undefined,
 });
 const accountLockService = new AccountLockService({
   maxFailures: 5,           // Issue #797: 5 consecutive failures
