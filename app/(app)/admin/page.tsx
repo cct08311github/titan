@@ -241,7 +241,7 @@ function AuditLogSection() {
   const pagedLogs = logs;
 
   // Derive unique actions for filter dropdown
-  const uniqueActions = Array.from(new Set(logs.map((l) => l.action))).sort();
+  const uniqueActions = Object.keys(ACTION_LABELS).sort();
 
   if (loading) return <PageLoading message="載入稽核日誌..." className="py-8" />;
   if (error) return <PageError message={error} onRetry={() => load(0)} className="py-8" />;
@@ -549,8 +549,12 @@ function UserManagementSection() {
         // Suspend: DELETE /api/users/:id
         res = await fetch(`/api/users/${user.id}`, { method: "DELETE" });
       } else {
-        // Unsuspend: DELETE /api/users/:id?action=unsuspend
-        res = await fetch(`/api/users/${user.id}?action=unsuspend`, { method: "DELETE" });
+        // Unsuspend: PATCH to reactivate
+        res = await fetch(`/api/users/${user.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive: true }),
+        });
       }
       if (res.ok) {
         toast.success(user.isActive ? `已停用「${user.name}」` : `已啟用「${user.name}」`);
@@ -1367,7 +1371,7 @@ export default function AdminPage() {
       {activeTab === "system" && (
         <div className="space-y-10">
           <BackupStatusSection />
-          <AdminTools />
+          <AdminTools role={userRole} />
           <AuditLogSection />
         </div>
       )}

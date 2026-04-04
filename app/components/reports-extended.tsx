@@ -71,25 +71,31 @@ function useReportData<T>(url: string) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  const load = useCallback(async () => {
+  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = await res.json();
-      setData(extractData<T>(body));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "載入失敗");
-    } finally {
-      setLoading(false);
-    }
-  }, [url]);
+    fetch(url, { signal: controller.signal })
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((body) => setData(extractData<T>(body)))
+      .catch((e) => {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        setError(e instanceof Error ? e.message : "載入失敗");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [url, reloadKey]);
 
-  useEffect(() => { load(); }, [load]);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  return { data, loading, error, reload: load };
+  return { data, loading, error, reload };
 }
 
 // ─── Loading / Error wrappers ─────────────────────────────────────────────────
@@ -149,7 +155,7 @@ function flattenToTable(items: Record<string, unknown>[]): { headers: string[]; 
 // ─── Completion Rate ──────────────────────────────────────────────────────────
 
 function CompletionRateReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/completion-rate?granularity=month&from=${from}&to=${to}`;
+  const url = `/api/reports/completion-rate?granularity=month&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     points?: { month: string; total: number; completed: number; rate: number }[];
     summary?: { totalTasks: number; completedTasks: number; averageRate: number };
@@ -185,8 +191,21 @@ function CompletionRateReport({ from, to }: { from: string; to: string }) {
 function CustomReport({ from, to }: { from: string; to: string }) {
   const [category, setCategory] = useState("");
   const [status, setStatus] = useState("");
+  const [debouncedCategory, setDebouncedCategory] = useState("");
+  const [debouncedStatus, setDebouncedStatus] = useState("");
   const [page] = useState(1);
-  const url = `/api/reports/custom?category=${encodeURIComponent(category)}&status=${encodeURIComponent(status)}&from=${from}&to=${to}&page=${page}&limit=20`;
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedCategory(category), 400);
+    return () => clearTimeout(t);
+  }, [category]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedStatus(status), 400);
+    return () => clearTimeout(t);
+  }, [status]);
+
+  const url = `/api/reports/custom?category=${encodeURIComponent(debouncedCategory)}&status=${encodeURIComponent(debouncedStatus)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&page=${page}&limit=20`;
   const { data, loading, error, reload } = useReportData<{
     items?: Record<string, unknown>[];
     total?: number;
@@ -246,7 +265,7 @@ function CustomReport({ from, to }: { from: string; to: string }) {
 // ─── Delay Change ─────────────────────────────────────────────────────────────
 
 function DelayChangeReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/delay-change?from=${from}&to=${to}`;
+  const url = `/api/reports/delay-change?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     items?: { taskId: string; title: string; originalDue: string; newDue: string; delayDays: number; reason?: string }[];
     summary?: { totalDelayed: number; avgDelayDays: number };
@@ -281,7 +300,7 @@ function DelayChangeReport({ from, to }: { from: string; to: string }) {
 function DepartmentTimesheetReport({ from }: { from: string }) {
   // Use the from date as weekStart
   const weekStart = from;
-  const url = `/api/reports/department-timesheet?weekStart=${weekStart}`;
+  const url = `/api/reports/department-timesheet?weekStart=${encodeURIComponent(weekStart)}`;
   const { data, loading, error, reload } = useReportData<{
     departments?: { department: string; members: number; totalHours: number; avgHours: number }[];
     weekStart?: string;
@@ -307,7 +326,7 @@ function DepartmentTimesheetReport({ from }: { from: string }) {
 // ─── KPI Report ───────────────────────────────────────────────────────────────
 
 function KpiReport({ year }: { year: number }) {
-  const url = `/api/reports/kpi?year=${year}`;
+  const url = `/api/reports/kpi?year=${encodeURIComponent(String(year))}`;
   const { data, loading, error, reload } = useReportData<{
     items?: { kpiId: string; title: string; category: string; target: number; actual: number; achievement: number; unit: string }[];
     year?: number;
@@ -344,7 +363,7 @@ function KpiReport({ year }: { year: number }) {
 function MonthlyReport({ from }: { from: string }) {
   // Derive YYYY-MM from the from date
   const month = from.substring(0, 7);
-  const url = `/api/reports/monthly?month=${month}`;
+  const url = `/api/reports/monthly?month=${encodeURIComponent(month)}`;
   const { data, loading, error, reload } = useReportData<{
     month?: string;
     summary?: Record<string, unknown>;
@@ -379,7 +398,7 @@ function MonthlyReport({ from }: { from: string }) {
 // ─── Time Distribution ────────────────────────────────────────────────────────
 
 function TimeDistributionReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/time-distribution?from=${from}&to=${to}`;
+  const url = `/api/reports/time-distribution?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     users?: string[];
     series?: Record<string, number[]>;
@@ -436,7 +455,7 @@ function TimeDistributionReport({ from, to }: { from: string; to: string }) {
 // ─── Timesheet Compliance ─────────────────────────────────────────────────────
 
 function TimesheetComplianceReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/timesheet-compliance?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/timesheet-compliance?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     items?: { userId: string; userName: string; submittedWeeks: number; totalWeeks: number; complianceRate: number }[];
     summary?: { avgComplianceRate: number; fullyCompliant: number; total: number };
@@ -497,7 +516,7 @@ function TrendsReport({ year }: { year: number }) {
 
 function WeeklyReport({ from }: { from: string }) {
   const weekStart = from;
-  const url = `/api/reports/weekly?weekStart=${weekStart}`;
+  const url = `/api/reports/weekly?weekStart=${encodeURIComponent(weekStart)}`;
   const { data, loading, error, reload } = useReportData<{
     weekStart?: string;
     weekEnd?: string;
@@ -532,7 +551,7 @@ function WeeklyReport({ from }: { from: string }) {
 // ─── Workload ─────────────────────────────────────────────────────────────────
 
 function WorkloadReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/workload?from=${from}&to=${to}`;
+  const url = `/api/reports/workload?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     items?: { userId: string; userName: string; assignedTasks: number; completedTasks: number; pendingTasks: number; overdueTasks: number }[];
     summary?: { totalAssigned: number; totalCompleted: number };
@@ -565,7 +584,7 @@ function WorkloadReport({ from, to }: { from: string; to: string }) {
 // ─── V2 Change Summary ────────────────────────────────────────────────────────
 
 function V2ChangeSummaryReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/change-summary?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/change-summary?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: { items?: Record<string, unknown>[]; summary?: Record<string, unknown> };
     meta?: { total?: number };
@@ -593,7 +612,14 @@ function V2ChangeSummaryReport({ from, to }: { from: string; to: string }) {
 
 function V2EarnedValueReport({ from }: { from: string }) {
   const [planId, setPlanId] = useState("");
-  const url = `/api/reports/v2/earned-value?asOfDate=${from}${planId ? `&planId=${encodeURIComponent(planId)}` : ""}`;
+  const [debouncedPlanId, setDebouncedPlanId] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedPlanId(planId), 400);
+    return () => clearTimeout(t);
+  }, [planId]);
+
+  const url = `/api/reports/v2/earned-value?asOfDate=${encodeURIComponent(from)}${debouncedPlanId ? `&planId=${encodeURIComponent(debouncedPlanId)}` : ""}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       planId?: string;
@@ -663,7 +689,7 @@ function V2EarnedValueReport({ from }: { from: string }) {
 // ─── V2 Incident SLA ─────────────────────────────────────────────────────────
 
 function V2IncidentSlaReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/incident-sla?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/incident-sla?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { incidentId: string; title: string; priority: string; openedAt: string; resolvedAt?: string; slaTarget: number; actualHours: number; slaMet: boolean }[];
@@ -710,7 +736,7 @@ function V2IncidentSlaReport({ from, to }: { from: string; to: string }) {
 // ─── V2 KPI Composite ────────────────────────────────────────────────────────
 
 function V2KpiCompositeReport({ year }: { year: number }) {
-  const url = `/api/reports/v2/kpi-composite?year=${year}`;
+  const url = `/api/reports/v2/kpi-composite?year=${encodeURIComponent(String(year))}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       year?: number;
@@ -747,7 +773,7 @@ function V2KpiCompositeReport({ year }: { year: number }) {
 // ─── V2 KPI Correlation ──────────────────────────────────────────────────────
 
 function V2KpiCorrelationReport({ year }: { year: number }) {
-  const url = `/api/reports/v2/kpi-correlation?year=${year}`;
+  const url = `/api/reports/v2/kpi-correlation?year=${encodeURIComponent(String(year))}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       year?: number;
@@ -774,7 +800,7 @@ function V2KpiCorrelationReport({ year }: { year: number }) {
 // ─── V2 Milestone Achievement ─────────────────────────────────────────────────
 
 function V2MilestoneAchievementReport({ year }: { year: number }) {
-  const url = `/api/reports/v2/milestone-achievement?year=${year}`;
+  const url = `/api/reports/v2/milestone-achievement?year=${encodeURIComponent(String(year))}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { milestoneId: string; title: string; planTitle: string; dueDate: string; status: string; achievedDate?: string; onTime: boolean }[];
@@ -819,7 +845,7 @@ function V2MilestoneAchievementReport({ year }: { year: number }) {
 // ─── V2 Overdue Analysis ─────────────────────────────────────────────────────
 
 function V2OverdueAnalysisReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/overdue-analysis?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/overdue-analysis?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { taskId: string; title: string; assignee: string; dueDate: string; overdueDays: number; status: string }[];
@@ -856,7 +882,7 @@ function V2OverdueAnalysisReport({ from, to }: { from: string; to: string }) {
 // ─── V2 Overtime Analysis ─────────────────────────────────────────────────────
 
 function V2OvertimeAnalysisReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/overtime-analysis?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/overtime-analysis?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { userId: string; userName: string; regularHours: number; overtimeHours: number; holidayHours: number; total: number }[];
@@ -892,7 +918,7 @@ function V2OvertimeAnalysisReport({ from, to }: { from: string; to: string }) {
 // ─── V2 Permission Audit ──────────────────────────────────────────────────────
 
 function V2PermissionAuditReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/permission-audit?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/permission-audit?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { userId: string; userName: string; role: string; action: string; resource: string; timestamp: string; result: string }[];
@@ -930,7 +956,7 @@ function V2PermissionAuditReport({ from, to }: { from: string; to: string }) {
 // ─── V2 Time Efficiency ───────────────────────────────────────────────────────
 
 function V2TimeEfficiencyReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/time-efficiency?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/time-efficiency?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { userId: string; userName: string; estimatedHours: number; actualHours: number; efficiency: number; completedTasks: number }[];
@@ -967,7 +993,7 @@ function V2TimeEfficiencyReport({ from, to }: { from: string; to: string }) {
 // ─── V2 Workload Distribution ─────────────────────────────────────────────────
 
 function V2WorkloadDistributionReport({ from, to }: { from: string; to: string }) {
-  const url = `/api/reports/v2/workload-distribution?startDate=${from}&endDate=${to}`;
+  const url = `/api/reports/v2/workload-distribution?startDate=${encodeURIComponent(from)}&endDate=${encodeURIComponent(to)}`;
   const { data, loading, error, reload } = useReportData<{
     data?: {
       items?: { userId: string; userName: string; department: string; taskCount: number; hoursBurden: number; score: number; level: string }[];
