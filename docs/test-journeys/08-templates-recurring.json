@@ -4,9 +4,21 @@
   "description": "範本與自動化頁面完整測試旅程：任務範本 CRUD、套用範本、週期性任務規則 CRUD、啟用/停用、產生任務",
   "baseUrl": "http://localhost:3100",
   "credentials": {
-    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
-    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
-    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+    "ENGINEER": {
+      "email": "engineer@titan.local",
+      "password": "Test1234!",
+      "role": "ENGINEER"
+    },
+    "MANAGER": {
+      "email": "manager@titan.local",
+      "password": "Test1234!",
+      "role": "MANAGER"
+    },
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "Test1234!",
+      "role": "ADMIN"
+    }
   },
   "testCases": [
     {
@@ -134,7 +146,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder=\"範本標題（必填）\"]",
-          "value": "週會準備",
+          "value": "J08-週會準備",
           "expected": "填入範本標題「週會準備」"
         },
         {
@@ -251,7 +263,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder=\"範本標題（必填）\"]",
-          "value": "事件處理 SOP",
+          "value": "J08-事件處理 SOP",
           "expected": "填入範本標題「事件處理 SOP」"
         },
         {
@@ -468,7 +480,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder=\"規則標題（必填）\"]",
-          "value": "週五日報",
+          "value": "J08-週五日報",
           "expected": "填入規則標題「週五日報」"
         },
         {
@@ -562,7 +574,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder=\"規則標題（必填）\"]",
-          "value": "月底結算",
+          "value": "J08-月底結算",
           "expected": "填入規則標題「月底結算」"
         },
         {
@@ -841,7 +853,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder=\"範本標題（必填）\"]",
-          "value": "Engineer 測試範本",
+          "value": "J08-Engineer 測試範本",
           "expected": "填入範本標題"
         },
         {
@@ -893,7 +905,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder=\"規則標題（必填）\"]",
-          "value": "Engineer 週期測試",
+          "value": "J08-Engineer 週期測試",
           "expected": "填入規則標題"
         },
         {
@@ -1025,5 +1037,47 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J08",
+    "roleGroups": [
+      {
+        "role": "MANAGER",
+        "cases": [
+          "TPL-01",
+          "TPL-02",
+          "TPL-03",
+          "TPL-04",
+          "TPL-05",
+          "TPL-06",
+          "TPL-07",
+          "TPL-08",
+          "TPL-09",
+          "TPL-10",
+          "TPL-11",
+          "TPL-12",
+          "TPL-13",
+          "TPL-14",
+          "TPL-15",
+          "TPL-16"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "TPL-17",
+          "TPL-18"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "TPL-19",
+          "TPL-20"
+        ]
+      }
+    ]
+  }
 }

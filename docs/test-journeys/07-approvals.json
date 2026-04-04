@@ -4,9 +4,21 @@
   "description": "簽核管理頁面完整測試旅程：建立請求、批准/拒絕、狀態篩選、角色隔離",
   "baseUrl": "http://localhost:3100",
   "credentials": {
-    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
-    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
-    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+    "ENGINEER": {
+      "email": "engineer@titan.local",
+      "password": "Test1234!",
+      "role": "ENGINEER"
+    },
+    "MANAGER": {
+      "email": "manager@titan.local",
+      "password": "Test1234!",
+      "role": "MANAGER"
+    },
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "Test1234!",
+      "role": "ADMIN"
+    }
   },
   "testCases": [
     {
@@ -91,7 +103,7 @@
         {
           "action": "fill",
           "selector": "textarea[placeholder=\"說明申請原因...\"]",
-          "value": "E2E 旅程測試：任務狀態由進行中變更為已完成",
+          "value": "J07-E2E 旅程測試：任務狀態由進行中變更為已完成",
           "expected": "填入申請原因"
         },
         {
@@ -194,7 +206,7 @@
         {
           "action": "fill",
           "selector": "textarea[placeholder=\"審核備註（選填）\"]",
-          "value": "E2E 旅程測試通過，同意此狀態變更",
+          "value": "J07-E2E 旅程測試通過，同意此狀態變更",
           "expected": "填入審核備註"
         },
         {
@@ -552,7 +564,7 @@
         {
           "action": "fill",
           "selector": "textarea[placeholder=\"說明申請原因...\"]",
-          "value": "請求 Manager 核准此任務狀態變更",
+          "value": "J07-請求 Manager 核准此任務狀態變更",
           "expected": "填入申請原因"
         },
         {
@@ -686,5 +698,42 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J07",
+    "roleGroups": [
+      {
+        "role": "MANAGER",
+        "cases": [
+          "APPR-01",
+          "APPR-02",
+          "APPR-03",
+          "APPR-04",
+          "APPR-05",
+          "APPR-06",
+          "APPR-07",
+          "APPR-08",
+          "APPR-09",
+          "APPR-10"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "APPR-11",
+          "APPR-12",
+          "APPR-13"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "APPR-14",
+          "APPR-15"
+        ]
+      }
+    ]
+  }
 }

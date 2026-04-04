@@ -11,12 +11,28 @@
     "successUrl": "/dashboard"
   },
   "users": {
-    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
-    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+    "MANAGER": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "ENGINEER": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    }
   },
   "credentials": {
-    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
-    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+    "MANAGER": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "ENGINEER": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    }
   },
   "tests": [
     {
@@ -750,5 +766,10 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "parallel",
+    "contextIsolation": "shared",
+    "dataPrefix": "J05"
+  }
 }

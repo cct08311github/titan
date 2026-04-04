@@ -11,14 +11,38 @@
     "successUrl": "/dashboard"
   },
   "users": {
-    "ADMIN": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
-    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
-    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "MANAGER": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "ENGINEER": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    }
   },
   "credentials": {
-    "ADMIN": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
-    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
-    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "MANAGER": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "ENGINEER": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    }
   },
   "tests": [
     {
@@ -70,7 +94,10 @@
             "password": "TestUser@2026!",
             "role": "ENGINEER"
           },
-          "expectedStatus": [200, 201],
+          "expectedStatus": [
+            200,
+            201
+          ],
           "expected": "Create user returns 200 or 201"
         },
         {
@@ -84,7 +111,10 @@
           "value": "ENGINEER",
           "expected": "New user has role ENGINEER"
         },
-        { "action": "screenshot", "name": "ADM-02-result" }
+        {
+          "action": "screenshot",
+          "name": "ADM-02-result"
+        }
       ]
     },
     {
@@ -101,7 +131,9 @@
         },
         {
           "action": "findUserInResponse",
-          "filter": { "role": "ENGINEER" },
+          "filter": {
+            "role": "ENGINEER"
+          },
           "storeAs": "targetUserId",
           "expected": "Find an ENGINEER user to update"
         },
@@ -109,7 +141,9 @@
           "action": "apiRequest",
           "method": "PUT",
           "url": "/api/users/{{targetUserId}}",
-          "body": { "name": "Journey Updated Name" },
+          "body": {
+            "name": "Journey Updated Name"
+          },
           "expectedStatus": 200,
           "expected": "Update user returns 200"
         },
@@ -119,7 +153,10 @@
           "value": true,
           "expected": "Response ok: true"
         },
-        { "action": "screenshot", "name": "ADM-03-result" }
+        {
+          "action": "screenshot",
+          "name": "ADM-03-result"
+        }
       ]
     },
     {
@@ -191,7 +228,10 @@
           "timeout": 15000,
           "expected": "Admin page still accessible"
         },
-        { "action": "screenshot", "name": "ADM-05-result" }
+        {
+          "action": "screenshot",
+          "name": "ADM-05-result"
+        }
       ]
     },
     {
@@ -790,5 +830,47 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J06",
+    "roleGroups": [
+      {
+        "role": "ADMIN",
+        "cases": [
+          "ADM-01",
+          "ADM-02",
+          "ADM-03",
+          "ADM-04",
+          "ADM-05",
+          "ADM-06",
+          "ADM-07",
+          "ADM-08"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "SET-01",
+          "SET-02",
+          "SET-03",
+          "SET-04"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "KB-01",
+          "KB-02",
+          "KB-03",
+          "KB-04",
+          "KB-05",
+          "CCK-01",
+          "CCK-02",
+          "CCK-03"
+        ]
+      }
+    ]
+  }
 }

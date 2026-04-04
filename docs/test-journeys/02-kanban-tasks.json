@@ -4,8 +4,16 @@
   "baseUrl": "https://mac-mini.tailde842d.ts.net",
   "description": "Comprehensive Kanban board and task management test journey covering CRUD, status state machine, task details, filtering, and drag-and-drop for TITAN.",
   "credentials": {
-    "ENGINEER": {"email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER"},
-    "MANAGER": {"email": "admin@titan.local", "password": "1234", "role": "MANAGER"}
+    "ENGINEER": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    },
+    "MANAGER": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    }
   },
   "statusColumns": {
     "TODO": "待辦清單",
@@ -97,7 +105,13 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-測試任務", "description": "測試描述", "priority": "P1", "category": "PLANNED", "status": "TODO" },
+          "body": {
+            "title": "J02-E2E-測試任務",
+            "description": "測試描述",
+            "priority": "P1",
+            "category": "PLANNED",
+            "status": "TODO"
+          },
           "expectedStatus": 201,
           "expected": "Task created via API returns 201"
         },
@@ -215,7 +229,7 @@
         {
           "action": "fill",
           "selector": "input[name='subtaskTitle'], input[placeholder*='子任務'], input[placeholder*='subtask']",
-          "value": "E2E-子任務-1"
+          "value": "J02-E2E-子任務-1"
         },
         {
           "action": "click",
@@ -357,8 +371,21 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/tasks/import-template",
-          "body": { "tasks": [{ "title": "模板任務-E2E", "priority": "P2", "category": "PLANNED", "status": "TODO", "offsetDays": 7 }] },
-          "expectedStatus": [200, 201],
+          "body": {
+            "tasks": [
+              {
+                "title": "模板任務-E2E",
+                "priority": "P2",
+                "category": "PLANNED",
+                "status": "TODO",
+                "offsetDays": 7
+              }
+            ]
+          },
+          "expectedStatus": [
+            200,
+            201
+          ],
           "expected": "Template import returns 200 or 201"
         },
         {
@@ -400,14 +427,24 @@
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Bulk-1", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Bulk-1",
+            "status": "TODO",
+            "priority": "P3",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "bulkTask1"
         },
         {
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Bulk-2", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Bulk-2",
+            "status": "TODO",
+            "priority": "P3",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "bulkTask2"
         },
         {
@@ -424,8 +461,13 @@
           "method": "PATCH",
           "path": "/api/tasks/bulk",
           "body": {
-            "ids": ["${bulkTask1.id}", "${bulkTask2.id}"],
-            "update": { "priority": "P1" }
+            "ids": [
+              "${bulkTask1.id}",
+              "${bulkTask2.id}"
+            ],
+            "update": {
+              "priority": "P1"
+            }
           },
           "expectedStatus": 200,
           "expected": "Bulk update returns 200"
@@ -449,7 +491,12 @@
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Status-Flow", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Status-Flow",
+            "status": "TODO",
+            "priority": "P2",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "statusTask"
         },
         {
@@ -622,7 +669,9 @@
           "action": "apiRequest",
           "method": "PATCH",
           "path": "/api/tasks/${statusTask.id}",
-          "body": { "status": "TODO" },
+          "body": {
+            "status": "TODO"
+          },
           "note": "API-level enforcement: DONE → TODO should be rejected",
           "expectedStatus": 400,
           "expected": "API returns 400 for invalid DONE → TODO transition"
@@ -661,7 +710,9 @@
           "action": "apiRequest",
           "method": "PATCH",
           "url": "/api/tasks/{{taskId}}/status",
-          "body": {"status": "IN_PROGRESS"},
+          "body": {
+            "status": "IN_PROGRESS"
+          },
           "expectedStatus": 400,
           "expected": "State machine design: DONE is terminal, cannot transition back"
         },
@@ -711,7 +762,12 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "ChangeTrack-E2E", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "body": {
+            "title": "ChangeTrack-E2E",
+            "status": "TODO",
+            "priority": "P2",
+            "category": "PLANNED"
+          },
           "expectedStatus": 201,
           "saveResponseAs": "changeTrackTask",
           "expected": "Task created for change tracking test"
@@ -720,7 +776,9 @@
           "action": "apiAssert",
           "method": "PATCH",
           "path": "/api/tasks/${changeTrackTask.id}",
-          "body": { "status": "IN_PROGRESS" },
+          "body": {
+            "status": "IN_PROGRESS"
+          },
           "expectedStatus": 200,
           "expected": "Status updated to IN_PROGRESS returns 200"
         },
@@ -758,7 +816,7 @@
         {
           "action": "click",
           "selector": "[class*='task-card'], [class*='rounded-xl']",
-          "filterText": "[\u4e00-\u9fff]",
+          "filterText": "[一-鿿]",
           "index": 0,
           "expected": "Click first task card"
         },
@@ -802,7 +860,12 @@
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Comment-Task", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Comment-Task",
+            "status": "TODO",
+            "priority": "P2",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "commentTask"
         },
         {
@@ -827,7 +890,7 @@
         {
           "action": "fill",
           "selector": "textarea[placeholder*='留言'], textarea[placeholder*='comment'], [data-testid='comment-input']",
-          "value": "這是 E2E 測試留言，驗證留言功能正常運作。"
+          "value": "J02-這是 E2E 測試留言，驗證留言功能正常運作。"
         },
         {
           "action": "click",
@@ -996,7 +1059,7 @@
         {
           "action": "fill",
           "selector": "input[placeholder*='tag'], input[placeholder*='標籤'], [data-testid='tag-input']",
-          "value": "e2e-test"
+          "value": "J02-e2e-test"
         },
         {
           "action": "pressKey",
@@ -1051,7 +1114,9 @@
           "action": "apiRequest",
           "method": "PATCH",
           "path": "/api/tasks/${commentTask.id}/flag",
-          "body": { "flagged": true },
+          "body": {
+            "flagged": true
+          },
           "expectedStatus": 200,
           "expected": "Manager can flag task via API"
         },
@@ -1108,7 +1173,7 @@
         {
           "action": "fill",
           "selector": "textarea[name='incidentDescription'], textarea[placeholder*='事件'], textarea[placeholder*='incident']",
-          "value": "E2E 測試事件記錄 — 系統測試期間的測試事件"
+          "value": "J02-E2E 測試事件記錄 — 系統測試期間的測試事件"
         },
         {
           "action": "click",
@@ -1305,7 +1370,12 @@
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Drag-Task", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Drag-Task",
+            "status": "TODO",
+            "priority": "P2",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "dragTask"
         },
         {
@@ -1358,14 +1428,24 @@
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Reorder-A", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Reorder-A",
+            "status": "TODO",
+            "priority": "P3",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "reorderTaskA"
         },
         {
           "action": "apiRequest",
           "method": "POST",
           "path": "/api/tasks",
-          "body": { "title": "E2E-Reorder-B", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "body": {
+            "title": "E2E-Reorder-B",
+            "status": "TODO",
+            "priority": "P3",
+            "category": "PLANNED"
+          },
           "saveResponseAs": "reorderTaskB"
         },
         {
@@ -1493,5 +1573,10 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "parallel",
+    "contextIsolation": "shared",
+    "dataPrefix": "J02"
+  }
 }

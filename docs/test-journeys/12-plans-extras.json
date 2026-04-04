@@ -4,9 +4,21 @@
   "description": "Plans page extras — milestone section, goal status toggle, and retrospective generator",
   "baseUrl": "http://localhost:3100",
   "credentials": {
-    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
-    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
-    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+    "ENGINEER": {
+      "email": "engineer@titan.local",
+      "password": "Test1234!",
+      "role": "ENGINEER"
+    },
+    "MANAGER": {
+      "email": "manager@titan.local",
+      "password": "Test1234!",
+      "role": "MANAGER"
+    },
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "Test1234!",
+      "role": "ADMIN"
+    }
   },
   "testCases": [
     {
@@ -617,5 +629,10 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "parallel",
+    "contextIsolation": "shared",
+    "dataPrefix": "J12"
+  }
 }

@@ -565,7 +565,11 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/auth/change-password",
-          "body": { "currentPassword": "1234", "newPassword": "1234", "confirmPassword": "1234" },
+          "body": {
+            "currentPassword": "1234",
+            "newPassword": "1234",
+            "confirmPassword": "1234"
+          },
           "expectedStatus": 400,
           "expected": "Short password rejected by complexity check"
         },
@@ -718,7 +722,11 @@
         },
         {
           "action": "assertAny",
-          "selectors": ["text=權限不足", "text=Forbidden", "h1:has-text('今日總覽')"],
+          "selectors": [
+            "text=權限不足",
+            "text=Forbidden",
+            "h1:has-text('今日總覽')"
+          ],
           "expected": "Engineer blocked from cockpit — redirected or shown forbidden message"
         },
         {
@@ -834,7 +842,9 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/time-entries/approve",
-          "body": {"entryIds": []},
+          "body": {
+            "entryIds": []
+          },
           "expectedStatus": 403,
           "expected": "API returns 403 for engineer trying to approve"
         },
@@ -1030,7 +1040,10 @@
           "action": "apiAssert",
           "method": "PUT",
           "path": "/api/admin/feature-flags",
-          "body": { "flag": "test", "enabled": true },
+          "body": {
+            "flag": "test",
+            "enabled": true
+          },
           "expectedStatus": 403,
           "expected": "Manager cannot modify feature flags"
         },
@@ -1107,7 +1120,10 @@
           "action": "apiAssert",
           "method": "PUT",
           "path": "/api/admin/feature-flags",
-          "body": { "flag": "test-flag-e2e", "enabled": true },
+          "body": {
+            "flag": "test-flag-e2e",
+            "enabled": true
+          },
           "expectedStatus": 403,
           "expected": "MANAGER role cannot update feature flags (no ADMIN role user in DB)"
         },
@@ -1117,5 +1133,82 @@
         }
       ]
     }
-  ]
+  ],
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J01",
+    "roleGroups": [
+      {
+        "role": "ANONYMOUS",
+        "cases": [
+          "AUTH-01"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "AUTH-02",
+          "AUTH-03",
+          "AUTH-04"
+        ]
+      },
+      {
+        "role": "ANONYMOUS",
+        "cases": [
+          "AUTH-05",
+          "AUTH-06",
+          "AUTH-07"
+        ]
+      },
+      {
+        "role": "MULTIPLE",
+        "cases": [
+          "AUTH-08"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "PWD-01",
+          "PWD-02",
+          "PWD-03",
+          "PWD-04"
+        ]
+      },
+      {
+        "role": "ANONYMOUS",
+        "cases": [
+          "PWD-05"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "RBAC-ENG-01",
+          "RBAC-ENG-02",
+          "RBAC-ENG-03",
+          "RBAC-ENG-04",
+          "RBAC-ENG-05",
+          "RBAC-ENG-06"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "RBAC-MGR-01",
+          "RBAC-MGR-02",
+          "RBAC-MGR-03",
+          "RBAC-MGR-04"
+        ]
+      },
+      {
+        "role": "ADMIN",
+        "cases": [
+          "RBAC-ADM-01",
+          "RBAC-ADM-02"
+        ]
+      }
+    ]
+  }
 }

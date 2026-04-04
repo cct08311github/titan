@@ -4,11 +4,18 @@
   "description": "涵蓋 KPI 定義/回報/趨勢、年度計畫樹狀結構、里程碑管理、甘特圖拖曳操作的端對端測試旅程",
   "baseUrl": "https://mac-mini.tailde842d.ts.net",
   "credentials": {
-    "engineer": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" },
-    "manager":  { "email": "admin@titan.local",  "password": "1234", "role": "MANAGER"  }
+    "engineer": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    },
+    "manager": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    }
   },
   "testCases": [
-
     {
       "id": "KPI-01",
       "name": "以 MANAGER 身份導覽至 KPI 頁並截圖儀表板",
@@ -46,7 +53,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-02",
       "name": "建立新 KPI 指標（含名稱、目標值、週期：月度、單位）",
@@ -107,10 +113,12 @@
           "selector": "text=系統可用性達成率, text=KPI-TEST-01",
           "expected": "新建立的 KPI 出現在儀表板列表中"
         },
-        {"action": "screenshot", "name": "KPI-02-result"}
+        {
+          "action": "screenshot",
+          "name": "KPI-02-result"
+        }
       ]
     },
-
     {
       "id": "KPI-03",
       "name": "編輯 KPI — 透過 API 修改目標值",
@@ -137,7 +145,9 @@
           "action": "apiAssert",
           "method": "PUT",
           "path": "/api/kpi/{id}",
-          "body": { "target": 99.5 },
+          "body": {
+            "target": 99.5
+          },
           "expectedStatus": 200,
           "expected": "PUT 成功，回傳 200，KPI 目標值更新為 99.5"
         },
@@ -148,7 +158,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-04",
       "name": "連結任務至 KPI — 透過 API 建立連結",
@@ -170,8 +179,13 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/kpi/{kpiId}/link",
-          "body": { "taskId": "{id}" },
-          "expectedStatus": [200, 201],
+          "body": {
+            "taskId": "{id}"
+          },
+          "expectedStatus": [
+            200,
+            201
+          ],
           "expected": "POST 成功，任務與 KPI 連結建立"
         },
         {
@@ -188,7 +202,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-05",
       "name": "複製 KPI 架構至下一年度 — 透過 API",
@@ -203,7 +216,10 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/kpi/copy-year",
-          "body": { "sourceYear": 2026, "targetYear": 2029 },
+          "body": {
+            "sourceYear": 2026,
+            "targetYear": 2029
+          },
           "expectedStatus": 200,
           "expected": "POST 成功，2026 年度 KPI 架構複製至 2029 年度"
         },
@@ -221,7 +237,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-06",
       "name": "以 ENGINEER 身份導覽至 KPI 頁",
@@ -254,7 +269,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-07",
       "name": "Manager 回報 KPI 實際達成值 — 透過 API",
@@ -281,8 +295,15 @@
           "action": "apiAssert",
           "method": "POST",
           "path": "/api/kpi/{id}/achievement",
-          "body": { "period": "2026-04", "actual": 99.8, "note": "E2E test" },
-          "expectedStatus": [200, 201],
+          "body": {
+            "period": "2026-04",
+            "actual": 99.8,
+            "note": "E2E test"
+          },
+          "expectedStatus": [
+            200,
+            201
+          ],
           "expected": "POST 成功，KPI 達成值紀錄建立（actual: 99.8）"
         },
         {
@@ -292,7 +313,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-08",
       "name": "查看 KPI 歷史趨勢資料 — 透過 API",
@@ -317,7 +337,6 @@
         }
       ]
     },
-
     {
       "id": "KPI-09",
       "name": "截圖 KPI 儀表板（含圓形量表/進度指標）",
@@ -346,7 +365,6 @@
         }
       ]
     },
-
     {
       "id": "PLAN-01",
       "name": "以 MANAGER 身份導覽至年度計畫頁並截圖",
@@ -374,7 +392,6 @@
         }
       ]
     },
-
     {
       "id": "PLAN-02",
       "name": "建立年度計畫（含樹狀層級架構）",
@@ -418,10 +435,12 @@
           "selector": "text=2028 年度 IT 服務品質提升計畫",
           "expected": "新建立的計畫顯示在樹狀列表"
         },
-        {"action": "screenshot", "name": "PLAN-02-result"}
+        {
+          "action": "screenshot",
+          "name": "PLAN-02-result"
+        }
       ]
     },
-
     {
       "id": "PLAN-03",
       "name": "在計畫下新增月度目標",
@@ -470,10 +489,12 @@
           "selector": "text=四月份服務可用性達 99.9%",
           "expected": "月度目標出現在計畫樹中"
         },
-        {"action": "screenshot", "name": "PLAN-03-result"}
+        {
+          "action": "screenshot",
+          "name": "PLAN-03-result"
+        }
       ]
     },
-
     {
       "id": "PLAN-04",
       "name": "新增里程碑並設定目標日期 — 透過 API",
@@ -501,7 +522,10 @@
             "plannedEnd": "2026-06-30",
             "type": "CUSTOM"
           },
-          "expectedStatus": [200, 201],
+          "expectedStatus": [
+            200,
+            201
+          ],
           "expected": "POST 成功，里程碑建立，回傳里程碑資料含 id"
         },
         {
@@ -511,7 +535,6 @@
         }
       ]
     },
-
     {
       "id": "PLAN-05",
       "name": "標記月度目標為已完成 — 透過 API",
@@ -533,7 +556,9 @@
           "action": "apiAssert",
           "method": "PUT",
           "path": "/api/goals/{goalId}",
-          "body": { "status": "COMPLETED" },
+          "body": {
+            "status": "COMPLETED"
+          },
           "expectedStatus": 200,
           "expected": "PUT 成功，月度目標狀態更新為 COMPLETED"
         },
@@ -544,7 +569,6 @@
         }
       ]
     },
-
     {
       "id": "PLAN-06",
       "name": "驗證計畫完成度百分比自動計算",
@@ -573,7 +597,6 @@
         }
       ]
     },
-
     {
       "id": "PLAN-07",
       "name": "驗證里程碑狀態更新 — 透過 API",
@@ -595,7 +618,9 @@
           "action": "apiAssert",
           "method": "PUT",
           "path": "/api/milestones/{id}",
-          "body": { "status": "COMPLETED" },
+          "body": {
+            "status": "COMPLETED"
+          },
           "expectedStatus": 200,
           "expected": "PUT 成功，里程碑狀態更新為 COMPLETED"
         },
@@ -606,7 +631,6 @@
         }
       ]
     },
-
     {
       "id": "GANTT-01",
       "name": "導覽至甘特圖頁並截圖甘特視覺化",
@@ -644,7 +668,6 @@
         }
       ]
     },
-
     {
       "id": "GANTT-02",
       "name": "甘特圖任務列顯示與互動",
@@ -683,7 +706,6 @@
         }
       ]
     },
-
     {
       "id": "GANTT-03",
       "name": "切換甘特圖年份（前一年/下一年）",
@@ -731,7 +753,6 @@
         }
       ]
     },
-
     {
       "id": "GANTT-04",
       "name": "里程碑標記在甘特圖上顯示",
@@ -753,7 +774,13 @@
           "expected": "里程碑標記元件可見（若有里程碑資料則顯示菱形或特殊圖示，否則略過）",
           "optional": true
         },
-        {"action": "apiAssert", "method": "GET", "path": "/api/milestones", "expectedStatus": 200, "expected": "Milestones API returns 200 — milestones exist in system"},
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/milestones",
+          "expectedStatus": 200,
+          "expected": "Milestones API returns 200 — milestones exist in system"
+        },
         {
           "action": "screenshot",
           "filename": "gantt-04-milestone-markers.png",
@@ -761,7 +788,6 @@
         }
       ]
     }
-
   ],
   "notes": {
     "kpiFields": {
@@ -773,7 +799,11 @@
       "frequency": "頻率（MONTHLY / QUARTERLY / ANNUAL）",
       "autoCalc": "是否從連結任務自動計算達成率"
     },
-    "ganttDragTypes": ["move（整體移動）", "resize-start（調整開始日）", "resize-end（調整結束日）"],
+    "ganttDragTypes": [
+      "move（整體移動）",
+      "resize-start（調整開始日）",
+      "resize-end（調整結束日）"
+    ],
     "planStructure": "AnnualPlan → MonthlyGoal → Milestone",
     "progressCalculation": "依子節點完成比例自動計算 progressPct",
     "routes": {
@@ -781,5 +811,57 @@
       "plans": "/plans",
       "gantt": "/gantt"
     }
+  },
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J04",
+    "roleGroups": [
+      {
+        "role": "MANAGER",
+        "cases": [
+          "KPI-01",
+          "KPI-02",
+          "KPI-03",
+          "KPI-04",
+          "KPI-05"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "KPI-06"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "KPI-07"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "KPI-08"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "KPI-09",
+          "PLAN-01",
+          "PLAN-02",
+          "PLAN-03",
+          "PLAN-04",
+          "PLAN-05",
+          "PLAN-06",
+          "PLAN-07",
+          "GANTT-01",
+          "GANTT-02",
+          "GANTT-03",
+          "GANTT-04"
+        ]
+      }
+    ]
   }
 }

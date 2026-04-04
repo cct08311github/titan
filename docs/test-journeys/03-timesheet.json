@@ -1,0 +1,1030 @@
+{
+  "journey": "03-timesheet",
+  "title": "工時紀錄 & 核准流程完整旅程",
+  "description": "涵蓋工時 CRUD、日曆視圖、計時器、樣板、核准流程、月結功能的端對端測試旅程",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "credentials": {
+    "engineer": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    },
+    "manager": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    }
+  },
+  "testCases": [
+    {
+      "id": "TS-01",
+      "name": "以 ENGINEER 身份導覽至工時紀錄頁（週視圖）",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "URL 為 /timesheet，頁面標題包含「工時紀錄」"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1",
+          "expected": "h1 可見且文字包含「工時紀錄」"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}\\/\\d{2}\\/\\d{2} — \\d{4}\\/\\d{2}\\/\\d{2}/",
+          "expected": "週範圍標籤（如 2026/01/01 — 2026/01/07）可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-01-weekly-view.png",
+          "expected": "截圖顯示週視圖工時表格或空狀態"
+        }
+      ]
+    },
+    {
+      "id": "TS-02",
+      "name": "新增工時類型「原始規劃」(PLANNED_TASK)",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增工時'), button:has-text('記錄工時'), [aria-label*='新增']",
+          "expected": "新增工時對話框或表單出現"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='category'], select[aria-label*='類型']",
+          "value": "PLANNED_TASK",
+          "expected": "選取「原始規劃」類型"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='date'], input[type='date']",
+          "value": "2026-04-07",
+          "expected": "日期欄位填入 2026-04-07（星期一）"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='hours'], input[type='number'][placeholder*='小時']",
+          "value": "4",
+          "expected": "工時填入 4 小時"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note'], textarea[placeholder*='備註']",
+          "value": "J03-原始規劃工時測試備註",
+          "expected": "備註欄位填入測試文字"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button[type='submit']:has-text('建立')",
+          "expected": "表單送出，成功訊息出現或表單關閉"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=原始規劃, text=4",
+          "expected": "新增工時出現在表格中，顯示類型與工時數"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-02-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-03",
+      "name": "新增工時類型「追加任務」(ADDED_TASK) — 對應會議情境",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增工時'), button:has-text('記錄工時'), [aria-label*='新增']",
+          "expected": "新增工時表單出現"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='category'], select[aria-label*='類型']",
+          "value": "ADDED_TASK",
+          "expected": "選取「追加任務」類型"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='date'], input[type='date']",
+          "value": "2026-04-07",
+          "expected": "日期欄位填入 2026-04-07"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='hours'], input[type='number']",
+          "value": "2",
+          "expected": "工時填入 2 小時"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note']",
+          "value": "J03-追加任務（會議討論）測試備註",
+          "expected": "備註填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button[type='submit']:has-text('建立')",
+          "expected": "工時記錄成功建立"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-03-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-04",
+      "name": "新增工時類型「支援」(SUPPORT)",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增工時'), button:has-text('記錄工時'), [aria-label*='新增']",
+          "expected": "新增工時表單出現"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='category'], select[aria-label*='類型']",
+          "value": "SUPPORT",
+          "expected": "選取「支援」類型"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='date'], input[type='date']",
+          "value": "2026-04-08",
+          "expected": "日期欄位填入 2026-04-08"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='hours'], input[type='number']",
+          "value": "3",
+          "expected": "工時填入 3 小時"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note']",
+          "value": "J03-支援其他部門協作",
+          "expected": "備註填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button[type='submit']:has-text('建立')",
+          "expected": "工時記錄成功建立，支援類型顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-04-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-05",
+      "name": "新增工時類型「學習成長」(LEARNING) — 對應教育訓練情境",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增工時'), button:has-text('記錄工時'), [aria-label*='新增']",
+          "expected": "新增工時表單出現"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='category'], select[aria-label*='類型']",
+          "value": "LEARNING",
+          "expected": "選取「學習成長」類型"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='date'], input[type='date']",
+          "value": "2026-04-08",
+          "expected": "日期欄位填入 2026-04-08"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='hours'], input[type='number']",
+          "value": "2",
+          "expected": "工時填入 2 小時"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note']",
+          "value": "J03-教育訓練：Next.js 課程",
+          "expected": "備註填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button[type='submit']:has-text('建立')",
+          "expected": "工時記錄成功建立"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-05-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-06",
+      "name": "新增工時類型「行政」(ADMIN)",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增工時'), button:has-text('記錄工時'), [aria-label*='新增']",
+          "expected": "新增工時表單出現"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='category'], select[aria-label*='類型']",
+          "value": "ADMIN",
+          "expected": "選取「行政」類型"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='date'], input[type='date']",
+          "value": "2026-04-09",
+          "expected": "日期欄位填入 2026-04-09"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='hours'], input[type='number']",
+          "value": "1",
+          "expected": "工時填入 1 小時"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note']",
+          "value": "J03-例行行政作業",
+          "expected": "備註填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button[type='submit']:has-text('建立')",
+          "expected": "行政工時記錄成功建立"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-06-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-07",
+      "name": "編輯現有工時 — 修改工時數與備註",
+      "role": "ENGINEER",
+      "precondition": "系統中至少存在一筆狀態為 PENDING（未核准）的工時記錄",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "table tbody tr:first-child td, [class*='timesheet-cell']:first-child, button[aria-label*='編輯']",
+          "expected": "點擊工時格子或編輯按鈕，編輯表單出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='hours'], input[type='number']",
+          "value": "6",
+          "expected": "工時欄位修改為 6 小時"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note']",
+          "value": "J03-（已修改）更新後的備註內容",
+          "expected": "備註欄位更新"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button:has-text('更新')",
+          "expected": "修改成功儲存，表格顯示更新後的工時數 6"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=6",
+          "expected": "表格中顯示更新後的 6 小時"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-07-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-08",
+      "name": "切換至月曆視圖（/timesheet/monthly）",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet/monthly",
+          "expected": "URL 為 /timesheet/monthly，月曆視圖載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1",
+          "expected": "頁面標題可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='monthly'], [class*='calendar'], table, text=/\\d{4}/",
+          "expected": "月曆格線或月份表格可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-08-monthly-view.png",
+          "expected": "截圖顯示月曆視圖，含每日工時格"
+        }
+      ]
+    },
+    {
+      "id": "TS-09",
+      "name": "週視圖 — 導覽至上一週並確認資料載入",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁（週視圖）載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}\\/\\d{2}\\/\\d{2} — /",
+          "expected": "目前週範圍標籤可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='上一週'], button:has-text('上一週'), button[aria-label*='prev'], svg.lucide-chevron-left",
+          "expected": "點擊上一週導航按鈕"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}\\/\\d{2}\\/\\d{2} — /",
+          "expected": "週範圍標籤更新為上一週的日期範圍"
+        },
+        {
+          "action": "waitFor",
+          "selector": "table, text=本週尚無工時記錄, [class*='timesheet']",
+          "expected": "工時表格或空狀態可見，資料已載入"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-09-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-10",
+      "name": "週視圖 — 導覽至下一週",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁（週視圖）載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='下一週'], button:has-text('下一週'), svg.lucide-chevron-right",
+          "expected": "點擊下一週導航按鈕"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}\\/\\d{2}\\/\\d{2} — /",
+          "expected": "週範圍標籤更新為下一週的日期範圍"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-10-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-11",
+      "name": "驗證週工時合計正確顯示",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁（週視圖）載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "table, [class*='timesheet']",
+          "expected": "工時表格可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/合計|總計|total/i, tfoot, [class*='total'], [class*='summary']",
+          "expected": "週工時合計列或合計欄位可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-11-weekly-total.png",
+          "expected": "截圖顯示週視圖含合計工時數字"
+        }
+      ]
+    },
+    {
+      "id": "TS-12",
+      "name": "啟動計時器（Timer）",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "button:has-text('開始'), button[aria-label*='計時'], [class*='timer']",
+          "expected": "計時器啟動按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('開始'), button[aria-label*='計時器'], button[aria-label*='start timer']",
+          "expected": "計時器開始運作"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='timer']:has-text(/\\d+:\\d+/), text=/計時中|進行中|running/i",
+          "expected": "計時器狀態變為進行中，顯示計時數字"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-12-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-13",
+      "name": "驗證計時器在 UI 中計數",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成（計時器應已在 TS-12 啟動）"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='timer'], [class*='TimeDisplay'], text=/\\d+:\\d+:\\d+/",
+          "expected": "計時器顯示元件可見"
+        },
+        {
+          "action": "waitForTimeout",
+          "duration": 3000,
+          "expected": "等待 3 秒讓計時器推進"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-13-timer-counting.png",
+          "expected": "截圖顯示計時器數字（非 00:00:00）"
+        }
+      ]
+    },
+    {
+      "id": "TS-14",
+      "name": "停止計時器並驗證工時記錄自動建立",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成，計時器應正在運作"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('停止'), button[aria-label*='停止計時'], button[aria-label*='stop timer']",
+          "expected": "計時器停止"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/計時器已停止|工時已記錄|0:0/i, button:has-text('開始')",
+          "expected": "計時器狀態回到停止，並應建立對應工時記錄"
+        },
+        {
+          "action": "waitFor",
+          "selector": "table tbody tr, [class*='timesheet-row']",
+          "expected": "工時表格顯示新建立的計時工時記錄（時間區間對應計時起迄）"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-14-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-15",
+      "name": "儲存當週為工時樣板",
+      "role": "ENGINEER",
+      "precondition": "當週至少有一筆工時記錄",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('樣板'), button:has-text('另存樣板'), [aria-label*='template'], [aria-label*='樣板']",
+          "expected": "樣板操作選單或對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存為樣板'), menuitem:has-text('儲存'), button:has-text('另存')",
+          "expected": "儲存樣板對話框出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='templateName'], input[placeholder*='樣板名稱']",
+          "value": "J03-標準工作週樣板",
+          "expected": "樣板名稱填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button:has-text('確認')",
+          "expected": "樣板儲存成功，成功訊息出現"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-15-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-16",
+      "name": "套用樣板至新週",
+      "role": "ENGINEER",
+      "precondition": "TS-15 已儲存「標準工作週樣板」",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='下一週'], svg.lucide-chevron-right",
+          "expected": "切換到下一週（空週）"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('樣板'), [aria-label*='template']",
+          "expected": "樣板選單出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('套用樣板'), menuitem:has-text('套用')",
+          "expected": "顯示可用樣板清單"
+        },
+        {
+          "action": "click",
+          "selector": "text=標準工作週樣板",
+          "expected": "選取要套用的樣板"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('套用'), button:has-text('確認')",
+          "expected": "樣板套用成功，當週工時依樣板填入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "table tbody tr, [class*='timesheet-row']",
+          "expected": "工時表格顯示從樣板複製的工時記錄"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-16-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-17",
+      "name": "刪除工時樣板",
+      "role": "ENGINEER",
+      "precondition": "TS-15 已儲存「標準工作週樣板」",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('樣板'), [aria-label*='template']",
+          "expected": "樣板選單出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('管理樣板'), menuitem:has-text('刪除')",
+          "expected": "樣板管理頁或確認對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "text=標準工作週樣板",
+          "expected": "選取要刪除的樣板"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('刪除'), button[aria-label*='delete']",
+          "expected": "確認刪除對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認刪除'), button:has-text('確認')",
+          "expected": "樣板刪除成功，從清單中移除"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-17-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-18",
+      "name": "以 MANAGER 身份登入並導覽至工時頁",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1",
+          "expected": "頁面標題「工時紀錄」可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "select[aria-label='篩選使用者'], [class*='user-filter']",
+          "expected": "Manager 專屬的使用者篩選下拉可見（顯示「我的工時」選項）"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-18-manager-timesheet.png",
+          "expected": "截圖顯示 Manager 視角工時頁面"
+        }
+      ]
+    },
+    {
+      "id": "TS-19",
+      "name": "Manager 檢視團隊成員的已提交工時",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label='篩選使用者']",
+          "value": "eng-a@titan.local",
+          "expected": "篩選切換至顯示 Engineer A 的工時"
+        },
+        {
+          "action": "waitFor",
+          "selector": "table tbody tr, [class*='approval-panel'], text=/待核准|PENDING/",
+          "expected": "顯示工程師的工時記錄，可見核准面板或待核准狀態"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-19-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-20",
+      "name": "Manager 核准工程師的週工時",
+      "role": "MANAGER",
+      "precondition": "工程師至少有一週的工時記錄且狀態為 PENDING",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='approval-panel'], text=待核准",
+          "expected": "核准面板可見，顯示待核准的工時"
+        },
+        {
+          "action": "click",
+          "selector": "input[type='checkbox']:first-child, [class*='approval-checkbox']:first-child",
+          "expected": "勾選第一筆待核准工時"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('核准'), button[aria-label*='approve']",
+          "expected": "核准按鈕被點擊，確認對話框或直接執行"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認'), button:has-text('確認核准')",
+          "expected": "工時核准確認執行"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=已核准, text=APPROVED, [class*='approved']",
+          "expected": "工時狀態更新為已核准（APPROVED）"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-20-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-21",
+      "name": "Manager 駁回工時並填寫駁回原因",
+      "role": "MANAGER",
+      "precondition": "另一筆工時記錄狀態為 PENDING",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='approval-panel'], text=待核准",
+          "expected": "核准面板可見"
+        },
+        {
+          "action": "click",
+          "selector": "input[type='checkbox']:first-child",
+          "expected": "勾選待核准工時"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('駁回'), button[aria-label*='reject']",
+          "expected": "點擊駁回按鈕，駁回理由輸入框出現"
+        },
+        {
+          "action": "waitFor",
+          "selector": "textarea[placeholder='請輸入駁回理由...'], input[name='rejectReason']",
+          "expected": "駁回理由輸入欄位出現（必填）"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder='請輸入駁回理由...'], input[name='rejectReason']",
+          "value": "J03-工時記錄與任務進度不符，請修正後重新提交",
+          "expected": "駁回理由填入"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認駁回'), button[type='submit']:has-text('駁回')",
+          "expected": "駁回執行，成功訊息出現"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=已駁回, text=REJECTED, [class*='rejected']",
+          "expected": "工時狀態更新為已駁回（REJECTED）"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-21-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-22",
+      "name": "驗證 Engineer 看到核准/駁回狀態",
+      "role": "ENGINEER",
+      "precondition": "TS-20 已核准、TS-21 已駁回工時",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "expected": "工時紀錄頁以 Engineer 身份載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "table tbody tr",
+          "expected": "工時表格顯示記錄"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=已核准, text=已駁回, [class*='approved'], [class*='rejected'], [class*='status-badge']",
+          "expected": "工時記錄顯示對應的核准或駁回狀態標籤"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-22-approval-status.png",
+          "expected": "截圖顯示工程師視角的核准狀態"
+        }
+      ]
+    },
+    {
+      "id": "TS-23",
+      "name": "導覽至月度摘要（月曆視圖）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet/monthly",
+          "expected": "URL 為 /timesheet/monthly，月度摘要頁面載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='monthly'], [class*='monthly-grid'], table",
+          "expected": "月曆格線可見，顯示各日工時"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='monthly-summary'], text=/合計|總計/, text=/月份/",
+          "expected": "月度工時統計摘要可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "ts-23-monthly-summary.png",
+          "expected": "截圖顯示月度摘要視圖"
+        }
+      ]
+    },
+    {
+      "id": "TS-24",
+      "name": "執行月結（月度結算）",
+      "role": "MANAGER",
+      "precondition": "當月有已核准的工時記錄，且尚未執行月結",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet/monthly",
+          "expected": "月度摘要頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "button:has-text('月結'), button:has-text('執行月結'), button[aria-label*='settlement']",
+          "expected": "月結按鈕可見（Manager 才有此權限）"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('月結'), button:has-text('執行月結')",
+          "expected": "月結確認對話框出現，說明影響範圍"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/月結確認|確認月結|執行後無法修改/",
+          "expected": "確認對話框顯示警告訊息"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認月結'), button:has-text('確認執行')",
+          "expected": "月結執行，API POST /api/time-entries/settle-month 呼叫"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/月結完成|已結算|settlement.*complete/i",
+          "expected": "月結成功訊息出現，工時記錄鎖定狀態"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-24-result"
+        }
+      ]
+    },
+    {
+      "id": "TS-25",
+      "name": "驗證月結後工時記錄無法修改",
+      "role": "ENGINEER",
+      "precondition": "TS-24 已完成月結",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/timesheet/monthly",
+          "expected": "月度摘要頁以 Engineer 身份載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/已結算|鎖定|settled/i, [class*='locked'], [class*='settled']",
+          "expected": "月結記錄顯示鎖定或已結算標誌"
+        },
+        {
+          "action": "click",
+          "selector": "table tbody tr:first-child, [class*='day-cell']:first-child",
+          "expected": "嘗試點擊已結算的工時格子"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/已結算.*無法修改|locked|不可編輯/i",
+          "expected": "系統顯示已結算工時不可修改的提示，或編輯介面不出現"
+        },
+        {
+          "action": "screenshot",
+          "name": "TS-25-result"
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "timeCategories": {
+      "PLANNED_TASK": "原始規劃（直接工時）",
+      "ADDED_TASK": "追加任務",
+      "INCIDENT": "突發事件",
+      "SUPPORT": "支援",
+      "ADMIN": "行政",
+      "LEARNING": "學習成長（教育訓練）"
+    },
+    "approvalStatuses": [
+      "PENDING",
+      "APPROVED",
+      "REJECTED"
+    ],
+    "settlementApi": "POST /api/time-entries/settle-month",
+    "timesheetApprovalFlow": "Engineer 填工時 → PENDING → Manager 審核 → APPROVED / REJECTED → 月結鎖定"
+  },
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J03",
+    "roleGroups": [
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "TS-01",
+          "TS-02",
+          "TS-03",
+          "TS-04",
+          "TS-05",
+          "TS-06",
+          "TS-07",
+          "TS-08",
+          "TS-09",
+          "TS-10",
+          "TS-11",
+          "TS-12",
+          "TS-13",
+          "TS-14",
+          "TS-15",
+          "TS-16",
+          "TS-17"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "TS-18",
+          "TS-19",
+          "TS-20",
+          "TS-21"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "TS-22"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "TS-23",
+          "TS-24"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "TS-25"
+        ]
+      }
+    ]
+  }
+}

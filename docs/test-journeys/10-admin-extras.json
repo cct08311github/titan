@@ -4,12 +4,23 @@
   "description": "管理後台新分頁（權限管理、監控警報）與系統工具（稽核佇列、重設 Token、解鎖帳號）端對端測試旅程",
   "baseUrl": "http://localhost:3100",
   "credentials": {
-    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
-    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
-    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+    "ENGINEER": {
+      "email": "engineer@titan.local",
+      "password": "Test1234!",
+      "role": "ENGINEER"
+    },
+    "MANAGER": {
+      "email": "manager@titan.local",
+      "password": "Test1234!",
+      "role": "MANAGER"
+    },
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "Test1234!",
+      "role": "ADMIN"
+    }
   },
   "testCases": [
-
     {
       "id": "PERM-01",
       "name": "Admin 導覽至 /admin 並點擊「權限」分頁",
@@ -46,7 +57,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-02",
       "name": "權限表格載入並顯示所有欄位標題",
@@ -88,7 +98,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-03",
       "name": "點擊「授予權限」— 表單展開並顯示使用者選擇器",
@@ -130,7 +139,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-04",
       "name": "授予權限（permType='VIEW_REPORTS'，選擇使用者）",
@@ -182,7 +190,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-05",
       "name": "驗證新授予的權限出現在表格中",
@@ -214,7 +221,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-06",
       "name": "撤銷權限 — 點擊「撤銷」並確認對話框",
@@ -261,7 +267,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-07",
       "name": "驗證已撤銷的權限從啟用清單中移除",
@@ -293,7 +298,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-08",
       "name": "依啟用/停用狀態篩選權限",
@@ -335,7 +339,6 @@
         }
       ]
     },
-
     {
       "id": "PERM-09",
       "name": "截圖權限分頁完整狀態",
@@ -367,7 +370,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-01",
       "name": "點擊「監控警報」分頁",
@@ -404,7 +406,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-02",
       "name": "警報表格載入並顯示所有欄位標題",
@@ -446,7 +447,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-03",
       "name": "依狀態篩選 — 選擇 FIRING",
@@ -488,7 +488,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-04",
       "name": "依「自」日期篩選警報",
@@ -530,7 +529,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-05",
       "name": "若存在 FIRING 警報，點擊「確認」按鈕",
@@ -577,7 +575,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-06",
       "name": "驗證確認後警報狀態變更為 ACKNOWLEDGED",
@@ -619,7 +616,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-07",
       "name": "點擊警報的「建立任務」— 驗證操作成功",
@@ -666,7 +662,6 @@
         }
       ]
     },
-
     {
       "id": "ALERT-08",
       "name": "截圖監控警報分頁完整狀態",
@@ -698,7 +693,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-01",
       "name": "點擊「系統」分頁 — AdminTools 區塊可見於備份狀態下方",
@@ -740,7 +734,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-02",
       "name": "稽核佇列卡片 — 驗證佇列深度數值顯示",
@@ -777,7 +770,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-03",
       "name": "點擊「Retry Queue」按鈕 — 驗證處理數量 Toast 通知",
@@ -819,7 +811,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-04",
       "name": "重設 Token 卡片 — 從下拉選單選擇使用者",
@@ -861,7 +852,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-05",
       "name": "點擊「Generate Token」— 驗證 6 位數 OTP 顯示",
@@ -908,7 +898,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-06",
       "name": "驗證 OTP 過期警告文字顯示",
@@ -955,7 +944,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-07",
       "name": "解鎖帳號卡片 — 選擇使用者並點擊「Unlock」",
@@ -1007,7 +995,6 @@
         }
       ]
     },
-
     {
       "id": "TOOL-08",
       "name": "截圖系統工具區塊完整狀態",
@@ -1049,6 +1036,10 @@
         }
       ]
     }
-
-  ]
+  ],
+  "execution": {
+    "mode": "parallel",
+    "contextIsolation": "shared",
+    "dataPrefix": "J10"
+  }
 }

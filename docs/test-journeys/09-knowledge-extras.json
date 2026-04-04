@@ -4,12 +4,23 @@
   "description": "知識庫頁面的閱讀清單與文件範本功能端對端測試旅程",
   "baseUrl": "http://localhost:3100",
   "credentials": {
-    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
-    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
-    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+    "ENGINEER": {
+      "email": "engineer@titan.local",
+      "password": "Test1234!",
+      "role": "ENGINEER"
+    },
+    "MANAGER": {
+      "email": "manager@titan.local",
+      "password": "Test1234!",
+      "role": "MANAGER"
+    },
+    "ADMIN": {
+      "email": "admin@titan.local",
+      "password": "Test1234!",
+      "role": "ADMIN"
+    }
   },
   "testCases": [
-
     {
       "id": "RL-01",
       "name": "Manager 導覽至 /knowledge — 閱讀清單區塊在頁面底部可見",
@@ -41,7 +52,6 @@
         }
       ]
     },
-
     {
       "id": "RL-02",
       "name": "展開閱讀清單區塊 — 表格標題列可見",
@@ -78,7 +88,6 @@
         }
       ]
     },
-
     {
       "id": "RL-03",
       "name": "Manager 建立閱讀清單（標題='新人必讀文件', 描述='入職指南'）",
@@ -107,7 +116,7 @@
         {
           "action": "fill",
           "selector": "input[name='title'], input[placeholder*='標題'], input[aria-label*='標題']",
-          "value": "新人必讀文件"
+          "value": "J09-新人必讀文件"
         },
         {
           "action": "fill",
@@ -130,7 +139,6 @@
         }
       ]
     },
-
     {
       "id": "RL-04",
       "name": "驗證新清單出現在表格中，顯示 0 項目、0 指派",
@@ -162,7 +170,6 @@
         }
       ]
     },
-
     {
       "id": "RL-05",
       "name": "建立另一個閱讀清單並勾選 isDefault（標題='全員必讀'）",
@@ -186,7 +193,7 @@
         {
           "action": "fill",
           "selector": "input[name='title'], input[placeholder*='標題']",
-          "value": "全員必讀"
+          "value": "J09-全員必讀"
         },
         {
           "action": "click",
@@ -209,7 +216,6 @@
         }
       ]
     },
-
     {
       "id": "RL-06",
       "name": "驗證「全員必讀」清單顯示「預設」徽章",
@@ -236,7 +242,6 @@
         }
       ]
     },
-
     {
       "id": "RL-07",
       "name": "點擊閱讀清單列展開詳細面板",
@@ -273,7 +278,6 @@
         }
       ]
     },
-
     {
       "id": "RL-08",
       "name": "驗證展開詳細面板中的項目與指派區塊可見",
@@ -315,7 +319,6 @@
         }
       ]
     },
-
     {
       "id": "RL-09",
       "name": "Engineer 導覽至 /knowledge — 閱讀清單區塊可見但無建立按鈕",
@@ -347,7 +350,6 @@
         }
       ]
     },
-
     {
       "id": "RL-10",
       "name": "截圖閱讀清單區塊完整狀態",
@@ -379,7 +381,6 @@
         }
       ]
     },
-
     {
       "id": "DT-01",
       "name": "Manager 捲動至文件範本區塊",
@@ -411,7 +412,6 @@
         }
       ]
     },
-
     {
       "id": "DT-02",
       "name": "展開文件範本區塊 — 表格標題列可見",
@@ -448,7 +448,6 @@
         }
       ]
     },
-
     {
       "id": "DT-03",
       "name": "驗證系統範本顯示「系統」藍色徽章",
@@ -480,7 +479,6 @@
         }
       ]
     },
-
     {
       "id": "DT-04",
       "name": "Manager 建立自訂範本（標題='會議紀錄範本', 分類='會議', 內容='# 會議主題\\n...'）",
@@ -509,7 +507,7 @@
         {
           "action": "fill",
           "selector": "input[name='title'], input[placeholder*='標題'], input[aria-label*='標題']",
-          "value": "會議紀錄範本"
+          "value": "J09-會議紀錄範本"
         },
         {
           "action": "fill",
@@ -537,7 +535,6 @@
         }
       ]
     },
-
     {
       "id": "DT-05",
       "name": "驗證新建自訂範本顯示「自訂」綠色徽章",
@@ -564,7 +561,6 @@
         }
       ]
     },
-
     {
       "id": "DT-06",
       "name": "使用分類篩選下拉選單 — 驗證篩選效果",
@@ -606,7 +602,6 @@
         }
       ]
     },
-
     {
       "id": "DT-07",
       "name": "點擊範本列 — 內容預覽面板開啟",
@@ -643,7 +638,6 @@
         }
       ]
     },
-
     {
       "id": "DT-08",
       "name": "驗證預覽面板中顯示範本內容",
@@ -680,7 +674,6 @@
         }
       ]
     },
-
     {
       "id": "DT-09",
       "name": "Engineer 可看到範本清單但驗證建立按鈕行為",
@@ -717,7 +710,6 @@
         }
       ]
     },
-
     {
       "id": "DT-10",
       "name": "截圖文件範本區塊完整狀態",
@@ -749,6 +741,57 @@
         }
       ]
     }
-
-  ]
+  ],
+  "execution": {
+    "mode": "sequential",
+    "contextIsolation": "per-role",
+    "dataPrefix": "J09",
+    "roleGroups": [
+      {
+        "role": "MANAGER",
+        "cases": [
+          "RL-01",
+          "RL-02",
+          "RL-03",
+          "RL-04",
+          "RL-05",
+          "RL-06",
+          "RL-07",
+          "RL-08"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "RL-09"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "RL-10",
+          "DT-01",
+          "DT-02",
+          "DT-03",
+          "DT-04",
+          "DT-05",
+          "DT-06",
+          "DT-07",
+          "DT-08"
+        ]
+      },
+      {
+        "role": "ENGINEER",
+        "cases": [
+          "DT-09"
+        ]
+      },
+      {
+        "role": "MANAGER",
+        "cases": [
+          "DT-10"
+        ]
+      }
+    ]
+  }
 }
