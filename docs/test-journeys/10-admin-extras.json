@@ -1,0 +1,1054 @@
+{
+  "journey": "10-admin-extras",
+  "version": "1.0.0",
+  "description": "管理後台新分頁（權限管理、監控警報）與系統工具（稽核佇列、重設 Token、解鎖帳號）端對端測試旅程",
+  "baseUrl": "http://localhost:3100",
+  "credentials": {
+    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
+    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
+    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+  },
+  "testCases": [
+
+    {
+      "id": "PERM-01",
+      "name": "Admin 導覽至 /admin 並點擊「權限」分頁",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "URL 為 /admin，頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "管理後台頁面標題可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions'], a:has-text('權限')",
+          "expected": "點擊「權限」分頁標籤"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待權限分頁內容載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '權限' visible",
+          "expected": "權限分頁已啟動並顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-01-admin-permissions-tab"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-02",
+      "name": "權限表格載入並顯示所有欄位標題",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions'], a:has-text('權限')",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='permissions-table']",
+          "expected": "權限表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '被授予對象' visible",
+          "expected": "「被授予對象」欄位標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '權限類型' visible",
+          "expected": "「權限類型」欄位標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '狀態' visible",
+          "expected": "「狀態」欄位標題可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-02-permissions-table-columns"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-03",
+      "name": "點擊「授予權限」— 表單展開並顯示使用者選擇器",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions'], a:has-text('權限')",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "分頁內容載入"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('授予權限'), button:has-text('新增權限'), [data-testid='grant-permission-btn']",
+          "expected": "點擊「授予權限」按鈕"
+        },
+        {
+          "action": "wait",
+          "selector": "select[name='userId'], select[aria-label*='使用者'], [data-testid='user-selector']",
+          "expected": "使用者選擇器出現"
+        },
+        {
+          "action": "assert",
+          "check": "element 'select[name=\"userId\"], select[aria-label*=\"使用者\"]' visible",
+          "expected": "授予權限表單展開並顯示使用者選擇器"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-03-grant-permission-form"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-04",
+      "name": "授予權限（permType='VIEW_REPORTS'，選擇使用者）",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions']",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('授予權限'), button:has-text('新增權限'), [data-testid='grant-permission-btn']",
+          "expected": "展開授予權限表單"
+        },
+        {
+          "action": "wait",
+          "selector": "select[name='userId'], [data-testid='user-selector']",
+          "expected": "使用者選擇器可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='userId'], select[aria-label*='使用者'], [data-testid='user-selector']",
+          "value": "engineer@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='permType'], input[placeholder*='權限類型'], input[aria-label*='權限類型']",
+          "value": "VIEW_REPORTS"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('授予'), button[type='submit']:has-text('確認'), button[type='submit']:has-text('新增')",
+          "expected": "提交授予權限表單"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待操作完成並更新表格"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-04-grant-permission-submitted"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-05",
+      "name": "驗證新授予的權限出現在表格中",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions']",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='permissions-table']",
+          "expected": "權限表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "text 'VIEW_REPORTS' visible",
+          "expected": "剛授予的 VIEW_REPORTS 權限顯示於表格中"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-05-new-permission-in-table"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-06",
+      "name": "撤銷權限 — 點擊「撤銷」並確認對話框",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions']",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='permissions-table']",
+          "expected": "權限表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "tr:has-text('VIEW_REPORTS') button:has-text('撤銷'), [data-testid='revoke-btn']",
+          "expected": "點擊「撤銷」按鈕"
+        },
+        {
+          "action": "wait",
+          "selector": "[role='dialog'], [data-testid='confirm-dialog'], .confirm-dialog",
+          "expected": "確認對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "[role='dialog'] button:has-text('確認'), [role='dialog'] button:has-text('撤銷'), [data-testid='confirm-revoke']",
+          "expected": "確認撤銷操作"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待操作完成"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-06-revoke-confirmed"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-07",
+      "name": "驗證已撤銷的權限從啟用清單中移除",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions']",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='permissions-table']",
+          "expected": "權限表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "text 'VIEW_REPORTS' not visible",
+          "expected": "已撤銷的 VIEW_REPORTS 權限不再顯示於啟用清單"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-07-permission-removed"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-08",
+      "name": "依啟用/停用狀態篩選權限",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions']",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='permissions-table']",
+          "expected": "權限表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('已停用'), [data-testid='filter-inactive'], select[name='statusFilter'] option[value='inactive']",
+          "expected": "點擊「已停用」篩選器"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "篩選結果更新"
+        },
+        {
+          "action": "assert",
+          "check": "element 'table' visible",
+          "expected": "篩選後表格仍顯示（即使可能為空）"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-08-filter-inactive-permissions"
+        }
+      ]
+    },
+
+    {
+      "id": "PERM-09",
+      "name": "截圖權限分頁完整狀態",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('權限'), [data-testid='tab-permissions']",
+          "expected": "切換至權限分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='permissions-table']",
+          "expected": "表格載入完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '權限' visible",
+          "expected": "權限分頁正常顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "perm-09-permissions-tab-final"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-01",
+      "name": "點擊「監控警報」分頁",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "管理後台標題可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts'], a:has-text('監控警報')",
+          "expected": "點擊「監控警報」分頁標籤"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待監控警報分頁內容載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '監控警報' visible",
+          "expected": "監控警報分頁已啟動"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-01-monitoring-alerts-tab"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-02",
+      "name": "警報表格載入並顯示所有欄位標題",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '警報名稱' visible",
+          "expected": "「警報名稱」欄位標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '嚴重程度' visible",
+          "expected": "「嚴重程度」欄位標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '狀態' visible",
+          "expected": "「狀態」欄位標題可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-02-alerts-table-columns"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-03",
+      "name": "依狀態篩選 — 選擇 FIRING",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='statusFilter'], select[aria-label*='狀態篩選'], [data-testid='status-filter']",
+          "value": "FIRING"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "篩選結果更新"
+        },
+        {
+          "action": "assert",
+          "check": "element 'table' visible",
+          "expected": "篩選後表格顯示（可能顯示 FIRING 警報或空狀態）"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-03-filter-firing"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-04",
+      "name": "依「自」日期篩選警報",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[type='date'][name='since'], input[aria-label*='自'], [data-testid='since-date-filter']",
+          "value": "2026-01-01"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "日期篩選結果更新"
+        },
+        {
+          "action": "assert",
+          "check": "element 'table' visible",
+          "expected": "日期篩選後表格仍正常顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-04-filter-by-date"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-05",
+      "name": "若存在 FIRING 警報，點擊「確認」按鈕",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='statusFilter'], [data-testid='status-filter']",
+          "value": "FIRING"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "篩選 FIRING 警報"
+        },
+        {
+          "action": "click",
+          "selector": "tr button:has-text('確認'), tr [data-testid='acknowledge-btn']",
+          "expected": "點擊第一列 FIRING 警報的「確認」按鈕（若存在）"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待確認操作完成"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-05-acknowledge-firing-alert"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-06",
+      "name": "驗證確認後警報狀態變更為 ACKNOWLEDGED",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='statusFilter'], [data-testid='status-filter']",
+          "value": "ACKNOWLEDGED"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "篩選 ACKNOWLEDGED 警報"
+        },
+        {
+          "action": "assert",
+          "check": "element 'table' visible",
+          "expected": "篩選後顯示已確認警報（或空狀態，若無 FIRING 警報可確認）"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-06-acknowledged-status"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-07",
+      "name": "點擊警報的「建立任務」— 驗證操作成功",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='statusFilter'], [data-testid='status-filter']",
+          "value": "ALL"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "顯示所有警報"
+        },
+        {
+          "action": "click",
+          "selector": "tr button:has-text('建立任務'), tr [data-testid='create-task-btn']",
+          "expected": "點擊第一列警報的「建立任務」按鈕（若存在 FIRING 警報）"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待建立任務操作完成"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-07-create-task-from-alert"
+        }
+      ]
+    },
+
+    {
+      "id": "ALERT-08",
+      "name": "截圖監控警報分頁完整狀態",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('監控警報'), [data-testid='tab-monitoring-alerts']",
+          "expected": "切換至監控警報分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='alerts-table']",
+          "expected": "警報表格載入完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '監控警報' visible",
+          "expected": "監控警報分頁正常顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "alert-08-monitoring-alerts-final"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-01",
+      "name": "點擊「系統」分頁 — AdminTools 區塊可見於備份狀態下方",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "管理後台標題可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system'], a:has-text('系統')",
+          "expected": "點擊「系統」分頁標籤"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待系統分頁內容載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '備份狀態' visible",
+          "expected": "備份狀態區塊可見"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='admin-tools'], .admin-tools, text=系統工具",
+          "expected": "AdminTools 區塊在備份狀態下方可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-01-system-tab-admin-tools"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-02",
+      "name": "稽核佇列卡片 — 驗證佇列深度數值顯示",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='audit-queue-card'], .audit-queue-card, text=稽核佇列",
+          "expected": "稽核佇列卡片可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '稽核佇列' visible",
+          "expected": "稽核佇列卡片標題顯示"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"queue-depth\"], .queue-depth, text=/\\d+/' visible",
+          "expected": "佇列深度數值（數字）顯示於卡片中"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-02-audit-queue-depth"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-03",
+      "name": "點擊「Retry Queue」按鈕 — 驗證處理數量 Toast 通知",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='audit-queue-card'], text=稽核佇列",
+          "expected": "稽核佇列卡片可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('Retry Queue'), button:has-text('重試佇列'), [data-testid='retry-queue-btn']",
+          "expected": "點擊「Retry Queue」按鈕"
+        },
+        {
+          "action": "wait",
+          "timeout": 3000,
+          "expected": "等待 Retry 操作完成並顯示 Toast"
+        },
+        {
+          "action": "assert",
+          "check": "element '[role=\"status\"], [data-testid=\"toast\"], .toast' visible",
+          "expected": "Toast 通知出現，顯示已處理的佇列數量"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-03-retry-queue-toast"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-04",
+      "name": "重設 Token 卡片 — 從下拉選單選擇使用者",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='reset-token-card'], .reset-token-card, text=重設 Token",
+          "expected": "重設 Token 卡片可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '重設 Token' visible",
+          "expected": "重設 Token 卡片標題顯示"
+        },
+        {
+          "action": "select",
+          "selector": "select[data-testid='reset-token-user'], select[aria-label*='選擇使用者'], [data-testid='reset-token-card'] select",
+          "value": "engineer@titan.local"
+        },
+        {
+          "action": "assert",
+          "check": "element 'select' visible",
+          "expected": "使用者已從下拉選單中選取"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-04-reset-token-user-selected"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-05",
+      "name": "點擊「Generate Token」— 驗證 6 位數 OTP 顯示",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='reset-token-card'], text=重設 Token",
+          "expected": "重設 Token 卡片可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[data-testid='reset-token-user'], [data-testid='reset-token-card'] select",
+          "value": "engineer@titan.local"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('Generate Token'), button:has-text('產生 Token'), button:has-text('生成 OTP'), [data-testid='generate-token-btn']",
+          "expected": "點擊「Generate Token」按鈕"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 OTP 產生"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"otp-display\"], .otp-display, text=/\\d{6}/' visible",
+          "expected": "6 位數 OTP 顯示於卡片中"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-05-otp-generated"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-06",
+      "name": "驗證 OTP 過期警告文字顯示",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='reset-token-card'], text=重設 Token",
+          "expected": "重設 Token 卡片可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[data-testid='reset-token-user'], [data-testid='reset-token-card'] select",
+          "value": "engineer@titan.local"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('Generate Token'), button:has-text('產生 Token'), [data-testid='generate-token-btn']",
+          "expected": "產生 OTP"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 OTP 顯示"
+        },
+        {
+          "action": "assert",
+          "check": "text '分鐘' visible",
+          "expected": "過期警告文字（例如「此 OTP 將在 N 分鐘後過期」）顯示於卡片"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-06-otp-expiry-warning"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-07",
+      "name": "解鎖帳號卡片 — 選擇使用者並點擊「Unlock」",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='unlock-account-card'], .unlock-account-card, text=解鎖帳號",
+          "expected": "解鎖帳號卡片可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '解鎖帳號' visible",
+          "expected": "解鎖帳號卡片標題顯示"
+        },
+        {
+          "action": "select",
+          "selector": "select[data-testid='unlock-account-user'], [data-testid='unlock-account-card'] select",
+          "value": "engineer@titan.local"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('Unlock'), button:has-text('解鎖'), [data-testid='unlock-btn']",
+          "expected": "點擊「Unlock」解鎖帳號按鈕"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待解鎖操作完成"
+        },
+        {
+          "action": "assert",
+          "check": "element '[role=\"status\"], [data-testid=\"toast\"], .toast' visible",
+          "expected": "操作成功的 Toast 通知出現"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-07-unlock-account"
+        }
+      ]
+    },
+
+    {
+      "id": "TOOL-08",
+      "name": "截圖系統工具區塊完整狀態",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button[role='tab']:has-text('系統'), [data-testid='tab-system']",
+          "expected": "切換至系統分頁"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='admin-tools'], .admin-tools, text=系統工具",
+          "expected": "AdminTools 區塊載入完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '稽核佇列' visible",
+          "expected": "稽核佇列卡片顯示"
+        },
+        {
+          "action": "assert",
+          "check": "text '重設 Token' visible",
+          "expected": "重設 Token 卡片顯示"
+        },
+        {
+          "action": "assert",
+          "check": "text '解鎖帳號' visible",
+          "expected": "解鎖帳號卡片顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "tool-08-system-tools-final-state"
+        }
+      ]
+    }
+
+  ]
+}

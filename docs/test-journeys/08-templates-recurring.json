@@ -1,0 +1,1029 @@
+{
+  "journey": "08-templates-recurring",
+  "version": "1.0.0",
+  "description": "範本與自動化頁面完整測試旅程：任務範本 CRUD、套用範本、週期性任務規則 CRUD、啟用/停用、產生任務",
+  "baseUrl": "http://localhost:3100",
+  "credentials": {
+    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
+    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
+    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+  },
+  "testCases": [
+    {
+      "id": "TPL-01",
+      "name": "導覽至 /settings/templates，頁面載入並顯示「範本與自動化」標題",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200，頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "h1 標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '範本與自動化' visible",
+          "expected": "頁面標題顯示「範本與自動化」"
+        },
+        {
+          "action": "assert",
+          "check": "text '管理任務範本與週期性任務規則' visible",
+          "expected": "副標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '任務範本' visible",
+          "expected": "任務範本區段標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '週期性任務' visible",
+          "expected": "週期性任務區段標題可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-01-page-landing"
+        }
+      ]
+    },
+    {
+      "id": "TPL-02",
+      "name": "展開任務範本區段，確認表格標題欄可見",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "任務範本折疊按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "點擊展開任務範本區段"
+        },
+        {
+          "action": "wait",
+          "timeout": 800,
+          "expected": "等待展開動畫完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '標題' visible",
+          "expected": "表格欄位「標題」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '優先' visible",
+          "expected": "表格欄位「優先」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '類別' visible",
+          "expected": "表格欄位「類別」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '工時' visible",
+          "expected": "表格欄位「工時」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '建立者' visible",
+          "expected": "表格欄位「建立者」可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-02-template-section-expanded"
+        }
+      ]
+    },
+    {
+      "id": "TPL-03",
+      "name": "建立任務範本（標題=週會準備，優先=P1，類別=PLANNED，工時=2）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"建立範本\")",
+          "expected": "「建立範本」按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立範本\")",
+          "expected": "點擊展開建立範本表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[placeholder=\"範本標題（必填）\"]",
+          "expected": "範本標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"範本標題（必填）\"]",
+          "value": "週會準備",
+          "expected": "填入範本標題「週會準備」"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder=\"說明（選填）\"]",
+          "value": "每週例行會議前的準備事項",
+          "expected": "填入說明"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"優先級\"]",
+          "value": "P1",
+          "expected": "選擇優先級 P1"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"類別\"]",
+          "value": "PLANNED",
+          "expected": "選擇類別「計畫性」"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"預估工時（hr）\"]",
+          "value": "2",
+          "expected": "填入預估工時 2 小時"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立\")",
+          "expected": "點擊「建立」送出表單"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '範本已建立' visible",
+          "expected": "成功 toast 顯示「範本已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-03-template-created"
+        }
+      ]
+    },
+    {
+      "id": "TPL-04",
+      "name": "驗證新建立的範本「週會準備」出現在表格中",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "展開任務範本區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "範本表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '週會準備' visible",
+          "expected": "範本「週會準備」出現在表格中"
+        },
+        {
+          "action": "assert",
+          "check": "text 'P1' visible",
+          "expected": "優先級 P1 顯示在表格中"
+        },
+        {
+          "action": "assert",
+          "check": "text '計畫性' visible",
+          "expected": "類別「計畫性」顯示在表格中"
+        },
+        {
+          "action": "assert",
+          "check": "text '2h' visible",
+          "expected": "工時「2h」顯示在表格中"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-04-template-in-table"
+        }
+      ]
+    },
+    {
+      "id": "TPL-05",
+      "name": "建立另一個範本（標題=事件處理 SOP，優先=P0，類別=INCIDENT）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立範本\")",
+          "expected": "展開建立範本表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[placeholder=\"範本標題（必填）\"]",
+          "expected": "範本標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"範本標題（必填）\"]",
+          "value": "事件處理 SOP",
+          "expected": "填入範本標題「事件處理 SOP」"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"優先級\"]",
+          "value": "P0",
+          "expected": "選擇優先級 P0"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"類別\"]",
+          "value": "INCIDENT",
+          "expected": "選擇類別「事件」"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立\")",
+          "expected": "送出建立範本"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '範本已建立' visible",
+          "expected": "成功 toast 顯示「範本已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-05-incident-template-created"
+        }
+      ]
+    },
+    {
+      "id": "TPL-06",
+      "name": "套用範本建立任務，點擊 Apply（播放圖示）按鈕，驗證成功 toast",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "展開任務範本區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "範本表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[title=\"套用範本建立任務\"]",
+          "expected": "點擊套用範本按鈕（Play 圖示）"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"確定\")",
+          "expected": "確認對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"確定\")",
+          "expected": "點擊確認，從範本建立任務"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '任務已建立' visible",
+          "expected": "成功 toast 顯示「任務已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-06-apply-template-success"
+        }
+      ]
+    },
+    {
+      "id": "TPL-07",
+      "name": "刪除範本，點擊刪除（垃圾桶圖示）按鈕，確認對話框，驗證範本已移除",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "展開任務範本區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "範本表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[title=\"刪除範本\"]",
+          "expected": "點擊刪除範本按鈕（Trash 圖示）"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"確定\")",
+          "expected": "確認對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"確定\")",
+          "expected": "點擊確認刪除"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '範本已刪除' visible",
+          "expected": "成功 toast 顯示「範本已刪除」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-07-template-deleted"
+        }
+      ]
+    },
+    {
+      "id": "TPL-08",
+      "name": "展開週期性任務區段，確認表格標題欄可見",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "週期性任務折疊按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "點擊展開週期性任務區段"
+        },
+        {
+          "action": "wait",
+          "timeout": 800,
+          "expected": "等待展開動畫完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '頻率' visible",
+          "expected": "表格欄位「頻率」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '下次執行' visible",
+          "expected": "表格欄位「下次執行」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '負責人' visible",
+          "expected": "表格欄位「負責人」可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '狀態' visible",
+          "expected": "表格欄位「狀態」可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-08-recurring-section-expanded"
+        }
+      ]
+    },
+    {
+      "id": "TPL-09",
+      "name": "建立週期性規則（標題=週五日報，頻率=WEEKLY）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"建立規則\")",
+          "expected": "「建立規則」按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立規則\")",
+          "expected": "點擊展開建立規則表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[placeholder=\"規則標題（必填）\"]",
+          "expected": "規則標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"規則標題（必填）\"]",
+          "value": "週五日報",
+          "expected": "填入規則標題「週五日報」"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"頻率\"]",
+          "value": "WEEKLY",
+          "expected": "選擇頻率「每週」"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立\")",
+          "expected": "送出建立規則"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '週期性規則已建立' visible",
+          "expected": "成功 toast 顯示「週期性規則已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-09-recurring-rule-created"
+        }
+      ]
+    },
+    {
+      "id": "TPL-10",
+      "name": "驗證新建立的規則「週五日報」出現在表格中，狀態顯示「啟用」徽章",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "展開週期性任務區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "週期性規則表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '週五日報' visible",
+          "expected": "規則「週五日報」出現在表格中"
+        },
+        {
+          "action": "assert",
+          "check": "text '每週' visible",
+          "expected": "頻率「每週」顯示在表格中"
+        },
+        {
+          "action": "assert",
+          "check": "text '啟用' visible",
+          "expected": "狀態徽章顯示「啟用」（預設啟用）"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-10-recurring-active-badge"
+        }
+      ]
+    },
+    {
+      "id": "TPL-11",
+      "name": "建立另一個週期性規則（標題=月底結算，頻率=MONTHLY）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立規則\")",
+          "expected": "展開建立規則表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[placeholder=\"規則標題（必填）\"]",
+          "expected": "規則標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"規則標題（必填）\"]",
+          "value": "月底結算",
+          "expected": "填入規則標題「月底結算」"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"頻率\"]",
+          "value": "MONTHLY",
+          "expected": "選擇頻率「每月」"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"每月第幾日（1-31）\"]",
+          "value": "31",
+          "expected": "填入每月第 31 日"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立\")",
+          "expected": "送出建立規則"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '週期性規則已建立' visible",
+          "expected": "成功 toast 顯示「週期性規則已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-11-monthly-rule-created"
+        }
+      ]
+    },
+    {
+      "id": "TPL-12",
+      "name": "切換週期性規則為停用，驗證徽章變為「停用」",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "展開週期性任務區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "週期性規則表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[title=\"停用\"]",
+          "expected": "點擊切換按鈕（停用第一個啟用的規則）"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '已停用' visible",
+          "expected": "成功 toast 顯示「已停用」"
+        },
+        {
+          "action": "assert",
+          "check": "text '停用' visible",
+          "expected": "表格中狀態徽章變為「停用」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-12-recurring-inactive-badge"
+        }
+      ]
+    },
+    {
+      "id": "TPL-13",
+      "name": "切換週期性規則回啟用，驗證徽章變回「啟用」",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "展開週期性任務區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "週期性規則表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[title=\"啟用\"]",
+          "expected": "點擊切換按鈕（啟用已停用的規則）"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '已啟用' visible",
+          "expected": "成功 toast 顯示「已啟用」"
+        },
+        {
+          "action": "assert",
+          "check": "text '啟用' visible",
+          "expected": "表格中狀態徽章變回「啟用」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-13-recurring-active-again"
+        }
+      ]
+    },
+    {
+      "id": "TPL-14",
+      "name": "刪除週期性規則，點擊確認對話框，驗證規則已移除",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "展開週期性任務區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "週期性規則表格可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[title=\"刪除規則\"]",
+          "expected": "點擊刪除規則按鈕（Trash 圖示）"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"確定\")",
+          "expected": "確認對話框出現"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"確定\")",
+          "expected": "點擊確認刪除"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '規則已刪除' visible",
+          "expected": "成功 toast 顯示「規則已刪除」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-14-recurring-rule-deleted"
+        }
+      ]
+    },
+    {
+      "id": "TPL-15",
+      "name": "點擊「產生任務」按鈕，驗證成功 toast「任務已產生」",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"產生任務\")",
+          "expected": "「產生任務」按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"產生任務\")",
+          "expected": "點擊「產生任務」按鈕"
+        },
+        {
+          "action": "wait",
+          "timeout": 3000,
+          "expected": "等待 API /api/recurring/generate 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '任務已產生' visible",
+          "expected": "成功 toast 顯示「任務已產生」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-15-generate-tasks-success"
+        }
+      ]
+    },
+    {
+      "id": "TPL-16",
+      "name": "透過側邊欄「範本與自動化」連結導覽至 /settings/templates",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/dashboard",
+          "expected": "HTTP 200，儀表板載入"
+        },
+        {
+          "action": "wait",
+          "selector": "nav",
+          "expected": "側邊欄 nav 可見"
+        },
+        {
+          "action": "click",
+          "selector": "a[href=\"/settings/templates\"]",
+          "expected": "點擊側邊欄「範本與自動化」連結"
+        },
+        {
+          "action": "wait",
+          "selector": "h1:has-text(\"範本與自動化\")",
+          "expected": "頁面標題「範本與自動化」可見"
+        },
+        {
+          "action": "assert",
+          "check": "URL contains /settings/templates",
+          "expected": "URL 為 /settings/templates"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-16-sidebar-nav"
+        }
+      ]
+    },
+    {
+      "id": "TPL-17",
+      "name": "Engineer 建立任務範本，驗證允許操作",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"建立範本\")",
+          "expected": "Engineer 可見「建立範本」按鈕"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立範本\")",
+          "expected": "展開建立範本表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[placeholder=\"範本標題（必填）\"]",
+          "expected": "範本標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"範本標題（必填）\"]",
+          "value": "Engineer 測試範本",
+          "expected": "填入範本標題"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立\")",
+          "expected": "點擊「建立」送出"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '範本已建立' visible",
+          "expected": "Engineer 成功建立範本，toast 顯示「範本已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-17-engineer-creates-template"
+        }
+      ]
+    },
+    {
+      "id": "TPL-18",
+      "name": "Engineer 建立週期性規則，驗證允許操作",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"建立規則\")",
+          "expected": "Engineer 可見「建立規則」按鈕"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立規則\")",
+          "expected": "展開建立規則表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[placeholder=\"規則標題（必填）\"]",
+          "expected": "規則標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"規則標題（必填）\"]",
+          "value": "Engineer 週期測試",
+          "expected": "填入規則標題"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"頻率\"]",
+          "value": "WEEKLY",
+          "expected": "選擇頻率「每週」"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"建立\")",
+          "expected": "點擊「建立」送出"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '週期性規則已建立' visible",
+          "expected": "Engineer 成功建立規則，toast 顯示「週期性規則已建立」"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-18-engineer-creates-recurring"
+        }
+      ]
+    },
+    {
+      "id": "TPL-19",
+      "name": "驗證優先級顏色正確渲染（P0=紅色，P1=橘色，P2=藍色，P3=灰色）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "展開任務範本區段"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "範本表格可見"
+        },
+        {
+          "action": "assert",
+          "check": "element '.text-red-400' visible",
+          "expected": "P0 紅色文字樣式可見"
+        },
+        {
+          "action": "assert",
+          "check": "element '.text-orange-400' visible",
+          "expected": "P1 橘色文字樣式可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-19-priority-colors"
+        }
+      ]
+    },
+    {
+      "id": "TPL-20",
+      "name": "截圖最終範本頁面完整狀態（任務範本區段+週期性任務區段皆展開）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/settings/templates",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"任務範本\")",
+          "expected": "展開任務範本區段"
+        },
+        {
+          "action": "wait",
+          "timeout": 500,
+          "expected": "等待展開"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"週期性任務\")",
+          "expected": "展開週期性任務區段"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "等待兩個區段完全載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '範本與自動化' visible",
+          "expected": "頁面標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '任務範本' visible",
+          "expected": "任務範本區段標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '週期性任務' visible",
+          "expected": "週期性任務區段標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"建立範本\")' visible",
+          "expected": "「建立範本」按鈕可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"建立規則\")' visible",
+          "expected": "「建立規則」按鈕可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"產生任務\")' visible",
+          "expected": "「產生任務」按鈕可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "tpl-20-final-page-state"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,754 @@
+{
+  "journey": "09-knowledge-extras",
+  "version": "1.0.0",
+  "description": "知識庫頁面的閱讀清單與文件範本功能端對端測試旅程",
+  "baseUrl": "http://localhost:3100",
+  "credentials": {
+    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
+    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
+    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+  },
+  "testCases": [
+
+    {
+      "id": "RL-01",
+      "name": "Manager 導覽至 /knowledge — 閱讀清單區塊在頁面底部可見",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "URL 為 /knowledge，頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "頁面標題可見"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='reading-list-section'], section:has(svg[data-lucide='book-open']), text=閱讀清單",
+          "expected": "閱讀清單區塊（BookOpen 圖示或標題文字）可見於頁面底部"
+        },
+        {
+          "action": "assert",
+          "check": "text '閱讀清單' visible",
+          "expected": "閱讀清單標題文字可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-01-knowledge-reading-list-visible"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-02",
+      "name": "展開閱讀清單區塊 — 表格標題列可見",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=閱讀清單",
+          "expected": "閱讀清單區塊可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('閱讀清單'), [data-testid='reading-list-toggle']",
+          "expected": "點擊展開/收合按鈕"
+        },
+        {
+          "action": "wait",
+          "selector": "th:has-text('標題'), th:has-text('建立者'), th:has-text('項目'), th:has-text('指派')",
+          "expected": "閱讀清單表格標題列（標題、建立者、項目數、指派數）可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'table' visible",
+          "expected": "閱讀清單表格已顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-02-reading-list-table-header"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-03",
+      "name": "Manager 建立閱讀清單（標題='新人必讀文件', 描述='入職指南'）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=閱讀清單",
+          "expected": "閱讀清單區塊可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增閱讀清單'), button:has-text('建立清單'), [data-testid='create-reading-list-btn']",
+          "expected": "開啟新增閱讀清單表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[name='title'], input[placeholder*='標題'], input[aria-label*='標題']",
+          "expected": "標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], input[placeholder*='標題'], input[aria-label*='標題']",
+          "value": "新人必讀文件"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='description'], textarea[placeholder*='描述'], input[name='description']",
+          "value": "入職指南"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立'), button[type='submit']:has-text('新增'), button[type='submit']:has-text('確認')",
+          "expected": "提交建立閱讀清單表單"
+        },
+        {
+          "action": "wait",
+          "selector": "text=新人必讀文件",
+          "expected": "新建立的閱讀清單出現在表格中"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-03-create-reading-list"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-04",
+      "name": "驗證新清單出現在表格中，顯示 0 項目、0 指派",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=新人必讀文件",
+          "expected": "剛建立的清單可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '新人必讀文件' visible",
+          "expected": "閱讀清單標題顯示於表格"
+        },
+        {
+          "action": "assert",
+          "check": "element 'td:has-text(\"0\")' visible",
+          "expected": "項目數與指派數均顯示 0"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-04-reading-list-zero-counts"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-05",
+      "name": "建立另一個閱讀清單並勾選 isDefault（標題='全員必讀'）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增閱讀清單'), button:has-text('建立清單'), [data-testid='create-reading-list-btn']",
+          "expected": "開啟新增閱讀清單表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[name='title'], input[placeholder*='標題']",
+          "expected": "標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], input[placeholder*='標題']",
+          "value": "全員必讀"
+        },
+        {
+          "action": "click",
+          "selector": "input[type='checkbox'][name='isDefault'], input[type='checkbox'][aria-label*='預設'], label:has-text('預設') input[type='checkbox']",
+          "expected": "勾選「設為預設清單」核取方塊"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立'), button[type='submit']:has-text('新增'), button[type='submit']:has-text('確認')",
+          "expected": "提交表單"
+        },
+        {
+          "action": "wait",
+          "selector": "text=全員必讀",
+          "expected": "新建立的預設清單出現在表格中"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-05-create-default-reading-list"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-06",
+      "name": "驗證「全員必讀」清單顯示「預設」徽章",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=全員必讀",
+          "expected": "全員必讀清單可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '預設' visible",
+          "expected": "預設徽章顯示於全員必讀清單列"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-06-default-badge"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-07",
+      "name": "點擊閱讀清單列展開詳細面板",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=新人必讀文件",
+          "expected": "清單可見"
+        },
+        {
+          "action": "click",
+          "selector": "tr:has-text('新人必讀文件'), [data-testid='reading-list-row']:has-text('新人必讀文件')",
+          "expected": "點擊清單列以展開詳細面板"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待展開動畫完成"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"reading-list-detail\"], .reading-list-detail, [role=\"region\"]' visible",
+          "expected": "詳細面板已展開"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-07-reading-list-expanded"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-08",
+      "name": "驗證展開詳細面板中的項目與指派區塊可見",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=新人必讀文件",
+          "expected": "清單可見"
+        },
+        {
+          "action": "click",
+          "selector": "tr:has-text('新人必讀文件'), [data-testid='reading-list-row']:has-text('新人必讀文件')",
+          "expected": "點擊展開詳細面板"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待展開動畫"
+        },
+        {
+          "action": "assert",
+          "check": "text '文件' visible",
+          "expected": "項目（文件）區塊在詳細面板中可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '指派' visible",
+          "expected": "指派（使用者）區塊在詳細面板中可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-08-detail-items-assignments"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-09",
+      "name": "Engineer 導覽至 /knowledge — 閱讀清單區塊可見但無建立按鈕",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=閱讀清單",
+          "expected": "閱讀清單區塊可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '閱讀清單' visible",
+          "expected": "Engineer 可看到閱讀清單區塊"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"新增閱讀清單\")' not visible",
+          "expected": "Engineer 看不到「新增閱讀清單」按鈕（僅 Manager 可建立）"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-09-engineer-no-create-button"
+        }
+      ]
+    },
+
+    {
+      "id": "RL-10",
+      "name": "截圖閱讀清單區塊完整狀態",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=閱讀清單",
+          "expected": "閱讀清單區塊可見"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='reading-list-table']",
+          "expected": "清單表格載入完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '閱讀清單' visible",
+          "expected": "閱讀清單區塊正常顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "rl-10-reading-list-final-state"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-01",
+      "name": "Manager 捲動至文件範本區塊",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "頁面標題可見"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid='document-template-section'], section:has(svg[data-lucide='file-text']), text=文件範本",
+          "expected": "文件範本區塊（FileText 圖示或標題文字）可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '文件範本' visible",
+          "expected": "文件範本區塊標題可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-01-document-template-section-visible"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-02",
+      "name": "展開文件範本區塊 — 表格標題列可見",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=文件範本",
+          "expected": "文件範本區塊可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('文件範本'), [data-testid='document-template-toggle']",
+          "expected": "點擊展開文件範本區塊"
+        },
+        {
+          "action": "wait",
+          "selector": "th:has-text('標題'), th:has-text('分類'), th:has-text('建立者')",
+          "expected": "文件範本表格標題列可見（標題、分類、徽章、建立者）"
+        },
+        {
+          "action": "assert",
+          "check": "element 'table' visible",
+          "expected": "文件範本表格已顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-02-template-table-header"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-03",
+      "name": "驗證系統範本顯示「系統」藍色徽章",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=文件範本",
+          "expected": "文件範本區塊可見"
+        },
+        {
+          "action": "wait",
+          "selector": "text=系統",
+          "expected": "系統徽章可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '系統' visible",
+          "expected": "系統範本顯示「系統」徽章"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-03-system-badge-blue"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-04",
+      "name": "Manager 建立自訂範本（標題='會議紀錄範本', 分類='會議', 內容='# 會議主題\\n...'）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=文件範本",
+          "expected": "文件範本區塊可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增範本'), button:has-text('建立範本'), [data-testid='create-template-btn']",
+          "expected": "開啟新增文件範本表單"
+        },
+        {
+          "action": "wait",
+          "selector": "input[name='title'], input[placeholder*='標題'], input[aria-label*='標題']",
+          "expected": "標題輸入框可見"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], input[placeholder*='標題'], input[aria-label*='標題']",
+          "value": "會議紀錄範本"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='category'], input[placeholder*='分類'], input[aria-label*='分類'], select[name='category']",
+          "value": "會議"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='content'], textarea[placeholder*='內容'], textarea[aria-label*='內容']",
+          "value": "# 會議主題\n\n## 參與人員\n\n## 討論事項\n\n## 決議"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立'), button[type='submit']:has-text('新增'), button[type='submit']:has-text('確認')",
+          "expected": "提交建立文件範本表單"
+        },
+        {
+          "action": "wait",
+          "selector": "text=會議紀錄範本",
+          "expected": "新建立的範本出現在表格中"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-04-create-custom-template"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-05",
+      "name": "驗證新建自訂範本顯示「自訂」綠色徽章",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=會議紀錄範本",
+          "expected": "會議紀錄範本可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '自訂' visible",
+          "expected": "自訂範本顯示「自訂」徽章（綠色）"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-05-custom-badge-green"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-06",
+      "name": "使用分類篩選下拉選單 — 驗證篩選效果",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=文件範本",
+          "expected": "文件範本區塊可見"
+        },
+        {
+          "action": "wait",
+          "selector": "select[aria-label*='分類'], select[name='categoryFilter'], [data-testid='category-filter']",
+          "expected": "分類篩選下拉選單可見"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label*='分類'], select[name='categoryFilter'], [data-testid='category-filter']",
+          "value": "會議"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000,
+          "expected": "篩選結果更新"
+        },
+        {
+          "action": "assert",
+          "check": "text '會議紀錄範本' visible",
+          "expected": "篩選「會議」分類後，會議紀錄範本仍顯示"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-06-category-filter"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-07",
+      "name": "點擊範本列 — 內容預覽面板開啟",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=會議紀錄範本",
+          "expected": "會議紀錄範本可見"
+        },
+        {
+          "action": "click",
+          "selector": "tr:has-text('會議紀錄範本'), [data-testid='template-row']:has-text('會議紀錄範本')",
+          "expected": "點擊範本列以開啟內容預覽面板"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待預覽面板展開"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"template-preview\"], .template-preview, [role=\"complementary\"]' visible",
+          "expected": "內容預覽面板已開啟"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-07-template-preview-open"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-08",
+      "name": "驗證預覽面板中顯示範本內容",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=會議紀錄範本",
+          "expected": "會議紀錄範本可見"
+        },
+        {
+          "action": "click",
+          "selector": "tr:has-text('會議紀錄範本'), [data-testid='template-row']:has-text('會議紀錄範本')",
+          "expected": "點擊開啟預覽面板"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待預覽面板"
+        },
+        {
+          "action": "assert",
+          "check": "text '會議主題' visible",
+          "expected": "範本內容中的「會議主題」標題顯示於預覽面板"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-08-template-content-preview"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-09",
+      "name": "Engineer 可看到範本清單但驗證建立按鈕行為",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=文件範本",
+          "expected": "文件範本區塊可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '文件範本' visible",
+          "expected": "Engineer 可看到文件範本區塊"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"新增範本\")' not visible",
+          "expected": "Engineer 看不到「新增範本」按鈕（僅 Manager 可建立）"
+        },
+        {
+          "action": "assert",
+          "check": "text '會議紀錄範本' visible",
+          "expected": "Engineer 可看到現有範本清單"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-09-engineer-template-view"
+        }
+      ]
+    },
+
+    {
+      "id": "DT-10",
+      "name": "截圖文件範本區塊完整狀態",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/knowledge",
+          "expected": "頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "text=文件範本",
+          "expected": "文件範本區塊可見"
+        },
+        {
+          "action": "wait",
+          "selector": "table, [data-testid='template-table']",
+          "expected": "範本表格載入完成"
+        },
+        {
+          "action": "assert",
+          "check": "text '文件範本' visible",
+          "expected": "文件範本區塊正常顯示，含系統與自訂範本"
+        },
+        {
+          "action": "screenshot",
+          "name": "dt-10-document-template-final-state"
+        }
+      ]
+    }
+
+  ]
+}

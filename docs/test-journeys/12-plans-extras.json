@@ -1,0 +1,621 @@
+{
+  "journey": "plans-extras",
+  "version": "1.0.0",
+  "description": "Plans page extras — milestone section, goal status toggle, and retrospective generator",
+  "baseUrl": "http://localhost:3100",
+  "credentials": {
+    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
+    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
+    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+  },
+  "testCases": [
+    {
+      "id": "MS-01",
+      "name": "Manager navigates to /plans — milestone section visible",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200, plans page loads"
+        },
+        {
+          "action": "wait",
+          "selector": "h1"
+        },
+        {
+          "action": "assert",
+          "check": "URL contains /plans"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"milestone-section\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-01-plans-milestone-section-visible"
+        }
+      ]
+    },
+    {
+      "id": "MS-02",
+      "name": "Expand milestone section — 新增里程碑 button and table visible",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text '新增里程碑' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"milestone-table\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-02-milestone-section-expanded"
+        }
+      ]
+    },
+    {
+      "id": "MS-03",
+      "name": "Click 新增里程碑 — form opens with plan selector, type, title, date",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 500
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增里程碑')"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text '新增里程碑' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element 'select[aria-label=\"選擇計畫\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element 'select[aria-label=\"里程碑類型\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element 'input[aria-label=\"里程碑標題\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element 'input[aria-label=\"預計完成日期\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-03-milestone-form-open"
+        }
+      ]
+    },
+    {
+      "id": "MS-04",
+      "name": "Create milestone — select plan, type=上線, title=Q2 上線, set date",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 500
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增里程碑')"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"選擇計畫\"]",
+          "value": "1"
+        },
+        {
+          "action": "select",
+          "selector": "select[aria-label=\"里程碑類型\"]",
+          "value": "上線"
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"里程碑標題\"]",
+          "value": "Q2 上線"
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"預計完成日期\"]",
+          "value": "2026-06-30"
+        },
+        {
+          "action": "click",
+          "selector": "button[type=\"submit\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-04-milestone-created"
+        }
+      ]
+    },
+    {
+      "id": "MS-05",
+      "name": "Verify milestone appears in table with 待開始 status",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text 'Q2 上線' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text '待開始' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-05-milestone-in-table"
+        }
+      ]
+    },
+    {
+      "id": "MS-06",
+      "name": "Change milestone status from 待開始 to 進行中 via dropdown",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text 'Q2 上線' visible"
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"milestone-table\"] tr:has-text('Q2 上線') select[aria-label=\"里程碑狀態\"]",
+          "value": "IN_PROGRESS"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-06-milestone-status-dropdown-change"
+        }
+      ]
+    },
+    {
+      "id": "MS-07",
+      "name": "Verify milestone status updates to 進行中 in table",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text '進行中' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-07-milestone-status-updated"
+        }
+      ]
+    },
+    {
+      "id": "MS-08",
+      "name": "Click on a monthly goal in plan tree to open detail panel",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"plan-tree\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"plan-tree\"] [data-testid=\"monthly-goal-item\"]:first-child"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"goal-detail-panel\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-08-goal-detail-panel-open"
+        }
+      ]
+    },
+    {
+      "id": "MS-09",
+      "name": "Verify goal status dropdown shows current status",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"plan-tree\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"plan-tree\"] [data-testid=\"monthly-goal-item\"]:first-child"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"goal-detail-panel\"] select[aria-label=\"目標狀態\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-09-goal-status-dropdown-visible"
+        }
+      ]
+    },
+    {
+      "id": "MS-10",
+      "name": "Change goal status from 未開始 to 進行中 — verify update",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"plan-tree\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"plan-tree\"] [data-testid=\"monthly-goal-item\"]:first-child"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "select",
+          "selector": "[data-testid=\"goal-detail-panel\"] select[aria-label=\"目標狀態\"]",
+          "value": "IN_PROGRESS"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "text '進行中' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-10-goal-status-changed"
+        }
+      ]
+    },
+    {
+      "id": "MS-11",
+      "name": "Verify terminal status 已完成 shows plain text, no dropdown",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"plan-tree\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"plan-tree\"] [data-testid=\"monthly-goal-item\"][data-status=\"COMPLETED\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text '已完成' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"goal-detail-panel\"] select[aria-label=\"目標狀態\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-11-terminal-status-plain-text"
+        }
+      ]
+    },
+    {
+      "id": "MS-12",
+      "name": "Expand retrospective generator section",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"retrospective-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"retrospective-section\"] button[aria-label=\"展開回顧產生器\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "element 'input[aria-label=\"回顧月份\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text '產生' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-12-retrospective-section-expanded"
+        }
+      ]
+    },
+    {
+      "id": "MS-13",
+      "name": "Set month picker to previous month, click 產生",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"retrospective-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"retrospective-section\"] button[aria-label=\"展開回顧產生器\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 500
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"回顧月份\"]",
+          "value": "2026-03"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('產生')"
+        },
+        {
+          "action": "wait",
+          "timeout": 3000
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-13-retrospective-generated"
+        }
+      ]
+    },
+    {
+      "id": "MS-14",
+      "name": "Verify stats cards show completed tasks count, total hours, team size",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"retrospective-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"retrospective-section\"] button[aria-label=\"展開回顧產生器\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 500
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"回顧月份\"]",
+          "value": "2026-03"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('產生')"
+        },
+        {
+          "action": "wait",
+          "timeout": 3000
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"retro-stat-completed-tasks\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"retro-stat-total-hours\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"retro-stat-team-size\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-14-retrospective-stats-cards"
+        }
+      ]
+    },
+    {
+      "id": "MS-15",
+      "name": "Screenshot plans page with all new sections visible",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"milestone-section\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"milestone-section\"] button[aria-label=\"展開里程碑\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 500
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"retrospective-section\"] button[aria-label=\"展開回顧產生器\"]"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "text '新增里程碑' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text '產生' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "ms-15-plans-all-sections-visible"
+        }
+      ]
+    }
+  ]
+}

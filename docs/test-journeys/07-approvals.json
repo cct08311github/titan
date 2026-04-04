@@ -1,0 +1,690 @@
+{
+  "journey": "07-approvals",
+  "version": "1.0.0",
+  "description": "簽核管理頁面完整測試旅程：建立請求、批准/拒絕、狀態篩選、角色隔離",
+  "baseUrl": "http://localhost:3100",
+  "credentials": {
+    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
+    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
+    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+  },
+  "testCases": [
+    {
+      "id": "APPR-01",
+      "name": "Manager 導覽至 /approvals，頁面載入並顯示「簽核管理」標題",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200，頁面載入完成"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "h1 標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '簽核管理' visible",
+          "expected": "標題顯示「簽核管理」"
+        },
+        {
+          "action": "assert",
+          "check": "text '管理審批請求與簽核流程' visible",
+          "expected": "副標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"新增請求\")' visible",
+          "expected": "「新增請求」按鈕可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-01-manager-landing"
+        }
+      ]
+    },
+    {
+      "id": "APPR-02",
+      "name": "Manager 建立簽核請求（類型=任務狀態變更，填寫所有欄位）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"新增請求\")",
+          "expected": "「新增請求」按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增請求\")",
+          "expected": "點擊展開新增簽核請求表單"
+        },
+        {
+          "action": "wait",
+          "selector": "h3:has-text(\"新增簽核請求\")",
+          "expected": "表單標題「新增簽核請求」可見"
+        },
+        {
+          "action": "select",
+          "selector": "select:has(option[value=\"TASK_STATUS_CHANGE\"])",
+          "value": "TASK_STATUS_CHANGE",
+          "expected": "選擇類型「任務狀態變更」"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"e.g. task-123\"]",
+          "value": "task-journey-001",
+          "expected": "填入資源 ID"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"e.g. TASK\"]",
+          "value": "TASK",
+          "expected": "填入資源類型"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder=\"說明申請原因...\"]",
+          "value": "E2E 旅程測試：任務狀態由進行中變更為已完成",
+          "expected": "填入申請原因"
+        },
+        {
+          "action": "click",
+          "selector": "button[type=\"submit\"]:has-text(\"送出請求\")",
+          "expected": "點擊送出請求"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '已建立簽核請求' visible",
+          "expected": "成功 toast 顯示「已建立簽核請求」"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-02-new-request-submitted"
+        }
+      ]
+    },
+    {
+      "id": "APPR-03",
+      "name": "驗證新建立的請求出現在表格中，狀態為「待審核」",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "簽核請求表格載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '任務狀態變更' visible",
+          "expected": "表格中有「任務狀態變更」類型記錄"
+        },
+        {
+          "action": "assert",
+          "check": "text '待審核' visible",
+          "expected": "新請求狀態為「待審核」"
+        },
+        {
+          "action": "assert",
+          "check": "element 'th:has-text(\"類型\")' visible",
+          "expected": "表格欄位「類型」可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'th:has-text(\"申請人\")' visible",
+          "expected": "表格欄位「申請人」可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'th:has-text(\"狀態\")' visible",
+          "expected": "表格欄位「狀態」可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-03-pending-in-table"
+        }
+      ]
+    },
+    {
+      "id": "APPR-04",
+      "name": "Manager 批准一個待審核請求，填寫審核備註",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "表格載入"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"批准\")",
+          "expected": "「批准」按鈕可見（有待審核記錄）"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"批准\")",
+          "expected": "點擊批准按鈕，開啟審核對話框"
+        },
+        {
+          "action": "wait",
+          "selector": "h3:has-text(\"批准請求\")",
+          "expected": "審核對話框標題「批准請求」可見"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder=\"審核備註（選填）\"]",
+          "value": "E2E 旅程測試通過，同意此狀態變更",
+          "expected": "填入審核備註"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"確認批准\")",
+          "expected": "點擊確認批准"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '已批准請求' visible",
+          "expected": "成功 toast 顯示「已批准請求」"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-04-approve-dialog-submitted"
+        }
+      ]
+    },
+    {
+      "id": "APPR-05",
+      "name": "驗證已批准請求的狀態徽章顯示綠色「已批准」",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "表格載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '已批准' visible",
+          "expected": "表格中顯示「已批准」狀態"
+        },
+        {
+          "action": "assert",
+          "check": "element '.bg-emerald-500\\/15' visible",
+          "expected": "綠色（emerald）徽章樣式可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-05-approved-green-badge"
+        }
+      ]
+    },
+    {
+      "id": "APPR-06",
+      "name": "Manager 建立另一個請求，然後拒絕它",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增請求\")",
+          "expected": "展開新增表單"
+        },
+        {
+          "action": "wait",
+          "selector": "h3:has-text(\"新增簽核請求\")",
+          "expected": "表單開啟"
+        },
+        {
+          "action": "select",
+          "selector": "select:has(option[value=\"DELIVERABLE_ACCEPTANCE\"])",
+          "value": "DELIVERABLE_ACCEPTANCE",
+          "expected": "選擇類型「交付物驗收」"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"e.g. task-123\"]",
+          "value": "deliverable-reject-001",
+          "expected": "填入資源 ID"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"e.g. TASK\"]",
+          "value": "DELIVERABLE",
+          "expected": "填入資源類型"
+        },
+        {
+          "action": "click",
+          "selector": "button[type=\"submit\"]:has-text(\"送出請求\")",
+          "expected": "送出請求"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待建立完成"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"拒絕\")",
+          "expected": "「拒絕」按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"拒絕\")",
+          "expected": "點擊拒絕按鈕"
+        },
+        {
+          "action": "wait",
+          "selector": "h3:has-text(\"拒絕請求\")",
+          "expected": "審核對話框標題「拒絕請求」可見"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder=\"審核備註（選填）\"]",
+          "value": "文件不完整，請補充後重新申請",
+          "expected": "填入拒絕備註"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"確認拒絕\")",
+          "expected": "確認拒絕"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '已拒絕請求' visible",
+          "expected": "成功 toast 顯示「已拒絕請求」"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-06-reject-submitted"
+        }
+      ]
+    },
+    {
+      "id": "APPR-07",
+      "name": "驗證已拒絕請求顯示紅色「已拒絕」徽章",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "表格載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '已拒絕' visible",
+          "expected": "表格中顯示「已拒絕」狀態"
+        },
+        {
+          "action": "assert",
+          "check": "element '.bg-rose-500\\/15' visible",
+          "expected": "紅色（rose）徽章樣式可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-07-rejected-red-badge"
+        }
+      ]
+    },
+    {
+      "id": "APPR-08",
+      "name": "篩選狀態=PENDING，只顯示待審核項目",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "select:has(option[value=\"PENDING\"])",
+          "expected": "狀態篩選下拉可見"
+        },
+        {
+          "action": "select",
+          "selector": "select:has(option[value=\"PENDING\"])",
+          "value": "PENDING",
+          "expected": "選擇「待審核」篩選"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待列表重新載入"
+        },
+        {
+          "action": "assert",
+          "check": "URL contains /approvals",
+          "expected": "URL 仍在 /approvals"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-08-filter-pending"
+        }
+      ]
+    },
+    {
+      "id": "APPR-09",
+      "name": "篩選狀態=APPROVED，只顯示已批准項目",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "select:has(option[value=\"APPROVED\"])",
+          "expected": "狀態篩選下拉可見"
+        },
+        {
+          "action": "select",
+          "selector": "select:has(option[value=\"APPROVED\"])",
+          "value": "APPROVED",
+          "expected": "選擇「已批准」篩選"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待列表重新載入"
+        },
+        {
+          "action": "assert",
+          "check": "text '已批准' visible",
+          "expected": "列表中只有「已批准」記錄（或空狀態）"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-09-filter-approved"
+        }
+      ]
+    },
+    {
+      "id": "APPR-10",
+      "name": "篩選類型=TASK_STATUS_CHANGE，只顯示任務狀態變更類型",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "select:has(option[value=\"TASK_STATUS_CHANGE\"])",
+          "expected": "類型篩選下拉可見"
+        },
+        {
+          "action": "select",
+          "selector": "select:has(option[value=\"TASK_STATUS_CHANGE\"])",
+          "value": "TASK_STATUS_CHANGE",
+          "expected": "選擇「任務狀態變更」類型篩選"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待列表重新載入"
+        },
+        {
+          "action": "assert",
+          "check": "URL contains /approvals",
+          "expected": "URL 仍在 /approvals，無崩潰或重導向"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-10-filter-type-task-status"
+        }
+      ]
+    },
+    {
+      "id": "APPR-11",
+      "name": "Engineer 導覽至 /approvals，只能看到自己的請求",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "h1",
+          "expected": "h1 標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "text '簽核管理' visible",
+          "expected": "Engineer 可存取簽核管理頁"
+        },
+        {
+          "action": "assert",
+          "check": "URL contains /approvals",
+          "expected": "URL 為 /approvals，未被重導向"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-11-engineer-view"
+        }
+      ]
+    },
+    {
+      "id": "APPR-12",
+      "name": "Engineer 建立簽核請求",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "button:has-text(\"新增請求\")",
+          "expected": "「新增請求」按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增請求\")",
+          "expected": "展開新增簽核請求表單"
+        },
+        {
+          "action": "wait",
+          "selector": "h3:has-text(\"新增簽核請求\")",
+          "expected": "表單開啟"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"e.g. task-123\"]",
+          "value": "task-engineer-001",
+          "expected": "填入資源 ID"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder=\"e.g. TASK\"]",
+          "value": "TASK",
+          "expected": "填入資源類型"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder=\"說明申請原因...\"]",
+          "value": "請求 Manager 核准此任務狀態變更",
+          "expected": "填入申請原因"
+        },
+        {
+          "action": "click",
+          "selector": "button[type=\"submit\"]:has-text(\"送出請求\")",
+          "expected": "送出請求"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000,
+          "expected": "等待 API 回應"
+        },
+        {
+          "action": "assert",
+          "check": "text '已建立簽核請求' visible",
+          "expected": "成功 toast 顯示「已建立簽核請求」"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-12-engineer-creates-request"
+        }
+      ]
+    },
+    {
+      "id": "APPR-13",
+      "name": "驗證 Engineer 看不到批准/拒絕按鈕（操作欄顯示 —）",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "table",
+          "expected": "表格載入（Engineer 的請求可見）"
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"批准\")' visible",
+          "expected": "「批准」按鈕不應存在於 Engineer 視角",
+          "invert": true
+        },
+        {
+          "action": "assert",
+          "check": "element 'button:has-text(\"拒絕\")' visible",
+          "expected": "「拒絕」按鈕不應存在於 Engineer 視角",
+          "invert": true
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-13-engineer-no-action-buttons"
+        }
+      ]
+    },
+    {
+      "id": "APPR-14",
+      "name": "透過側邊欄「簽核管理」連結導覽至 /approvals",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/dashboard",
+          "expected": "HTTP 200，儀表板載入"
+        },
+        {
+          "action": "wait",
+          "selector": "nav",
+          "expected": "側邊欄 nav 可見"
+        },
+        {
+          "action": "click",
+          "selector": "a[href=\"/approvals\"]",
+          "expected": "點擊側邊欄「簽核管理」連結"
+        },
+        {
+          "action": "wait",
+          "selector": "h1:has-text(\"簽核管理\")",
+          "expected": "頁面標題「簽核管理」可見"
+        },
+        {
+          "action": "assert",
+          "check": "URL contains /approvals",
+          "expected": "URL 為 /approvals"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-14-sidebar-nav-to-approvals"
+        }
+      ]
+    },
+    {
+      "id": "APPR-15",
+      "name": "截圖最終簽核管理頁面狀態（含篩選器、表格、分頁）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/approvals",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "h1:has-text(\"簽核管理\")",
+          "expected": "頁面完全載入"
+        },
+        {
+          "action": "wait",
+          "timeout": 1500,
+          "expected": "等待資料完全渲染"
+        },
+        {
+          "action": "assert",
+          "check": "text '簽核管理' visible",
+          "expected": "頁面標題可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'select:has(option[value=\"PENDING\"])' visible",
+          "expected": "狀態篩選器可見"
+        },
+        {
+          "action": "assert",
+          "check": "element 'select:has(option[value=\"TASK_STATUS_CHANGE\"])' visible",
+          "expected": "類型篩選器可見"
+        },
+        {
+          "action": "screenshot",
+          "name": "appr-15-final-page-state"
+        }
+      ]
+    }
+  ]
+}

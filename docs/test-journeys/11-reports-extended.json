@@ -1,0 +1,832 @@
+{
+  "journey": "reports-extended",
+  "version": "1.0.0",
+  "description": "Extended reports page — 22 new report tabs across 完成率, 工時詳細, 分析, and V2 進階 categories",
+  "baseUrl": "http://localhost:3100",
+  "credentials": {
+    "ENGINEER": { "email": "engineer@titan.local", "password": "Test1234!", "role": "ENGINEER" },
+    "MANAGER": { "email": "manager@titan.local", "password": "Test1234!", "role": "MANAGER" },
+    "ADMIN": { "email": "admin@titan.local", "password": "Test1234!", "role": "ADMIN" }
+  },
+  "testCases": [
+    {
+      "id": "RPTX-01",
+      "name": "Manager navigates to /reports — verify sidebar has new categories",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200, reports page loads"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"reports-left-nav\"]' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text '完成率' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text '工時詳細' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text '分析' visible"
+        },
+        {
+          "action": "assert",
+          "check": "text 'V2 進階' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-01-reports-sidebar-categories"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-02",
+      "name": "Click 完成率 → 任務完成率趨勢 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=完成率"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=任務完成率趨勢"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains completion-rate"
+        },
+        {
+          "action": "assert",
+          "check": "text '任務完成率趨勢' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-02-completion-rate-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-03",
+      "name": "Click 工時詳細 → 部門工時表 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=部門工時表"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains department-timesheet"
+        },
+        {
+          "action": "assert",
+          "check": "text '部門工時表' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-03-department-timesheet-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-04",
+      "name": "Click 工時詳細 → 工時分佈 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時分佈"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains time-distribution"
+        },
+        {
+          "action": "assert",
+          "check": "text '工時分佈' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-04-time-distribution-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-05",
+      "name": "Click 工時詳細 → 工時合規 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時合規"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains timesheet-compliance"
+        },
+        {
+          "action": "assert",
+          "check": "text '工時合規' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-05-timesheet-compliance-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-06",
+      "name": "Click 工時詳細 → 週報 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=週報"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains weekly"
+        },
+        {
+          "action": "assert",
+          "check": "text '週報' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-06-weekly-report-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-07",
+      "name": "Click 工時詳細 → 月報 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=月報"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains monthly"
+        },
+        {
+          "action": "assert",
+          "check": "text '月報' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-07-monthly-report-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-08",
+      "name": "Click 分析 → 延遲變化分析 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=分析"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=延遲變化分析"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains delay-change"
+        },
+        {
+          "action": "assert",
+          "check": "text '延遲變化分析' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-08-delay-change-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-09",
+      "name": "Click 分析 → 工作量分析 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=分析"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工作量分析"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains workload"
+        },
+        {
+          "action": "assert",
+          "check": "text '工作量分析' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-09-workload-analysis-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-10",
+      "name": "Click 分析 → 自訂查詢 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=分析"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=自訂查詢"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains custom"
+        },
+        {
+          "action": "assert",
+          "check": "text '自訂查詢' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-10-custom-query-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-11",
+      "name": "Click 分析 → 跨年趨勢 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=分析"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=跨年趨勢"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains trends"
+        },
+        {
+          "action": "assert",
+          "check": "text '跨年趨勢' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-11-trends-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-12",
+      "name": "Click V2 進階 → 變更摘要 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=變更摘要"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains v2-change-summary"
+        },
+        {
+          "action": "assert",
+          "check": "text '變更摘要' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-12-v2-change-summary-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-13",
+      "name": "Click V2 進階 → 實獲值分析 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=實獲值分析"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains v2-earned-value"
+        },
+        {
+          "action": "assert",
+          "check": "text '實獲值分析' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-13-v2-earned-value-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-14",
+      "name": "Click V2 進階 → 事件 SLA — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=事件 SLA"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains v2-incident-sla"
+        },
+        {
+          "action": "assert",
+          "check": "text '事件 SLA' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-14-v2-incident-sla-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-15",
+      "name": "Click V2 進階 → KPI 綜合 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=KPI 綜合"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains v2-kpi-composite"
+        },
+        {
+          "action": "assert",
+          "check": "text 'KPI 綜合' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-15-v2-kpi-composite-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-16",
+      "name": "Click V2 進階 → 逾期分析 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=逾期分析"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains v2-overdue-analysis"
+        },
+        {
+          "action": "assert",
+          "check": "text '逾期分析' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-16-v2-overdue-analysis-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-17",
+      "name": "Click V2 進階 → 工作量分佈 v2 — table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工作量分佈"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "URL contains v2-workload-distribution"
+        },
+        {
+          "action": "assert",
+          "check": "text '工作量分佈' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-17-v2-workload-distribution-table"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-18",
+      "name": "Change date range and verify data refreshes",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=部門工時表"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"開始日期\"]",
+          "value": "2026-01-01"
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"結束日期\"]",
+          "value": "2026-03-31"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"reports-left-nav\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-18-date-range-refresh"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-19",
+      "name": "Change year picker and verify year-based reports refresh",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=分析"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=跨年趨勢"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"年度\"]",
+          "value": "2025"
+        },
+        {
+          "action": "wait",
+          "timeout": 2000
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"reports-left-nav\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-19-year-picker-refresh"
+        }
+      ]
+    },
+    {
+      "id": "RPTX-20",
+      "name": "Screenshot reports page with extended sidebar fully expanded",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "wait",
+          "selector": "[data-testid=\"reports-left-nav\"]"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=完成率"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=工時詳細"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=分析"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=V2 進階"
+        },
+        {
+          "action": "wait",
+          "timeout": 1000
+        },
+        {
+          "action": "assert",
+          "check": "element '[data-testid=\"reports-left-nav\"]' visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "rptx-20-sidebar-fully-expanded"
+        }
+      ]
+    }
+  ]
+}
