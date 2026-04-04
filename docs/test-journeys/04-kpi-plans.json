@@ -1,0 +1,845 @@
+{
+  "journey": "04-kpi-plans",
+  "title": "KPI + 年度計畫 + 甘特圖完整旅程",
+  "description": "涵蓋 KPI 定義/回報/趨勢、年度計畫樹狀結構、里程碑管理、甘特圖拖曳操作的端對端測試旅程",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "credentials": {
+    "engineer": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" },
+    "manager":  { "email": "admin@titan.local",  "password": "1234", "role": "MANAGER"  }
+  },
+  "testCases": [
+
+    {
+      "id": "KPI-01",
+      "name": "以 MANAGER 身份導覽至 KPI 頁並截圖儀表板",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "URL 為 /kpi，頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1",
+          "expected": "h1 可見且文字包含「KPI 管理」"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4} 年度關鍵績效指標/",
+          "expected": "年度標題（如「2026 年度關鍵績效指標」）可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "button:has-text('新增 KPI')",
+          "expected": "Manager 專屬「新增 KPI」按鈕可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=KPI 總數, text=已達成, text=平均達成率",
+          "expected": "KPI 摘要卡片（總數、已達成、平均達成率）可見，或空狀態「尚無 KPI」"
+        },
+        {
+          "action": "screenshot",
+          "filename": "kpi-01-manager-dashboard.png",
+          "expected": "截圖顯示 Manager 的 KPI 儀表板"
+        }
+      ]
+    },
+
+    {
+      "id": "KPI-02",
+      "name": "建立新 KPI 指標（含名稱、目標值、週期：月度、單位）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增 KPI')",
+          "expected": "新增 KPI 表單出現（h2 顯示「新增 KPI」）"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h2:has-text('新增 KPI')",
+          "expected": "建立表單對話框或面板開啟"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder='如 KPI-01']",
+          "value": "KPI-TEST-01",
+          "expected": "KPI 代碼填入「KPI-TEST-01」"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder='KPI 名稱']",
+          "value": "系統可用性達成率",
+          "expected": "KPI 名稱填入"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder='100'], input[name='target']",
+          "value": "99.9",
+          "expected": "目標值填入 99.9"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='unit'], input[placeholder*='單位']",
+          "value": "%",
+          "expected": "單位填入 %"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='frequency'], select[aria-label*='頻率'], select[aria-label*='週期']",
+          "value": "MONTHLY",
+          "expected": "頻率設定為月度（MONTHLY）"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立 KPI'), button[type='submit']:has-text('建立')",
+          "expected": "表單送出，KPI 建立成功"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=系統可用性達成率, text=KPI-TEST-01",
+          "expected": "新建立的 KPI 出現在儀表板列表中"
+        },
+        {"action": "screenshot", "name": "KPI-02-result"}
+      ]
+    },
+
+    {
+      "id": "KPI-03",
+      "skip": true,
+      "name": "[SKIP] 編輯 KPI — UI 無編輯按鈕",
+      "role": "MANAGER",
+      "precondition": "KPI-02 已建立「系統可用性達成率」KPI",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=系統可用性達成率",
+          "expected": "目標 KPI 卡片可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='編輯'], button:has-text('編輯'), [class*='edit-btn']",
+          "expected": "KPI 編輯表單出現（或點擊 KPI 卡片上的編輯按鈕）"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='target'], input[placeholder='100']",
+          "value": "99.5",
+          "expected": "目標值修改為 99.5"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button:has-text('更新'), button:has-text('確認')",
+          "expected": "修改儲存成功"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=99.5",
+          "expected": "KPI 卡片顯示更新後的目標值 99.5"
+        },
+        {"action": "screenshot", "name": "KPI-03-result"}
+      ]
+    },
+
+    {
+      "id": "KPI-04",
+      "skip": true,
+      "name": "[SKIP] 連結任務至 KPI — UI 無連結入口",
+      "role": "MANAGER",
+      "precondition": "系統中至少存在一個任務；KPI-02 已建立 KPI",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=系統可用性達成率",
+          "expected": "目標 KPI 卡片可見"
+        },
+        {
+          "action": "click",
+          "selector": "text=系統可用性達成率",
+          "expected": "KPI 卡片展開，顯示「連結任務」區域"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=連結任務",
+          "expected": "連結任務區域可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('連結任務'), button:has-text('新增連結'), [aria-label*='link task']",
+          "expected": "任務搜尋或選擇對話框出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*='搜尋任務'], input[placeholder*='task']",
+          "value": "維護",
+          "expected": "搜尋含「維護」的任務"
+        },
+        {
+          "action": "click",
+          "selector": "[class*='task-option']:first-child, [role='option']:first-child, li:first-child",
+          "expected": "選取第一個搜尋結果任務"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認'), button:has-text('連結'), button[type='submit']",
+          "expected": "任務成功連結至 KPI"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=連結任務, [class*='task-link']",
+          "expected": "KPI 展開區域顯示已連結的任務"
+        },
+        {"action": "screenshot", "name": "KPI-04-result"}
+      ]
+    },
+
+    {
+      "id": "KPI-05",
+      "skip": true,
+      "name": "[SKIP] 複製 KPI 至下年 — 功能未實作",
+      "role": "MANAGER",
+      "precondition": "當前年度已有至少一個 KPI",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "button:has-text('複製至下年'), button:has-text('複製 KPI'), button[aria-label*='copy']",
+          "expected": "複製 KPI 至下一年度的按鈕可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('複製至下年'), button:has-text('複製'), button[aria-label*='copy year']",
+          "expected": "複製確認對話框出現"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/複製|下一年度|下年度/",
+          "expected": "對話框顯示複製目標年份說明"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認複製'), button:has-text('確認'), button[type='submit']",
+          "expected": "KPI 複製至下一年度，成功訊息出現"
+        },
+        {"action": "screenshot", "name": "KPI-05-result"}
+      ]
+    },
+
+    {
+      "id": "KPI-06",
+      "name": "以 ENGINEER 身份導覽至 KPI 頁",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "URL 為 /kpi，頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1:has-text('KPI')",
+          "expected": "KPI 頁面標題可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4} 年度/",
+          "expected": "年度標題可見"
+        },
+        {
+          "action": "verifyAbsent",
+          "selector": "button:has-text('新增 KPI')",
+          "expected": "Engineer 不應看到「新增 KPI」按鈕（RBAC 驗證）"
+        },
+        {
+          "action": "screenshot",
+          "filename": "kpi-06-engineer-view.png",
+          "expected": "截圖顯示 Engineer 的 KPI 頁面（唯讀視角）"
+        }
+      ]
+    },
+
+    {
+      "id": "KPI-07",
+      "skip": true,
+      "name": "[SKIP] Engineer 回報 KPI 進度 — UI 無回報按鈕",
+      "role": "ENGINEER",
+      "precondition": "系統中存在可回報的 KPI（非 autoCalc 模式）",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面以 Engineer 身份載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=KPI-TEST-01, [class*='kpi-card']",
+          "expected": "KPI 卡片可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('回報'), button:has-text('更新達成'), button[aria-label*='report']",
+          "expected": "回報達成值表單出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='actual'], input[placeholder*='實際值'], input[type='number']",
+          "value": "99.8",
+          "expected": "實際達成值填入 99.8"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='note'], input[name='note'], textarea[placeholder*='備註']",
+          "value": "本月度系統運行正常，短暫維護停機約 0.2%",
+          "expected": "備註填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('儲存'), button:has-text('確認')",
+          "expected": "達成值儲存成功"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=99.8",
+          "expected": "KPI 卡片顯示更新後的實際值 99.8"
+        },
+        {"action": "screenshot", "name": "KPI-07-result"}
+      ]
+    },
+
+    {
+      "id": "KPI-08",
+      "skip": true,
+      "name": "[SKIP] 查看 KPI 趨勢圖 — 功能未實作",
+      "role": "ENGINEER",
+      "precondition": "KPI 至少有 1 筆歷史達成紀錄",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=KPI-TEST-01",
+          "expected": "目標 KPI 可見"
+        },
+        {
+          "action": "click",
+          "selector": "text=KPI-TEST-01, [class*='kpi-card']:has-text('KPI-TEST-01')",
+          "expected": "KPI 卡片展開，顯示詳情"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('趨勢'), button:has-text('歷史'), [aria-label*='chart'], [aria-label*='趨勢']",
+          "expected": "KPI 趨勢圖或歷史記錄面板出現"
+        },
+        {
+          "action": "waitFor",
+          "selector": "canvas, svg[class*='chart'], [class*='trend-chart'], [class*='kpi-chart']",
+          "expected": "KPI 歷史趨勢圖表元素可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "kpi-08-trend-chart.png",
+          "expected": "截圖顯示 KPI 達成率歷史趨勢折線圖"
+        }
+      ]
+    },
+
+    {
+      "id": "KPI-09",
+      "name": "截圖 KPI 儀表板（含圓形量表/進度指標）",
+      "role": "MANAGER",
+      "precondition": "至少一個 KPI 已有達成率資料",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/kpi",
+          "expected": "KPI 頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=KPI 總數, text=已達成, text=平均達成率",
+          "expected": "KPI 摘要統計卡片可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='kpi-card'], [class*='kpi-dashboard'], [class*='gauge']",
+          "expected": "KPI 卡片或量表元件可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "kpi-09-dashboard-gauges.png",
+          "expected": "截圖顯示完整 KPI 儀表板，含統計卡片與各 KPI 達成率"
+        }
+      ]
+    },
+
+    {
+      "id": "PLAN-01",
+      "name": "以 MANAGER 身份導覽至年度計畫頁並截圖",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "URL 為 /plans，年度計畫頁面載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1",
+          "expected": "頁面標題可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/年度計畫|計畫管理|Annual Plan/i, [class*='plan-tree'], text=尚無計畫",
+          "expected": "計畫樹狀結構或空狀態可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "plan-01-manager-view.png",
+          "expected": "截圖顯示年度計畫頁面"
+        }
+      ]
+    },
+
+    {
+      "id": "PLAN-02",
+      "name": "建立年度計畫（含樹狀層級架構）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "年度計畫頁面載入完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增計畫'), button:has-text('建立計畫'), button[aria-label*='新增年度計畫']",
+          "expected": "新增計畫對話框或表單出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], input[placeholder*='計畫名稱'], input[placeholder*='title']",
+          "value": "2028 年度 IT 服務品質提升計畫",
+          "expected": "計畫標題填入"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='year'], input[placeholder*='年度'], input[type='number'][name='year']",
+          "value": "2028",
+          "expected": "年度填入 2028"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='description'], input[name='description'], textarea[placeholder*='描述']",
+          "value": "提升銀行 IT 服務可用性與客戶滿意度",
+          "expected": "計畫描述填入"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立'), button:has-text('確認')",
+          "expected": "計畫建立成功，出現在計畫樹中"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=2028 年度 IT 服務品質提升計畫",
+          "expected": "新建立的計畫顯示在樹狀列表"
+        },
+        {"action": "screenshot", "name": "PLAN-02-result"}
+      ]
+    },
+
+    {
+      "id": "PLAN-03",
+      "name": "在計畫下新增月度目標",
+      "role": "MANAGER",
+      "precondition": "PLAN-02 已建立年度計畫",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "年度計畫頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=2026 年度 IT 服務品質提升計畫",
+          "expected": "目標計畫可見"
+        },
+        {
+          "action": "click",
+          "selector": "text=2026 年度 IT 服務品質提升計畫",
+          "expected": "計畫節點展開或顯示操作選項"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增月度目標'), button:has-text('新增目標'), button[aria-label*='add goal']",
+          "expected": "新增月度目標表單出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], input[placeholder*='目標名稱']",
+          "value": "四月份服務可用性達 99.9%",
+          "expected": "月度目標名稱填入"
+        },
+        {
+          "action": "select",
+          "selector": "select[name='month'], input[name='month']",
+          "value": "4",
+          "expected": "月份設定為四月"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立'), button:has-text('確認')",
+          "expected": "月度目標建立成功"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=四月份服務可用性達 99.9%",
+          "expected": "月度目標出現在計畫樹中"
+        },
+        {"action": "screenshot", "name": "PLAN-03-result"}
+      ]
+    },
+
+    {
+      "id": "PLAN-04",
+      "skip": true,
+      "name": "[SKIP] 新增里程碑 — UI 未實作新增里程碑功能",
+      "role": "MANAGER",
+      "precondition": "PLAN-02 已建立年度計畫",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "年度計畫頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=2026 年度 IT 服務品質提升計畫",
+          "expected": "目標計畫可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增里程碑'), button[aria-label*='milestone'], button[aria-label*='里程碑']",
+          "expected": "新增里程碑表單出現"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], input[placeholder*='里程碑名稱']",
+          "value": "完成 IT 服務監控系統建置",
+          "expected": "里程碑名稱填入"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='plannedEnd'], input[type='date'], input[name='targetDate']",
+          "value": "2026-06-30",
+          "expected": "目標日期設定為 2026-06-30"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']:has-text('建立'), button:has-text('確認')",
+          "expected": "里程碑建立成功"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=完成 IT 服務監控系統建置",
+          "expected": "里程碑出現在計畫樹或里程碑列表"
+        },
+        {"action": "screenshot", "name": "PLAN-04-result"}
+      ]
+    },
+
+    {
+      "id": "PLAN-05",
+      "skip": true,
+      "name": "[SKIP] 標記交付項目為已完成 — UI 無操作入口",
+      "role": "MANAGER",
+      "precondition": "計畫下存在至少一個月度目標或里程碑",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "年度計畫頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=四月份服務可用性達 99.9%, text=完成.*監控",
+          "expected": "計畫項目可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='完成'], button:has-text('標記完成'), input[type='checkbox']:first-child",
+          "expected": "交付項目標記為完成，狀態更新"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/已完成|DONE|完成/i, [class*='completed'], [class*='done']",
+          "expected": "項目顯示已完成狀態（視覺標記或文字）"
+        },
+        {"action": "screenshot", "name": "PLAN-05-result"}
+      ]
+    },
+
+    {
+      "id": "PLAN-06",
+      "name": "驗證計畫完成度百分比自動計算",
+      "role": "MANAGER",
+      "precondition": "PLAN-05 已標記至少一個項目完成",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "年度計畫頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='progress'], [class*='progressPct'], text=/%/",
+          "expected": "計畫進度百分比元件可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d+%/",
+          "expected": "進度百分比數字可見（非 0%，因已有項目完成）"
+        },
+        {
+          "action": "screenshot",
+          "filename": "plan-06-progress-pct.png",
+          "expected": "截圖顯示計畫樹含進度百分比"
+        }
+      ]
+    },
+
+    {
+      "id": "PLAN-07",
+      "skip": true,
+      "name": "[SKIP] 里程碑狀態更新 — 依賴 PLAN-04，UI 未實作",
+      "role": "MANAGER",
+      "precondition": "PLAN-04 已建立里程碑",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/plans",
+          "expected": "年度計畫頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=完成 IT 服務監控系統建置",
+          "expected": "目標里程碑可見"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('標記達成'), button[aria-label*='里程碑.*完成'], [class*='milestone']:has-text('完成')",
+          "expected": "里程碑狀態切換為已達成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/已達成|ACHIEVED|DONE/i, [class*='milestone-achieved']",
+          "expected": "里程碑顯示已達成狀態（顏色或標籤改變）"
+        },
+        {"action": "screenshot", "name": "PLAN-07-result"}
+      ]
+    },
+
+    {
+      "id": "GANTT-01",
+      "name": "導覽至甘特圖頁並截圖甘特視覺化",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/gantt",
+          "expected": "URL 為 /gantt，甘特圖頁面載入"
+        },
+        {
+          "action": "waitFor",
+          "selector": "h1:has-text('甘特圖')",
+          "expected": "頁面標題「甘特圖」可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": ".flex.items-center.gap-1.bg-background.border, text=/\\d{4}/",
+          "expected": "年份選擇器及當前年度數字可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[role='combobox']:first-child, select:first-child",
+          "expected": "篩選負責人下拉（預設「全部成員」）可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='gantt'], [class*='bar'], text=/1月|Jan|一月/, table",
+          "expected": "甘特圖月份標題列或任務列可見，或空狀態可見"
+        },
+        {
+          "action": "screenshot",
+          "filename": "gantt-01-visualization.png",
+          "expected": "截圖顯示完整甘特圖視覺化（含年份、月份標頭、任務 Bar）"
+        }
+      ]
+    },
+
+    {
+      "id": "GANTT-02",
+      "skip": true,
+      "name": "[SKIP] 拖曳任務 Bar — 預設計畫無可拖曳的 Bar",
+      "role": "MANAGER",
+      "precondition": "甘特圖中至少存在一個有開始日期與截止日期的任務",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/gantt",
+          "expected": "甘特圖頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='gantt-bar'], [class*='GanttBar'], [class*='bar'][draggable]",
+          "expected": "至少一個可拖曳的任務 Bar 可見"
+        },
+        {
+          "action": "drag",
+          "selector": "[class*='gantt-bar']:first-child, [class*='GanttBar']:first-child",
+          "direction": "right",
+          "distance": 60,
+          "description": "向右拖曳任務 Bar 約 60px（對應約 2 天）",
+          "expected": "拖曳過程中顯示 dragTooltip（格式：YYYY-MM-DD → YYYY-MM-DD），放開後任務日期更新"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}-\\d{2}-\\d{2}/, [class*='tooltip'], [class*='drag-tooltip']",
+          "expected": "拖曳提示（日期）出現，確認日期調整有效"
+        },
+        {"action": "screenshot", "name": "GANTT-02-result"}
+      ]
+    },
+
+    {
+      "id": "GANTT-03",
+      "name": "切換甘特圖年份（前一年/下一年）",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/gantt",
+          "expected": "甘特圖頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}/",
+          "expected": "當前年份數字可見"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='上一年'], svg.lucide-chevron-left, button:first-child:has(svg)",
+          "expected": "點擊上一年按鈕，年份切換至前一年"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}/",
+          "expected": "年份數字更新為前一年度"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='下一年'], svg.lucide-chevron-right, button:last-child:has(svg)",
+          "expected": "點擊兩次下一年（回到當前年 → 下一年）"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label*='下一年'], svg.lucide-chevron-right",
+          "expected": "再點擊一次切到下一年"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/\\d{4}/",
+          "expected": "年份更新為下一年度，甘特圖資料重新載入"
+        },
+        {
+          "action": "screenshot",
+          "filename": "gantt-03-year-navigation.png",
+          "expected": "截圖顯示切換年份後的甘特圖"
+        }
+      ]
+    },
+
+    {
+      "id": "GANTT-04",
+      "skip": true,
+      "name": "[SKIP] 里程碑標記顯示 — 甘特圖無里程碑元件",
+      "role": "MANAGER",
+      "precondition": "PLAN-04 已建立包含 plannedEnd 日期的里程碑",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/gantt",
+          "expected": "甘特圖頁面載入完成"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='gantt'], [class*='milestone'], table",
+          "expected": "甘特圖區域可見"
+        },
+        {
+          "action": "waitFor",
+          "selector": "[class*='MilestoneMarker'], [class*='milestone-marker'], [class*='milestone']",
+          "expected": "里程碑標記元件可見（菱形或特殊圖示）"
+        },
+        {
+          "action": "click",
+          "selector": "[class*='MilestoneMarker']:first-child, [class*='milestone-marker']:first-child",
+          "expected": "點擊里程碑標記，顯示里程碑詳情 tooltip 或 popup"
+        },
+        {
+          "action": "waitFor",
+          "selector": "text=/完成.*監控|里程碑|\\d{4}-\\d{2}-\\d{2}/",
+          "expected": "里程碑名稱或目標日期資訊出現"
+        },
+        {
+          "action": "screenshot",
+          "filename": "gantt-04-milestone-markers.png",
+          "expected": "截圖顯示甘特圖含里程碑標記"
+        }
+      ]
+    }
+
+  ],
+  "notes": {
+    "kpiFields": {
+      "code": "KPI 代碼（唯一識別，如 KPI-01）",
+      "title": "KPI 名稱",
+      "target": "目標值（數值）",
+      "unit": "單位（如 %、件、分鐘）",
+      "weight": "權重（1 = 100%）",
+      "frequency": "頻率（MONTHLY / QUARTERLY / ANNUAL）",
+      "autoCalc": "是否從連結任務自動計算達成率"
+    },
+    "ganttDragTypes": ["move（整體移動）", "resize-start（調整開始日）", "resize-end（調整結束日）"],
+    "planStructure": "AnnualPlan → MonthlyGoal → Milestone",
+    "progressCalculation": "依子節點完成比例自動計算 progressPct",
+    "routes": {
+      "kpi": "/kpi",
+      "plans": "/plans",
+      "gantt": "/gantt"
+    }
+  }
+}
