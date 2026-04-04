@@ -1,0 +1,1606 @@
+{
+  "journey": "Kanban & Task Management",
+  "version": "1.0.0",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "description": "Comprehensive Kanban board and task management test journey covering CRUD, status state machine, task details, filtering, and drag-and-drop for TITAN.",
+  "credentials": {
+    "ENGINEER": {"email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER"},
+    "MANAGER": {"email": "admin@titan.local", "password": "1234", "role": "MANAGER"}
+  },
+  "statusColumns": {
+    "TODO": "待辦清單",
+    "PENDING": "待處理",
+    "IN_PROGRESS": "進行中",
+    "REVIEW": "審核中",
+    "DONE": "已完成"
+  },
+  "storageStates": {
+    "manager": ".auth/manager.json",
+    "engineer": ".auth/engineer.json"
+  },
+  "testCases": [
+    {
+      "id": "KANBAN-01",
+      "name": "Navigate to /kanban and screenshot board",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "看板"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button:has-text('新增任務'), text=新增任務",
+          "expected": "新增任務 button visible"
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "text=待辦清單",
+            "text=尚無任務",
+            "text=載入看板"
+          ],
+          "expected": "Kanban board or empty state rendered"
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-board-initial"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-02",
+      "name": "Create new task with title, description, priority, assignee",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "button:has-text('新增任務')",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增任務')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog'], [class*='modal'], [class*='sheet']",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='title'], #title, input[placeholder*='標題'], input[placeholder*='title']",
+          "value": "E2E-測試任務-CRUD"
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='description'], #description, textarea[placeholder*='描述']",
+          "value": "這是 E2E 自動化建立的測試任務，用於驗證新增功能。"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='priority'], #priority, [data-testid='priority-select']",
+          "value": "P1",
+          "fallbackText": "P1"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='assigneeId'], #assigneeId, [data-testid='assignee-select']",
+          "valueType": "firstOption",
+          "expected": "Select first available assignee"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存'), button:has-text('建立'), button[type='submit']"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog'], [class*='modal']",
+          "state": "hidden",
+          "timeout": 10000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-測試任務-CRUD",
+          "expected": "New task card visible on board",
+          "timeout": 15000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-task-created"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-03",
+      "name": "Edit task — change title and priority",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-測試任務-CRUD",
+          "expected": "Click task card to open detail"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "clearAndFill",
+          "selector": "input[name='title'], #title",
+          "value": "E2E-測試任務-已編輯"
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='priority'], #priority, [data-testid='priority-select']",
+          "value": "P2",
+          "fallbackText": "P2"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']",
+          "state": "hidden",
+          "timeout": 10000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-測試任務-已編輯",
+          "expected": "Updated task title visible on board",
+          "timeout": 15000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-task-edited"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-04",
+      "name": "Add subtask to existing task",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-測試任務-已編輯"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增子任務'), button:has-text('Add Subtask'), [data-testid='add-subtask']"
+        },
+        {
+          "action": "fill",
+          "selector": "input[name='subtaskTitle'], input[placeholder*='子任務'], input[placeholder*='subtask']",
+          "value": "E2E-子任務-1"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增'), button:has-text('確認'), button[type='submit']"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-子任務-1",
+          "expected": "Subtask appears in task detail",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-subtask-added"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-05",
+      "name": "Complete subtask and verify parent task progress updates",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-測試任務-已編輯"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "input[type='checkbox']:near(:text('E2E-子任務-1')), label:has-text('E2E-子任務-1') input[type='checkbox']",
+          "expected": "Check the subtask checkbox"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='progress'], [data-testid='task-progress'], text=100%",
+          "expected": "Parent task progress indicator updated",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-subtask-completed-progress"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-06",
+      "name": "Delete a task with confirmation dialog",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-測試任務-已編輯"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('刪除'), button:has-text('Delete'), [data-testid='delete-task']"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='alertdialog'], [role='dialog']:has-text('確認'), [role='dialog']:has-text('刪除')",
+          "state": "visible",
+          "timeout": 8000,
+          "expected": "Confirmation dialog appears"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('確認刪除'), button:has-text('確認'), button:has-text('Delete')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='alertdialog'], [role='dialog']",
+          "state": "hidden",
+          "timeout": 10000
+        },
+        {
+          "action": "assertNotVisible",
+          "selector": "text=E2E-測試任務-已編輯",
+          "expected": "Deleted task no longer on board",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-task-deleted"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-07",
+      "name": "[SKIP] Create task from template — template UI not integrated in kanban",
+      "skip": true,
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "button:has-text('新增任務')",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('新增任務')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('使用範本'), button:has-text('Template'), [data-testid='use-template']"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']:has-text('範本'), [role='dialog']:has-text('template')",
+          "state": "visible",
+          "timeout": 8000
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid='template-item']:first-child, [class*='template-item']:first-child, li:first-child button"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "input[name='title'], #title",
+          "expected": "Title pre-filled from template"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存'), button:has-text('建立'), button[type='submit']"
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-task-from-template"
+        }
+      ]
+    },
+    {
+      "id": "KANBAN-08",
+      "name": "Bulk select and update multiple tasks",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=待辦清單",
+          "expected": "Board has tasks",
+          "timeout": 15000
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Bulk-1", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "saveResponseAs": "bulkTask1"
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Bulk-2", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "saveResponseAs": "bulkTask2"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "apiRequest",
+          "method": "PATCH",
+          "path": "/api/tasks/bulk",
+          "body": {
+            "ids": ["${bulkTask1.id}", "${bulkTask2.id}"],
+            "update": { "priority": "P1" }
+          },
+          "expectedStatus": 200,
+          "expected": "Bulk update returns 200"
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-bulk-update"
+        }
+      ]
+    },
+    {
+      "id": "STATUS-01",
+      "name": "Move task: TODO → IN_PROGRESS (via button or drag)",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Status-Flow", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "saveResponseAs": "statusTask"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Status-Flow"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='status'], #status, [data-testid='status-select']",
+          "value": "IN_PROGRESS",
+          "fallbackText": "進行中"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']",
+          "state": "hidden",
+          "timeout": 10000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-column='IN_PROGRESS'] text=E2E-Status-Flow, :text('進行中') ~ * text=E2E-Status-Flow",
+          "expected": "Task appears in IN_PROGRESS column",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "status-todo-to-inprogress"
+        }
+      ]
+    },
+    {
+      "id": "STATUS-02",
+      "name": "Move task: IN_PROGRESS → REVIEW",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Status-Flow"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='status'], #status, [data-testid='status-select']",
+          "value": "REVIEW",
+          "fallbackText": "審核中"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']",
+          "state": "hidden",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "status-inprogress-to-review"
+        }
+      ]
+    },
+    {
+      "id": "STATUS-03",
+      "name": "Move task: REVIEW → DONE",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Status-Flow"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='status'], #status, [data-testid='status-select']",
+          "value": "DONE",
+          "fallbackText": "已完成"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存')"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']",
+          "state": "hidden",
+          "timeout": 10000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-column='DONE'] text=E2E-Status-Flow, :text('已完成') ~ * text=E2E-Status-Flow",
+          "expected": "Task appears in DONE column",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "status-review-to-done"
+        }
+      ]
+    },
+    {
+      "id": "STATUS-04",
+      "name": "Attempt invalid transition DONE → TODO — verify it is blocked",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "note",
+          "description": "DONE tasks should not be draggable back to TODO — tests state machine enforcement"
+        },
+        {
+          "action": "apiRequest",
+          "method": "PATCH",
+          "path": "/api/tasks/${statusTask.id}",
+          "body": { "status": "TODO" },
+          "note": "API-level enforcement: DONE → TODO should be rejected",
+          "expectedStatus": 400,
+          "expected": "API returns 400 for invalid DONE → TODO transition"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": ":text('已完成') ~ * text=E2E-Status-Flow",
+          "expected": "Task still in DONE column after failed transition",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "status-invalid-transition-blocked"
+        }
+      ]
+    },
+    {
+      "id": "STATUS-05",
+      "name": "Reopen task: DONE → IN_PROGRESS — blocked by state machine design",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "apiRequest",
+          "method": "PATCH",
+          "url": "/api/tasks/{{taskId}}/status",
+          "body": {"status": "IN_PROGRESS"},
+          "expectedStatus": 400,
+          "expected": "State machine design: DONE is terminal, cannot transition back"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Status-Flow"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "select[name='status'] option[value='DONE']:checked",
+            "[data-testid='status-badge']:has-text('已完成')"
+          ],
+          "expected": "State machine design: DONE is terminal, cannot transition back"
+        },
+        {
+          "action": "screenshot",
+          "name": "status-done-remains-done"
+        }
+      ]
+    },
+    {
+      "id": "STATUS-06",
+      "name": "[SKIP] Verify status change recorded in change history — requires formal Change Management flow, not auto-tracked on PATCH",
+      "skip": true,
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Status-Flow"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('歷程'), button:has-text('History'), [data-testid='change-history-tab']"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='history'], [class*='changelog'], [data-testid='change-history']",
+          "expected": "Change history section visible",
+          "timeout": 8000
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "[class*='history'], [class*='changelog']",
+          "expected": "TODO",
+          "message": "History should contain original TODO status"
+        },
+        {
+          "action": "screenshot",
+          "name": "status-change-history"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-01",
+      "name": "Open task detail modal and screenshot",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "[class*='task-card'], [class*='rounded-xl']",
+          "filterText": "[\u4e00-\u9fff]",
+          "index": 0,
+          "expected": "Click first task card"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button:has-text('儲存')",
+          "expected": "Save button visible in detail modal"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "input[name='title'], #title",
+          "expected": "Title field visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "select[name='status'], #status",
+          "expected": "Status field visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "task-detail-modal"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-02",
+      "name": "Add comment to task",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Comment-Task", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "saveResponseAs": "commentTask"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[placeholder*='留言'], textarea[placeholder*='comment'], [data-testid='comment-input']",
+          "value": "這是 E2E 測試留言，驗證留言功能正常運作。"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('送出'), button:has-text('Submit'), [data-testid='submit-comment']"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=這是 E2E 測試留言，驗證留言功能正常運作。",
+          "expected": "Comment appears in comment list",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "task-comment-added"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-03",
+      "name": "Upload attachment to task",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('附件'), button:has-text('Attachment'), [data-testid='attachments-tab']"
+        },
+        {
+          "action": "fileUpload",
+          "selector": "input[type='file']",
+          "file": "fixtures/test-attachment.txt",
+          "expected": "Upload test file"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=test-attachment.txt, [class*='attachment-item'], [data-testid='attachment-list'] li",
+          "expected": "Attachment listed after upload",
+          "timeout": 15000
+        },
+        {
+          "action": "screenshot",
+          "name": "task-attachment-uploaded"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-04",
+      "name": "Link task to document",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('關聯文件'), button:has-text('Link Document'), [data-testid='link-document']"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']:has-text('文件'), [role='dialog']:has-text('document')",
+          "state": "visible",
+          "timeout": 8000
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid='document-item']:first-child, [class*='document-item']:first-child",
+          "expected": "Select first available document"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='linked-doc'], [data-testid='linked-documents'] li",
+          "expected": "Document linked to task",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "task-document-linked"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-05",
+      "name": "View change history and tracking",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('歷程'), button:has-text('History'), [data-testid='history-tab']"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='history'], [class*='activity'], [data-testid='change-history']",
+          "expected": "Change history section displayed",
+          "timeout": 8000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='history-item'], [class*='activity-item'], li",
+          "expected": "At least one history entry visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "task-change-history"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-06",
+      "name": "Set task tags",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('標籤'), [data-testid='tags-input'], input[placeholder*='tag'], input[placeholder*='標籤']"
+        },
+        {
+          "action": "fill",
+          "selector": "input[placeholder*='tag'], input[placeholder*='標籤'], [data-testid='tag-input']",
+          "value": "e2e-test"
+        },
+        {
+          "action": "pressKey",
+          "selector": "input[placeholder*='tag'], input[placeholder*='標籤']",
+          "key": "Enter"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=e2e-test, [class*='tag']:has-text('e2e-test'), [data-testid='tag-badge']",
+          "expected": "Tag badge displayed on task",
+          "timeout": 8000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('儲存')"
+        },
+        {
+          "action": "screenshot",
+          "name": "task-tags-set"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-07",
+      "name": "Flag task (manager only)",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "apiRequest",
+          "method": "PATCH",
+          "path": "/api/tasks/${commentTask.id}/flag",
+          "body": { "flagged": true },
+          "expectedStatus": 200,
+          "expected": "Manager can flag task via API"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='flag'], [data-testid='flag-indicator'], text=已標記",
+          "expected": "Flag indicator shown on task",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "task-flagged-by-manager"
+        }
+      ]
+    },
+    {
+      "id": "DETAIL-08",
+      "name": "Record incident on task",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=E2E-Comment-Task"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "text=任務詳情",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('記錄事件'), button:has-text('Incident'), [data-testid='record-incident']"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='dialog']:has-text('事件'), [role='dialog']:has-text('incident')",
+          "state": "visible",
+          "timeout": 8000
+        },
+        {
+          "action": "fill",
+          "selector": "textarea[name='incidentDescription'], textarea[placeholder*='事件'], textarea[placeholder*='incident']",
+          "value": "E2E 測試事件記錄 — 系統測試期間的測試事件"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('提交'), button:has-text('Submit'), button[type='submit']"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='incident'], [data-testid='incident-badge'], text=事件",
+          "expected": "Incident recorded and shown on task",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "task-incident-recorded"
+        }
+      ]
+    },
+    {
+      "id": "FILTER-01",
+      "name": "Filter tasks by assignee",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='combobox']",
+          "state": "visible",
+          "timeout": 15000
+        },
+        {
+          "action": "selectOption",
+          "selector": "[role='combobox']:first-child, select[name='assignee'], [data-testid='assignee-filter']",
+          "valueType": "secondOption",
+          "expected": "Select a specific assignee from filter"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='task-card'], text=共",
+          "expected": "Tasks filtered by assignee",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-filter-by-assignee"
+        }
+      ]
+    },
+    {
+      "id": "FILTER-02",
+      "name": "Filter tasks by status",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='combobox']",
+          "state": "visible",
+          "timeout": 15000
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='status'], [data-testid='status-filter'], [role='combobox']:nth-child(2)",
+          "value": "IN_PROGRESS",
+          "fallbackText": "進行中"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=進行中",
+          "expected": "IN_PROGRESS column visible after filter",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-filter-by-status"
+        }
+      ]
+    },
+    {
+      "id": "FILTER-03",
+      "name": "Filter tasks by priority",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[role='combobox']",
+          "state": "visible",
+          "timeout": 15000
+        },
+        {
+          "action": "selectOption",
+          "selector": "select[name='priority'], [data-testid='priority-filter'], [role='combobox']:nth-child(3)",
+          "value": "P1",
+          "fallbackText": "P1"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-filter-by-priority"
+        }
+      ]
+    },
+    {
+      "id": "FILTER-04",
+      "name": "Sort tasks by due date",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('排序'), button:has-text('Sort'), [data-testid='sort-button']"
+        },
+        {
+          "action": "click",
+          "selector": "text=截止日期, text=Due Date, [data-testid='sort-duedate']"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[class*='task-card'], text=待辦清單, text=尚無任務",
+          "expected": "Board re-renders with due date sort",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-sorted-by-duedate"
+        }
+      ]
+    },
+    {
+      "id": "DRAG-01",
+      "name": "Drag task between status columns",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Drag-Task", "status": "TODO", "priority": "P2", "category": "PLANNED" },
+          "saveResponseAs": "dragTask"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-Drag-Task",
+          "expected": "Drag task visible on board",
+          "timeout": 15000
+        },
+        {
+          "action": "drag",
+          "sourceSelector": "text=E2E-Drag-Task",
+          "targetSelector": "[data-column='IN_PROGRESS'], :text('進行中')",
+          "expected": "Drag task from TODO to IN_PROGRESS column"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-column='IN_PROGRESS'] text=E2E-Drag-Task, :text('進行中') ~ * text=E2E-Drag-Task",
+          "expected": "Task is now in IN_PROGRESS column after drag",
+          "timeout": 10000
+        },
+        {
+          "action": "screenshot",
+          "name": "drag-task-between-columns"
+        }
+      ]
+    },
+    {
+      "id": "DRAG-02",
+      "name": "Reorder tasks within same column",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Reorder-A", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "saveResponseAs": "reorderTaskA"
+        },
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "path": "/api/tasks",
+          "body": { "title": "E2E-Reorder-B", "status": "TODO", "priority": "P3", "category": "PLANNED" },
+          "saveResponseAs": "reorderTaskB"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-Reorder-A",
+          "expected": "First task visible",
+          "timeout": 15000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-Reorder-B",
+          "expected": "Second task visible"
+        },
+        {
+          "action": "drag",
+          "sourceSelector": "text=E2E-Reorder-B",
+          "targetSelector": "text=E2E-Reorder-A",
+          "dropPosition": "before",
+          "expected": "Drag E2E-Reorder-B above E2E-Reorder-A"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "screenshot",
+          "name": "drag-reorder-within-column"
+        }
+      ]
+    },
+    {
+      "id": "DRAG-03",
+      "name": "Verify drag updates persisted after page reload",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=E2E-Drag-Task",
+          "expected": "Dragged task still visible",
+          "timeout": 15000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-column='IN_PROGRESS'] text=E2E-Drag-Task, :text('進行中') ~ * text=E2E-Drag-Task",
+          "expected": "Task remains in IN_PROGRESS column after reload"
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/tasks/${dragTask.id}",
+          "expectedStatus": 200,
+          "assertBodyCondition": "response.data.status === 'IN_PROGRESS'",
+          "expected": "API confirms status persisted as IN_PROGRESS"
+        },
+        {
+          "action": "screenshot",
+          "name": "drag-persisted-after-reload"
+        }
+      ]
+    },
+    {
+      "id": "DRAG-04",
+      "name": "Screenshot final board state",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForLoadState",
+          "state": "networkidle"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "看板"
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "text=待辦清單",
+            "text=進行中",
+            "text=尚無任務"
+          ],
+          "expected": "Board columns visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "kanban-board-final-state",
+          "fullPage": true
+        }
+      ]
+    }
+  ]
+}
