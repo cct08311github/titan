@@ -106,7 +106,11 @@ export class KPIService {
         err instanceof Prisma.PrismaClientKnownRequestError &&
         err.code === "P2002"
       ) {
-        throw new ConflictError("KPI code 已存在");
+        const fields = (err.meta?.target as string[] | undefined) ?? [];
+        if (fields.includes("title")) {
+          throw new ConflictError("KPI 標題已存在（同年度不可重複）");
+        }
+        throw new ConflictError("KPI 代碼已存在（同年度不可重複）");
       }
       throw err;
     }

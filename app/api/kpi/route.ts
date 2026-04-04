@@ -6,21 +6,20 @@ import { success, error } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError } from "@/services/errors";
+import { parseYear, parsePage, parseLimit } from "@/lib/query-params";
 
 export const GET = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
   const { searchParams } = new URL(req.url);
-  const year = searchParams.get("year")
-    ? parseInt(searchParams.get("year")!)
-    : new Date().getFullYear();
+  const year = parseYear(searchParams.get("year"));
 
   // Filters
   const statusFilter = searchParams.get("status");
   const frequencyFilter = searchParams.get("frequency");
   const search = searchParams.get("search");
   const includeLatest = searchParams.get("include") === "latestAchievement";
-  const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "100");
+  const page = parsePage(searchParams.get("page"));
+  const limit = parseLimit(searchParams.get("limit"), 100, 500);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = { year };

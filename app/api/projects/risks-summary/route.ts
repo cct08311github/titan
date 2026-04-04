@@ -9,6 +9,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { success } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
+import { parseYear } from "@/lib/query-params";
 
 const PROB_VALUES = ["LOW", "MEDIUM", "HIGH", "VERY_HIGH"] as const;
 const IMPACT_VALUES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
@@ -18,10 +19,7 @@ const IMPACT_NUM: Record<string, number> = { LOW: 1, MEDIUM: 2, HIGH: 3, CRITICA
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
-  const rawYear = parseInt(searchParams.get("year") ?? "", 10);
-  const year = Number.isFinite(rawYear) && rawYear >= 2000 && rawYear <= 2100
-    ? rawYear
-    : new Date().getFullYear();
+  const year = parseYear(searchParams.get("year"));
 
   // Fetch all open/mitigating risks for the year with project info
   const risks = await prisma.projectRisk.findMany({

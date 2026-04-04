@@ -40,7 +40,7 @@ export const createTimeEntrySchema = z.object({
 export const updateTimeEntrySchema = z.object({
   date: pastOrTodayDate.optional(),
   hours: hoursSchema.optional(),
-  taskId: z.string().optional(),
+  taskId: z.string().nullish(),             // Issue #1249: accept null for free-time entries
   subTaskId: z.string().nullish(),          // Issue #933: optional subtask
   category: TimeCategoryEnum.optional(),
   description: z.string().optional(),

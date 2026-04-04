@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/rbac";
 import { ExportService } from "@/services/export-service";
 import { formatLocalDate } from "@/lib/utils/date";
 import { calculateAchievement, calculateAvgAchievement } from "@/lib/kpi-calculator";
+import { parseYear } from "@/lib/query-params";
 
 const exportService = new ExportService();
 
@@ -109,9 +110,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   // ── kpi ───────────────────────────────────────────────────────────────────
   } else if (type === "kpi") {
-    const year = searchParams.get("year")
-      ? parseInt(searchParams.get("year")!)
-      : new Date().getFullYear();
+    const year = parseYear(searchParams.get("year"));
 
     const kpis = await prisma.kPI.findMany({
       where: { year },

@@ -4,6 +4,7 @@ import { AuditService } from "@/services/audit-service";
 import { success } from "@/lib/api-response";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
+import { parseLimit } from "@/lib/query-params";
 
 const auditService = new AuditService(prisma);
 
@@ -29,7 +30,7 @@ export const GET = withManager(async (req: NextRequest) => {
     action: searchParams.get("action") ?? undefined,
     userId: searchParams.get("userId") ?? undefined,
     resourceType: searchParams.get("resourceType") ?? undefined,
-    limit: limitParam ? parseInt(limitParam, 10) : undefined,
+    limit: limitParam ? parseLimit(limitParam, 200, 5000) : undefined,
   });
 
   return success(logs);

@@ -129,17 +129,18 @@ app/
 **API Route → Service → Prisma**
 
 每個 API route 統一使用：
-1. `lib/auth.ts` 的 `requireAuth()` 或 `requireManager()` 驗證
-2. `lib/api-handler.ts` 統一錯誤處理
+1. `lib/rbac.ts` 的 `requireAuth()` 或 `requireManagerOrAbove()` 驗證（非 `lib/auth.ts`，那是 NextAuth config）
+2. `lib/api-response.ts` 的 `success()` / `error()` helper 回應（注意不要混用，400 回應必須用 `error()` 不能用 `success()`）
 3. `services/` 下的 service class 處理商業邏輯
 4. `validators/` 下的 Zod schema 做輸入驗證
+5. `lib/security/sanitize.ts` 的 `sanitizeHtml()` / `sanitizeMarkdown()` 清洗使用者輸入
 
 ### Auth.js v5 模式
 
 - JWT/JWE token 存於 httpOnly cookie
 - Edge Runtime middleware (`middleware.ts`) 做第一層驗證
-- RBAC: `Manager` / `Engineer` 兩種角色
-- 帳號鎖定：10 次失敗鎖 15 分鐘
+- RBAC: `ADMIN` > `MANAGER` > `ENGINEER` 三層角色（`lib/auth/permissions.ts`）
+- 帳號鎖定：5 次失敗鎖 30 分鐘（`auth.ts` maxFailures: 5, lockDurationSeconds: 1800）
 - 密碼歷史：禁止重複最近 5 組
 
 ### 安全中間件鏈
@@ -204,6 +205,33 @@ next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi
 ```
 
 **next/headers mock**：所有 route handler 測試預設 mock `next/headers`，因為 Edge runtime 的 `headers()` 需要 Request Store context。
+
+## Known Pitfalls
+
+### 循環依賴（Circular Dependency）
+
+`auth.ts` 在頂層初始化 singletons。如果 `auth.ts` import 的模組最終 import 回 `@/auth` 或 `@/lib/rbac`，會觸發 `ReferenceError: Cannot access 'X' before initialization`。
+
+**已知的安全 import 路徑：**
+- `@/lib/auth/permissions` — 純函數，無循環風險
+- `@/services/errors` — 純 Error classes
+
+**會觸發循環的 import：**
+- `@/lib/middleware/role-guard` → imports `@/lib/rbac` → imports `@/auth` ← 循環！
+
+**規則：** Service 層不要從 `role-guard.ts` 或 `rbac.ts` import，改用 `@/lib/auth/permissions` 的 `hasMinimumRole`。
+
+### Sanitization
+
+所有使用者輸入寫入 DB 前必須 sanitize：
+- `lib/security/sanitize.ts` 提供 `sanitizeHtml()` 和 `sanitizeMarkdown()`
+- **重要：** sanitize 後須再驗證欄位非空，否則 XSS payload 被清除後會建立空值記錄
+
+### Docker 本機開發
+
+Postgres/Redis 在 `titan-internal` Docker 網路，預設不暴露 port 到 host。本機 `npm run dev` 需要：
+- 在 `docker-compose.yml` 的 postgres/redis 加 `ports:` mapping
+- 或設定 `DATABASE_URL` 指向暴露的 port（macOS Docker 無法直連容器內部 IP）
 
 ## Environment Variables
 

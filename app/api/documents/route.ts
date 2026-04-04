@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sanitizeMarkdown } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validate";
 import { createDocumentSchema } from "@/validators/document-validators";
 import { withAuth } from "@/lib/auth-middleware";
@@ -224,7 +225,8 @@ export const POST = withAuth(async (req: NextRequest) => {
   // Apply template if specified
   const template = templateType ? TEMPLATES[templateType] : null;
   const finalTitle = template && title === "" ? template.title : title;
-  const finalContent = template ? template.content : (content ?? "");
+  const rawContent = template ? template.content : (content ?? "");
+  const finalContent = sanitizeMarkdown(rawContent);
 
   const base = finalTitle
     .toLowerCase()

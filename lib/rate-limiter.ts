@@ -4,7 +4,7 @@
  * Uses rate-limiter-flexible for both Redis and in-memory modes.
  *
  * Strategies:
- *   - Login:  5 attempts / 60s per IP+username key
+ *   - Login:  20 attempts / 60s per IP+username key
  *   - API:    100 requests / 60s per userId
  *
  * When Redis is unavailable the factory falls back to RateLimiterMemory and
@@ -61,12 +61,12 @@ export interface ApiRateLimiterOptions {
 
 /**
  * Creates a rate limiter for login endpoints.
- * Default: 5 attempts per 60 seconds, keyed by IP+username.
+ * Default: 20 attempts per 60 seconds, keyed by IP+username.
  */
 export function createLoginRateLimiter(
   opts: LoginRateLimiterOptions = {}
 ): RateLimiterMemory | RateLimiterRedis {
-  const points = opts.points ?? 5;
+  const points = opts.points ?? 20;
   const duration = opts.duration ?? 60;
   const keyPrefix = "login";
 

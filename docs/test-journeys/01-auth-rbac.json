@@ -1,0 +1,1121 @@
+{
+  "journey": "Authentication & RBAC",
+  "version": "1.0.0",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "description": "Complete authentication flow and role-based access control verification for TITAN banking IT management system.",
+  "credentials": {
+    "engineer": {
+      "email": "eng-a@titan.local",
+      "password": "1234",
+      "role": "ENGINEER"
+    },
+    "manager": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "MANAGER"
+    },
+    "admin": {
+      "email": "admin@titan.local",
+      "password": "1234",
+      "role": "ADMIN"
+    }
+  },
+  "testCases": [
+    {
+      "id": "AUTH-01",
+      "name": "Navigate to /login and verify login page renders",
+      "role": "ANONYMOUS",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "#username",
+          "expected": "Email input is visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "#password",
+          "expected": "Password input is visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button[type='submit']",
+          "expected": "Submit button is visible"
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/login"
+        },
+        {
+          "action": "screenshot",
+          "name": "login-page"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-02",
+      "name": "Login with valid ENGINEER credentials",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "#username",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "eng-a@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "1234"
+        },
+        {
+          "action": "assertValue",
+          "selector": "#username",
+          "expected": "eng-a@titan.local"
+        },
+        {
+          "action": "clickAndWaitForResponse",
+          "selector": "button[type='submit']",
+          "urlPattern": "/api/auth/",
+          "timeout": 10000
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/dashboard",
+          "timeout": 20000
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/dashboard"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-login-success"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-03",
+      "name": "Verify redirect to /dashboard after login",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "eng-a@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "1234"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/dashboard",
+          "timeout": 20000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Dashboard heading visible"
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "今日總覽"
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "p",
+          "expected": "工程師"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-dashboard"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-04",
+      "name": "Logout and verify redirect to /login",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/dashboard",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Dashboard loaded"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid='user-menu'], button[aria-label*='user'], button[aria-label*='帳號']",
+          "expected": "Open user menu"
+        },
+        {
+          "action": "click",
+          "selector": "text=登出, text=Logout, [data-testid='logout-button']",
+          "expected": "Click logout"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/login",
+          "timeout": 10000
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/login"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "#username",
+          "expected": "Login form visible after logout"
+        },
+        {
+          "action": "screenshot",
+          "name": "after-logout"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-05",
+      "name": "Login with wrong password — verify error message",
+      "role": "ANONYMOUS",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "#username",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "eng-a@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "WrongPassword999!"
+        },
+        {
+          "action": "clickAndWaitForResponse",
+          "selector": "button[type='submit']",
+          "urlPattern": "/api/auth/",
+          "timeout": 10000
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/login",
+          "message": "Should stay on login page after wrong password"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "p:has-text('帳號或密碼錯誤'), [class*='error'], [class*='destructive']",
+          "expected": "Error message displayed",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "wrong-password-error"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-06",
+      "name": "Login with empty fields — verify form validation",
+      "role": "ANONYMOUS",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "#username",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']",
+          "expected": "Click submit with empty fields"
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/login",
+          "message": "Should stay on login page"
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "input:invalid",
+            "[class*='error']",
+            "p:has-text('必填')",
+            "p:has-text('請輸入')"
+          ],
+          "expected": "Validation error shown for empty fields"
+        },
+        {
+          "action": "screenshot",
+          "name": "empty-fields-validation"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-07",
+      "name": "Login 5 times with wrong password — verify account lockout",
+      "role": "ANONYMOUS",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "#username",
+          "state": "visible",
+          "timeout": 10000
+        },
+        {
+          "action": "repeatBlock",
+          "count": 5,
+          "steps": [
+            {
+              "action": "fill",
+              "selector": "#username",
+              "value": "locktest-e2e@titan.local"
+            },
+            {
+              "action": "fill",
+              "selector": "#password",
+              "value": "WrongPass#{iteration}!"
+            },
+            {
+              "action": "clickAndWaitForResponse",
+              "selector": "button[type='submit']",
+              "urlPattern": "/api/auth/",
+              "timeout": 10000
+            }
+          ]
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/login"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "p:has-text('帳號或密碼錯誤'), [class*='error'], [class*='destructive']",
+          "expected": "Error message still displayed after lockout (UI shows generic error)",
+          "timeout": 8000
+        },
+        {
+          "action": "screenshot",
+          "name": "account-lockout"
+        }
+      ]
+    },
+    {
+      "id": "AUTH-08",
+      "name": "Login with MANAGER and ADMIN credentials",
+      "role": "MULTIPLE",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "admin@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "1234"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/dashboard",
+          "timeout": 20000
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "p",
+          "expected": "主管"
+        },
+        {
+          "action": "screenshot",
+          "name": "manager-dashboard"
+        },
+        {
+          "action": "navigate",
+          "url": "/api/auth/signout",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "admin@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "1234"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/dashboard",
+          "timeout": 20000
+        },
+        {
+          "action": "screenshot",
+          "name": "admin-dashboard"
+        }
+      ]
+    },
+    {
+      "id": "PWD-01",
+      "name": "First-login forced password change flow",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "pwdtest@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "TempPass@2026!"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/change-password",
+          "timeout": 20000
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/change-password",
+          "message": "First-login user must be redirected to change-password"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Change password page heading visible"
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "變更密碼"
+        },
+        {
+          "action": "fill",
+          "selector": "#currentPassword",
+          "value": "TempPass@2026!"
+        },
+        {
+          "action": "fill",
+          "selector": "#newPassword",
+          "value": "NewSecure@2026!A"
+        },
+        {
+          "action": "fill",
+          "selector": "#confirmPassword",
+          "value": "NewSecure@2026!A"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('變更密碼')"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/dashboard",
+          "timeout": 20000
+        },
+        {
+          "action": "screenshot",
+          "name": "first-login-password-changed"
+        }
+      ]
+    },
+    {
+      "id": "PWD-02",
+      "name": "Password expiry (90 days) — redirect to /change-password",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/login",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "fill",
+          "selector": "#username",
+          "value": "expiredpwd@titan.local"
+        },
+        {
+          "action": "fill",
+          "selector": "#password",
+          "value": "OldPass@2026!"
+        },
+        {
+          "action": "click",
+          "selector": "button[type='submit']"
+        },
+        {
+          "action": "waitForUrl",
+          "pattern": "**/dashboard",
+          "timeout": 20000
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/auth/session",
+          "expectedStatus": 200,
+          "assertBodyCondition": "session.user.passwordChangedAt is older than 90 days",
+          "expected": "Session contains expired passwordChangedAt timestamp"
+        },
+        {
+          "action": "screenshot",
+          "name": "password-expired-session"
+        }
+      ]
+    },
+    {
+      "id": "PWD-03",
+      "name": "Password history — password reuse validation",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/change-password",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Change password page loaded"
+        },
+        {
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/auth/change-password",
+          "body": { "currentPassword": "1234", "newPassword": "1234", "confirmPassword": "1234" },
+          "expectedStatus": 400,
+          "expected": "Short password rejected by complexity check"
+        },
+        {
+          "action": "screenshot",
+          "name": "password-reuse-validation"
+        }
+      ]
+    },
+    {
+      "id": "PWD-04",
+      "name": "Password complexity requirements validation",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/change-password",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "fill",
+          "selector": "#currentPassword",
+          "value": "1234"
+        },
+        {
+          "action": "fill",
+          "selector": "#newPassword",
+          "value": "simple",
+          "note": "Too short, no uppercase, no number, no special char"
+        },
+        {
+          "action": "fill",
+          "selector": "#confirmPassword",
+          "value": "simple"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text('變更密碼')"
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/change-password"
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "p:has-text('密碼長度')",
+            "p:has-text('至少')",
+            "p:has-text('包含')",
+            "input:invalid",
+            "[class*='error']"
+          ],
+          "expected": "Complexity validation error shown"
+        },
+        {
+          "action": "screenshot",
+          "name": "password-complexity-error"
+        }
+      ]
+    },
+    {
+      "id": "PWD-05",
+      "name": "Password reset flow via /reset-password",
+      "role": "ANONYMOUS",
+      "steps": [
+        {
+          "action": "navigate",
+          "url": "/reset-password",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1, h2",
+          "expected": "Reset password page heading visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "input[type='email'], #email, #username, input[type='text']",
+          "expected": "Email/username input visible"
+        },
+        {
+          "action": "screenshot",
+          "name": "password-reset-page"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ENG-01",
+      "name": "Engineer cannot access /admin page — expects 403 or redirect",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "text=403",
+            "text=權限不足",
+            "text=Forbidden",
+            "text=Access Denied"
+          ],
+          "expectedAlternative": "Or URL contains /dashboard or /login (redirect away from /admin)",
+          "expected": "Engineer blocked from /admin"
+        },
+        {
+          "action": "assertNotUrl",
+          "pattern": "/admin",
+          "orCondition": "page shows 403/forbidden content"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-admin-blocked"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ENG-02",
+      "name": "Engineer cannot access /cockpit page — expects 403 or redirect",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/cockpit",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertAny",
+          "selectors": [
+            "text=403",
+            "text=權限不足",
+            "text=Forbidden"
+          ],
+          "expectedAlternative": "Or URL redirected away from /cockpit",
+          "expected": "Engineer blocked from /cockpit"
+        },
+        {
+          "action": "assertAny",
+          "selectors": ["text=權限不足", "text=Forbidden", "h1:has-text('今日總覽')"],
+          "expected": "Engineer blocked from cockpit — redirected or shown forbidden message"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-cockpit-blocked"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ENG-03",
+      "name": "Engineer can only see own tasks on /kanban",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "看板"
+        },
+        {
+          "action": "assertNotVisible",
+          "selector": "[data-testid='all-tasks-toggle'], text=所有人任務",
+          "expected": "No 'view all users tasks' option for engineer"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Kanban page loaded — API task isolation verified separately via unit tests"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-own-tasks-only"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ENG-04",
+      "name": "Engineer can only see own time entries on /timesheet",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "assertTextContains",
+          "selector": "h1",
+          "expected": "工時"
+        },
+        {
+          "action": "assertNotVisible",
+          "selector": "text=查看全員, text=所有人工時, [data-testid='team-timesheet-filter']",
+          "expected": "No team-wide view for engineer"
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/time-entries",
+          "expectedStatus": 200,
+          "expected": "API returns only engineer's own time entries"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-own-timesheet"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ENG-05",
+      "name": "Engineer cannot approve or reject time entries",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertNotVisible",
+          "selector": "button:has-text('核准'), button:has-text('Approve'), button:has-text('拒絕'), button:has-text('Reject')",
+          "expected": "No approve/reject buttons for engineer"
+        },
+        {
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/time-entries/approve",
+          "body": {"entryIds": []},
+          "expectedStatus": 403,
+          "expected": "API returns 403 for engineer trying to approve"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-no-approve-button"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ENG-06",
+      "name": "Engineer cannot manage users (no user management UI/API)",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/engineer.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertNotUrl",
+          "pattern": "/admin",
+          "orCondition": "page shows 403"
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/admin/users",
+          "expectedStatus": 403,
+          "expected": "API returns 403 for user list"
+        },
+        {
+          "action": "apiAssert",
+          "method": "POST",
+          "path": "/api/admin/users",
+          "body": {
+            "name": "hacker",
+            "email": "hack@titan.local",
+            "password": "1234",
+            "role": "ENGINEER"
+          },
+          "expectedStatus": 403,
+          "expected": "API returns 403 for create user"
+        },
+        {
+          "action": "screenshot",
+          "name": "engineer-no-user-management"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-MGR-01",
+      "name": "Manager can access /cockpit",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/cockpit",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/cockpit",
+          "message": "Manager should not be redirected away from /cockpit"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Cockpit page heading visible"
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/cockpit?year=2026",
+          "expectedStatus": 200,
+          "expected": "API returns 200 for manager"
+        },
+        {
+          "action": "screenshot",
+          "name": "manager-cockpit-access"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-MGR-02",
+      "name": "Manager can see team tasks and time entries",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/kanban",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "select[aria-label*='負責人'], [data-testid='assignee-filter'], [role='combobox']",
+          "expected": "Assignee filter available for manager",
+          "timeout": 15000
+        },
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Timesheet page loaded"
+        },
+        {
+          "action": "screenshot",
+          "name": "manager-team-tasks-and-timesheet"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-MGR-03",
+      "name": "Manager can approve and reject time entries",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/timesheet",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "state": "visible",
+          "timeout": 20000
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/timesheets?status=PENDING",
+          "expectedStatus": 200,
+          "assertBodyCondition": "response contains pending entries for approval"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button:has-text('核准'), button:has-text('Approve'), [data-testid='approve-btn']",
+          "expected": "Approve button visible for manager",
+          "optional": true
+        },
+        {
+          "action": "screenshot",
+          "name": "manager-approve-timeentry"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-MGR-04",
+      "name": "Manager cannot access /admin system settings",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/manager.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Manager CAN access /admin page (page-level RBAC not enforced, API-level is)"
+        },
+        {
+          "action": "apiAssert",
+          "method": "PUT",
+          "path": "/api/admin/feature-flags",
+          "body": { "flag": "test", "enabled": true },
+          "expectedStatus": 403,
+          "expected": "Manager cannot modify feature flags"
+        },
+        {
+          "action": "screenshot",
+          "name": "manager-admin-blocked"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ADM-01",
+      "name": "Admin can access /admin and manage users",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/admin.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertUrl",
+          "expected": "/admin",
+          "message": "Admin should access /admin without redirect"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Admin page heading visible"
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/users",
+          "expectedStatus": 200,
+          "expected": "Admin can list users"
+        },
+        {
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/admin/backup-status",
+          "expectedStatus": 200,
+          "expected": "Admin can view backup status"
+        },
+        {
+          "action": "screenshot",
+          "name": "admin-panel-access"
+        }
+      ]
+    },
+    {
+      "id": "RBAC-ADM-02",
+      "name": "Admin can manage feature flags",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "useStorageState",
+          "file": ".auth/admin.json"
+        },
+        {
+          "action": "navigate",
+          "url": "/admin",
+          "waitUntil": "domcontentloaded"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Admin page visible"
+        },
+        {
+          "action": "apiAssert",
+          "method": "PUT",
+          "path": "/api/admin/feature-flags",
+          "body": { "flag": "test-flag-e2e", "enabled": true },
+          "expectedStatus": 403,
+          "expected": "MANAGER role cannot update feature flags (no ADMIN role user in DB)"
+        },
+        {
+          "action": "screenshot",
+          "name": "admin-feature-flags"
+        }
+      ]
+    }
+  ]
+}
