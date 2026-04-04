@@ -37,11 +37,13 @@ export const POST = withAuth(async (req: NextRequest) => {
   const tgtEnd = new Date(tgtStart);
   tgtEnd.setDate(tgtEnd.getDate() + 6);
 
-  // Fetch source week entries
+  // Fetch source week entries — exclude deleted and actively running entries
   const sourceEntries = await prisma.timeEntry.findMany({
     where: {
       userId,
       date: { gte: srcStart, lte: srcEnd },
+      isDeleted: false,
+      isRunning: false,
     },
   });
 

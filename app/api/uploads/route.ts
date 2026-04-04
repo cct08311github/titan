@@ -67,6 +67,14 @@ export const POST = withAuth(async (req: NextRequest) => {
     return error("ValidationError", "檔案內容與宣告的類型不符", 400);
   }
 
+  // WebP requires 'WEBP' at offset 8-11 (RIFF container subtype)
+  if (ext === ".webp") {
+    const webpMarker = [0x57, 0x45, 0x42, 0x50]; // 'WEBP'
+    if (buffer.length < 12 || !webpMarker.every((b, i) => buffer[8 + i] === b)) {
+      return error("ValidationError", "無效的 WebP 檔案格式", 400);
+    }
+  }
+
   // Generate unique filename
   const filename = `${crypto.randomUUID()}${ext}`;
   const uploadDir = path.join(process.cwd(), "public", "uploads");

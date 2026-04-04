@@ -10,7 +10,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
+import { formatLocalDate } from "@/lib/utils/date";
 
 const monthParamSchema = z.string().regex(/^\d{4}-\d{2}$/, "格式須為 YYYY-MM");
 
@@ -43,7 +44,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
   const monthResult = monthParamSchema.safeParse(monthRaw);
   if (!monthResult.success) {
-    return success({ error: "month 參數格式須為 YYYY-MM" }, 400) as never;
+    return error("ValidationError", "month 參數格式須為 YYYY-MM", 400) as never;
   }
   const month = monthResult.data;
 
@@ -87,7 +88,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
     // Days with entries
     const datesWithEntries = new Set(
-      userEntries.map((e) => e.date.toISOString().split("T")[0])
+      userEntries.map((e) => formatLocalDate(e.date))
     );
 
     // Missing workdays (no entries filed)
@@ -95,7 +96,7 @@ export const GET = withManager(async (req: NextRequest) => {
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, mon - 1, d);
       if (isWeekend(date)) continue;
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalDate(date);
       if (!datesWithEntries.has(dateStr)) {
         missingDays.push(dateStr);
       }

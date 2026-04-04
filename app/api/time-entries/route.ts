@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TimeCategory } from "@prisma/client";
 import { ForbiddenError, ValidationError } from "@/services/errors";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 import { validateBody } from "@/lib/validate";
 import { createTimeEntrySchema } from "@/validators/time-entry-validators";
 import { validateDailyLimit } from "@/validators/shared/time-entry";
@@ -106,6 +107,7 @@ export const POST = withAuth(async (req: NextRequest) => {
   // Always create entries owned by the caller — ignores any userId in body.
   // #928: Manager time entries auto-approve (no approval workflow needed)
   const isManager = session.user.role === "MANAGER" || session.user.role === "ADMIN";
+  const cleanDescription = description ? sanitizeHtml(description) || null : null;
   const entry = await prisma.timeEntry.create({
     data: {
       taskId: taskId || null,
@@ -114,7 +116,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       date: new Date(date),
       hours,
       category: (category as TimeCategory) ?? "PLANNED_TASK",
-      description: description || null,
+      description: cleanDescription,
       ...(isManager ? { approvalStatus: "APPROVED", locked: true } : {}),
     },
     include: {

@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { success, error as apiError } from "@/lib/api-response";
+import { formatLocalDate } from "@/lib/utils/date";
 
 const monthParamSchema = z.string().regex(/^\d{4}-\d{2}$/, "格式須為 YYYY-MM");
 
@@ -63,7 +64,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
     for (const entry of userEntries) {
       // Use local date string from the Date object
-      const dateKey = entry.date.toISOString().split("T")[0];
+      const dateKey = formatLocalDate(entry.date);
       if (!days[dateKey]) {
         days[dateKey] = { totalHours: 0, entries: [], approvalStatus: "PENDING" };
       }

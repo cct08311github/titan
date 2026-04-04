@@ -19,7 +19,7 @@ export function calculateAchievement(kpi: KPILike): number {
       const prog = l.task.status === "DONE" ? 100 : l.task.progressPct;
       return s + (prog * l.weight) / 100;
     }, 0);
-    return Math.min((weighted / totalWeight) * kpi.target, 100);
+    return Math.min(weighted / totalWeight, 100);
   }
   return kpi.target > 0 ? Math.min((kpi.actual / kpi.target) * 100, 100) : 0;
 }
