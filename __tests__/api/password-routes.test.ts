@@ -228,7 +228,8 @@ describe("POST /api/auth/change-password", () => {
     // All compare calls for history check return false (no match)
     mockCompare
       .mockResolvedValueOnce(true)   // currentPassword valid
-      .mockResolvedValueOnce(false); // no history match
+      .mockResolvedValueOnce(false)  // current hash check (allHashes[0])
+      .mockResolvedValueOnce(false); // history entry check (allHashes[1])
     mockPasswordHistory.findMany.mockResolvedValue([
       { hash: "$2a$10$oldhash1" },
     ]);
@@ -511,15 +512,15 @@ describe("POST /api/admin/generate-reset-token", () => {
     expect(body.data.userName).toBe("Bob");
   });
 
-  it("generates a 6-digit numeric OTP", async () => {
+  it("generates a cryptographic hex token (SHA-256 hash stored)", async () => {
     const { POST } = await import("@/app/api/admin/generate-reset-token/route");
     const req = createMockRequest("/api/admin/generate-reset-token", {
       method: "POST",
       body: { userId: "target-1" },
     });
     await POST(req);
-    // Verify the token created in DB is a 6-digit string
+    // Verify the token stored in DB is a 64-char hex SHA-256 hash (not plaintext)
     const createCall = mockPasswordResetToken.create.mock.calls[0][0];
-    expect(createCall.data.token).toMatch(/^\d{6}$/);
+    expect(createCall.data.token).toMatch(/^[0-9a-f]{64}$/);
   });
 });
