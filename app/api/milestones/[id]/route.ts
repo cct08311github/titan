@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/validate";
 import { updateMilestoneSchema } from "@/validators/milestone-validators";
 import { MilestoneService } from "@/services/milestone-service";
-import { withAuth } from "@/lib/auth-middleware";
+import { withAuth, withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
 const getService = () => new MilestoneService(prisma);
@@ -41,7 +41,7 @@ export const PUT = withAuth(async (
   return success(milestone);
 });
 
-export const DELETE = withAuth(async (
+export const DELETE = withManager(async (
   _req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {

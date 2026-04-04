@@ -85,8 +85,11 @@ function ReviewDialog({
 
   async function handleConfirm() {
     setSubmitting(true);
-    await onConfirm(note);
-    setSubmitting(false);
+    try {
+      await onConfirm(note);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -280,28 +283,30 @@ export default function ApprovalsPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [reviewTarget, setReviewTarget] = useState<{ approval: Approval; action: "APPROVED" | "REJECTED" } | null>(null);
 
-  const fetchApprovals = useCallback(async () => {
+  const fetchApprovals = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: "20" });
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (typeFilter !== "ALL") params.set("type", typeFilter);
-      const res = await fetch(`/api/approvals?${params}`);
+      const res = await fetch(`/api/approvals?${params}`, { signal });
       if (!res.ok) throw new Error("載入失敗");
       const body = await res.json();
       setItems(extractItems<Approval>(body));
       if (body?.data?.pagination) setPagination(body.data.pagination);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       toast.error(err instanceof Error ? err.message : "載入失敗");
     } finally {
       setLoading(false);
     }
   }, [page, statusFilter, typeFilter]);
 
-  useEffect(() => { fetchApprovals(); }, [fetchApprovals]);
-
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [statusFilter, typeFilter]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchApprovals(controller.signal);
+    return () => controller.abort();
+  }, [fetchApprovals]);
 
   async function handleReview(approval: Approval, action: "APPROVED" | "REJECTED", reviewNote: string) {
     try {

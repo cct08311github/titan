@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/validate";
 import { createMilestoneSchema } from "@/validators/milestone-validators";
 import { MilestoneService } from "@/services/milestone-service";
-import { withAuth } from "@/lib/auth-middleware";
+import { withAuth, withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 
 const getService = () => new MilestoneService(prisma);
@@ -17,7 +17,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   return success(milestones);
 });
 
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withManager(async (req: NextRequest) => {
 
   const raw = await req.json();
   const data = validateBody(createMilestoneSchema, raw);

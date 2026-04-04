@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { ValidationError } from "@/services/errors";
+import { sanitizeMarkdown } from "@/lib/security/sanitize";
 
 /**
  * GET /api/document-templates — List all document templates (Issue #1002)
@@ -43,11 +44,19 @@ export const POST = withAuth(async (req: NextRequest) => {
     throw new ValidationError("title, content, category 為必填欄位");
   }
 
+  const cleanTitle = sanitizeMarkdown(title);
+  const cleanContent = sanitizeMarkdown(content);
+  const cleanCategory = sanitizeMarkdown(category);
+
+  if (!cleanTitle || !cleanContent) {
+    return error("VALIDATION_ERROR", "標題和內容不可為空", 400);
+  }
+
   const template = await prisma.documentTemplate.create({
     data: {
-      title,
-      content,
-      category,
+      title: cleanTitle,
+      content: cleanContent,
+      category: cleanCategory,
       isSystem: false,
       createdBy: session.user.id,
     },
