@@ -34,6 +34,8 @@ jobs:
       - run: npm ci
 
       - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
 
       - name: Run database migrations
         run: npx prisma migrate deploy
@@ -42,6 +44,8 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
 
       - name: Unit + Integration tests
         run: npx jest --forceExit --coverage
@@ -72,6 +76,8 @@ jobs:
       - run: npm ci
 
       - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://titan:dummy@localhost:5432/titan_dummy
 
       - name: Build Next.js app (produces .next/standalone for Dockerfile COPY)
         run: npm run build
@@ -186,6 +192,8 @@ jobs:
       - run: npm ci
 
       - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
 
       - name: Run database migrations
         run: npx prisma migrate deploy
