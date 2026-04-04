@@ -19,7 +19,7 @@ import { validateBody } from "@/lib/validate";
 import { success, error } from "@/lib/api-response";
 
 const approveSchema = z.object({
-  entryIds: z.array(z.string()).min(1, "至少需選擇一筆工時記錄"),
+  entryIds: z.array(z.string()).min(1, "至少需選擇一筆工時記錄").max(500, "單次最多核准 500 筆工時記錄"),
 });
 
 export const POST = withManager(async (req: NextRequest) => {

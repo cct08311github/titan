@@ -49,8 +49,10 @@ export const DELETE = withManager(async (
   const existing = await prisma.kPI.findUnique({ where: { id } });
   if (!existing) throw new NotFoundError("找不到 KPI");
 
-  await prisma.kPITaskLink.deleteMany({ where: { kpiId: id } });
-  await prisma.kPI.delete({ where: { id } });
+  await prisma.$transaction([
+    prisma.kPITaskLink.deleteMany({ where: { kpiId: id } }),
+    prisma.kPI.delete({ where: { id } }),
+  ]);
   return success({ deleted: true });
 });
 

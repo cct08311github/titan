@@ -4,8 +4,9 @@ import { UserService } from "@/services/user-service";
 import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
 import { updateUserSchema } from "@/validators/user-validators";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
 
@@ -66,15 +67,20 @@ export const PATCH = withAuth(async (
 
   const raw = await req.json();
   // Only allow name updates via self-edit
-  const name = typeof raw.name === "string" ? raw.name.trim() : undefined;
-  if (!name || name.length === 0) {
+  const rawName = typeof raw.name === "string" ? raw.name.trim() : undefined;
+  if (!rawName || rawName.length === 0) {
     return NextResponse.json(
       { ok: false, error: "ValidationError", message: "姓名為必填" },
       { status: 400 }
     );
   }
 
-  const user = await userService.updateUser(id, { name });
+  const cleanName = sanitizeHtml(rawName);
+  if (!cleanName) {
+    return error("ValidationError", "姓名不可為空", 400);
+  }
+
+  const user = await userService.updateUser(id, { name: cleanName });
   return success(user);
 });
 

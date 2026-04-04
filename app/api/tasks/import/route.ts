@@ -46,6 +46,10 @@ export const POST = withManager(async (req: NextRequest) => {
     return error("ValidationError", "Only .xlsx files are supported", 400);
   }
 
+  if (file.size > 10 * 1024 * 1024) {
+    return error("ValidationError", "檔案大小不得超過 10MB", 400);
+  }
+
   const buffer = Buffer.from(await file.arrayBuffer());
 
   // Determine import type from query parameter

@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 // Valid enum values mirrored from Prisma schema
 const VALID_STATUSES = ["BACKLOG", "TODO", "IN_PROGRESS", "REVIEW", "DONE"] as const;
@@ -222,23 +223,30 @@ export class ImportService {
       }
     }
 
-    // Build task data for batch creation
-    const taskData = validRows.map(({ row }) => ({
-      title: row.title,
-      description: row.description || undefined,
-      status: (row.status ?? "BACKLOG") as never,
-      priority: (row.priority ?? "P2") as never,
-      category: (row.category ?? "PLANNED") as never,
-      primaryAssigneeId: row.assigneeEmail
-        ? emailToUserId.get(row.assigneeEmail) ?? null
-        : null,
-      creatorId,
-      dueDate: row.dueDate ? new Date(row.dueDate) : null,
-      estimatedHours:
-        row.estimatedHours !== undefined && !isNaN(row.estimatedHours)
-          ? row.estimatedHours
+    // Build task data for batch creation, sanitizing text fields against XSS
+    const taskData = validRows.flatMap(({ row, index }) => {
+      const title = sanitizeHtml(row.title?.trim() ?? "");
+      if (!title) {
+        errors.push({ rowIndex: index, message: "title 清洗後為空（可能含有不允許的內容）" });
+        return [];
+      }
+      return [{
+        title,
+        description: row.description ? sanitizeHtml(row.description.trim()) || null : undefined,
+        status: (row.status ?? "BACKLOG") as never,
+        priority: (row.priority ?? "P2") as never,
+        category: (row.category ?? "PLANNED") as never,
+        primaryAssigneeId: row.assigneeEmail
+          ? emailToUserId.get(row.assigneeEmail) ?? null
           : null,
-    }));
+        creatorId,
+        dueDate: row.dueDate ? new Date(row.dueDate) : null,
+        estimatedHours:
+          row.estimatedHours !== undefined && !isNaN(row.estimatedHours)
+            ? row.estimatedHours
+            : null,
+      }];
+    });
 
     // Batch create all tasks in a single transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -303,9 +311,9 @@ export class ImportService {
     }
 
     const kpiData = validRows.map((row) => ({
-      code: row.code,
-      title: row.title,
-      description: row.description ?? null,
+      code: sanitizeHtml(row.code),
+      title: sanitizeHtml(row.title),
+      description: row.description ? sanitizeHtml(row.description) || null : null,
       year: row.year,
       target: row.target,
       actual: row.actual ?? 0,
@@ -363,9 +371,9 @@ export class ImportService {
 
     const planData = validRows.map((row) => ({
       year: row.year,
-      title: row.title,
-      description: row.description ?? null,
-      implementationPlan: row.implementationPlan ?? null,
+      title: sanitizeHtml(row.title),
+      description: row.description ? sanitizeHtml(row.description) || null : null,
+      implementationPlan: row.implementationPlan ? sanitizeHtml(row.implementationPlan) || null : null,
       createdBy: creatorId,
     }));
 
