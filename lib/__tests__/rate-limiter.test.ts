@@ -46,11 +46,11 @@ describe("createLoginRateLimiter", () => {
     expect(typeof limiter.consume).toBe("function");
   });
 
-  test("allows up to 5 attempts per minute for unique IP+username key", async () => {
-    const limiter = createLoginRateLimiter({ useMemory: true, points: 5, duration: 60 });
+  test("allows up to 20 attempts per minute for unique IP+username key", async () => {
+    const limiter = createLoginRateLimiter({ useMemory: true, points: 20, duration: 60 });
     const key = "192.168.1.1_testuser";
 
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       await expect(limiter.consume(key)).resolves.toBeDefined();
     }
   });

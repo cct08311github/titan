@@ -25,9 +25,11 @@ import { AuditService } from "@/services/audit-service";
 import { getClientIp } from "@/lib/get-client-ip";
 
 const redis = getRedisClient();
+const isTestEnv = process.env.NODE_ENV === "test" || process.env.E2E_TESTING === "true";
 const loginRateLimiter = createLoginRateLimiter({
   redisClient: redis ?? undefined,
   useMemory: !redis,
+  points: isTestEnv ? 10000 : undefined,
 });
 const accountLockService = new AccountLockService({
   maxFailures: 5,
