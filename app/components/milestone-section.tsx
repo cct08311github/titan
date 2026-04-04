@@ -58,6 +58,9 @@ export function MilestoneSection({ plans }: MilestoneSectionProps) {
 
   // Form state
   const [formPlanId, setFormPlanId] = useState(plans[0]?.id ?? "");
+  useEffect(() => {
+    if (!formPlanId && plans.length > 0) setFormPlanId(plans[0].id);
+  }, [plans, formPlanId]);
   const [formTitle, setFormTitle] = useState("");
   const [formType, setFormType] = useState<MilestoneType>("CUSTOM");
   const [formPlannedEnd, setFormPlannedEnd] = useState("");
@@ -209,7 +212,7 @@ export function MilestoneSection({ plans }: MilestoneSectionProps) {
               {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "建立"}
             </button>
           </div>
-          {formError && <p className="text-xs text-danger">{formError}</p>}
+          {formError && <p className="text-xs text-destructive">{formError}</p>}
         </div>
       )}
 

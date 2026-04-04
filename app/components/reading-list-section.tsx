@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Loader2, X, ChevronRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
@@ -213,9 +213,8 @@ export function ReadingListSection() {
               </thead>
               <tbody>
                 {lists.map((list) => (
-                  <>
+                  <React.Fragment key={list.id}>
                     <tr
-                      key={list.id}
                       className="border-b border-border/20 hover:bg-accent/20 cursor-pointer"
                       onClick={() => toggleExpand(list.id)}
                     >
@@ -289,7 +288,7 @@ export function ReadingListSection() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

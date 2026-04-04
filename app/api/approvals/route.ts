@@ -26,7 +26,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const statusFilter = searchParams.get("status");
   const typeFilter = searchParams.get("type");
 
-  const isManager = session.user.role === "MANAGER";
+  const isManager = session.user.role === "MANAGER" || session.user.role === "ADMIN";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {};
@@ -170,6 +170,9 @@ export const PATCH = withManager(async (req: NextRequest) => {
   const existing = await prisma.approvalRequest.findUnique({ where: { id } });
   if (!existing) {
     return error("NotFound", "Approval request not found", 404);
+  }
+  if (existing.requesterId === session.user.id) {
+    return error("FORBIDDEN", "審核人不得為申請人本身", 403);
   }
   if (existing.status !== "PENDING") {
     return error("ConflictError", "Only PENDING requests can be reviewed", 409);

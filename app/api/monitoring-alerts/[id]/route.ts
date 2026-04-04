@@ -19,6 +19,9 @@ export const PATCH = withAuth(async (req: NextRequest, context: { params: Promis
   const raw = await req.json();
 
   if (raw.action === "acknowledge") {
+    if (session.user.role !== "MANAGER" && session.user.role !== "ADMIN") {
+      return error("FORBIDDEN", "僅限管理員可確認警報", 403);
+    }
     const alert = await service.acknowledgeAlert(id, session.user.id);
     return success(alert);
   }

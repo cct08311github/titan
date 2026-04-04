@@ -6,6 +6,7 @@ import { success } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { parsePagination, buildPaginationMeta } from "@/lib/pagination";
+import { sanitizeMarkdown } from "@/lib/security/sanitize";
 
 /**
  * GET /api/task-templates
@@ -45,6 +46,8 @@ export const POST = withAuth(async (req: NextRequest) => {
   const template = await prisma.taskTemplate.create({
     data: {
       ...body,
+      title: sanitizeMarkdown(body.title),
+      description: body.description !== undefined ? sanitizeMarkdown(body.description) : body.description,
       creatorId: session.user.id,
     },
     include: {

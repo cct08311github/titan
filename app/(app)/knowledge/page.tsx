@@ -202,6 +202,9 @@ export default function KnowledgePage() {
           prev.map((d) => d.id === selectedId ? { ...d, title: updated.title } : d)
         );
         toast.success("文件已儲存");
+      } else {
+        const errBody = await res.json().catch(() => ({}));
+        toast.error(errBody?.message ?? "操作失敗");
       }
     } finally {
       setSaving(false);
@@ -217,6 +220,9 @@ export default function KnowledgePage() {
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
       toast.success("文件已發佈");
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      toast.error(errBody?.message ?? "操作失敗");
     }
   }
 
@@ -229,6 +235,9 @@ export default function KnowledgePage() {
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
       toast.success("已送出審核");
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      toast.error(errBody?.message ?? "操作失敗");
     }
   }
 
@@ -247,6 +256,9 @@ export default function KnowledgePage() {
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
       toast.success("文件已退役");
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      toast.error(errBody?.message ?? "操作失敗");
     }
   }
 
@@ -261,6 +273,9 @@ export default function KnowledgePage() {
       setDocDetail((prev) => prev ? { ...prev, status: updated.status } : prev);
       loadDocs();
       toast.success("文件已歸檔");
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      toast.error(errBody?.message ?? "操作失敗");
     }
   }
 
@@ -314,7 +329,12 @@ export default function KnowledgePage() {
     const ok = await confirmDialog({ title: "確定刪除此文件？", description: "子文件將一起刪除。此操作無法復原", confirmLabel: "確認", variant: "destructive" });
     if (!ok) return;
     const delRes = await fetch(`/api/documents/${id}`, { method: "DELETE" });
-    if (delRes.ok) toast.success("文件已刪除");
+    if (delRes.ok) {
+      toast.success("文件已刪除");
+    } else {
+      const errBody = await delRes.json().catch(() => ({}));
+      toast.error(errBody?.message ?? "操作失敗");
+    }
     if (selectedId === id) setSelectedId(null);
     await loadDocs();
   }
