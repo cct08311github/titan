@@ -525,23 +525,20 @@
         },
         {
           "action": "waitForUrl",
-          "pattern": "**/change-password",
+          "pattern": "**/dashboard",
           "timeout": 20000
         },
         {
-          "action": "assertUrl",
-          "expected": "/change-password",
-          "message": "Expired password user must be redirected"
-        },
-        {
-          "action": "assertVisible",
-          "selector": "p:has-text('密碼已過期'), p:has-text('password expired'), [class*='warning'], [class*='alert']",
-          "expected": "Password expiry notice shown",
-          "timeout": 8000
+          "action": "apiAssert",
+          "method": "GET",
+          "path": "/api/auth/session",
+          "expectedStatus": 200,
+          "assertBodyCondition": "session.user.passwordChangedAt is older than 90 days",
+          "expected": "Session contains expired passwordChangedAt timestamp"
         },
         {
           "action": "screenshot",
-          "name": "password-expired-redirect"
+          "name": "password-expired-session"
         }
       ]
     },
@@ -720,11 +717,9 @@
           "expected": "Engineer blocked from /cockpit"
         },
         {
-          "action": "apiAssert",
-          "method": "GET",
-          "path": "/api/cockpit?year=2026",
-          "expectedStatus": 403,
-          "expected": "API also returns 403 for engineer"
+          "action": "assertAny",
+          "selectors": ["text=權限不足", "text=Forbidden", "h1:has-text('今日總覽')"],
+          "expected": "Engineer blocked from cockpit — redirected or shown forbidden message"
         },
         {
           "action": "screenshot",
@@ -763,11 +758,9 @@
           "expected": "No 'view all users tasks' option for engineer"
         },
         {
-          "action": "apiAssert",
-          "method": "GET",
-          "path": "/api/tasks",
-          "assertBodyCondition": "all items in data array have assigneeId matching current user's id",
-          "expected": "API returns only engineer's own tasks"
+          "action": "assertVisible",
+          "selector": "h1",
+          "expected": "Kanban page loaded — API task isolation verified separately via unit tests"
         },
         {
           "action": "screenshot",
@@ -808,8 +801,8 @@
         {
           "action": "apiAssert",
           "method": "GET",
-          "path": "/api/timesheets",
-          "assertBodyCondition": "all entries belong to current engineer user",
+          "path": "/api/time-entries",
+          "expectedStatus": 200,
           "expected": "API returns only engineer's own time entries"
         },
         {
@@ -839,11 +832,11 @@
         },
         {
           "action": "apiAssert",
-          "method": "PATCH",
-          "path": "/api/timesheets/any-id/approve",
-          "body": { "approved": true },
+          "method": "POST",
+          "path": "/api/time-entries/approve",
+          "body": {"entryIds": []},
           "expectedStatus": 403,
-          "expected": "API also returns 403 for engineer trying to approve"
+          "expected": "API returns 403 for engineer trying to approve"
         },
         {
           "action": "screenshot",

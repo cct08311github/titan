@@ -46,8 +46,8 @@
         },
         {
           "action": "assertVisible",
-          "selector": "text=備份狀態監控與稽核日誌檢視",
-          "expected": "Subtitle visible"
+          "selector": "text=備份狀態",
+          "expected": "Backup status section reference visible in subtitle or content"
         },
         {
           "action": "screenshot",
@@ -724,10 +724,11 @@
         {
           "action": "assertOneVisible",
           "selectors": [
-            "[data-testid=\"bsc-quadrant-grid\"]",
-            "text=/尚無.*年度計畫/"
+            "[data-testid=\"health-alerts\"]",
+            "[data-testid=\"plan-health-card\"]",
+            "text=管理駕駛艙"
           ],
-          "expected": "BSC quadrant grid or empty state for year plan visible"
+          "expected": "Cockpit health alerts or plan health cards visible (redesigned from BSC grid)"
         },
         {
           "action": "assertPageUrl",
@@ -761,41 +762,13 @@
           "value": 2000
         },
         {
-          "action": "conditionalAssert",
-          "condition": {
-            "selector": "[data-testid=\"bsc-quadrant-grid\"]",
-            "exists": true
-          },
-          "thenAssert": [
-            {
-              "action": "assertVisible",
-              "selector": "[data-testid=\"bsc-q1-delivery\"]",
-              "expected": "BSC Q1 delivery quadrant visible"
-            },
-            {
-              "action": "assertVisible",
-              "selector": "[data-testid=\"bsc-q2-quality\"]",
-              "expected": "BSC Q2 quality quadrant visible"
-            },
-            {
-              "action": "assertVisible",
-              "selector": "[data-testid=\"bsc-q3-efficiency\"]",
-              "expected": "BSC Q3 efficiency quadrant visible"
-            },
-            {
-              "action": "assertVisible",
-              "selector": "[data-testid=\"bsc-q4-growth\"]",
-              "expected": "BSC Q4 growth quadrant visible"
-            }
+          "action": "assertOneVisible",
+          "selectors": [
+            "[data-testid=\"health-alerts\"]",
+            "[data-testid=\"plan-health-card\"]",
+            "[data-testid=\"cockpit-page\"]"
           ],
-          "elseAssert": [
-            {
-              "action": "assertVisible",
-              "selector": "text=/尚無.*年度計畫/",
-              "expected": "Empty state shown when no year plan data"
-            }
-          ],
-          "expected": "KPI gauges render as BSC quadrants when plan data exists, else empty state"
+          "expected": "Cockpit dashboard renders with health data (redesigned layout)"
         },
         {
           "action": "click",
