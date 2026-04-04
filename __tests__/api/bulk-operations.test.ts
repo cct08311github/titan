@@ -16,12 +16,20 @@ import { createMockRequest } from "../utils/test-utils";
 const mockTaskFindMany = jest.fn();
 const mockTaskUpdateMany = jest.fn();
 
+const mockTx = {
+  task: {
+    findMany: (...args: unknown[]) => mockTaskFindMany(...args),
+    updateMany: (...args: unknown[]) => mockTaskUpdateMany(...args),
+  },
+};
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     task: {
       findMany: (...args: unknown[]) => mockTaskFindMany(...args),
       updateMany: (...args: unknown[]) => mockTaskUpdateMany(...args),
     },
+    $transaction: (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx),
   },
 }));
 
@@ -63,8 +71,7 @@ describe("PATCH /api/tasks/bulk", () => {
     expect(res.status).toBe(401);
   });
 
-  // TODO: #775 — prisma.$transaction mock missing after dependency update
-  it.skip("manager can bulk update any tasks", async () => {
+  it("manager can bulk update any tasks", async () => {
     mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
     mockTaskUpdateMany.mockResolvedValue({ count: 2 });
     const req = createMockRequest("/api/tasks/bulk", {
@@ -78,8 +85,7 @@ describe("PATCH /api/tasks/bulk", () => {
     expect(json.data.updated).toBe(2);
   });
 
-  // TODO: #775 — prisma.$transaction mock missing after dependency update
-  it.skip("engineer can update own tasks", async () => {
+  it("engineer can update own tasks", async () => {
     mockGetServerSession.mockResolvedValue(ENGINEER_SESSION);
     mockTaskFindMany.mockResolvedValue([
       { id: "t1", primaryAssigneeId: "eng-1", backupAssigneeId: null },
@@ -106,6 +112,25 @@ describe("PATCH /api/tasks/bulk", () => {
     });
     const res = await PATCH(req);
     expect(res.status).toBe(403);
+  });
+
+  it("admin can bulk update any tasks (skips ownership check)", async () => {
+    mockGetServerSession.mockResolvedValue({
+      user: { id: "adm-1", name: "Admin", email: "admin@test.com", role: "ADMIN" },
+      expires: "2099-01-01",
+    });
+    mockTaskUpdateMany.mockResolvedValue({ count: 3 });
+    const req = createMockRequest("/api/tasks/bulk", {
+      method: "PATCH",
+      body: { taskIds: ["t1", "t2", "t3"], updates: { status: "DONE" } },
+    });
+    const res = await PATCH(req);
+    const json = await res.json();
+    expect(res.status).toBe(200);
+    expect(json.ok).toBe(true);
+    expect(json.data.updated).toBe(3);
+    // ADMIN should NOT trigger findMany ownership check
+    expect(mockTaskFindMany).not.toHaveBeenCalled();
   });
 
   it("rejects empty taskIds array", async () => {

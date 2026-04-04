@@ -5,6 +5,7 @@ import { success } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { ForbiddenError } from "@/services/errors";
+import { hasMinimumRole } from "@/lib/auth/permissions";
 import { z } from "zod";
 
 const bulkUpdateSchema = z.object({
@@ -29,30 +30,31 @@ export const PATCH = withAuth(async (req: NextRequest) => {
   const raw = await req.json();
   const { taskIds, updates } = validateBody(bulkUpdateSchema, raw);
 
-  // ENGINEER ownership check: verify all tasks are assigned to them
-  if (session.user.role !== "MANAGER") {
-    const tasks = await prisma.task.findMany({
-      where: { id: { in: taskIds } },
-      select: { id: true, primaryAssigneeId: true, backupAssigneeId: true },
-    });
-
-    const unauthorized = tasks.filter(
-      (t) => t.primaryAssigneeId !== session.user.id && t.backupAssigneeId !== session.user.id
-    );
-
-    if (unauthorized.length > 0) {
-      throw new ForbiddenError("包含未被指派給你的任務，無法批量修改");
-    }
-  }
-
   // Build the update data object, only including defined fields
   const data: Record<string, unknown> = {};
   if (updates.status !== undefined) data.status = updates.status;
   if (updates.priority !== undefined) data.priority = updates.priority;
   if (updates.primaryAssigneeId !== undefined) data.primaryAssigneeId = updates.primaryAssigneeId;
 
-  // Wrap ownership check + update in a transaction for atomicity
+  const isManagerOrAbove = hasMinimumRole(session.user.role, "MANAGER");
+
+  // Atomic ownership check + update inside a single transaction to prevent TOCTOU race
   const result = await prisma.$transaction(async (tx) => {
+    if (!isManagerOrAbove) {
+      const tasks = await tx.task.findMany({
+        where: { id: { in: taskIds } },
+        select: { id: true, primaryAssigneeId: true, backupAssigneeId: true },
+      });
+
+      const unauthorized = tasks.filter(
+        (t) => t.primaryAssigneeId !== session.user.id && t.backupAssigneeId !== session.user.id
+      );
+
+      if (unauthorized.length > 0) {
+        throw new ForbiddenError("包含未被指派給你的任務，無法批量修改");
+      }
+    }
+
     return tx.task.updateMany({
       where: { id: { in: taskIds } },
       data,
