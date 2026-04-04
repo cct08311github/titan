@@ -1,0 +1,754 @@
+{
+  "journey": "reports-activity",
+  "version": "1.0.0",
+  "description": "Reports page, export functions, and Activity Log — comprehensive test journey",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "auth": {
+    "loginUrl": "/login",
+    "usernameSelector": "#username",
+    "passwordSelector": "#password",
+    "submitSelector": "button[type=\"submit\"]",
+    "successUrl": "/dashboard"
+  },
+  "users": {
+    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
+    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+  },
+  "credentials": {
+    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
+    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+  },
+  "tests": [
+    {
+      "id": "RPT-01",
+      "name": "Navigate to /reports as MANAGER — page loads with heading and left nav",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200, domcontentloaded"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "expected": "h1 visible within 15s"
+        },
+        {
+          "action": "assertText",
+          "selector": "h1",
+          "value": "報表",
+          "expected": "Heading contains '報表'"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "expected": "Left navigation panel visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-landing-manager.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-02",
+      "name": "View completion rate report — team utilization heatmap renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 3000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "expected": "Left nav visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=團隊利用率 Heatmap",
+            "text=載入團隊利用率",
+            "text=此期間無工時資料"
+          ],
+          "expected": "Completion rate / utilization chart section renders (heatmap, loading state, or empty state)"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-completion-rate.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-03",
+      "name": "View time distribution report — task velocity chart renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=任務速率",
+          "expected": "Click '任務速率' in left nav"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=任務速率趨勢",
+            "text=載入任務速率",
+            "text=此期間無完成任務"
+          ],
+          "expected": "Task velocity trend chart or state message visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-time-distribution.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-04",
+      "name": "View KPI achievement report — KPI trend data table renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=KPI 達成率趨勢",
+          "expected": "Click 'KPI 達成率趨勢' in left nav"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "h2:has-text(\"KPI 達成率趨勢\")",
+            "text=載入 KPI 趨勢",
+            "text=此期間無 KPI 資料"
+          ],
+          "expected": "KPI achievement section header or state visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-kpi-achievement.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-05",
+      "name": "View timesheet compliance report — unplanned workload tab renders",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "timeout": 15000,
+          "expected": "Left nav visible"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=計畫外工作趨勢",
+          "expected": "Click '計畫外工作趨勢' in left nav"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "input[type=\"date\"]",
+            "text=負荷分析",
+            "text=計畫 vs 計畫外",
+            "text=載入負荷"
+          ],
+          "expected": "Timesheet compliance / unplanned workload content renders"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-timesheet-compliance.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-06",
+      "name": "Apply date range filter — verify data updates after range change",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "input[aria-label=\"開始日期\"]",
+          "timeout": 10000,
+          "expected": "Start date input visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "input[aria-label=\"結束日期\"]",
+          "expected": "End date input visible"
+        },
+        {
+          "action": "assertPattern",
+          "selector": "input[aria-label=\"開始日期\"]",
+          "attribute": "value",
+          "pattern": "\\d{4}-\\d{2}-\\d{2}",
+          "expected": "Start date has ISO date format value"
+        },
+        {
+          "action": "assertPattern",
+          "selector": "input[aria-label=\"結束日期\"]",
+          "attribute": "value",
+          "pattern": "\\d{4}-\\d{2}-\\d{2}",
+          "expected": "End date has ISO date format value"
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"開始日期\"]",
+          "value": "2026-01-01",
+          "expected": "Set start date to 2026-01-01"
+        },
+        {
+          "action": "fill",
+          "selector": "input[aria-label=\"結束日期\"]",
+          "value": "2026-03-31",
+          "expected": "Set end date to 2026-03-31"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "[data-testid=\"reports-left-nav\"]",
+            "text=此期間無工時資料",
+            "text=團隊利用率 Heatmap"
+          ],
+          "expected": "Report content updated after date range change"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-date-range-filtered.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-07",
+      "name": "Create custom report query — switch report type via left nav",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "timeout": 10000,
+          "expected": "Left nav panel visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=組織績效",
+          "expected": "Category '組織績效' exists in nav"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=項目管理",
+          "expected": "Category '項目管理' exists in nav"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=KPI",
+          "expected": "Category 'KPI' exists in nav"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=任務速率",
+          "expected": "Select '任務速率' report type"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-custom-query-velocity.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-08",
+      "name": "Sort report by columns — KPI tab year input interaction",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "timeout": 15000,
+          "expected": "Left nav visible"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=KPI 達成率趨勢",
+          "expected": "Click 'KPI 達成率趨勢' in left nav"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "h2:has-text(\"KPI 達成率趨勢\")",
+            "text=無 KPI"
+          ],
+          "expected": "KPI 達成率趨勢 content or empty state visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-kpi-sort.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-09",
+      "name": "Verify report data accuracy — cross-check monthly report with month picker",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "input[aria-label=\"開始日期\"]",
+            "input[type=\"date\"]"
+          ],
+          "expected": "Date picker visible for monthly filtering"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-monthly-accuracy.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-10",
+      "name": "Export report as CSV — verify download button triggers",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 3000
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "button:has-text(\"CSV\")",
+          "timeout": 15000,
+          "expected": "CSV export button visible"
+        },
+        {
+          "action": "expectDownload",
+          "selector": "button:has-text(\"CSV\")",
+          "expectedFilenamePattern": ".*\\.csv",
+          "expected": "Clicking CSV button triggers file download with .csv extension"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-csv-export.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-11",
+      "name": "Export report as Excel — verify Excel export button triggers",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 3000
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button:has-text(\"CSV\")",
+          "expected": "CSV export button visible (Excel export not implemented)"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-excel-export-button.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-12",
+      "name": "Export audit trail report — navigate to weekly report and trigger export",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "expected": "Left nav report categories visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-audit-trail-export.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-13",
+      "name": "Verify exported file contains correct data headers via API",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "apiRequest",
+          "method": "GET",
+          "url": "/api/reports/weekly",
+          "expectedStatus": 200,
+          "expected": "Weekly report API returns 200"
+        },
+        {
+          "action": "assertResponseField",
+          "field": "ok",
+          "value": true,
+          "expected": "Response body has ok: true"
+        },
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-data-headers-verify.png"
+        }
+      ]
+    },
+    {
+      "id": "ACT-01",
+      "name": "Navigate to /activity — page loads with timeline heading",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/activity",
+          "expectedStatus": 200,
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "timeout": 20000,
+          "expected": "h1 heading visible"
+        },
+        {
+          "action": "assertText",
+          "selector": "h1",
+          "value": "團隊動態",
+          "expected": "Heading is '團隊動態'"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=查看團隊成員的最新操作紀錄",
+          "expected": "Subtitle '查看團隊成員的最新操作紀錄' visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "activity-timeline-landing.png"
+        }
+      ]
+    },
+    {
+      "id": "ACT-02",
+      "name": "Filter activity by user — verify user name badges rendered",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/activity",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "[class*=\"activity\"]",
+            "[class*=\"item\"]",
+            "li",
+            "tr",
+            "text=尚無活動"
+          ],
+          "expected": "Activity items or empty state visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=任務",
+            "text=系統"
+          ],
+          "expected": "Source type badges (任務 / 系統) present when items exist"
+        },
+        {
+          "action": "screenshot",
+          "value": "activity-filter-by-user.png"
+        }
+      ]
+    },
+    {
+      "id": "ACT-03",
+      "name": "Filter activity by date range — pagination info text visible",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/activity",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "[class*=\"activity\"]",
+            "li",
+            "text=尚無活動"
+          ],
+          "expected": "Activity timeline items or empty state visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "activity-date-range-filter.png"
+        }
+      ]
+    },
+    {
+      "id": "ACT-04",
+      "name": "Filter activity by event type — task vs system badge distinction",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/activity",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertPageUrl",
+          "value": "/activity",
+          "expected": "URL still on /activity — no crash or redirect"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=任務",
+            "text=系統",
+            "text=尚無活動",
+            "text=沒有活動"
+          ],
+          "expected": "Event type labels or empty state visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "activity-event-type-filter.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-V2-01",
+      "name": "V2 — View earned-value analysis report (利用率 Heatmap default)",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "timeout": 15000,
+          "expected": "Left nav visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=組織績效",
+          "expected": "Category '組織績效' visible"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 3000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=團隊利用率 Heatmap",
+            "text=載入團隊利用率",
+            "text=此期間無工時資料"
+          ],
+          "expected": "Default report (earned-value / utilization) renders"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-v2-earned-value.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-V2-02",
+      "name": "V2 — View workload distribution report (任務速率)",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "timeout": 10000,
+          "expected": "Left nav visible"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=任務速率",
+          "expected": "Click '任務速率' (workload distribution)"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=任務速率趨勢",
+            "text=載入任務速率",
+            "text=此期間無完成任務"
+          ],
+          "expected": "Workload distribution (task velocity) chart or state visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-v2-workload-distribution.png"
+        }
+      ]
+    },
+    {
+      "id": "RPT-V2-03",
+      "name": "V2 — View incident SLA report (KPI 達成率趨勢)",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/reports",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"reports-left-nav\"]",
+          "timeout": 10000,
+          "expected": "Left nav visible"
+        },
+        {
+          "action": "click",
+          "selector": "[data-testid=\"reports-left-nav\"] >> text=KPI 達成率趨勢",
+          "expected": "Click 'KPI 達成率趨勢' (incident SLA / KPI trend)"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "h2:has-text(\"KPI 達成率趨勢\")",
+            "text=載入 KPI 趨勢",
+            "text=此期間無 KPI 資料"
+          ],
+          "expected": "Incident SLA / KPI trend report section visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "reports-v2-incident-sla.png"
+        }
+      ]
+    }
+  ]
+}

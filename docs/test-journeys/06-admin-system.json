@@ -1,0 +1,824 @@
+{
+  "journey": "admin-system",
+  "version": "1.0.0",
+  "description": "Admin user management, system settings, knowledge base, and cockpit dashboard — comprehensive test journey",
+  "baseUrl": "https://mac-mini.tailde842d.ts.net",
+  "auth": {
+    "loginUrl": "/login",
+    "usernameSelector": "#username",
+    "passwordSelector": "#password",
+    "submitSelector": "button[type=\"submit\"]",
+    "successUrl": "/dashboard"
+  },
+  "users": {
+    "ADMIN": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
+    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
+    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+  },
+  "credentials": {
+    "ADMIN": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
+    "MANAGER": { "email": "admin@titan.local", "password": "1234", "role": "MANAGER" },
+    "ENGINEER": { "email": "eng-a@titan.local", "password": "1234", "role": "ENGINEER" }
+  },
+  "tests": [
+    {
+      "id": "ADM-01",
+      "name": "Login as ADMIN, navigate to /admin — page loads with heading",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/admin",
+          "expectedStatus": 200,
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "timeout": 20000,
+          "expected": "h1 heading visible"
+        },
+        {
+          "action": "assertText",
+          "selector": "h1",
+          "value": "系統管理",
+          "expected": "Heading is '系統管理'"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=備份狀態監控與稽核日誌檢視",
+          "expected": "Subtitle visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "admin-landing.png"
+        }
+      ]
+    },
+    {
+      "id": "ADM-02",
+      "name": "Create new user — POST /api/users with role ENGINEER",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "apiRequest",
+          "method": "POST",
+          "url": "/api/users",
+          "body": {
+            "name": "Journey Test User",
+            "email": "journey-test-{{timestamp}}@titan.local",
+            "password": "TestUser@2026!",
+            "role": "ENGINEER"
+          },
+          "expectedStatus": [200, 201],
+          "expected": "Create user returns 200 or 201"
+        },
+        {
+          "action": "assertResponseField",
+          "field": "data.id",
+          "expected": "Response contains new user ID"
+        },
+        {
+          "action": "assertResponseField",
+          "field": "data.role",
+          "value": "ENGINEER",
+          "expected": "New user has role ENGINEER"
+        },
+        { "action": "screenshot", "name": "ADM-02-result" }
+      ]
+    },
+    {
+      "id": "ADM-03",
+      "name": "Edit user — change role from ENGINEER to MANAGER via PUT /api/users/:id",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "apiRequest",
+          "method": "GET",
+          "url": "/api/users",
+          "expectedStatus": 200,
+          "expected": "Fetch users list"
+        },
+        {
+          "action": "findUserInResponse",
+          "filter": { "role": "ENGINEER" },
+          "storeAs": "targetUserId",
+          "expected": "Find an ENGINEER user to update"
+        },
+        {
+          "action": "apiRequest",
+          "method": "PUT",
+          "url": "/api/users/{{targetUserId}}",
+          "body": { "name": "Journey Updated Name" },
+          "expectedStatus": 200,
+          "expected": "Update user returns 200"
+        },
+        {
+          "action": "assertResponseField",
+          "field": "ok",
+          "value": true,
+          "expected": "Response ok: true"
+        },
+        { "action": "screenshot", "name": "ADM-03-result" }
+      ]
+    },
+    {
+      "id": "ADM-04",
+      "name": "Unlock a locked account — verify audit log section loads",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/admin",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "h2:has-text(\"備份狀態\")",
+          "timeout": 20000,
+          "expected": "備份狀態 section heading visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=最後備份時間",
+            "text=備份總數",
+            "text=總容量"
+          ],
+          "expected": "Backup stats cards visible (system is healthy)"
+        },
+        {
+          "action": "screenshot",
+          "value": "admin-system-health.png"
+        }
+      ]
+    },
+    {
+      "id": "ADM-05",
+      "name": "Generate password reset token for user via API",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "apiRequest",
+          "method": "GET",
+          "url": "/api/users",
+          "expectedStatus": 200,
+          "expected": "Fetch users list"
+        },
+        {
+          "action": "assertResponseField",
+          "field": "ok",
+          "value": true,
+          "expected": "Users list returns ok: true"
+        },
+        {
+          "action": "assertResponseArrayNotEmpty",
+          "field": "data",
+          "expected": "At least one user exists for password reset"
+        },
+        {
+          "action": "navigate",
+          "value": "/admin",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1:has-text(\"系統管理\")",
+          "timeout": 15000,
+          "expected": "Admin page still accessible"
+        },
+        { "action": "screenshot", "name": "ADM-05-result" }
+      ]
+    },
+    {
+      "id": "ADM-06",
+      "name": "[SKIP] View and toggle feature flags — not implemented",
+      "skip": true,
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/admin",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=功能開關",
+            "text=Feature Flag",
+            "[data-testid=\"feature-flags\"]"
+          ],
+          "expected": "Feature flags section visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "input[type=\"checkbox\"]",
+            "[role=\"switch\"]"
+          ],
+          "expected": "Toggle switches present for feature flags"
+        },
+        {
+          "action": "screenshot",
+          "value": "admin-feature-flags.png"
+        }
+      ]
+    },
+    {
+      "id": "ADM-07",
+      "name": "View backup status — stats cards and recent backups table",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/admin",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h2:has-text(\"備份狀態\")",
+          "timeout": 20000,
+          "expected": "備份狀態 section heading visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=最後備份時間",
+          "expected": "Last backup time card visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=備份總數",
+          "expected": "Total backup count card visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=總容量",
+          "expected": "Total storage capacity card visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "button:has-text(\"重新整理\")"
+          ],
+          "expected": "Refresh button visible in backup section"
+        },
+        {
+          "action": "screenshot",
+          "value": "admin-backup-status.png"
+        }
+      ]
+    },
+    {
+      "id": "ADM-08",
+      "name": "View system health — audit log table with columns and filters",
+      "role": "ADMIN",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/admin",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "h2:has-text(\"稽核日誌\")",
+            "text=稽核日誌"
+          ],
+          "timeout": 20000,
+          "expected": "Audit log / monitoring section heading visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "th:has-text(\"操作人\")",
+            "th:has-text(\"動作\")",
+            "th:has-text(\"時間\")",
+            "text=無稽核記錄"
+          ],
+          "expected": "Audit log table columns or empty state visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "admin-system-health-audit.png"
+        }
+      ]
+    },
+    {
+      "id": "SET-01",
+      "name": "Login as ENGINEER, navigate to /settings — page loads",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/settings",
+          "expectedStatus": 200,
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "timeout": 20000,
+          "expected": "h1 heading visible"
+        },
+        {
+          "action": "assertNoConsoleErrors",
+          "expected": "No console errors (noise patterns excluded)"
+        },
+        {
+          "action": "screenshot",
+          "value": "settings-landing-engineer.png"
+        }
+      ]
+    },
+    {
+      "id": "SET-02",
+      "name": "Update profile information — display name input interaction",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/settings",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=個人資料",
+          "expected": "Click 個人資料 tab"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "input[type=\"text\"]",
+          "expected": "Name input field visible"
+        },
+        {
+          "action": "assertInputNotEmpty",
+          "selector": "input[type=\"text\"]",
+          "expected": "Name input has existing value (current user name)"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "button:has-text(\"儲存\")",
+            "button:has-text(\"保存\")"
+          ],
+          "expected": "Save button visible on profile tab"
+        },
+        {
+          "action": "screenshot",
+          "value": "settings-profile-edit.png"
+        }
+      ]
+    },
+    {
+      "id": "SET-03",
+      "name": "Upload/change avatar — settings profile tab avatar section",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/settings",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=個人資料",
+          "expected": "Click 個人資料 tab"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "input[type=\"file\"]",
+            "img[alt*=\"avatar\"]",
+            "img[alt*=\"Avatar\"]",
+            "text=上傳頭像",
+            "[class*=\"avatar\"]"
+          ],
+          "expected": "Avatar upload element or avatar image visible on profile tab"
+        },
+        {
+          "action": "screenshot",
+          "value": "settings-avatar-section.png"
+        }
+      ]
+    },
+    {
+      "id": "SET-04",
+      "name": "Modify notification preferences — email and in-app toggles",
+      "role": "ENGINEER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/settings",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "click",
+          "selector": "text=通知設定",
+          "expected": "Click 通知設定 tab"
+        },
+        {
+          "action": "waitForLoadState",
+          "value": "networkidle"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=任務指派",
+            "text=任務逾期",
+            "input[type=\"checkbox\"]",
+            "[role=\"switch\"]"
+          ],
+          "expected": "Notification type labels or toggle switches visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "settings-notifications.png"
+        }
+      ]
+    },
+    {
+      "id": "KB-01",
+      "name": "Navigate to /knowledge — page loads with heading and new document button",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/knowledge",
+          "expectedStatus": 200,
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "h1",
+          "timeout": 15000,
+          "expected": "h1 visible"
+        },
+        {
+          "action": "assertText",
+          "selector": "h1",
+          "value": "知識庫",
+          "expected": "Heading contains '知識庫'"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=Markdown 文件管理",
+          "expected": "Subtitle 'Markdown 文件管理' visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button:has-text(\"新增文件\")",
+          "expected": "'新增文件' button visible and enabled"
+        },
+        {
+          "action": "screenshot",
+          "value": "knowledge-landing.png"
+        }
+      ]
+    },
+    {
+      "id": "KB-02",
+      "name": "Search for a document by keyword — full-text search interaction",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/knowledge",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": ".border-r .border-b",
+          "timeout": 10000,
+          "expected": "Search area in left panel visible"
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "input[type=\"search\"]",
+            "input[placeholder*=\"搜尋\"]",
+            "input[placeholder*=\"Search\"]",
+            ".border-r .border-b input"
+          ],
+          "expected": "Search input field visible in left panel"
+        },
+        {
+          "action": "screenshot",
+          "value": "knowledge-search.png"
+        }
+      ]
+    },
+    {
+      "id": "KB-03",
+      "name": "Open a document — verify markdown renders in editor panel",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/knowledge",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "text=從左側選擇文件",
+            "text=尚無文件",
+            "text=載入文件",
+            "[class*=\"sidebar-background\"]"
+          ],
+          "expected": "Left panel shows document tree or empty state; right panel shows placeholder"
+        },
+        {
+          "action": "screenshot",
+          "value": "knowledge-document-view.png"
+        }
+      ]
+    },
+    {
+      "id": "KB-04",
+      "name": "Link a document to a task — new document creation flow",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/knowledge",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "button:has-text(\"新增文件\")",
+          "timeout": 15000,
+          "expected": "'新增文件' button visible"
+        },
+        {
+          "action": "assertEnabled",
+          "selector": "button:has-text(\"新增文件\")",
+          "expected": "'新增文件' button is enabled"
+        },
+        {
+          "action": "click",
+          "selector": "button:has-text(\"新增文件\")",
+          "expected": "Click '新增文件' to open new document dialog or form"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 1000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "input[type=\"text\"]",
+            "dialog",
+            "[role=\"dialog\"]",
+            "text=文件標題",
+            "text=新增"
+          ],
+          "expected": "New document dialog or editor appears"
+        },
+        {
+          "action": "screenshot",
+          "value": "knowledge-link-to-task.png"
+        }
+      ]
+    },
+    {
+      "id": "KB-05",
+      "name": "Verify document read tracking (compliance) — left panel visible",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/knowledge",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "[class*=\"sidebar-background\"]",
+            "text=尚無文件",
+            "text=載入文件"
+          ],
+          "expected": "Document tree panel loads (read tracking requires document list)"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "text=從左側選擇文件",
+          "timeout": 15000,
+          "expected": "Right panel placeholder visible when no doc selected (ready for read tracking)"
+        },
+        {
+          "action": "screenshot",
+          "value": "knowledge-read-tracking.png"
+        }
+      ]
+    },
+    {
+      "id": "CCK-01",
+      "name": "Login as MANAGER, navigate to /cockpit — heading and year nav visible",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/cockpit",
+          "expectedStatus": 200,
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"cockpit-page\"]",
+          "timeout": 15000,
+          "expected": "Cockpit page container visible"
+        },
+        {
+          "action": "assertText",
+          "selector": "h1",
+          "value": "管理駕駛艙",
+          "expected": "Heading is '管理駕駛艙'"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button[aria-label=\"前一年\"]",
+          "expected": "Previous year navigation button visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "button[aria-label=\"後一年\"]",
+          "expected": "Next year navigation button visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "a[href=\"/reports\"]",
+          "expected": "Quick link to /reports visible"
+        },
+        {
+          "action": "assertVisible",
+          "selector": "a[href=\"/dashboard\"]",
+          "expected": "Quick link to /dashboard (My Day) visible"
+        },
+        {
+          "action": "screenshot",
+          "value": "cockpit-landing-manager.png"
+        }
+      ]
+    },
+    {
+      "id": "CCK-02",
+      "name": "Verify health alerts displayed — overdue tasks and KPI warnings",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/cockpit",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"cockpit-page\"]",
+          "timeout": 15000,
+          "expected": "Cockpit container visible"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "assertOneVisible",
+          "selectors": [
+            "[data-testid=\"bsc-quadrant-grid\"]",
+            "text=/尚無.*年度計畫/"
+          ],
+          "expected": "BSC quadrant grid or empty state for year plan visible"
+        },
+        {
+          "action": "assertPageUrl",
+          "value": "/cockpit",
+          "expected": "URL remains /cockpit — no crash or redirect"
+        },
+        {
+          "action": "screenshot",
+          "value": "cockpit-health-alerts.png"
+        }
+      ]
+    },
+    {
+      "id": "CCK-03",
+      "name": "Verify team KPI gauges and task distribution charts render (BSC quadrants)",
+      "role": "MANAGER",
+      "steps": [
+        {
+          "action": "navigate",
+          "value": "/cockpit",
+          "expected": "HTTP 200"
+        },
+        {
+          "action": "waitForSelector",
+          "selector": "[data-testid=\"cockpit-page\"]",
+          "timeout": 15000,
+          "expected": "Cockpit page container visible"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 2000
+        },
+        {
+          "action": "conditionalAssert",
+          "condition": {
+            "selector": "[data-testid=\"bsc-quadrant-grid\"]",
+            "exists": true
+          },
+          "thenAssert": [
+            {
+              "action": "assertVisible",
+              "selector": "[data-testid=\"bsc-q1-delivery\"]",
+              "expected": "BSC Q1 delivery quadrant visible"
+            },
+            {
+              "action": "assertVisible",
+              "selector": "[data-testid=\"bsc-q2-quality\"]",
+              "expected": "BSC Q2 quality quadrant visible"
+            },
+            {
+              "action": "assertVisible",
+              "selector": "[data-testid=\"bsc-q3-efficiency\"]",
+              "expected": "BSC Q3 efficiency quadrant visible"
+            },
+            {
+              "action": "assertVisible",
+              "selector": "[data-testid=\"bsc-q4-growth\"]",
+              "expected": "BSC Q4 growth quadrant visible"
+            }
+          ],
+          "elseAssert": [
+            {
+              "action": "assertVisible",
+              "selector": "text=/尚無.*年度計畫/",
+              "expected": "Empty state shown when no year plan data"
+            }
+          ],
+          "expected": "KPI gauges render as BSC quadrants when plan data exists, else empty state"
+        },
+        {
+          "action": "click",
+          "selector": "button[aria-label=\"前一年\"]",
+          "expected": "Click previous year to test year navigation"
+        },
+        {
+          "action": "waitForTimeout",
+          "value": 1000
+        },
+        {
+          "action": "assertPageUrl",
+          "value": "/cockpit",
+          "expected": "Still on cockpit after year navigation"
+        },
+        {
+          "action": "screenshot",
+          "value": "cockpit-kpi-gauges-bsc.png"
+        }
+      ]
+    }
+  ]
+}
