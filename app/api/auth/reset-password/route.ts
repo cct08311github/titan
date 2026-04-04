@@ -13,6 +13,7 @@
  */
 import { NextRequest } from "next/server";
 import { hash } from "bcryptjs";
+import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { success, error } from "@/lib/api-response";
 import { isPasswordValid, PASSWORD_POLICY_DESCRIPTION } from "@/lib/password-policy";
@@ -51,11 +52,14 @@ export async function POST(req: NextRequest) {
     return error("InvalidTokenError", "重設碼無效或已過期", 400);
   }
 
+  // Hash submitted token before querying — tokens are stored as SHA-256 hashes
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+
   // Find valid, unused token
   const resetToken = await prisma.passwordResetToken.findFirst({
     where: {
       userId: user.id,
-      token,
+      token: tokenHash,   // Compare by hash
       usedAt: null,
       expiresAt: { gt: new Date() },
     },

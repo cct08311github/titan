@@ -12,7 +12,7 @@
  * Authorization: MANAGER only
  */
 import { NextRequest } from "next/server";
-import { randomInt } from "crypto";
+import { randomBytes, createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
@@ -25,8 +25,8 @@ const TOKEN_EXPIRY_MINUTES = 30;
 const auditService = new AuditService(prisma);
 
 function generateOTP(): string {
-  // 6-digit numeric OTP
-  return String(randomInt(100000, 999999));
+  // Cryptographically secure 32-byte hex token (256 bits of entropy)
+  return randomBytes(32).toString("hex");
 }
 
 export const POST = withManager(async (req: NextRequest) => {
@@ -66,12 +66,13 @@ export const POST = withManager(async (req: NextRequest) => {
 
   // Generate new OTP
   const token = generateOTP();
+  const tokenHash = createHash("sha256").update(token).digest("hex");
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_MINUTES * 60 * 1000);
 
   await prisma.passwordResetToken.create({
     data: {
       userId: body.userId,
-      token,
+      token: tokenHash,   // Store hash, not plaintext
       expiresAt,
       createdBy: adminId,
     },
