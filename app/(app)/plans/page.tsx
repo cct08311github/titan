@@ -7,6 +7,7 @@ import { extractItems, extractData } from "@/lib/api-client";
 import { PlanTree } from "@/app/components/plan-tree";
 import { TaskDetailModal } from "@/app/components/task-detail-modal";
 import { PageEmpty } from "@/app/components/page-states";
+import { MilestoneSection } from "@/app/components/milestone-section";
 
 type GoalStatus = "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 type TaskStatus = "BACKLOG" | "TODO" | "IN_PROGRESS" | "REVIEW" | "DONE";
@@ -41,6 +42,24 @@ type AnnualPlan = {
   progressPct: number;
   archivedAt?: string | null;
   monthlyGoals: MonthlyGoal[];
+};
+
+const GOAL_STATUS_LABEL: Record<GoalStatus, string> = {
+  NOT_STARTED: "未開始", IN_PROGRESS: "進行中", COMPLETED: "已完成", CANCELLED: "已取消",
+};
+
+const GOAL_STATUS_COLOR: Record<GoalStatus, string> = {
+  NOT_STARTED: "text-muted-foreground",
+  IN_PROGRESS: "text-yellow-400",
+  COMPLETED: "text-emerald-400",
+  CANCELLED: "text-rose-400",
+};
+
+const GOAL_TRANSITIONS: Record<GoalStatus, GoalStatus[]> = {
+  NOT_STARTED: ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS: ["COMPLETED", "CANCELLED"],
+  COMPLETED: [],
+  CANCELLED: [],
 };
 
 const statusLabels: Record<TaskStatus, string> = {
@@ -242,6 +261,26 @@ export default function PlansPage() {
       }
     } finally {
       setSavingRetro(false);
+    }
+  }
+
+  const [updatingGoalStatus, setUpdatingGoalStatus] = useState(false);
+
+  async function updateGoalStatus(status: GoalStatus) {
+    if (!selectedGoal) return;
+    setUpdatingGoalStatus(true);
+    try {
+      const res = await fetch(`/api/goals/${selectedGoal.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        setSelectedGoal((prev) => prev ? { ...prev, status } : prev);
+        fetchPlans();
+      }
+    } finally {
+      setUpdatingGoalStatus(false);
     }
   }
 
@@ -561,6 +600,11 @@ export default function PlansPage() {
         <LinkedProjects key={plan.id} planYear={plan.year} planTitle={plan.title} />
       ))}
 
+      {/* Milestones */}
+      {!loading && plans.filter(p => !p.archivedAt).length > 0 && (
+        <MilestoneSection plans={plans.filter(p => !p.archivedAt).map(p => ({ id: p.id, year: p.year, title: p.title }))} />
+      )}
+
       {/* Goal detail panel */}
       {selectedGoal && (
         <div className="bg-card border border-border rounded-xl">
@@ -572,7 +616,29 @@ export default function PlansPage() {
               </h2>
             </div>
             <div className="flex items-center gap-3">
-              {goalLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {(goalLoading || updatingGoalStatus) && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {/* Goal status dropdown */}
+              {GOAL_TRANSITIONS[selectedGoal.status].length > 0 ? (
+                <select
+                  aria-label="目標狀態"
+                  value={selectedGoal.status}
+                  onChange={(e) => updateGoalStatus(e.target.value as GoalStatus)}
+                  disabled={updatingGoalStatus}
+                  className={cn(
+                    selectCls, "text-xs py-1 px-2 disabled:opacity-50",
+                    GOAL_STATUS_COLOR[selectedGoal.status]
+                  )}
+                >
+                  <option value={selectedGoal.status}>{GOAL_STATUS_LABEL[selectedGoal.status]}</option>
+                  {GOAL_TRANSITIONS[selectedGoal.status].map((s) => (
+                    <option key={s} value={s}>{GOAL_STATUS_LABEL[s]}</option>
+                  ))}
+                </select>
+              ) : (
+                <span className={cn("text-xs font-medium px-2 py-1", GOAL_STATUS_COLOR[selectedGoal.status])}>
+                  {GOAL_STATUS_LABEL[selectedGoal.status]}
+                </span>
+              )}
               <button
                 onClick={() => setSelectedGoal(null)}
                 className="text-muted-foreground hover:text-foreground transition-colors"
