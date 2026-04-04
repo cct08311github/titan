@@ -17,6 +17,8 @@ import { SpaceSidebar } from "@/app/components/space-sidebar";
 import { DiffView } from "@/app/components/diff-view";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { formatDate } from "@/lib/format";
+import { ReadingListSection } from "@/app/components/reading-list-section";
+import { DocumentTemplatePicker } from "@/app/components/document-template-picker";
 
 type DocVersion = {
   id: string;
@@ -689,6 +691,12 @@ export default function KnowledgePage() {
           </div>
         </div>
       )}
+      {/* Reading Lists and Document Templates (always visible below main content) */}
+      <div className="mt-4 flex flex-col gap-3 flex-shrink-0">
+        <ReadingListSection />
+        <DocumentTemplatePicker />
+      </div>
+
       <ConfirmDialog />
       <PromptDialog />
     </div>

@@ -28,7 +28,10 @@ import {
   ToggleRight,
   GripVertical,
   Flag,
+  Bell,
 } from "lucide-react";
+import { AdminPermissions } from "@/app/components/admin-permissions";
+import { AdminMonitoringAlerts } from "@/app/components/admin-monitoring-alerts";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { hasMinimumRole } from "@/lib/auth/permissions";
@@ -1244,7 +1247,7 @@ function FeatureFlagsSection() {
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
-type AdminTab = "system" | "users" | "categories" | "flags";
+type AdminTab = "system" | "users" | "categories" | "flags" | "permissions" | "alerts";
 
 
 export default function AdminPage() {
@@ -1333,6 +1336,30 @@ export default function AdminPage() {
             功能開關
           </button>
         )}
+        <button
+          onClick={() => setActiveTab("permissions")}
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
+            activeTab === "permissions"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Shield className="h-3.5 w-3.5" />
+          權限管理
+        </button>
+        <button
+          onClick={() => setActiveTab("alerts")}
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
+            activeTab === "alerts"
+              ? "bg-card text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Bell className="h-3.5 w-3.5" />
+          監控警報
+        </button>
       </div>
 
       {/* Tab content */}
@@ -1345,6 +1372,8 @@ export default function AdminPage() {
       {activeTab === "users" && <UserManagementSection />}
       {activeTab === "categories" && <CategoryManagementSection />}
       {activeTab === "flags" && userRole === "ADMIN" && <FeatureFlagsSection />}
+      {activeTab === "permissions" && <AdminPermissions />}
+      {activeTab === "alerts" && <AdminMonitoringAlerts />}
     </div>
   );
 }

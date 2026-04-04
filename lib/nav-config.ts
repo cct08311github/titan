@@ -2,7 +2,7 @@ import {
   KanbanSquare, GanttChartSquare, BookOpen,
   Clock, BarChart2, Target, Crosshair,
   Activity, Settings, ShieldCheck, Gauge, Sun,
-  Briefcase,
+  Briefcase, ClipboardCheck, Repeat,
   type LucideIcon,
 } from "lucide-react";
 
@@ -47,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/kanban", label: "任務看板", icon: KanbanSquare },
       { href: "/activity", label: "團隊動態", icon: Activity },
+      { href: "/approvals", label: "簽核管理", icon: ClipboardCheck },
     ],
   },
   {
@@ -66,6 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "帳號",
     items: [
       { href: "/settings", label: "個人設定", icon: Settings },
+      { href: "/settings/templates", label: "範本與自動化", icon: Repeat },
       { href: "/admin", label: "系統管理", icon: ShieldCheck, roles: ["MANAGER", "ADMIN"] },
     ],
   },

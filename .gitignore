@@ -63,3 +63,4 @@ dump.rdb
 # Test artifacts
 test-screenshots/
 auth-test-screenshots/
+/*.png
