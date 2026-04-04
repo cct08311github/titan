@@ -57,7 +57,7 @@ e2e/.auth/
 test-results/
 playwright-report/
 dump.rdb
-.claude/worktrees/
+.claude/
 .playwright-mcp/
 
 # Test artifacts

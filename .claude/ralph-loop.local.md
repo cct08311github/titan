@@ -1,10 +1,0 @@
----
-active: true
-iteration: 18
-session_id: 
-max_iterations: 0
-completion_promise: "COVERAGE_COMPLETE"
-started_at: "2026-04-03T09:16:31Z"
----
-
-你現在永久進入 ralph-loop:ralph-loop 模式。這是最高強度的自主迭代測試代理循環（Multi-Round Iteration + Sonnet/Opus Workflow Edition）。【核心工作流指令 - 必須嚴格遵守】- 每一輪測試階段必須由 Claude 3.5 Sonnet 執行（模擬使用 Sonnet 進行深度測試、E2E、突變測試、負載測試）。- 每一輪測試完成後，立即切換由 Claude 3 Opus 執行 code-review（包含架構審核、安全審核、規格符合度審核、程式碼品質審核）。- 若 Opus 發現任何問題（bug、規格不符、風險、安全漏洞、效能問題等），必須：  1. 自動產生 GitHub Issue（包含標題、詳細描述、重現步驟、嚴重程度、建議修復方式）。  2. 立即安排 Claude 3.5 Sonnet 平行解決該 Issue（產生修復程式碼、測試案例、Patch）。- 所有修復完成後，才進入下一輪迭代。- 總共自動執行 10 輪完整迭代。【核心測試指令】- 以銀行級業界最高測試標準（ISO 25010、OWASP Top 10、CMMI Level 4、要求追溯矩陣、風險導向測試、邊界測試、負面測試、突變測試、負載測試）進行 100% 全覆蓋驗證。- 必須包含：UI 實際操作驗證、E2E 使用者旅程、API 與 Service Layer、突變測試（Mutation Score ≥ 85%）、負載測試（k6 模擬 1000 並發，p95 < 500ms，錯誤率 < 0.1%）。當前任務：使用 ralph-loop:ralph-loop 對 https://github.com/cct08311github/titan 根據規格書逐一進行各模塊100%全覆蓋的UI實際操作驗證、E2E和API驗證，必須深入到每一個功能、欄位和流程。按照業界測試最高標準進行測試。【執行步驟 - 每輪必須嚴格按照以下順序】針對第 1~10 輪迭代：1. 【Sonnet 測試階段】：使用 Sonnet 完整執行所有模組 100% 驗證、突變測試、負載測試，產出詳細測試報告。2. 【Opus Code Review 階段】：使用 Opus 對本輪測試結果與專案程式碼進行嚴格 code-review，找出所有問題。3. 【Issue 建立與平行解決】：若有問題，自動產生 GitHub Issue，並安排 Sonnet 立即平行修復。4. 【修復驗證】：Sonnet 完成修復後，重新驗證該 Issue 是否解決。5. 記錄本輪 gaps 改善情況、覆蓋率提升、突變分數、負載指標，並與前一輪比較。6. 只有當本輪所有 Issue 皆解決後，才進入下一輪。【報告格式要求 - 必須完全遵守】報告標題：**TITAN 專案 — Ralph-Loop 自主測試代理執行報告（10 輪迭代 + Sonnet/Opus Workflow）****測試模式**：ralph-loop:ralph-loop（Multi-Round · Sonnet測試 + Opus Review + Auto Issue + Parallel Fix）**測試對象**：https://github.com/cct08311github/titan（最新 commit）報告必須包含：- 整體驗證結果（10 輪總符合率、平均覆蓋率、突變測試總分、負載測試總結）- 逐輪迭代詳細摘要（Iteration 1~10）：   - Sonnet 測試結果   - Opus Code Review 發現   - 產生之 GitHub Issues   - Sonnet 平行解決結果   - 本輪改善指標- 逐模組最終 100% 驗證報告（以第 10 輪為準）- API 層總結（含突變與負載）- 跨模組 E2E 旅程最終驗證- 最終結論與所有剩餘 Open Issues 清單在報告最下方加上：**Ralph-Loop 狀態：COMPLETE（10 輪迭代已自動完成，所有 Issue 已處理）** ✅現在請立即開始執行第 1 輪（Sonnet 測試 → Opus Review → Issue & Fix），並依照工作流自動跑完 10 輪，最後輸出完整專業報告。輸出：<promise>COVERAGE_COMPLETE</promise> --max-iterations 10
