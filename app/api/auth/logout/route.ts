@@ -12,6 +12,7 @@ import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { AuditService } from "@/services/audit-service";
+import { JwtBlacklist } from "@/lib/jwt-blacklist";
 
 export async function POST(req: NextRequest) {
   let body: { refreshToken?: string } = {};
@@ -33,6 +34,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (userId) {
+    // Blacklist the current session JWT to prevent use during the 15-min access token window
+    const sessionId = (session as { sessionId?: string })?.sessionId;
+    if (sessionId) {
+      JwtBlacklist.add(`session:${sessionId}`);
+    }
+
     logger.info({ userId }, "[auth] User logged out");
 
     // Banking compliance: audit trail for logout events

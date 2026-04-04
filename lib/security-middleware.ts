@@ -109,9 +109,11 @@ function extractBearer(req: NextRequest): string | null {
 
 /** Extract userId from the session (null if unauthenticated). */
 async function getSessionUserId(req: NextRequest): Promise<string | null> {
-  // Prefer X-User-Id header injected by tests / other middleware.
-  const override = req.headers.get("x-user-id");
-  if (override) return override;
+  // X-User-Id header override — test environments only (security: prevents rate-limit spoofing)
+  if (process.env.NODE_ENV === "test") {
+    const override = req.headers.get("x-user-id");
+    if (override) return override;
+  }
 
   const session = await getCachedSession(req);
   return ((session as { user?: { id?: string } } | null)?.user)?.id ?? null;

@@ -14,10 +14,11 @@ import { isPasswordValid, PASSWORD_POLICY_DESCRIPTION } from "@/lib/password-pol
 import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
 import { getClientIp } from "@/lib/get-client-ip";
+import { apiHandler } from "@/lib/api-handler";
 
 const auditService = new AuditService(prisma);
 
-export async function POST(req: NextRequest) {
+export const POST = apiHandler(async (req: NextRequest) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const session = await getCachedSession(req) as any;
   const userId = session?.user?.id as string | undefined;
@@ -68,9 +69,11 @@ export async function POST(req: NextRequest) {
     select: { hash: true },
   });
 
-  for (const entry of recentHashes) {
-    if (await compare(newPassword, entry.hash)) {
-      return error("ValidationError", `新密碼不得與最近 ${PASSWORD_HISTORY_LIMIT} 組密碼相同`, 400);
+  // Check against current password hash AND recent history
+  const allHashes = [user.password, ...recentHashes.map(e => e.hash)];
+  for (const h of allHashes) {
+    if (await compare(newPassword, h)) {
+      return error("ValidationError", `新密碼不得與目前或最近 ${PASSWORD_HISTORY_LIMIT} 組密碼相同`, 400);
     }
   }
 
@@ -103,4 +106,4 @@ export async function POST(req: NextRequest) {
   logger.info({ userId }, "[auth] Password changed successfully");
 
   return success({ message: "密碼變更成功" });
-}
+});
