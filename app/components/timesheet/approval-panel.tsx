@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Check, X, Filter } from "lucide-react";
+import { Check, X, Filter, AlertTriangle } from "lucide-react";
 import type { MonthlyMember } from "./use-monthly-timesheet";
 
 type StatusFilter = "all" | "PENDING" | "APPROVED" | "REJECTED";
@@ -44,13 +44,45 @@ export function ApprovalPanel({
   onReject,
 }: ApprovalPanelProps) {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  async function handleApprove() {
+  // Compute summary of selected entries for the confirmation dialog
+  const approveSummary = useMemo(() => {
+    let entryCount = 0;
+    let totalHours = 0;
+    const affectedMemberIds = new Set<string>();
+    const dates: string[] = [];
+
+    for (const member of members) {
+      for (const [date, day] of Object.entries(member.days)) {
+        for (const entry of day.entries) {
+          if (selectedEntryIds.has(entry.id)) {
+            entryCount++;
+            totalHours += entry.hours;
+            affectedMemberIds.add(member.userId);
+            dates.push(date);
+          }
+        }
+      }
+    }
+
+    const sortedDates = dates.sort();
+    return {
+      entryCount,
+      totalHours,
+      memberCount: affectedMemberIds.size,
+      dateMin: sortedDates[0] ?? "",
+      dateMax: sortedDates[sortedDates.length - 1] ?? "",
+    };
+  }, [members, selectedEntryIds]);
+
+  async function handleConfirmApprove() {
     setActionLoading(true);
     try {
       await onApprove();
+      setShowConfirmDialog(false);
     } finally {
       setActionLoading(false);
     }
@@ -142,7 +174,7 @@ export function ApprovalPanel({
       {/* Action buttons */}
       <div className="flex gap-2">
         <button
-          onClick={handleApprove}
+          onClick={() => setShowConfirmDialog(true)}
           disabled={selectedCount === 0 || actionLoading}
           className={cn(
             "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
@@ -192,6 +224,52 @@ export function ApprovalPanel({
               className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
             >
               確認駁回
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch approve confirmation dialog */}
+      {showConfirmDialog && (
+        <div className="border border-green-200 dark:border-green-800 rounded-md p-3 bg-green-50 dark:bg-green-950/30 space-y-3">
+          <div className="flex items-center gap-2 text-green-800 dark:text-green-200">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span className="text-xs font-medium">確認批次核准</span>
+          </div>
+          <div className="space-y-1 text-xs text-green-900 dark:text-green-100">
+            <p>即將核准以下工時紀錄：</p>
+            <ul className="ml-3 space-y-0.5 text-muted-foreground">
+              <li>人數：{approveSummary.memberCount} 人</li>
+              <li>筆數：{approveSummary.entryCount} 筆</li>
+              <li>總時數：{approveSummary.totalHours.toFixed(1)} 小時</li>
+              {approveSummary.dateMin && (
+                <li>
+                  日期範圍：{approveSummary.dateMin}
+                  {approveSummary.dateMin !== approveSummary.dateMax
+                    ? ` ~ ${approveSummary.dateMax}`
+                    : ""}
+                </li>
+              )}
+            </ul>
+            <p className="text-amber-700 dark:text-amber-400 mt-1">
+              核准後紀錄將鎖定，無法由主管自行撤回。
+            </p>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={() => setShowConfirmDialog(false)}
+              disabled={actionLoading}
+              className="px-3 py-1 text-xs rounded bg-muted hover:bg-muted/80 disabled:opacity-50"
+            >
+              取消
+            </button>
+            <button
+              onClick={handleConfirmApprove}
+              disabled={actionLoading}
+              className="px-3 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 flex items-center gap-1"
+            >
+              <Check className="h-3 w-3" />
+              {actionLoading ? "處理中..." : "確認核准"}
             </button>
           </div>
         </div>

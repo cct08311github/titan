@@ -430,9 +430,10 @@ describe("GET /api/time-entries/monthly", () => {
       })
     );
 
-    // Should not be 200 with valid data
+    // Error shape: { ok: false, error: "INVALID_PARAM", message: "..." }
     const body = await res.json();
-    expect(body.data.error).toBeDefined();
+    expect(body.ok).toBe(false);
+    expect(body.error).toBeDefined();
   });
 
   test("non-manager gets 403", async () => {
