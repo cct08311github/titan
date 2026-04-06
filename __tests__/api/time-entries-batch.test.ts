@@ -256,6 +256,84 @@ describe("POST /api/time-entries/batch", () => {
     expect(body.ok).toBe(false);
   });
 
+  test("rejects zero hours (shared hoursSchema: gt(0))", async () => {
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          entries: [{ date: "2026-03-23", hours: 0, category: "PLANNED_TASK" }],
+        },
+      })
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  test("rejects non-0.5-increment hours (shared hoursSchema)", async () => {
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          entries: [{ date: "2026-03-23", hours: 1.3, category: "PLANNED_TASK" }],
+        },
+      })
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  test("rejects future dates (shared pastOrTodayDate)", async () => {
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          entries: [{ date: "2099-12-31", hours: 4, category: "PLANNED_TASK" }],
+        },
+      })
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  test("sanitizes description to prevent XSS", async () => {
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        timeEntry: {
+          findMany: jest.fn().mockResolvedValue([]),
+          create: jest.fn().mockImplementation((args: { data: { description: unknown } }) => ({
+            id: "e1",
+            ...args.data,
+          })),
+        },
+      };
+      return fn(tx);
+    });
+
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          entries: [{
+            date: "2026-03-23",
+            hours: 4,
+            category: "PLANNED_TASK",
+            description: '<script>alert("xss")</script>Legit text',
+          }],
+        },
+      })
+    );
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    // Description should have script tag stripped
+    const desc = body.data?.[0]?.description ?? "";
+    expect(desc).not.toContain("<script>");
+  });
+
   test("allows batch that exactly reaches 24hr limit", async () => {
     // No existing entries; batch totals exactly 24 hours — should pass
     mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {

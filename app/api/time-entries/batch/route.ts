@@ -18,15 +18,16 @@ import { requireAuth } from "@/lib/rbac";
 import { validateBody } from "@/lib/validate";
 import { success, error } from "@/lib/api-response";
 import { TimeCategoryEnum } from "@/validators/shared/enums";
-import { validateDailyLimit } from "@/validators/shared/time-entry";
+import { validateDailyLimit, hoursSchema, pastOrTodayDate } from "@/validators/shared/time-entry";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 import { ValidationError } from "@/services/errors";
 
 const batchEntrySchema = z.object({
-  date: z.string().date(),
-  hours: z.number().min(0).max(24),
+  date: pastOrTodayDate,
+  hours: hoursSchema,
   taskId: z.string().optional(),
   category: TimeCategoryEnum.optional().default("PLANNED_TASK"),
-  description: z.string().optional(),
+  description: z.string().max(2000).optional(),
 });
 
 const batchCreateSchema = z.object({
@@ -75,7 +76,9 @@ export const POST = withAuth(async (req: NextRequest) => {
     const batchHoursByDate = new Map<string, number>();
 
     for (const entry of entries) {
-      const key = `${entry.date}:${entry.taskId ?? ""}`;
+      // Normalize date key the same way existing entries are keyed
+      const dateKey = formatLocalDate(new Date(entry.date));
+      const key = `${dateKey}:${entry.taskId ?? ""}`;
       if (existingKeys.has(key)) {
         throw new ValidationError(
           `重複：${entry.date} 的任務 ${entry.taskId ?? "(無任務)"} 已有工時記錄`
@@ -89,18 +92,19 @@ export const POST = withAuth(async (req: NextRequest) => {
       batchKeys.add(key);
 
       // T-1: Enforce daily 24hr limit — existing + already-validated batch entries + this entry
-      const existingDay = existingHoursByDate.get(entry.date) ?? 0;
-      const batchDay = batchHoursByDate.get(entry.date) ?? 0;
+      const existingDay = existingHoursByDate.get(dateKey) ?? 0;
+      const batchDay = batchHoursByDate.get(dateKey) ?? 0;
       const limitError = validateDailyLimit(existingDay + batchDay, entry.hours);
       if (limitError) {
         throw new ValidationError(limitError);
       }
-      batchHoursByDate.set(entry.date, batchDay + entry.hours);
+      batchHoursByDate.set(dateKey, batchDay + entry.hours);
     }
 
     // Create entries one by one within the transaction (for include support)
     const results = [];
     for (const entry of entries) {
+      const cleanDescription = entry.description ? sanitizeHtml(entry.description) || null : null;
       const result = await tx.timeEntry.create({
         data: {
           userId,
@@ -108,7 +112,7 @@ export const POST = withAuth(async (req: NextRequest) => {
           date: new Date(entry.date),
           hours: entry.hours,
           category: (entry.category as TimeCategory) ?? "PLANNED_TASK",
-          description: entry.description || null,
+          description: cleanDescription,
         },
         include: {
           task: { select: { id: true, title: true, category: true } },

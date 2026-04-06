@@ -38,9 +38,9 @@ describe("Time Entry Validator — 0.5hr minimum unit", () => {
     expect(result.success).toBe(true);
   });
 
-  it("accepts 0 hours", () => {
+  it("rejects 0 hours (must be gt(0))", () => {
     const result = createTimeEntrySchema.safeParse({ date: "2026-03-26", hours: 0 });
-    expect(result.success).toBe(true);
+    expect(result.success).toBe(false);
   });
 
   it("rejects 0.3 hours (not 0.5 increment)", () => {
