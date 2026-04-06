@@ -191,6 +191,100 @@ describe("POST /api/time-entries/batch", () => {
 
     expect(res.status).toBe(400);
   });
+
+  // T-1: Daily 24hr limit enforcement in batch endpoint
+  test("rejects batch that exceeds daily 24hr limit against existing entries", async () => {
+    // User already has 20 hours on 2026-03-23
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        timeEntry: {
+          findMany: jest.fn().mockResolvedValue([
+            { date: new Date("2026-03-23"), taskId: "t1", hours: 12 },
+            { date: new Date("2026-03-23"), taskId: "t2", hours: 8 },
+          ]),
+          create: jest.fn(),
+        },
+      };
+      return fn(tx);
+    });
+
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          // Adding 5 hours would bring total to 25 — must be rejected
+          entries: [{ date: "2026-03-23", hours: 5, taskId: "t3", category: "PLANNED_TASK" }],
+        },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(body.message).toMatch(/24/);
+  });
+
+  test("rejects batch where multiple entries on same day collectively exceed 24hr limit", async () => {
+    // No existing entries; batch itself totals 25 hours on one day
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        timeEntry: {
+          findMany: jest.fn().mockResolvedValue([]),
+          create: jest.fn(),
+        },
+      };
+      return fn(tx);
+    });
+
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          entries: [
+            { date: "2026-03-23", hours: 12, taskId: "t1", category: "PLANNED_TASK" },
+            { date: "2026-03-23", hours: 8,  taskId: "t2", category: "SUPPORT" },
+            { date: "2026-03-23", hours: 5,  taskId: "t3", category: "MEETING" }, // 12+8+5 = 25
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+  });
+
+  test("allows batch that exactly reaches 24hr limit", async () => {
+    // No existing entries; batch totals exactly 24 hours — should pass
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const tx = {
+        timeEntry: {
+          findMany: jest.fn().mockResolvedValue([]),
+          create: jest.fn()
+            .mockResolvedValueOnce({ id: "e1", hours: 12 })
+            .mockResolvedValueOnce({ id: "e2", hours: 12 }),
+        },
+      };
+      return fn(tx);
+    });
+
+    const { POST } = await import("@/app/api/time-entries/batch/route");
+    const res = await POST(
+      createMockRequest("/api/time-entries/batch", {
+        method: "POST",
+        body: {
+          entries: [
+            { date: "2026-03-23", hours: 12, taskId: "t1", category: "PLANNED_TASK" },
+            { date: "2026-03-23", hours: 12, taskId: "t2", category: "SUPPORT" },
+          ],
+        },
+      })
+    );
+
+    expect(res.status).toBe(201);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

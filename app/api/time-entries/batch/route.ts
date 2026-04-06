@@ -18,6 +18,7 @@ import { requireAuth } from "@/lib/rbac";
 import { validateBody } from "@/lib/validate";
 import { success, error } from "@/lib/api-response";
 import { TimeCategoryEnum } from "@/validators/shared/enums";
+import { validateDailyLimit } from "@/validators/shared/time-entry";
 import { ValidationError } from "@/services/errors";
 
 const batchEntrySchema = z.object({
@@ -53,20 +54,25 @@ export const POST = withAuth(async (req: NextRequest) => {
       where: {
         userId,
         date: { gte: minDate, lte: maxDate },
+        isDeleted: false,
       },
-      select: { date: true, taskId: true },
+      select: { date: true, taskId: true, hours: true },
     });
 
     // Build a set of existing date+taskId keys for overlap detection
-    const existingKeys = new Set(
-      existing.map((e) => {
-        const dateStr = formatLocalDate(new Date(e.date));
-        return `${dateStr}:${e.taskId ?? ""}`;
-      })
-    );
+    // Also build a map of existing hours per date for daily-limit validation
+    const existingKeys = new Set<string>();
+    const existingHoursByDate = new Map<string, number>();
+    for (const e of existing) {
+      const dateStr = formatLocalDate(new Date(e.date));
+      existingKeys.add(`${dateStr}:${e.taskId ?? ""}`);
+      existingHoursByDate.set(dateStr, (existingHoursByDate.get(dateStr) ?? 0) + e.hours);
+    }
 
     // Also detect duplicates within the batch itself
     const batchKeys = new Set<string>();
+    // Track batch hours added per date (accumulates as we validate each entry)
+    const batchHoursByDate = new Map<string, number>();
 
     for (const entry of entries) {
       const key = `${entry.date}:${entry.taskId ?? ""}`;
@@ -81,6 +87,15 @@ export const POST = withAuth(async (req: NextRequest) => {
         );
       }
       batchKeys.add(key);
+
+      // T-1: Enforce daily 24hr limit — existing + already-validated batch entries + this entry
+      const existingDay = existingHoursByDate.get(entry.date) ?? 0;
+      const batchDay = batchHoursByDate.get(entry.date) ?? 0;
+      const limitError = validateDailyLimit(existingDay + batchDay, entry.hours);
+      if (limitError) {
+        throw new ValidationError(limitError);
+      }
+      batchHoursByDate.set(entry.date, batchDay + entry.hours);
     }
 
     // Create entries one by one within the transaction (for include support)
