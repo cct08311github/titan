@@ -13,7 +13,7 @@ import { TimeCategoryEnum } from "./enums";
  * Validate hours is in 0.5hr increments.
  * Rounds to nearest 0.5 if within a small tolerance, else rejects.
  */
-const hoursSchema = z.number().gt(0, "工時必須大於 0").max(24).refine(
+export const hoursSchema = z.number().gt(0, "工時必須大於 0").max(24).refine(
   (val) => {
     // Allow exact 0.5 increments (with floating-point tolerance)
     const remainder = (val * 10) % 5;
@@ -23,7 +23,7 @@ const hoursSchema = z.number().gt(0, "工時必須大於 0").max(24).refine(
 );
 
 /** Date must be today or earlier — no future date entries (Issue #1157) */
-const pastOrTodayDate = z.string().date().refine(
+export const pastOrTodayDate = z.string().date().refine(
   (val) => val <= new Date().toISOString().slice(0, 10),
   { message: "工時日期不可為未來日期" }
 );
