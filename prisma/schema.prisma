@@ -391,6 +391,9 @@ model Task {
   @@index([backupAssigneeId])
   @@index([creatorId])
   @@index([projectId])
+  @@index([status, dueDate])
+  @@index([primaryAssigneeId, status])
+  @@index([managerFlagged, status])
   @@map("tasks")
 }
 
@@ -721,6 +724,8 @@ model TimeEntry {
   @@index([userId, isRunning])
   @@index([userId, date])
   @@index([isDeleted])
+  @@index([date, isDeleted])
+  @@index([userId, date, isDeleted])
   @@map("time_entries")
 }
 
@@ -966,6 +971,7 @@ model Document {
   @@index([status])
   @@index([verifierId])
   @@index([verifyByDate])
+  @@index([status, createdAt])
   @@map("documents")
 }
 
