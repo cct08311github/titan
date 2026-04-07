@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { validateBody } from "@/lib/validate";
 import { createDocLinkSchema } from "@/validators/knowledge-validators";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { NotFoundError, ValidationError } from "@/services/errors";
 
 export const GET = withAuth(async (
@@ -80,7 +80,7 @@ export const DELETE = withAuth(async (
   const linkId = searchParams.get("linkId");
 
   if (!linkId) {
-    return success({ error: "linkId is required" }, 400);
+    return error("ValidationError", "linkId is required", 400);
   }
 
   const link = await prisma.documentLink.findFirst({

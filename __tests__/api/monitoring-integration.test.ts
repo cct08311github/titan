@@ -103,7 +103,7 @@ describe("POST /api/integrations/monitoring/webhook", () => {
     delete process.env.MONITORING_WEBHOOK_KEY;
   });
 
-  it("creates alert from valid Grafana webhook payload (201)", async () => {
+  it("returns 503 when MONITORING_WEBHOOK_KEY is not configured", async () => {
     const { POST } = await import("@/app/api/integrations/monitoring/webhook/route");
     const res = await POST(
       createMockRequest("/api/integrations/monitoring/webhook", {
@@ -118,6 +118,25 @@ describe("POST /api/integrations/monitoring/webhook", () => {
         },
       })
     );
+    expect(res.status).toBe(503);
+  });
+
+  it("creates alert from valid Grafana webhook payload (201)", async () => {
+    process.env.MONITORING_WEBHOOK_KEY = "secret-key-123";
+    const { POST } = await import("@/app/api/integrations/monitoring/webhook/route");
+    const mockReq = createMockRequest("/api/integrations/monitoring/webhook", {
+      method: "POST",
+      body: {
+        alertName: "HighCPU",
+        severity: "critical",
+        status: "firing",
+        annotations: { summary: "CPU usage > 90%" },
+        startsAt: "2026-03-26T10:00:00Z",
+        source: "grafana",
+      },
+    });
+    mockReq.headers.set("authorization", "Bearer secret-key-123");
+    const res = await POST(mockReq);
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.ok).toBe(true);
@@ -141,34 +160,36 @@ describe("POST /api/integrations/monitoring/webhook", () => {
   });
 
   it("updates existing alert when same alertName+startsAt (upsert)", async () => {
+    process.env.MONITORING_WEBHOOK_KEY = "secret-key-123";
     mockMonitoringAlert.findFirst.mockResolvedValue(MOCK_ALERT);
     mockMonitoringAlert.update.mockResolvedValue({ ...MOCK_ALERT, status: "RESOLVED" });
 
     const { POST } = await import("@/app/api/integrations/monitoring/webhook/route");
-    const res = await POST(
-      createMockRequest("/api/integrations/monitoring/webhook", {
-        method: "POST",
-        body: {
-          alertName: "HighCPU",
-          severity: "critical",
-          status: "resolved",
-          startsAt: "2026-03-26T10:00:00Z",
-          endsAt: "2026-03-26T11:00:00Z",
-        },
-      })
-    );
+    const mockReq = createMockRequest("/api/integrations/monitoring/webhook", {
+      method: "POST",
+      body: {
+        alertName: "HighCPU",
+        severity: "critical",
+        status: "resolved",
+        startsAt: "2026-03-26T10:00:00Z",
+        endsAt: "2026-03-26T11:00:00Z",
+      },
+    });
+    mockReq.headers.set("authorization", "Bearer secret-key-123");
+    const res = await POST(mockReq);
     expect(res.status).toBe(201);
     expect(mockMonitoringAlert.update).toHaveBeenCalled();
   });
 
   it("rejects invalid payload (400)", async () => {
+    process.env.MONITORING_WEBHOOK_KEY = "secret-key-123";
     const { POST } = await import("@/app/api/integrations/monitoring/webhook/route");
-    const res = await POST(
-      createMockRequest("/api/integrations/monitoring/webhook", {
-        method: "POST",
-        body: { alertName: "test" }, // missing required fields
-      })
-    );
+    const mockReq = createMockRequest("/api/integrations/monitoring/webhook", {
+      method: "POST",
+      body: { alertName: "test" }, // missing required fields
+    });
+    mockReq.headers.set("authorization", "Bearer secret-key-123");
+    const res = await POST(mockReq);
     expect(res.status).toBe(400);
   });
 });

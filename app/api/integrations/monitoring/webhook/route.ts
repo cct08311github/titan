@@ -18,12 +18,13 @@ import { apiHandler } from "@/lib/api-handler";
 export const POST = apiHandler(async (req: NextRequest) => {
   // API key auth (no user session required)
   const expectedKey = process.env.MONITORING_WEBHOOK_KEY;
-  if (expectedKey) {
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.replace(/^Bearer\s+/i, "");
-    if (token !== expectedKey) {
-      return error("UNAUTHORIZED", "Invalid API key", 401);
-    }
+  if (!expectedKey) {
+    return error("SERVICE_UNAVAILABLE", "Webhook endpoint not configured", 503);
+  }
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "");
+  if (token !== expectedKey) {
+    return error("UNAUTHORIZED", "Invalid API key", 401);
   }
 
   const raw = await req.json();

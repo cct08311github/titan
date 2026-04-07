@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { createApiRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { getRedisClient } from "@/lib/redis";
 import { getClientIp } from "@/lib/get-client-ip";
+import { logger } from "@/lib/logger";
 
 // Issue #1217: rate limit feedback submissions (5 per minute per IP)
 const redis = getRedisClient();
@@ -36,17 +37,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Log feedback — practical approach without requiring DB migration
-    console.log(
-      JSON.stringify({
-        type: "user_feedback",
-        userId: session?.user?.id ?? "anonymous",
-        userName: session?.user?.name ?? "anonymous",
-        message: message.trim().slice(0, 5000),
-        url: req.headers.get("referer") ?? null,
-        userAgent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
-        timestamp: new Date().toISOString(),
-      })
-    );
+    logger.info({
+      type: "user_feedback",
+      userId: session?.user?.id ?? "anonymous",
+      userName: session?.user?.name ?? "anonymous",
+      message: message.trim().slice(0, 5000),
+      url: req.headers.get("referer") ?? null,
+      userAgent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
+      timestamp: new Date().toISOString(),
+    });
 
     return NextResponse.json({ ok: true });
   } catch {
