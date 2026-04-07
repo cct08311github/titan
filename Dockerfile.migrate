@@ -16,6 +16,7 @@ WORKDIR /app
 # Copy only what prisma needs to generate and migrate
 COPY package.json package-lock.json ./
 COPY prisma/ ./prisma/
+COPY prisma.config.ts ./
 
 # Install prisma CLI + download Linux query engine binary
 RUN npm ci --ignore-scripts && \
