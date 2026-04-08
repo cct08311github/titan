@@ -19,7 +19,8 @@ COPY prisma/ ./prisma/
 COPY prisma.config.ts ./
 
 # Install prisma CLI + download Linux query engine binary
+# Dummy DATABASE_URL required by prisma.config.ts at generate time (Prisma v7)
 RUN npm ci --ignore-scripts && \
-    npx prisma generate
+    DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
 CMD ["npx", "prisma", "db", "push", "--accept-data-loss"]
