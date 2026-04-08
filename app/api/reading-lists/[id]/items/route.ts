@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { validateBody } from "@/lib/validate";
 import { addReadingListItemSchema } from "@/validators/reading-list-validators";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { NotFoundError, ValidationError } from "@/services/errors";
 
 export const POST = withManager(async (
@@ -51,7 +51,7 @@ export const DELETE = withManager(async (
   const itemId = searchParams.get("itemId");
 
   if (!itemId) {
-    return success({ error: "itemId is required" }, 400);
+    return error("ValidationError", "itemId is required", 400);
   }
 
   const item = await prisma.readingListItem.findFirst({

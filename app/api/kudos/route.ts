@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { validateBody } from "@/lib/validate";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { z } from "zod";
 
 /**
@@ -26,7 +26,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     select: { id: true, title: true, primaryAssigneeId: true },
   });
   if (!task) {
-    return success({ error: "Task not found" }, 404);
+    return error("NotFoundError", "Task not found", 404);
   }
 
   const activity = await prisma.taskActivity.create({

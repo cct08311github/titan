@@ -1,4 +1,4 @@
-import { PrismaClient, TimeCategory } from "@prisma/client";
+import { PrismaClient, TimeCategory, Prisma } from "@prisma/client";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -149,7 +149,7 @@ export class KimaiImportService {
   ): Promise<KimaiImportResult> {
     const result: KimaiImportResult = { created: 0, errors: [] };
 
-    await this.prisma.$transaction(async (tx: any) => {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         try {

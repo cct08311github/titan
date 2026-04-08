@@ -4,7 +4,7 @@ import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { validateBody } from "@/lib/validate";
 import { createDocAttachmentSchema } from "@/validators/knowledge-validators";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { NotFoundError } from "@/services/errors";
 
 export const GET = withAuth(async (
@@ -65,7 +65,7 @@ export const DELETE = withAuth(async (
   const attachmentId = searchParams.get("attachmentId");
 
   if (!attachmentId) {
-    return success({ error: "attachmentId is required" }, 400);
+    return error("ValidationError", "attachmentId is required", 400);
   }
 
   const attachment = await prisma.documentAttachment.findFirst({

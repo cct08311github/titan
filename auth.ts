@@ -97,7 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // 2. Enforce IP+username rate limit (5 attempts/min)
         // Skip rate limiting in development to avoid lockout during testing
-        if (process.env.NODE_ENV !== "development") {
+        if (process.env.NODE_ENV !== "test") {
           try {
             await checkRateLimit(loginRateLimiter, rateLimitKey);
           } catch {

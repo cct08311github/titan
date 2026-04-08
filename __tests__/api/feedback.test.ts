@@ -12,6 +12,11 @@ jest.mock("@/auth", () => ({
   auth: jest.fn().mockResolvedValue({ user: { id: "u1", name: "Test User" } }),
 }));
 
+const mockLoggerInfo = jest.fn();
+jest.mock("@/lib/logger", () => ({
+  logger: { info: (...args: unknown[]) => mockLoggerInfo(...args), error: jest.fn(), warn: jest.fn() },
+}));
+
 function makeReq(body: unknown) {
   return new NextRequest("http://localhost:3100/api/feedback", {
     method: "POST",
@@ -21,10 +26,7 @@ function makeReq(body: unknown) {
 }
 
 describe("POST /api/feedback", () => {
-  const consoleSpy = jest.spyOn(console, "log").mockImplementation();
-
-  afterEach(() => consoleSpy.mockClear());
-  afterAll(() => consoleSpy.mockRestore());
+  afterEach(() => mockLoggerInfo.mockClear());
 
   it("returns 400 when message is empty", async () => {
     const res = await POST(makeReq({ message: "" }));
@@ -41,8 +43,8 @@ describe("POST /api/feedback", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(consoleSpy).toHaveBeenCalledTimes(1);
-    const logged = JSON.parse(consoleSpy.mock.calls[0][0]);
+    expect(mockLoggerInfo).toHaveBeenCalledTimes(1);
+    const logged = mockLoggerInfo.mock.calls[0][0];
     expect(logged.type).toBe("user_feedback");
     expect(logged.message).toBe("This is great!");
     expect(logged.userName).toBe("Test User");

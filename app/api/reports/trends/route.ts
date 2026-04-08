@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/rbac";
+import { apiHandler } from "@/lib/api-handler";
+import { success, error } from "@/lib/api-response";
 
 /**
  * GET /api/reports/trends?metric=kpi|kpi-achievement|workload|delays&years=2025,2026
@@ -11,7 +13,7 @@ import { requireAuth } from "@/lib/rbac";
  * - metric=kpi-achievement: per-KPI achievement trend with individual breakdown
  * - Year-over-year comparison table in response
  */
-export async function GET(req: NextRequest) {
+export const GET = apiHandler(async (req: NextRequest) => {
   const session = await requireAuth();
   // requireAuth throws UnauthorizedError if no session — caught by apiHandler
 
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
   const years = yearsParam.split(",").map(Number).filter((y) => y > 2000 && y < 2100);
 
   if (years.length === 0) {
-    return NextResponse.json({ error: "Invalid years parameter" }, { status: 400 });
+    return error("ValidationError", "Invalid years parameter", 400);
   }
 
   const results: Record<number, Array<{ month: number; value: number }>> = {};
@@ -159,15 +161,15 @@ export async function GET(req: NextRequest) {
         activeCount: 0,
       });
     } else {
-      return NextResponse.json({ error: `Unknown metric: ${metric}` }, { status: 400 });
+      return error("ValidationError", `Unknown metric: ${metric}`, 400);
     }
   }
 
-  return NextResponse.json({
+  return success({
     metric,
     years,
     data: results,
     ...(kpiAchievement && { kpiAchievement }),
     ...(yearOverYear && { yearOverYear }),
   });
-}
+});
