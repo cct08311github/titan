@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { extractItems, extractData } from "@/lib/api-client";
 import { formatLocalDate } from "@/lib/utils/date";
 
@@ -87,7 +88,7 @@ export function useTimesheet(userFilter?: string) {
     fetch("/api/tasks")
       .then((r) => r.json())
       .then((body) => setTasks(extractItems<TaskOption>(body)))
-      .catch(() => {});
+      .catch(() => { toast.warning("工時任務清單載入失敗"); });
   }, []);
 
   // Issue #933: fetch subtasks for a task (cached)

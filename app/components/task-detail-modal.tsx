@@ -110,19 +110,19 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
 
   useEffect(() => {
     loadTask();
-    fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
-    fetch("/api/goals").then((r) => r.json()).then((body) => setGoals(extractItems<MonthlyGoal>(body))).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => { toast.error("使用者清單載入失敗"); });
+    fetch("/api/goals").then((r) => r.json()).then((body) => setGoals(extractItems<MonthlyGoal>(body))).catch(() => { toast.error("目標清單載入失敗"); });
     // Fetch projects for linking (Issue #1176)
     fetch("/api/projects?limit=100").then((r) => r.json()).then((body) => {
       const data = body?.data ?? body;
       const items = (data?.items ?? []) as ProjectOption[];
       setProjects(items.map((p) => ({ id: p.id, code: p.code, name: p.name })));
-    }).catch(() => {});
+    }).catch(() => { toast.error("專案清單載入失敗"); });
     // Get current user for comment ownership
     fetch("/api/auth/session")
       .then((r) => r.json())
       .then((s) => setCurrentUserId(s?.user?.id))
-      .catch(() => {});
+      .catch(() => { toast.warning("使用者資訊載入失敗"); });
   }, [loadTask]);
 
   /** Client-side validation — Issue #804 (K-2) */

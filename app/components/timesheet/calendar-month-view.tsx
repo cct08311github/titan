@@ -19,6 +19,7 @@ import {
   Calendar,
   User,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
 
@@ -172,7 +173,7 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
         const items = extractItems<{ id: string; name: string }>(body);
         setUsers(items.map((u) => ({ id: u.id, name: u.name })));
       })
-      .catch(() => {});
+      .catch(() => { toast.warning("使用者清單載入失敗"); });
   }, [isManager]);
 
   // Build calendar grid (6 rows × 7 cols)

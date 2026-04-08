@@ -139,7 +139,7 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
     fetch("/api/users")
       .then((r) => r.json())
       .then((body) => setUsers(extractItems<User>(body)))
-      .catch(() => {});
+      .catch(() => { toast.warning("使用者清單載入失敗"); });
   }, [fetchComments]);
 
   // ── @mention handling ─────────────────────────────────────────────────

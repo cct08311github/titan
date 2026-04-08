@@ -160,6 +160,7 @@ export class ReportService {
         primaryAssignee: { select: { id: true, name: true } },
       },
       orderBy: { updatedAt: "desc" },
+      take: 1000,
     });
 
     const timeEntryFilter = filter.isManager
@@ -174,6 +175,7 @@ export class ReportService {
         userId: true,
         user: { select: { id: true, name: true } },
       },
+      take: 1000,
     });
 
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
@@ -258,6 +260,7 @@ export class ReportService {
         primaryAssignee: { select: { id: true, name: true } },
         monthlyGoal: { select: { id: true, title: true, month: true } },
       },
+      take: 1000,
     });
 
     const completedTasks = allTasks.filter((t) => t.status === "DONE");
@@ -278,6 +281,7 @@ export class ReportService {
         userId: true,
         user: { select: { id: true, name: true } },
       },
+      take: 1000,
     });
 
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
@@ -378,6 +382,7 @@ export class ReportService {
         user: { select: { id: true, name: true } },
         task: { select: { id: true, title: true, category: true } },
       },
+      take: 1000,
     });
 
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
@@ -439,6 +444,7 @@ export class ReportService {
         createdAt: true,
         primaryAssignee: { select: { id: true, name: true } },
       },
+      take: 1000,
     });
 
     const unplannedBySource = unplannedTasks.reduce(

@@ -635,7 +635,7 @@ export default function GanttPage() {
   }, [view, fetchProjects]);
 
   useEffect(() => {
-    fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => {});
+    fetch("/api/users").then((r) => r.json()).then((body) => setUsers(extractItems<User>(body))).catch(() => { toast.warning("使用者清單載入失敗"); });
   }, []);
 
   const plan = data?.annualPlan;
