@@ -368,7 +368,7 @@ model Task {
 
   annualPlan      AnnualPlan?   @relation("PlanTasks", fields: [annualPlanId], references: [id], onDelete: SetNull)
   project         Project?      @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: SetNull)
-  monthlyGoal     MonthlyGoal?  @relation(fields: [monthlyGoalId], references: [id])
+  monthlyGoal     MonthlyGoal?  @relation(fields: [monthlyGoalId], references: [id], onDelete: SetNull)
   primaryAssignee User?         @relation("TaskPrimaryAssignee", fields: [primaryAssigneeId], references: [id])
   backupAssignee  User?         @relation("TaskBackupAssignee", fields: [backupAssigneeId], references: [id])
   creator         User          @relation("TaskCreator", fields: [creatorId], references: [id])
@@ -549,7 +549,7 @@ model TaskComment {
   updatedAt DateTime @updatedAt
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([taskId])
   @@index([userId])
@@ -565,7 +565,7 @@ model TaskActivity {
   createdAt DateTime @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([taskId])
   @@index([userId])

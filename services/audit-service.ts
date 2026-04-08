@@ -29,6 +29,7 @@ export interface QueryAuditLogsInput {
   userId?: string;
   resourceType?: string;
   limit?: number;
+  offset?: number;
 }
 
 export class AuditService {
@@ -195,6 +196,7 @@ export class AuditService {
       where,
       orderBy: { createdAt: "desc" },
       take: input.limit ?? 200,
+      skip: input.offset ?? 0,
     });
   }
 }
