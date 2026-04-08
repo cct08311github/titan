@@ -14,6 +14,7 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { extractData } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
@@ -186,7 +187,7 @@ function MyProjectsCard() {
         const items = (data?.items ?? []) as MyProjectItem[];
         setProjects(items.slice(0, 5));
       })
-      .catch(() => {});
+      .catch(() => { toast.error("專案資料載入失敗"); });
   }, [session?.user?.id]);
 
   if (projects.length === 0) return null;

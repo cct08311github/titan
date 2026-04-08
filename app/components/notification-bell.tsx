@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Bell, CheckCheck, X } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 
@@ -92,6 +93,8 @@ export function NotificationBell() {
 
       setNotifications(items);
       setUnreadCount(unread);
+    } catch {
+      toast.error("通知載入失敗");
     } finally {
       setLoading(false);
     }

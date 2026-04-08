@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Filter, X, ArrowUpDown } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { useRouter, usePathname } from "next/navigation";
@@ -146,7 +147,7 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
     fetch("/api/users")
       .then((r) => r.json())
       .then((body) => setUsers(extractItems<User>(body)))
-      .catch(() => {});
+      .catch(() => { toast.error("使用者清單載入失敗"); });
   }, []);
 
   useEffect(() => {
@@ -156,7 +157,7 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
         const data = extractData<{ tags: TagOption[] }>(body);
         setTags(data?.tags ?? []);
       })
-      .catch(() => {});
+      .catch(() => { toast.error("標籤清單載入失敗"); });
   }, []);
 
   // Sync filters to URL

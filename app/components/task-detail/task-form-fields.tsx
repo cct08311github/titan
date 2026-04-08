@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link2, Tag, X, Plus, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
 
@@ -104,7 +105,7 @@ export function TaskFormFields({ form, onFieldChange, users, goals, projects, er
         const data = extractData<{ tags: TagOption[] }>(body);
         setAvailableTags(data?.tags ?? []);
       })
-      .catch(() => {});
+      .catch(() => { toast.warning("標籤清單載入失敗"); });
   }, []);
 
   const addTag = useCallback(

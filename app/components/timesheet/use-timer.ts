@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { extractData } from "@/lib/api-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -85,7 +86,7 @@ export function useTimer() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { toast.warning("計時器狀態載入失敗"); });
   }, []);
 
   // Start timer

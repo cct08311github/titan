@@ -184,7 +184,7 @@ function CreateProjectModal({
       fetch("/api/project-categories")
         .then((r) => r.json())
         .then((body) => setCategoryOptions(body.data ?? []))
-        .catch(() => {});
+        .catch(() => { toast.warning("專案類別載入失敗"); });
     }
   }, [open]);
 
@@ -1890,7 +1890,7 @@ export default function ProjectsPage() {
           }))
         );
       })
-      .catch(() => {});
+      .catch(() => { toast.warning("使用者清單載入失敗"); });
   }, []);
 
   // Fetch dashboard stats
@@ -1900,7 +1900,7 @@ export default function ProjectsPage() {
       .then(
         (body) => body && setStats(extractData<DashboardStats>(body))
       )
-      .catch(() => {});
+      .catch(() => { toast.warning("儀表板統計載入失敗"); });
   }, [yearFilter]);
 
   // Fetch project list

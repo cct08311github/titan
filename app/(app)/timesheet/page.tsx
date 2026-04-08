@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Loader2, CalendarDays, TableProperties } from "lucide-react";
 import {
   useTimesheet,
@@ -35,6 +36,7 @@ export default function TimesheetPage() {
   const [summaryTab, setSummaryTab] = useState<SummaryTab>("timesheet");
   const [pivotData, setPivotData] = useState<TimesheetPivotData | null>(null);
   const [pivotLoading, setPivotLoading] = useState(false);
+  const pivotCache = useRef<Map<string, TimesheetPivotData>>(new Map());
 
   const ts = useTimesheet(userFilter || undefined);
 
@@ -45,13 +47,15 @@ export default function TimesheetPage() {
       .filter((id): id is string => !!id && !ts.subTasksMap.has(id));
     if (taskIds.length === 0) return;
     // Batch: fetch all uncached subtasks in parallel (single Promise.all)
-    Promise.all(taskIds.map((id) => ts.fetchSubTasks(id))).catch(() => {});
+    Promise.all(taskIds.map((id) => ts.fetchSubTasks(id))).catch(() => { toast.error("子任務載入失敗，請重新整理"); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ts.taskRows]);
 
   // Fetch pivot data when tab switches (Issue #832)
   const fetchPivot = useCallback(async (tab: SummaryTab) => {
     if (tab === "timesheet") return;
+    const cached = pivotCache.current.get(tab);
+    if (cached) { setPivotData(cached); return; }
     setPivotLoading(true);
     try {
       const endpoint = tab === "weekly-pivot"
@@ -60,7 +64,11 @@ export default function TimesheetPage() {
       const res = await fetch(endpoint);
       if (res.ok) {
         const body = await res.json();
-        setPivotData(body?.data ?? null);
+        const data = body?.data ?? null;
+        setPivotData(data);
+        if (data) pivotCache.current.set(tab, data);
+      } else {
+        toast.error("報表載入失敗，請稍後再試");
       }
     } finally {
       setPivotLoading(false);
@@ -80,7 +88,7 @@ export default function TimesheetPage() {
         const items = Array.isArray(body?.data) ? body.data : Array.isArray(body) ? body : [];
         setUsers(items);
       })
-      .catch(() => {});
+      .catch(() => { toast.warning("使用者清單載入失敗"); });
   }, [isManager]);
 
   // Auto-switch to list on mobile (initial + resize)

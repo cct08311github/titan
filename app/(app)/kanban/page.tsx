@@ -243,7 +243,7 @@ export default function KanbanPage() {
         const list = extractItems<{ id: string; name: string }>(body);
         setUsers(list.map((u) => ({ id: u.id, name: u.name })));
       })
-      .catch(() => {});
+      .catch(() => { toast.error("使用者清單載入失敗"); });
     // Fetch project options for filter (Issue #1176)
     fetch("/api/projects?limit=100")
       .then((r) => r.json())
@@ -252,7 +252,7 @@ export default function KanbanPage() {
         const items = data?.items ?? [];
         setProjectOptions(items.map((p: { id: string; code: string; name: string }) => ({ id: p.id, code: p.code, name: p.name })));
       })
-      .catch(() => {});
+      .catch(() => { toast.error("專案清單載入失敗"); });
   }, []);
 
   // ── Column name management ──────────────────────────────────────────────
