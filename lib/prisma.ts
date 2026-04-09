@@ -1,10 +1,13 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { logger } from "@/lib/logger";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
+
+const SLOW_QUERY_THRESHOLD_MS = Number(process.env.SLOW_QUERY_THRESHOLD_MS ?? 500);
 
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
@@ -19,13 +22,34 @@ function createPrismaClient(): PrismaClient {
     connectionTimeoutMillis: 5000,
   });
   const adapter = new PrismaPg(pool);
-  return new PrismaClient({
+  const client = new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["query", "error", "warn"]
-        : ["error"],
+    log: [
+      { emit: "event", level: "query" },
+      { emit: "event", level: "error" },
+      { emit: "event", level: "warn" },
+    ],
   });
+
+  client.$on("query", (e) => {
+    if (e.duration >= SLOW_QUERY_THRESHOLD_MS) {
+      logger.warn(
+        {
+          event: "slow_query",
+          durationMs: e.duration,
+          query: e.query.slice(0, 500),
+          params: e.params,
+        },
+        `Slow query detected: ${e.duration}ms`
+      );
+    }
+  });
+
+  client.$on("error", (e) => {
+    logger.error({ event: "prisma_error", message: e.message }, "Prisma error");
+  });
+
+  return client;
 }
 
 function ensureClient(): PrismaClient {
