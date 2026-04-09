@@ -5,6 +5,7 @@
  */
 
 import { PrismaClient, Prisma } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 type TransactionClient = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 import {
@@ -139,18 +140,53 @@ export class RecurringService {
   /**
    * Generate tasks for all active recurring rules whose nextDueAt <= now.
    * Idempotent: uses lastGeneratedAt + nextDueAt to prevent duplicates.
+   *
+   * @param now         Reference time (defaults to current time)
+   * @param maxBackfillDays  Skip rules whose nextDueAt is older than this many days
+   *                        to prevent generating thousands of tasks after a long outage.
+   *                        Defaults to 7.
+   *
    * Returns count of tasks created.
    */
-  async generateTasks(now: Date = new Date()): Promise<{
+  async generateTasks(
+    now: Date = new Date(),
+    maxBackfillDays = 7
+  ): Promise<{
     generated: number;
     rules: Array<{ ruleId: string; taskId: string; title: string }>;
   }> {
+    const backfillCutoff = new Date(
+      now.getTime() - maxBackfillDays * 24 * 60 * 60 * 1000
+    );
+
     const dueRules = await this.prisma.recurringRule.findMany({
       where: {
         isActive: true,
-        nextDueAt: { lte: now },
+        nextDueAt: {
+          lte: now,
+          gte: backfillCutoff, // skip rules overdue by more than maxBackfillDays
+        },
       },
     });
+
+    // Count and warn about rules skipped due to age
+    const skipped = await this.prisma.recurringRule.count({
+      where: {
+        isActive: true,
+        nextDueAt: { lt: backfillCutoff },
+      },
+    });
+
+    if (skipped > 0) {
+      logger.warn(
+        {
+          skipped,
+          backfillCutoff: backfillCutoff.toISOString(),
+          event: "recurring_skip_old",
+        },
+        `Skipping ${skipped} very old recurring rules (nextDueAt < ${backfillCutoff.toISOString()})`
+      );
+    }
 
     const results: Array<{ ruleId: string; taskId: string; title: string }> = [];
 
