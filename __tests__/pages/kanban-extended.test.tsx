@@ -21,6 +21,13 @@ jest.mock("next-auth/react", () => ({
   })),
 }));
 
+// Mock next/navigation — useSearchParams returns null if not mocked, crashing the page
+jest.mock("next/navigation", () => ({
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+  useRouter: jest.fn(() => ({ push: jest.fn(), replace: jest.fn() })),
+  usePathname: jest.fn(() => "/kanban"),
+}));
+
 jest.mock("@/app/components/task-card", () => ({
   TaskCard: ({ task }: { task: { title: string } }) => (
     <div data-testid="task-card">{task.title}</div>
@@ -30,6 +37,7 @@ jest.mock("@/app/components/task-filters", () => ({
   TaskFilters: () => <div data-testid="task-filters" />,
   emptyFilters: { assignee: "", priority: "", category: "", tags: [], dueDateFrom: "", dueDateTo: "" },
   hasActiveFilters: () => false,
+  parseFiltersFromUrl: () => ({ assignee: "", priority: "", category: "", tags: [], dueDateFrom: "", dueDateTo: "" }),
 }));
 jest.mock("@/app/components/task-detail-modal", () => ({
   TaskDetailModal: () => <div data-testid="task-detail-modal" />,

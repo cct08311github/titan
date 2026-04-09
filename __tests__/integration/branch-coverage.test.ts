@@ -648,6 +648,11 @@ describe("TaskService — deleteTask branch coverage", () => {
     service = new TaskService(prisma as never);
     (prisma.task.delete as jest.Mock).mockResolvedValue({});
     (prisma.auditLog.create as jest.Mock).mockResolvedValue({});
+    // deleteTask wraps delete + auditLog in $transaction; execute the callback with a tx proxy
+    (prisma.$transaction as jest.Mock).mockImplementation(
+      async (fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ task: prisma.task, auditLog: prisma.auditLog })
+    );
   });
 
   it("logs task title when task exists", async () => {

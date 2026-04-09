@@ -12,6 +12,13 @@ jest.mock("next-auth/react", () => ({
   })),
 }));
 
+// Mock next/navigation — useSearchParams returns null if not mocked, crashing the page
+jest.mock("next/navigation", () => ({
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+  useRouter: jest.fn(() => ({ push: jest.fn(), replace: jest.fn() })),
+  usePathname: jest.fn(() => "/kanban"),
+}));
+
 // Mock child components
 jest.mock("@/app/components/task-card", () => ({
   TaskCard: ({ task }: { task: { title: string } }) => (
@@ -22,6 +29,7 @@ jest.mock("@/app/components/task-filters", () => ({
   TaskFilters: () => <div data-testid="task-filters" />,
   emptyFilters: { assignee: "", priority: "", category: "", tags: [], dueDateFrom: "", dueDateTo: "" },
   hasActiveFilters: () => false,
+  parseFiltersFromUrl: () => ({ assignee: "", priority: "", category: "", tags: [], dueDateFrom: "", dueDateTo: "" }),
 }));
 jest.mock("@/app/components/task-detail-modal", () => ({
   TaskDetailModal: () => <div data-testid="task-detail-modal" />,
@@ -81,9 +89,9 @@ describe("Kanban Page", () => {
       render(<KanbanPage />);
     });
     await waitFor(() => {
-      // 空資料時顯示 PageEmpty 引導訊息
-      expect(screen.getByText("尚無任務")).toBeInTheDocument();
-      expect(screen.getByText("目前沒有任何任務，請點擊「新增任務」開始")).toBeInTheDocument();
+      // 空資料時顯示 PageEmpty 引導訊息（文字隨 UI 更新）
+      expect(screen.getByText("建立第一個任務開始工作")).toBeInTheDocument();
+      expect(screen.getByText("把待辦事項加入看板，拖曳卡片即可更新進度")).toBeInTheDocument();
     });
   });
 

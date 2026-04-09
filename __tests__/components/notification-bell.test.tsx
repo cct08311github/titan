@@ -47,7 +47,7 @@ describe("NotificationBell", () => {
     await act(async () => {
       render(<NotificationBell />);
     });
-    expect(screen.getByLabelText("通知")).toBeInTheDocument();
+    expect(screen.getByLabelText(/通知/)).toBeInTheDocument();
   });
 
   it("shows unread count badge when there are unread notifications", async () => {
@@ -77,7 +77,7 @@ describe("NotificationBell", () => {
       render(<NotificationBell />);
     });
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("通知"));
+      fireEvent.click(screen.getByLabelText(/通知/));
     });
     expect(screen.getByText("通知")).toBeInTheDocument();
   });
@@ -87,7 +87,7 @@ describe("NotificationBell", () => {
       render(<NotificationBell />);
     });
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("通知"));
+      fireEvent.click(screen.getByLabelText(/通知/));
     });
     await waitFor(() => {
       expect(screen.getByText("You have a new task")).toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("NotificationBell", () => {
       render(<NotificationBell />);
     });
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("通知"));
+      fireEvent.click(screen.getByLabelText(/通知/));
     });
     await waitFor(() => {
       expect(screen.getByText("任務指派")).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("NotificationBell", () => {
       render(<NotificationBell />);
     });
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("通知"));
+      fireEvent.click(screen.getByLabelText(/通知/));
     });
     await waitFor(() => {
       expect(screen.getByText("目前沒有通知")).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe("NotificationBell", () => {
       render(<NotificationBell />);
     });
     await act(async () => {
-      fireEvent.click(screen.getByLabelText("通知"));
+      fireEvent.click(screen.getByLabelText(/通知/));
     });
     await waitFor(() => {
       expect(screen.getByText("通知")).toBeInTheDocument();

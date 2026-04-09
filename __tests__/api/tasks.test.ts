@@ -37,6 +37,12 @@ jest.mock("@/lib/prisma", () => ({
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...args: unknown[]) => mockGetServerSession(...args) }));
 
+// Mock @/auth for requireAuth() / withAuth / withManager (Auth.js v5 uses auth() not getServerSession)
+// Delegate to mockGetServerSession so all beforeEach session setups work transparently.
+jest.mock("@/auth", () => ({
+  auth: (...args: unknown[]) => mockGetServerSession(...args),
+}));
+
 // ── Session helpers ───────────────────────────────────────────────────────
 const MEMBER_SESSION = {
   user: { id: "user-1", name: "Test", email: "t@e.com", role: "MEMBER" },
@@ -262,6 +268,10 @@ describe("DELETE /api/tasks/[id]", () => {
     mockTask.findUnique.mockResolvedValue(MOCK_TASK);
     mockTask.delete.mockResolvedValue(MOCK_TASK);
     mockAuditLog.create.mockResolvedValue({});
+    // taskService.deleteTask wraps delete+auditLog in $transaction; execute the callback with a tx proxy
+    mockTransaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
+      fn({ task: mockTask, auditLog: mockAuditLog })
+    );
   });
 
   it("deletes task and returns success", async () => {

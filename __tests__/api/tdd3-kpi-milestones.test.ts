@@ -64,6 +64,9 @@ jest.mock("next-auth", () => ({
   getServerSession: (...a: unknown[]) => mockGetServerSession(...a),
 }));
 
+// Mock @/auth for requireAuth() (Auth.js v5 uses auth() not getServerSession)
+jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockGetServerSession(...args) }));
+
 const MEMBER = {
   user: { id: "u1", name: "Member", email: "m@e.com", role: "MEMBER" },
   expires: "2099-01-01",
@@ -171,7 +174,7 @@ describe("POST /api/milestones", () => {
   };
 
   it("creates milestone as authenticated user", async () => {
-    mockGetServerSession.mockResolvedValue(MEMBER);
+    mockGetServerSession.mockResolvedValue(MANAGER); // POST /api/milestones requires MANAGER
     const created = { id: "ms-new", ...validBody };
     mockMilestone.create.mockResolvedValue(created);
 
@@ -198,7 +201,7 @@ describe("POST /api/milestones", () => {
   });
 
   it("returns 400 when title is missing (Zod validation)", async () => {
-    mockGetServerSession.mockResolvedValue(MEMBER);
+    mockGetServerSession.mockResolvedValue(MANAGER); // POST /api/milestones requires MANAGER
 
     const { POST } = await import("@/app/api/milestones/route");
     const res = await (POST as Function)(
@@ -212,7 +215,7 @@ describe("POST /api/milestones", () => {
   });
 
   it("returns 400 when annualPlanId is missing", async () => {
-    mockGetServerSession.mockResolvedValue(MEMBER);
+    mockGetServerSession.mockResolvedValue(MANAGER); // POST /api/milestones requires MANAGER
 
     const { POST } = await import("@/app/api/milestones/route");
     const res = await (POST as Function)(
@@ -226,7 +229,7 @@ describe("POST /api/milestones", () => {
   });
 
   it("returns 400 when plannedStart > plannedEnd", async () => {
-    mockGetServerSession.mockResolvedValue(MEMBER);
+    mockGetServerSession.mockResolvedValue(MANAGER); // POST /api/milestones requires MANAGER
 
     const { POST } = await import("@/app/api/milestones/route");
     const res = await (POST as Function)(
@@ -337,7 +340,7 @@ describe("DELETE /api/milestones/[id]", () => {
   });
 
   it("deletes a milestone when authenticated", async () => {
-    mockGetServerSession.mockResolvedValue(MEMBER);
+    mockGetServerSession.mockResolvedValue(MANAGER); // DELETE /api/milestones/[id] requires MANAGER
     mockMilestone.findUnique.mockResolvedValue({ id: "ms-1", title: "To Delete" });
     mockMilestone.delete.mockResolvedValue({ id: "ms-1" });
 

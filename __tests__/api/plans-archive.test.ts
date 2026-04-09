@@ -93,10 +93,10 @@ describe("Plan archive validation", () => {
   });
 });
 
-describe("Plan API -- no DELETE, has PATCH", () => {
-  it("plans/[id]/route.ts does not export DELETE", async () => {
+describe("Plan API -- has PATCH and DELETE", () => {
+  it("plans/[id]/route.ts exports DELETE (manager-only hard delete)", async () => {
     const mod = await import("@/app/api/plans/[id]/route");
-    expect(mod).not.toHaveProperty("DELETE");
+    expect(mod).toHaveProperty("DELETE");
   });
 
   it("plans/[id]/route.ts exports PATCH", async () => {
