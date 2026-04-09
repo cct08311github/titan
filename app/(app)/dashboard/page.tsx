@@ -21,6 +21,7 @@ import { formatDate } from "@/lib/format";
 import { safeFixed } from "@/lib/safe-number";
 import Link from "next/link";
 import { StaleTaskWidget } from "@/app/components/stale-task-widget";
+import ManagerTodayCard from "@/app/components/dashboard/manager-today-card";
 
 // ── Skeleton loader ─────────────────────────────────────────────────────
 
@@ -384,6 +385,9 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
 function ManagerMyDay({ data }: { data: ManagerData }) {
   return (
     <div className="space-y-6">
+      {/* 今日必辦 — Issue #1323: first thing a manager sees */}
+      <ManagerTodayCard />
+
       {/* Alerts bar — min-h prevents CLS when alerts load (#1149) */}
       <div className="min-h-[2.75rem]">
         {data.alerts.length > 0 && (
