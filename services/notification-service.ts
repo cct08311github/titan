@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { formatLocalDate } from "@/lib/utils/date";
 import { publishNotifications } from "@/lib/notification-publisher";
+import { queueForPush, type PushPayload } from "@/lib/push-dispatcher";
 
 const DAYS_AHEAD = 7;
 
@@ -551,9 +552,26 @@ export class NotificationService {
           orderBy: { createdAt: "desc" },
           take: toCreate.length,
         })
-        .then((records) => publishNotifications(records))
+        .then(async (records) => {
+          // Issue #1322: SSE push
+          await publishNotifications(records);
+
+          // Issue #1354: Mobile push — fire-and-forget, non-fatal
+          const pushPayloads: PushPayload[] = records.map((n) => ({
+            notificationId: n.id,
+            userId: n.userId,
+            title: n.title,
+            body: n.body ?? "",
+            data: {
+              type: n.type,
+              ...(n.relatedId ? { relatedId: n.relatedId } : {}),
+              ...(n.relatedType ? { relatedType: n.relatedType } : {}),
+            },
+          }));
+          await Promise.allSettled(pushPayloads.map((p) => queueForPush(p)));
+        })
         .catch(() => {
-          /* SSE 推送失敗不影響主流程 */
+          /* SSE / push 推送失敗不影響主流程 */
         });
     }
 
