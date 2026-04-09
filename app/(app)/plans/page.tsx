@@ -582,8 +582,17 @@ export default function PlansPage() {
       ) : plans.length === 0 ? (
         <PageEmpty
           icon={<Target className="h-10 w-10" />}
-          title="尚無年度計畫"
-          description="目前沒有任何計畫，請點擊「新增年度計畫」建立"
+          title="建立第一個年度計畫，把目標落實到月度行動"
+          description="設定年度願景與月度里程碑，追蹤全年進度"
+          action={
+            <button
+              onClick={() => { setShowPlanForm(true); setPlanError(""); }}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
+            >
+              <Target className="h-3.5 w-3.5" />
+              建立計畫
+            </button>
+          }
         />
       ) : (
 

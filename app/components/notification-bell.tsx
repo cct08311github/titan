@@ -197,8 +197,9 @@ export function NotificationBell() {
                 載入中...
               </div>
             ) : notifications.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">
-                目前沒有通知
+              <div className="py-8 text-center px-4">
+                <p className="text-sm text-muted-foreground">目前沒有通知</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">任務被指派、留言、到期時會通知你</p>
               </div>
             ) : (
               notifications.map((n) => (

@@ -427,8 +427,9 @@ export function CommandPalette() {
             </li>
           ))}
           {allResults.length === 0 && !searching && (
-            <li className="px-4 py-6 text-sm text-muted-foreground text-center">
-              找不到符合的結果
+            <li className="px-4 py-6 text-center">
+              <p className="text-sm text-muted-foreground">找不到符合的結果</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">試試其他關鍵字或切換搜尋範圍</p>
             </li>
           )}
           {allResults.length === 0 && searching && (

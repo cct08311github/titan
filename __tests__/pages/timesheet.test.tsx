@@ -55,7 +55,8 @@ describe("Timesheet Page", () => {
   });
 
   it("renders timesheet grid", async () => {
-    // Provide mock time entries so the grid is rendered instead of the empty state
+    // Provide mock time entries with a real taskId so taskRows has a task-bound row
+    // (taskId: null is a free-row entry and does NOT add a task-bound row to taskRows)
     mockFetch.mockImplementation((url: string) => {
       if (url.includes("time-entries/stats")) {
         return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
@@ -63,7 +64,7 @@ describe("Timesheet Page", () => {
       return Promise.resolve({
         ok: true,
         json: async () => [
-          { id: "e1", userId: "u1", taskId: null, date: "2024-01-15", hours: 4, category: "PLANNED_TASK", description: null, task: null },
+          { id: "e1", userId: "u1", taskId: "task-1", date: "2024-01-15", hours: 4, category: "PLANNED_TASK", description: null, task: { title: "Task 1" } },
         ],
       } as Response);
     });
@@ -106,6 +107,27 @@ describe("Timesheet Page", () => {
       // Refactored page shows help text
       expect(screen.getByText(/點擊格子直接輸入數字/)).toBeInTheDocument();
     });
+  });
+
+  it("shows PageEmpty CTA when only FREE_ROW exists (no task-bound rows)", async () => {
+    // When fetch returns empty entries, taskRows = [FREE_ROW] only.
+    // The fixed condition filters out FREE_ROW (taskId === null), so length === 0 → PageEmpty renders.
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("time-entries/stats")) {
+        return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    });
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByText("從看板選擇任務或先建立一個")).toBeInTheDocument();
+    });
+    const kanbanLink = screen.getByRole("link", { name: "前往看板" });
+    expect(kanbanLink).toBeInTheDocument();
+    expect(kanbanLink).toHaveAttribute("href", "/kanban");
   });
 
   it("renders without crash when hours fields are null in time entries", async () => {

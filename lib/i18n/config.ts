@@ -6,15 +6,15 @@
  */
 
 /** Supported locales */
-export const locales = ["zh-TW", "en"] as const;
+// NOTE: English support pending future release
+export const locales = ["zh-TW"] as const;
 
 /** Default locale — Traditional Chinese for banking environment */
 export const defaultLocale = "zh-TW" as const;
 
-/** Locale display names (for language switcher UI) */
+/** Locale display names */
 export const localeNames: Record<(typeof locales)[number], string> = {
   "zh-TW": "繁體中文",
-  en: "English",
 };
 
 export type Locale = (typeof locales)[number];

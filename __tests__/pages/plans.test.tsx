@@ -114,9 +114,9 @@ describe("Plans Page", () => {
       render(<PlansPage />);
     });
     await waitFor(() => {
-      // 空資料時應顯示引導訊息，而非白屏或 PlanTree
-      expect(screen.getByText("尚無年度計畫")).toBeInTheDocument();
-      expect(screen.getByText("目前沒有任何計畫，請點擊「新增年度計畫」建立")).toBeInTheDocument();
+      // 空資料時應顯示引導訊息 + CTA（T1316: 空狀態 CTA 改版）
+      expect(screen.getByText("建立第一個年度計畫，把目標落實到月度行動")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "建立計畫" })).toBeInTheDocument();
     });
     // 空資料時不應渲染 PlanTree
     expect(screen.queryByTestId("plan-tree")).not.toBeInTheDocument();
