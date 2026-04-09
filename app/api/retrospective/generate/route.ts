@@ -37,16 +37,18 @@ export const GET = withAuth(async (req: NextRequest) => {
     orderBy: { updatedAt: "asc" },
   });
 
-  // 2. Time summary per user
+  // 2. Time summary per user (exclude soft-deleted — T1361 followup)
   const timeEntries = await prisma.timeEntry.findMany({
     where: {
       date: { gte: startDate, lt: endDate },
+      isDeleted: false,
     },
     select: {
       userId: true,
       hours: true,
       user: { select: { id: true, name: true } },
     },
+    take: 10000, // safety cap for large team retrospectives
   });
 
   const timeByUser: Record<string, { name: string; totalHours: number }> = {};

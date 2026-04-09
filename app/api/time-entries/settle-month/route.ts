@@ -33,11 +33,12 @@ export const POST = withAdmin(async (req: NextRequest) => {
   const monthStart = new Date(year, month - 1, 1);
   const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
 
-  // Find all APPROVED entries in this month
+  // Find all APPROVED entries in this month (exclude soft-deleted)
   const entries = await prisma.timeEntry.findMany({
     where: {
       date: { gte: monthStart, lte: monthEnd },
       approvalStatus: "APPROVED",
+      isDeleted: false,
     },
     select: { id: true, locked: true },
   });

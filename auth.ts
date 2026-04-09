@@ -15,6 +15,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
+
+/**
+ * Pre-computed bcrypt hash (of a random string, cost=12).
+ * Used for constant-time compare against non-existent users so that
+ * the auth flow takes the same wall time whether or not the username
+ * exists. Prevents username enumeration via response-time side channel.
+ */
+const DUMMY_PASSWORD_HASH =
+  "$2a$12$J1e8N9mJcHMXxQmYaqnZg.R9TxR5xU.LzjxGjjqoV5kVkvTJQB80C";
 import { prisma } from "@/lib/prisma";
 import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { AccountLockService } from "@/lib/account-lock";
@@ -115,6 +124,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
 
         if (!user || !user.isActive) {
+          // Constant-time defense against username enumeration: run a
+          // throwaway bcrypt compare so non-existent users take the
+          // same wall time as existing users with wrong passwords.
+          await compare(password, DUMMY_PASSWORD_HASH);
+
           await accountLockService.recordFailure(lockKey);
           // Issue #187: persist login failure to AuditLog DB
           auditService.log({

@@ -28,7 +28,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     ? requestedUserId
     : callerId;
 
-  const where: Record<string, unknown> = { userId };
+  const where: Record<string, unknown> = { userId, isDeleted: false };
   if (startDate || endDate) {
     where.date = {};
     if (startDate) (where.date as Record<string, unknown>).gte = new Date(startDate);
@@ -38,6 +38,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const entries = await prisma.timeEntry.findMany({
     where,
     select: { hours: true, category: true },
+    take: 5000, // safety cap
   });
 
   const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);

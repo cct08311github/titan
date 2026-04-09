@@ -54,11 +54,12 @@ export const GET = withAuth(async (
     },
   });
 
-  // Time entries within the date range
+  // Time entries within the date range (exclude soft-deleted — T1361 followup)
   const timeEntries = await prisma.timeEntry.findMany({
     where: {
       userId: id,
       date: { gte: startDate, lte: endDate },
+      isDeleted: false,
     },
     select: {
       id: true,
@@ -66,6 +67,7 @@ export const GET = withAuth(async (
       category: true,
       date: true,
     },
+    take: 2000, // safety cap — typical user has ~200/month
   });
 
   const taskCount = activeTasks.length;
