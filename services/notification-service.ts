@@ -259,6 +259,7 @@ export class NotificationService {
       where: {
         userId: { in: engineers.map((e) => e.id) },
         date: { gte: weekStart, lte: weekEnd },
+        isDeleted: false,
       },
       select: { userId: true, hours: true },
     });
@@ -325,6 +326,7 @@ export class NotificationService {
       where: {
         userId: { in: activeUsers.map((u) => u.id) },
         date: { gte: todayStart, lte: todayEnd },
+        isDeleted: false,
       },
       select: { userId: true },
     });
@@ -406,6 +408,7 @@ export class NotificationService {
       where: {
         userId: { in: engineers.map((e: { id: string }) => e.id) },
         date: { gte: rangeStart, lte: rangeEnd },
+        isDeleted: false,
       },
       select: { userId: true, date: true, hours: true },
     });

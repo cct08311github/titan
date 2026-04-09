@@ -36,7 +36,7 @@ describe("TimeEntryService", () => {
   });
 
   test("updateTimeEntry throws NotFoundError", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(null);
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
       service.updateTimeEntry("nonexistent", { hours: 3 }, "user-1", "ENGINEER")
@@ -44,7 +44,7 @@ describe("TimeEntryService", () => {
   });
 
   test("deleteTimeEntry removes entry", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({ id: "te-1", userId: "user-1" });
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({ id: "te-1", userId: "user-1" });
     (prisma.timeEntry.delete as jest.Mock).mockResolvedValue({ id: "te-1" });
 
     await service.deleteTimeEntry("te-1", "user-1", "ENGINEER");

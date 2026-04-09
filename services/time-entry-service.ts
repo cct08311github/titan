@@ -105,6 +105,8 @@ export class TimeEntryService {
       };
     }
 
+    where.isDeleted = false;
+
     return this.prisma.timeEntry.findMany({
       where,
       include: {
@@ -160,7 +162,7 @@ export class TimeEntryService {
     callerId: string,
     callerRole: CallerRole
   ) {
-    const existing = await this.prisma.timeEntry.findUnique({ where: { id } });
+    const existing = await this.prisma.timeEntry.findFirst({ where: { id, isDeleted: false } });
     if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
 
     // TS-04: Locked entries cannot be modified
@@ -198,7 +200,7 @@ export class TimeEntryService {
    * TS-04: Locked entries cannot be deleted.
    */
   async deleteTimeEntry(id: string, callerId: string, callerRole: CallerRole) {
-    const existing = await this.prisma.timeEntry.findUnique({ where: { id } });
+    const existing = await this.prisma.timeEntry.findFirst({ where: { id, isDeleted: false } });
     if (!existing) throw new NotFoundError(`TimeEntry not found: ${id}`);
 
     // TS-04: Locked entries cannot be deleted
@@ -221,7 +223,7 @@ export class TimeEntryService {
   async startTimer(input: StartTimerInput) {
     // Check for existing running timer
     const running = await this.prisma.timeEntry.findFirst({
-      where: { userId: input.userId, isRunning: true },
+      where: { userId: input.userId, isRunning: true, isDeleted: false },
     });
     if (running) {
       throw new ValidationError("已有計時器正在運行，請先停止後再啟動新的");
@@ -252,7 +254,7 @@ export class TimeEntryService {
    */
   async stopTimer(userId: string) {
     const running = await this.prisma.timeEntry.findFirst({
-      where: { userId, isRunning: true },
+      where: { userId, isRunning: true, isDeleted: false },
     });
     if (!running) {
       throw new NotFoundError("沒有正在運行的計時器");
@@ -280,7 +282,7 @@ export class TimeEntryService {
    */
   async getRunningTimer(userId: string) {
     return this.prisma.timeEntry.findFirst({
-      where: { userId, isRunning: true },
+      where: { userId, isRunning: true, isDeleted: false },
       include: {
         task: { select: { id: true, title: true } },
         user: { select: { id: true, name: true } },
