@@ -13,9 +13,19 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { withAuth } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
+import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { logger } from "@/lib/logger";
 
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
+
+// Rate limit uploads per user to prevent disk-fill DoS.
+// 30 uploads per 5 minutes ≈ 6/min — generous but bounded.
+const uploadRateLimiter = createLoginRateLimiter({
+  points: 30,
+  duration: 300,
+});
 
 const ALLOWED_TYPES: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -39,6 +49,16 @@ function validateMagicBytes(buffer: Uint8Array, declaredMime: string): boolean {
 }
 
 export const POST = withAuth(async (req: NextRequest) => {
+  const session = await requireAuth();
+  if (process.env.NODE_ENV !== "test") {
+    try {
+      await checkRateLimit(uploadRateLimiter, session.user.id);
+    } catch {
+      logger.warn({ userId: session.user.id, event: "upload_rate_limited" }, "Upload rate limit exceeded");
+      return error("RateLimitError", "上傳次數過於頻繁，請稍後再試", 429);
+    }
+  }
+
   const formData = await req.formData();
   const file = formData.get("file");
 

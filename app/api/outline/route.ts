@@ -34,9 +34,11 @@ export const GET = withAuth(async (_req: NextRequest) => {
           504,
         );
       }
+      // Don't leak err.message — it may contain internal URLs/IPs.
+      // Details go to server log via apiHandler's error pipeline.
       return error(
         "OUTLINE_ERROR",
-        `Outline 服務異常：${err.message}`,
+        "Outline 服務異常，請稍後再試。",
         err.statusCode ?? 502,
       );
     }
