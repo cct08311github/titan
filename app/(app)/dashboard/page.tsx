@@ -20,6 +20,7 @@ import { extractData } from "@/lib/api-client";
 import { formatDate } from "@/lib/format";
 import { safeFixed } from "@/lib/safe-number";
 import Link from "next/link";
+import { StaleTaskWidget } from "@/app/components/stale-task-widget";
 
 // ── Skeleton loader ─────────────────────────────────────────────────────
 
@@ -370,6 +371,9 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
 
         {/* My projects — Issue #1176 */}
         <MyProjectsCard />
+
+        {/* Stale task widget — Issue #1312 */}
+        <StaleTaskWidget role="ENGINEER" />
       </div>
     </div>
   );
@@ -474,8 +478,11 @@ function ManagerMyDay({ data }: { data: ManagerData }) {
           )}
         </div>
 
-        {/* Right — Workload + plan summaries */}
+        {/* Right — Workload + plan summaries + stale tasks */}
         <div className="space-y-4">
+          {/* Stale task widget — Issue #1312 */}
+          <StaleTaskWidget role={data.role as "ADMIN" | "MANAGER" | "ENGINEER"} />
+
           {/* Plan summaries */}
           {data.planSummaries.length > 0 && (
             <div className="bg-card rounded-xl shadow-card p-5">

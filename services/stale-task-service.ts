@@ -12,7 +12,7 @@
  * De-duplication: same task + level within 24 hours → skip.
  */
 
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient, TaskStatus } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 import { sanitizeMarkdown } from "@/lib/security/sanitize";
 import { logger } from "@/lib/logger";
@@ -87,6 +87,94 @@ function staleNotifRelatedType(level: StaleLevel): string {
   return `STALE_${level}`;
 }
 
+// ── List stale tasks for a user (T1312 dashboard widget) ────────────────────
+
+export interface StaleTaskItem {
+  id: string;
+  title: string;
+  level: StaleLevel;
+  daysSinceUpdate: number;
+  dueDate: Date | null;
+  assigneeName: string | null;
+  status: string;
+}
+
+type Role = "ADMIN" | "MANAGER" | "ENGINEER";
+
+/**
+ * Return stale tasks visible to the given user based on their role.
+ *
+ * ENGINEER: only their own tasks
+ * MANAGER:  all tasks (no per-team FK yet; fallback = all)
+ * ADMIN:    all tasks, ESCALATE first
+ *
+ * Results are sorted by level severity (ESCALATE > WARN > REMIND), then by
+ * days-since-update descending. Capped at `limit` (default 50).
+ */
+export async function listStaleTasksForUser(
+  userId: string,
+  role: Role,
+  deps?: Partial<Deps>
+): Promise<StaleTaskItem[]> {
+  const db = deps?.prisma ?? defaultPrisma;
+  const now = deps?.now ?? new Date();
+
+  const remindCutoff = new Date(now.getTime() - STALE_REMIND_DAYS * 24 * 60 * 60 * 1000);
+
+  const TERMINAL_STATUSES: TaskStatus[] = ["DONE"];
+
+  const whereClause = {
+    updatedAt: { lt: remindCutoff },
+    status: { notIn: TERMINAL_STATUSES },
+    ...(role === "ENGINEER" ? { primaryAssigneeId: userId } : {}),
+  };
+
+  const tasks = await db.task.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      title: true,
+      updatedAt: true,
+      dueDate: true,
+      status: true,
+      primaryAssignee: {
+        select: { name: true },
+      },
+    },
+    take: 200, // fetch more, then sort + cap in-memory
+  });
+
+  const LEVEL_ORDER: Record<StaleLevel, number> = { ESCALATE: 0, WARN: 1, REMIND: 2 };
+  const DEFAULT_LIMIT = 50;
+
+  const staleItems: StaleTaskItem[] = [];
+
+  for (const task of tasks) {
+    const level = classifyStaleLevel(task.updatedAt, task.dueDate, now);
+    if (!level) continue;
+
+    const daysSinceUpdate = Math.floor(daysAgo(task.updatedAt, now));
+    staleItems.push({
+      id: task.id,
+      title: task.title,
+      level,
+      daysSinceUpdate,
+      dueDate: task.dueDate,
+      assigneeName: task.primaryAssignee?.name ?? null,
+      status: task.status,
+    });
+  }
+
+  // Sort: ESCALATE first, then by days descending within same level
+  staleItems.sort((a, b) => {
+    const levelDiff = LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level];
+    if (levelDiff !== 0) return levelDiff;
+    return b.daysSinceUpdate - a.daysSinceUpdate;
+  });
+
+  return staleItems.slice(0, DEFAULT_LIMIT);
+}
+
 // ── Main export ──────────────────────────────────────────────────────────────
 
 /**
@@ -102,10 +190,12 @@ export async function scanStaleTasks(deps?: Partial<Deps>): Promise<ScanResult> 
   const dedupCutoff = new Date(now.getTime() - DEDUP_WINDOW_HOURS * 60 * 60 * 1000);
 
   // Query stale tasks with assignee info
+  // Note: TaskStatus enum only has BACKLOG/TODO/IN_PROGRESS/REVIEW/DONE — no CANCELLED
+  const terminalStatuses: TaskStatus[] = ["DONE"];
   const staleTasks = await db.task.findMany({
     where: {
       updatedAt: { lt: remindCutoff },
-      status: { notIn: ["DONE"] },
+      status: { notIn: terminalStatuses },
     },
     select: {
       id: true,
