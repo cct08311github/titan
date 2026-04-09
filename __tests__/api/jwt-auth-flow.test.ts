@@ -207,7 +207,7 @@ describe("POST /api/auth/logout", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("should revoke refresh token on logout", async () => {
-    mockAuthFn.mockResolvedValueOnce({ user: { id: "user-1" } });
+    mockAuthFn.mockResolvedValue({ user: { id: "user-1" } });
     const req = new NextRequest("http://localhost/api/auth/logout", {
       method: "POST", body: JSON.stringify({ refreshToken: "some-token" }),
     });
@@ -219,7 +219,7 @@ describe("POST /api/auth/logout", () => {
   });
 
   it("should revoke all tokens when no specific token given", async () => {
-    mockAuthFn.mockResolvedValueOnce({ user: { id: "user-1" } });
+    mockAuthFn.mockResolvedValue({ user: { id: "user-1" } });
     const req = new NextRequest("http://localhost/api/auth/logout", {
       method: "POST", body: "{}",
     });
