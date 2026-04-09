@@ -47,6 +47,7 @@ export const GET = withAuth(async (
       user: { select: { id: true, name: true, avatar: true } },
     },
     orderBy: { createdAt: "asc" },
+    take: 500,  // safety cap for tasks with pathological comment counts
   });
 
   return success({ comments });

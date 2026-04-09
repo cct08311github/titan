@@ -44,6 +44,7 @@ export const GET = withAuth(async (
       uploader: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
+    take: 100,  // safety cap
   });
 
   return success(attachments);

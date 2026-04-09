@@ -19,9 +19,8 @@ import { apiHandler } from "@/lib/api-handler";
 const auditService = new AuditService(prisma);
 
 export const POST = apiHandler(async (req: NextRequest) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const session = await getCachedSession(req) as any;
-  const userId = session?.user?.id as string | undefined;
+  const session = await getCachedSession(req);
+  const userId = session?.user?.id;
 
   if (!userId) {
     return error("UnauthorizedError", "請先登入", 401);
