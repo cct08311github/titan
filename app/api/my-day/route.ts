@@ -85,10 +85,11 @@ export const GET = withAuth(async (req: NextRequest) => {
             },
           },
         }),
-        // Today's time entries summary
+        // Today's time entries summary (exclude soft-deleted)
         prisma.timeEntry.aggregate({
           where: {
             date: { gte: todayStart, lt: todayEnd },
+            isDeleted: false,
           },
           _sum: { hours: true },
           _count: true,
@@ -238,11 +239,12 @@ export const GET = withAuth(async (req: NextRequest) => {
         },
         orderBy: [{ priority: "asc" }, { dueDate: "asc" }],
       }),
-      // Today's logged hours
+      // Today's logged hours (exclude soft-deleted)
       prisma.timeEntry.aggregate({
         where: {
           userId,
           date: { gte: todayStart, lt: todayEnd },
+          isDeleted: false,
         },
         _sum: { hours: true },
       }),

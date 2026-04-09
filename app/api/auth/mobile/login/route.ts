@@ -101,6 +101,14 @@ export async function POST(req: NextRequest) {
   });
 
   if (!user || !user.isActive) {
+    // Constant-time defense against username enumeration: throwaway
+    // bcrypt compare so non-existent users take the same wall time.
+    // Same mitigation as auth.ts web login.
+    await compare(
+      password,
+      "$2a$12$J1e8N9mJcHMXxQmYaqnZg.R9TxR5xU.LzjxGjjqoV5kVkvTJQB80C"
+    );
+
     await accountLockService.recordFailure(lockKey);
     auditService.log({
       userId: null,
