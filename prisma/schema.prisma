@@ -234,7 +234,7 @@ model AnnualPlan {
   deliverables Deliverable[] @relation("AnnualPlanDeliverable")
   linkedTasks  Task[]        @relation("PlanTasks") // Issue #835: direct task linkage
 
-  @@index([year])
+  @@unique([year])
   @@index([createdBy])
   @@map("annual_plans")
 }
@@ -1154,6 +1154,7 @@ model MonitoringAlert {
 
   relatedTask Task? @relation(fields: [relatedTaskId], references: [id])
 
+  @@unique([alertName, startsAt])
   @@index([status])
   @@index([startsAt])
   @@map("monitoring_alerts")

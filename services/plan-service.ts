@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { NotFoundError, ValidationError, ConflictError } from "./errors";
 import { calculatePlanProgress } from "@/lib/progress-calc";
 
@@ -95,38 +95,38 @@ export class PlanService {
       throw new ValidationError("年份為必填");
     }
 
-    const existing = await this.prisma.annualPlan.findFirst({
-      where: { year: input.year },
-    });
-    if (existing) {
-      throw new ConflictError("該年度計畫已存在");
+    try {
+      return await this.prisma.annualPlan.create({
+        data: {
+          year: input.year,
+          title: input.title,
+          vision: input.vision ?? null,
+          description: input.description ?? null,
+          implementationPlan: input.implementationPlan ?? null,
+          createdBy: input.createdBy,
+          milestones: input.milestones?.length
+            ? {
+                create: input.milestones.map((m, i) => ({
+                  title: m.title,
+                  plannedEnd: new Date(m.plannedEnd),
+                  plannedStart: m.plannedStart ? new Date(m.plannedStart) : null,
+                  description: m.description ?? null,
+                  order: m.order ?? i,
+                })),
+              }
+            : undefined,
+        },
+        include: {
+          milestones: true,
+          monthlyGoals: true,
+        },
+      });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new ConflictError("該年度計畫已存在");
+      }
+      throw err;
     }
-
-    return this.prisma.annualPlan.create({
-      data: {
-        year: input.year,
-        title: input.title,
-        vision: input.vision ?? null,
-        description: input.description ?? null,
-        implementationPlan: input.implementationPlan ?? null,
-        createdBy: input.createdBy,
-        milestones: input.milestones?.length
-          ? {
-              create: input.milestones.map((m, i) => ({
-                title: m.title,
-                plannedEnd: new Date(m.plannedEnd),
-                plannedStart: m.plannedStart ? new Date(m.plannedStart) : null,
-                description: m.description ?? null,
-                order: m.order ?? i,
-              })),
-            }
-          : undefined,
-      },
-      include: {
-        milestones: true,
-        monthlyGoals: true,
-      },
-    });
   }
 
   async updatePlan(id: string, input: UpdatePlanInput) {

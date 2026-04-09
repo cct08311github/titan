@@ -9,7 +9,17 @@ import { createMockRequest } from "../utils/test-utils";
 const mockTimeEntry = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
 const mockAuditLog = { create: jest.fn() };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { timeEntry: mockTimeEntry, auditLog: mockAuditLog } }));
+// T1353: time-entries POST now wraps daily-limit check + create in $transaction.
+// Mock invokes the callback with the same prisma mock, so tx.timeEntry.findMany etc. work.
+const mockPrisma = {
+  timeEntry: mockTimeEntry,
+  auditLog: mockAuditLog,
+  $transaction: jest.fn().mockImplementation((arg: unknown) => {
+    if (typeof arg === "function") return (arg as (tx: unknown) => unknown)(mockPrisma);
+    return Promise.all(arg as unknown[]);
+  }),
+};
+jest.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));

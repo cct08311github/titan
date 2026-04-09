@@ -158,24 +158,26 @@ export class KPIService {
   }
 
   async calculateAchievement(kpiId: string) {
-    const kpi = await this.prisma.kPI.findUnique({
-      where: { id: kpiId },
-      include: {
-        taskLinks: {
-          include: {
-            task: { select: { progressPct: true, status: true } },
+    return this.prisma.$transaction(async (tx) => {
+      const kpi = await tx.kPI.findUnique({
+        where: { id: kpiId },
+        include: {
+          taskLinks: {
+            include: {
+              task: { select: { progressPct: true, status: true } },
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!kpi) throw new NotFoundError(`KPI not found: ${kpiId}`);
+      if (!kpi) throw new NotFoundError(`KPI not found: ${kpiId}`);
 
-    const achievement = calcAchievement(kpi);
+      const achievement = calcAchievement(kpi);
 
-    return this.prisma.kPI.update({
-      where: { id: kpiId },
-      data: { actual: achievement },
+      return tx.kPI.update({
+        where: { id: kpiId },
+        data: { actual: achievement },
+      });
     });
   }
 }

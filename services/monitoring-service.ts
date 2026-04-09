@@ -34,27 +34,18 @@ export class MonitoringService {
     const summary = payload.annotations?.summary ?? payload.alertName;
     const description = payload.annotations?.description ?? null;
 
-    // Upsert: find existing by alertName + startsAt
-    const existing = await this.prisma.monitoringAlert.findFirst({
-      where: { alertName: payload.alertName, startsAt },
-    });
-
-    if (existing) {
-      return this.prisma.monitoringAlert.update({
-        where: { id: existing.id },
-        data: {
-          status,
-          severity: payload.severity,
-          endsAt,
-          labels: (payload.labels as Record<string, string>) ?? undefined,
-          summary,
-          description,
-        },
-      });
-    }
-
-    return this.prisma.monitoringAlert.create({
-      data: {
+    // Atomic upsert: uses composite unique index on (alertName, startsAt)
+    return this.prisma.monitoringAlert.upsert({
+      where: { alertName_startsAt: { alertName: payload.alertName, startsAt } },
+      update: {
+        status,
+        severity: payload.severity,
+        endsAt,
+        labels: (payload.labels as Record<string, string>) ?? undefined,
+        summary,
+        description,
+      },
+      create: {
         alertName: payload.alertName,
         severity: payload.severity,
         status,

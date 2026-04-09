@@ -16,6 +16,8 @@ const mockMonitoringAlert = {
   findFirst: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
+  // T1353: service uses upsert for atomic webhook handling
+  upsert: jest.fn(),
 };
 
 const mockTask = {
@@ -99,6 +101,8 @@ describe("POST /api/integrations/monitoring/webhook", () => {
     auth.mockResolvedValue(null);
     mockMonitoringAlert.findFirst.mockResolvedValue(null);
     mockMonitoringAlert.create.mockResolvedValue(MOCK_ALERT);
+    // T1353: monitoring service uses upsert (atomic) — mock default
+    mockMonitoringAlert.upsert.mockResolvedValue(MOCK_ALERT);
     // Clear env
     delete process.env.MONITORING_WEBHOOK_KEY;
   });
@@ -163,6 +167,8 @@ describe("POST /api/integrations/monitoring/webhook", () => {
     process.env.MONITORING_WEBHOOK_KEY = "secret-key-123";
     mockMonitoringAlert.findFirst.mockResolvedValue(MOCK_ALERT);
     mockMonitoringAlert.update.mockResolvedValue({ ...MOCK_ALERT, status: "RESOLVED" });
+    // T1353: also mock upsert (now used by service)
+    mockMonitoringAlert.upsert.mockResolvedValue({ ...MOCK_ALERT, status: "RESOLVED" });
 
     const { POST } = await import("@/app/api/integrations/monitoring/webhook/route");
     const mockReq = createMockRequest("/api/integrations/monitoring/webhook", {
@@ -178,7 +184,8 @@ describe("POST /api/integrations/monitoring/webhook", () => {
     mockReq.headers.set("authorization", "Bearer secret-key-123");
     const res = await POST(mockReq);
     expect(res.status).toBe(201);
-    expect(mockMonitoringAlert.update).toHaveBeenCalled();
+    // T1353: service now uses upsert (atomic) instead of separate update
+    expect(mockMonitoringAlert.upsert).toHaveBeenCalled();
   });
 
   it("rejects invalid payload (400)", async () => {
