@@ -5,6 +5,7 @@ import { success } from "@/lib/api-response";
 import { DeliverableService } from "@/services/deliverable-service";
 import { listDeliverablesSchema, createDeliverableSchema } from "@/validators/deliverable-validators";
 import { withAuth, withManager } from "@/lib/auth-middleware";
+import { parsePagination } from "@/lib/pagination";
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
@@ -24,9 +25,15 @@ export const GET = withAuth(async (req: NextRequest) => {
     );
   }
 
+  const { page, limit, skip } = parsePagination(searchParams);
   const service = new DeliverableService(prisma);
-  const deliverables = await service.listDeliverables(query.data);
-  return success(deliverables);
+
+  const [deliverables, total] = await Promise.all([
+    service.listDeliverables(query.data, { skip, take: limit }),
+    service.countDeliverables(query.data),
+  ]);
+
+  return success({ items: deliverables, total, page, limit });
 });
 
 export const POST = withManager(async (req: NextRequest) => {

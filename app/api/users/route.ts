@@ -8,6 +8,7 @@ import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
+import { parsePagination } from "@/lib/pagination";
 
 const userService = new UserService(prisma);
 const auditService = new AuditService(prisma);
@@ -17,9 +18,16 @@ export const GET = withAuth(async (req: NextRequest) => {
   const includeSuspended = searchParams.get("includeSuspended") === "true";
   const search = searchParams.get("search") ?? undefined;
   const role = searchParams.get("role") ?? undefined;
+  const { page, limit, skip } = parsePagination(searchParams);
 
-  const users = await userService.listUsers({ includeSuspended, search, role });
-  return success(users);
+  const filter = { includeSuspended, search, role };
+
+  const [users, total] = await Promise.all([
+    userService.listUsers(filter, { skip, take: limit }),
+    userService.countUsers(filter),
+  ]);
+
+  return success({ items: users, total, page, limit });
 });
 
 export const POST = withManager(async (req: NextRequest) => {

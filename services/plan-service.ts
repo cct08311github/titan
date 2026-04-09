@@ -44,9 +44,14 @@ export interface UpdatePlanInput {
 export class PlanService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async listPlans(filter: ListPlansFilter) {
+  async listPlans(
+    filter: ListPlansFilter,
+    pagination?: { skip: number; take: number }
+  ) {
+    const where = filter.year ? { year: filter.year } : undefined;
+
     const plans = await this.prisma.annualPlan.findMany({
-      where: filter.year ? { year: filter.year } : undefined,
+      where,
       include: {
         creator: { select: { id: true, name: true } },
         milestones: { orderBy: { order: "asc" } },
@@ -57,6 +62,7 @@ export class PlanService {
         _count: { select: { monthlyGoals: true } },
       },
       orderBy: [{ year: "desc" }, { createdAt: "desc" }],
+      ...(pagination ?? {}),
     });
 
     // Auto-compute progressPct from goal statuses
@@ -64,6 +70,12 @@ export class PlanService {
       ...plan,
       progressPct: calculatePlanProgress(plan.monthlyGoals),
     }));
+  }
+
+  async countPlans(filter: ListPlansFilter) {
+    return this.prisma.annualPlan.count({
+      where: filter.year ? { year: filter.year } : undefined,
+    });
   }
 
   async getPlan(id: string) {

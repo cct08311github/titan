@@ -5,17 +5,29 @@ import { createSpaceSchema } from "@/validators/space-validators";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { parsePagination } from "@/lib/pagination";
 
-export const GET = withAuth(async (_req: NextRequest) => {
-  const spaces = await prisma.knowledgeSpace.findMany({
-    include: {
-      creator: { select: { id: true, name: true } },
-      _count: { select: { documents: true } },
-    },
-    orderBy: { name: "asc" },
-  });
+export const GET = withAuth(async (req: NextRequest) => {
+  const { searchParams } = new URL(req.url);
+  const { page, limit, skip } = parsePagination(searchParams);
 
-  return success({ items: spaces });
+  const where = {};
+
+  const [spaces, total] = await Promise.all([
+    prisma.knowledgeSpace.findMany({
+      where,
+      include: {
+        creator: { select: { id: true, name: true } },
+        _count: { select: { documents: true } },
+      },
+      orderBy: { name: "asc" },
+      skip,
+      take: limit,
+    }),
+    prisma.knowledgeSpace.count({ where }),
+  ]);
+
+  return success({ items: spaces, total, page, limit });
 });
 
 export const POST = withAuth(async (req: NextRequest) => {

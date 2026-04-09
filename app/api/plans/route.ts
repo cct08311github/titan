@@ -7,18 +7,23 @@ import { success } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { parseYearOptional } from "@/lib/query-params";
+import { parsePagination } from "@/lib/pagination";
 
 const planService = new PlanService(prisma);
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const year = searchParams.get("year");
+  const { page, limit, skip } = parsePagination(searchParams);
 
-  const plans = await planService.listPlans({
-    year: parseYearOptional(year),
-  });
+  const filter = { year: parseYearOptional(year) };
 
-  return success(plans);
+  const [plans, total] = await Promise.all([
+    planService.listPlans(filter, { skip, take: limit }),
+    planService.countPlans(filter),
+  ]);
+
+  return success({ items: plans, total, page, limit });
 });
 
 export const POST = withManager(async (req: NextRequest) => {

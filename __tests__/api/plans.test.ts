@@ -6,7 +6,7 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockAnnualPlan = { findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockAnnualPlan = { findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn().mockResolvedValue(1) };
 
 jest.mock("@/lib/prisma", () => ({ prisma: { annualPlan: mockAnnualPlan } }));
 
@@ -40,7 +40,7 @@ describe("GET /api/plans", () => {
     const res = await GET(createMockRequest("/api/plans"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("plan-1");
+    expect(body.data.items[0].id).toBe("plan-1");
   });
 
   it("returns 401 when no session", async () => {

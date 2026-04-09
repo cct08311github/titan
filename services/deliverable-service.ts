@@ -31,7 +31,10 @@ export interface UpdateDeliverableInput {
 export class DeliverableService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async listDeliverables(filter: ListDeliverablesFilter) {
+  async listDeliverables(
+    filter: ListDeliverablesFilter,
+    pagination?: { skip: number; take: number }
+  ) {
     const where: Record<string, unknown> = {};
 
     if (filter.taskId) where.taskId = filter.taskId;
@@ -51,7 +54,21 @@ export class DeliverableService {
         acceptor: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
+      ...(pagination ?? {}),
     });
+  }
+
+  async countDeliverables(filter: ListDeliverablesFilter) {
+    const where: Record<string, unknown> = {};
+
+    if (filter.taskId) where.taskId = filter.taskId;
+    if (filter.kpiId) where.kpiId = filter.kpiId;
+    if (filter.annualPlanId) where.annualPlanId = filter.annualPlanId;
+    if (filter.monthlyGoalId) where.monthlyGoalId = filter.monthlyGoalId;
+    if (filter.status) where.status = filter.status;
+    if (filter.type) where.type = filter.type;
+
+    return this.prisma.deliverable.count({ where });
   }
 
   async getDeliverable(id: string) {

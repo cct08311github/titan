@@ -6,7 +6,7 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockPermission = { findMany: jest.fn(), create: jest.fn(), updateMany: jest.fn() };
+const mockPermission = { findMany: jest.fn(), count: jest.fn().mockResolvedValue(1), create: jest.fn(), updateMany: jest.fn() };
 const mockAuditLog = { create: jest.fn() };
 
 jest.mock("@/lib/prisma", () => ({
@@ -50,7 +50,8 @@ describe("GET /api/permissions", () => {
     const res = await GET(createMockRequest("/api/permissions"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("perm-1");
+    // T1362: response now wrapped in { items, total, page, limit }
+    expect(body.data.items[0].id).toBe("perm-1");
   });
 
   it("returns 403 for non-manager", async () => {

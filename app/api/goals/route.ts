@@ -6,27 +6,36 @@ import { withAuth, withManager } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
 import { ValidationError } from "@/services/errors";
 import { parseMonth } from "@/lib/query-params";
+import { parsePagination } from "@/lib/pagination";
 
 export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const planId = searchParams.get("planId");
   const month = searchParams.get("month");
+  const { page, limit, skip } = parsePagination(searchParams);
 
-  const goals = await prisma.monthlyGoal.findMany({
-    where: {
-      ...(planId && { annualPlanId: planId }),
-      ...(month !== null && { month: parseMonth(month) }),
-    },
-    include: {
-      annualPlan: { select: { id: true, title: true, year: true, archivedAt: true } },
-      assignee: { select: { id: true, name: true, avatar: true } },
-      _count: { select: { tasks: true } },
-      deliverables: true,
-    },
-    orderBy: [{ annualPlanId: "asc" }, { month: "asc" }],
-  });
+  const where = {
+    ...(planId && { annualPlanId: planId }),
+    ...(month !== null && { month: parseMonth(month) }),
+  };
 
-  return success(goals);
+  const [goals, total] = await Promise.all([
+    prisma.monthlyGoal.findMany({
+      where,
+      include: {
+        annualPlan: { select: { id: true, title: true, year: true, archivedAt: true } },
+        assignee: { select: { id: true, name: true, avatar: true } },
+        _count: { select: { tasks: true } },
+        deliverables: true,
+      },
+      orderBy: [{ annualPlanId: "asc" }, { month: "asc" }],
+      skip,
+      take: limit,
+    }),
+    prisma.monthlyGoal.count({ where }),
+  ]);
+
+  return success({ items: goals, total, page, limit });
 });
 
 export const POST = withManager(async (req: NextRequest) => {
