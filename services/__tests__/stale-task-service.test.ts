@@ -188,9 +188,9 @@ describe("scanStaleTasks", () => {
     expect(result.warnCount).toBe(0);
   });
 
-  // ── Test 6: DONE / CANCELLED tasks are excluded ──────────────────────────
+  // ── Test 6: DONE tasks are excluded ──────────────────────────────────────
 
-  test("DONE and CANCELLED tasks do not appear in scan results", async () => {
+  test("DONE tasks do not appear in scan results", async () => {
     // These should not be returned by the prisma query (status filter in service)
     // Verify the query filter is applied correctly
     (prisma.task.findMany as jest.Mock).mockResolvedValue([]);
@@ -198,7 +198,7 @@ describe("scanStaleTasks", () => {
     await scanStaleTasks({ prisma: prisma as never, now: NOW });
 
     const queryArg = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
-    expect(queryArg.where.status).toEqual({ notIn: ["DONE", "CANCELLED"] });
+    expect(queryArg.where.status).toEqual({ notIn: ["DONE"] });
   });
 
   // ── Test 7: 24hr dedup skips already-notified task+level ─────────────────

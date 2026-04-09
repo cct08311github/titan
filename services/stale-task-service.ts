@@ -105,7 +105,7 @@ export async function scanStaleTasks(deps?: Partial<Deps>): Promise<ScanResult> 
   const staleTasks = await db.task.findMany({
     where: {
       updatedAt: { lt: remindCutoff },
-      status: { notIn: ["DONE", "CANCELLED"] },
+      status: { notIn: ["DONE"] },
     },
     select: {
       id: true,
