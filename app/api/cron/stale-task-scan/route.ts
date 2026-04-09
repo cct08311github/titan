@@ -13,17 +13,11 @@ import { success, error } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
 import { scanStaleTasks } from "@/services/stale-task-service";
 import { logger } from "@/lib/logger";
+import { verifyCronSecret } from "@/lib/cron-auth";
 
 export const POST = apiHandler(async (req: NextRequest) => {
-  // Enforce CRON_SECRET — reject if not configured
-  const expectedSecret = process.env.CRON_SECRET;
-  if (!expectedSecret) {
-    return error("ServerError", "CRON_SECRET not configured", 500);
-  }
-  const provided = req.headers.get("x-cron-secret");
-  if (provided !== expectedSecret) {
-    return error("UnauthorizedError", "Invalid cron secret", 401);
-  }
+  const authError = verifyCronSecret(req);
+  if (authError) return authError;
 
   try {
     const result = await scanStaleTasks();

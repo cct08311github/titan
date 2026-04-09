@@ -297,6 +297,51 @@ services:
       retries: 3
       start_period: 30s
 
+  # ── Cron Scheduler（Issue #1352）─────────────────────────────
+  # Lightweight Alpine container that triggers all cron API routes via HTTP.
+  # No external scheduler required — works in air-gapped Docker Compose deployments.
+  #
+  # Schedule (Asia/Taipei timezone):
+  #   */5  * * * *   audit-queue-drain    — every 5 min (keep Redis lean)
+  #   */15 * * * *   email-notifications  — every 15 min
+  #   0    8 * * *   daily-digest         — 08:00 daily
+  #   0   17 * * 1-5 daily-reminder       — 17:00 weekdays
+  #   0    2 * * *   stale-task-scan      — 02:00 daily (low load)
+  #   30   8 * * 1   verification-reminder — 08:30 Monday
+  titan-cron:
+    image: alpine:3.19
+    container_name: titan-cron
+    restart: unless-stopped
+    depends_on:
+      titan-app:
+        condition: service_healthy
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET is required}
+      TITAN_APP_URL: http://titan-app:3100
+    networks:
+      - titan-internal
+    command: >-
+      /bin/sh -c "
+      apk add --no-cache curl tzdata >/dev/null &&
+      cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime &&
+      echo 'Asia/Taipei' > /etc/timezone &&
+      echo '*/5 * * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/audit-queue-drain || true' > /etc/crontabs/root &&
+      echo '*/15 * * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/email-notifications || true' >> /etc/crontabs/root &&
+      echo '0 8 * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/daily-digest || true' >> /etc/crontabs/root &&
+      echo '0 17 * * 1-5 curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/daily-reminder || true' >> /etc/crontabs/root &&
+      echo '0 2 * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/stale-task-scan || true' >> /etc/crontabs/root &&
+      echo '30 8 * * 1 curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/verification-reminder || true' >> /etc/crontabs/root &&
+      crond -f -L /dev/stdout
+      "
+    deploy:
+      resources:
+        limits:
+          cpus: '0.1'
+          memory: 64M
+        reservations:
+          cpus: '0.05'
+          memory: 16M
+
   # ══════════════════════════════════════════════════════════
   # MONITORING PROFILE — docker compose --profile monitoring up -d
   # ══════════════════════════════════════════════════════════

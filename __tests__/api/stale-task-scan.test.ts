@@ -58,13 +58,15 @@ describe("POST /api/cron/stale-task-scan", () => {
 
   // ── Test 1: Missing CRON_SECRET env → 500 ───────────────────────────────
 
-  it("returns 500 when CRON_SECRET env var is not configured", async () => {
+  it("returns 503 when CRON_SECRET env var is not configured", async () => {
     delete process.env.CRON_SECRET;
 
     const { POST } = await import("@/app/api/cron/stale-task-scan/route");
     const res = await (POST as Function)(createCronRequest());
 
-    expect(res.status).toBe(500);
+    // T1352: shared cron-auth helper returns 503 (service unavailable)
+    // when secret env is missing — was 500 in original inline check
+    expect(res.status).toBe(503);
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.error).toBe("ServerError");
