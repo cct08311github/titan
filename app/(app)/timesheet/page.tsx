@@ -106,6 +106,7 @@ export default function TimesheetPage() {
 
   return (
     <div className="flex flex-col gap-4">
+      <h1 className="sr-only">工時紀錄</h1>
       {/* Timer — sticky on top */}
       <TimesheetTimer
         timer={ts.timer}

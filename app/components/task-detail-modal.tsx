@@ -9,7 +9,7 @@
  * - Tabs: 詳情 | 評論
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Save, Loader2, History, MessageSquare, FileText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,15 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   const [activeTab, setActiveTab] = useState<ModalTab>("detail");
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Restore focus to the triggering element when the modal closes (a11y fix #1341)
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    return () => {
+      previousFocusRef.current?.focus();
+    };
+  }, []);
 
   const updateField = useCallback(
     <K extends keyof TaskForm>(field: K, value: TaskForm[K]) => {
@@ -282,6 +291,7 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
             </button>
             <button
               onClick={onClose}
+              aria-label="關閉任務詳情"
               className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <X className="h-4 w-4" />

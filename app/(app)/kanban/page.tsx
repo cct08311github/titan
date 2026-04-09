@@ -1038,6 +1038,7 @@ export default function KanbanPage() {
               "bg-amber-500/10 text-amber-500 border border-amber-500/30"
           )}
           role="status"
+          aria-live="polite"
           data-testid="bulk-toast"
         >
           {bulkToast.type === "success" ? (

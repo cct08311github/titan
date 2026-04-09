@@ -87,9 +87,9 @@ interface TaskFormFieldsProps {
   errors?: FormErrors;
 }
 
-function FieldError({ message }: { message?: string }) {
+function FieldError({ id, message }: { id?: string; message?: string }) {
   if (!message) return null;
-  return <p className="text-[11px] text-danger mt-1">{message}</p>;
+  return <p id={id} className="text-[11px] text-danger mt-1">{message}</p>;
 }
 
 export function TaskFormFields({ form, onFieldChange, users, goals, projects, errors }: TaskFormFieldsProps) {
@@ -142,9 +142,10 @@ export function TaskFormFields({ form, onFieldChange, users, goals, projects, er
           maxLength={200}
           className={cn(inputCls, errors?.title && "border-danger focus:border-danger focus:ring-danger/10")}
           aria-invalid={!!errors?.title}
+          aria-describedby={errors?.title ? "title-error" : undefined}
         />
         <div className="flex justify-between mt-1">
-          <FieldError message={errors?.title} />
+          <FieldError id="title-error" message={errors?.title} />
           <span className="text-[10px] text-muted-foreground">{form.title.length}/200</span>
         </div>
       </div>
@@ -192,11 +193,12 @@ export function TaskFormFields({ form, onFieldChange, users, goals, projects, er
             onChange={(e) => onFieldChange("primaryAssigneeId", e.target.value)}
             className={cn(selectCls, errors?.primaryAssigneeId && "border-danger focus:border-danger")}
             aria-invalid={!!errors?.primaryAssigneeId}
+            aria-describedby={errors?.primaryAssigneeId ? "primaryAssigneeId-error" : undefined}
           >
             <option value="">未指派</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
-          <FieldError message={errors?.primaryAssigneeId} />
+          <FieldError id="primaryAssigneeId-error" message={errors?.primaryAssigneeId} />
         </div>
         <div>
           <Label>B角（備援負責人）</Label>
@@ -236,8 +238,9 @@ export function TaskFormFields({ form, onFieldChange, users, goals, projects, er
             onChange={(e) => onFieldChange("dueDate", e.target.value)}
             className={cn(inputCls, errors?.dueDate && "border-danger focus:border-danger")}
             aria-invalid={!!errors?.dueDate}
+            aria-describedby={errors?.dueDate ? "dueDate-error" : undefined}
           />
-          <FieldError message={errors?.dueDate} />
+          <FieldError id="dueDate-error" message={errors?.dueDate} />
         </div>
         <div>
           <Label>預估工時（小時）</Label>
@@ -308,6 +311,7 @@ export function TaskFormFields({ form, onFieldChange, users, goals, projects, er
             maxLength={50}
             className={cn(inputCls, errors?.tags && "border-danger focus:border-danger")}
             aria-invalid={!!errors?.tags}
+            aria-describedby={errors?.tags ? "tags-error" : undefined}
           />
           {showTagDropdown && filteredTags.length > 0 && (
             <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
@@ -343,7 +347,7 @@ export function TaskFormFields({ form, onFieldChange, users, goals, projects, er
             </div>
           )}
         </div>
-        <FieldError message={errors?.tags} />
+        <FieldError id="tags-error" message={errors?.tags} />
       </div>
 
       {/* Monthly Goal link */}
