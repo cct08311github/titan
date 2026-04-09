@@ -153,6 +153,7 @@ export class ReportV2Service {
 
     const tasks = await this.prisma.task.findMany({
       where: {
+        isSample: false,
         OR: [
           { status: "DONE", updatedAt: { gte: start, lte: end } },
           { createdAt: { gte: start, lte: end } },
@@ -202,7 +203,7 @@ export class ReportV2Service {
     });
 
     const completedTasks = await this.prisma.task.findMany({
-      where: { status: "DONE", updatedAt: { gte: start, lte: end } },
+      where: { isSample: false, status: "DONE", updatedAt: { gte: start, lte: end } },
       select: { id: true, primaryAssigneeId: true },
     });
 

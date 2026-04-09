@@ -7,6 +7,7 @@ import { KeyboardShortcutsDialog } from "@/app/components/keyboard-shortcuts-dia
 import { NextAuthSessionProvider } from "@/app/components/session-provider";
 import { SessionTimeoutWarning } from "@/app/components/session-timeout-warning";
 import { PasswordChangeGuard } from "@/app/components/password-change-guard";
+import { OnboardingController } from "@/app/components/onboarding/onboarding-controller";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/app/components/ui/tooltip";
 // GlobalAlertBanner removed — alerts now consolidated into NotificationBell
@@ -32,6 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <FeedbackButton />
         <Toaster richColors position="top-right" />
         <SessionTimeoutWarning />
+        <OnboardingController />
       </PasswordChangeGuard>
       </TooltipProvider>
     </NextAuthSessionProvider>

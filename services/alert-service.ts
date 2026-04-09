@@ -80,6 +80,7 @@ export class AlertService {
 
     const overdueTasks = await this.prisma.task.findMany({
       where: {
+        isSample: false,
         status: { not: "DONE" },
         dueDate: { lt: threeDaysAgo },
       },
