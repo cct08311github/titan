@@ -19,8 +19,16 @@ import {
   validateMagicBytes,
   FILE_UPLOAD_CONFIG,
 } from "@/lib/security/file-validator";
+import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { logger } from "@/lib/logger";
 
 const UPLOAD_ROOT = path.join(process.cwd(), "uploads");
+
+// Rate limit attachment uploads per user to prevent disk-fill DoS.
+const attachmentRateLimiter = createLoginRateLimiter({
+  points: 30,
+  duration: 300,
+});
 
 /**
  * GET /api/tasks/:id/attachments — list attachments for a task
@@ -61,6 +69,16 @@ export const POST = withAuth(async (
 ) => {
   const session = await requireAuth();
   const { id } = await context.params;
+
+  // Rate limit per user
+  if (process.env.NODE_ENV !== "test") {
+    try {
+      await checkRateLimit(attachmentRateLimiter, session.user.id);
+    } catch {
+      logger.warn({ userId: session.user.id, event: "attachment_rate_limited" }, "Attachment upload rate limit exceeded");
+      return error("RateLimitError", "上傳次數過於頻繁，請稍後再試", 429);
+    }
+  }
 
   // Verify task exists
   const task = await prisma.task.findUnique({

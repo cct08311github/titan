@@ -47,7 +47,8 @@ export const GET = withAuth(async (req: NextRequest) => {
       if (err.isTimeout) {
         return error("OUTLINE_TIMEOUT", "Outline 服務回應逾時。", 504);
       }
-      return error("OUTLINE_ERROR", `Outline 服務異常：${err.message}`, err.statusCode ?? 502);
+      // Don't leak err.message — may contain internal URLs/IPs
+      return error("OUTLINE_ERROR", "Outline 服務異常，請稍後再試。", err.statusCode ?? 502);
     }
     return error("OUTLINE_ERROR", "無法連線至 Outline 服務。", 502);
   }
