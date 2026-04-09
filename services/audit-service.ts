@@ -7,6 +7,9 @@ import { hasMinimumRole } from "@/lib/auth/permissions";
 const AUDIT_QUEUE_KEY = "titan:audit:failed:queue";
 const MAX_QUEUE_SIZE = 10000;
 
+const AUDIT_DRAIN_LOCK_KEY = "cron:lock:audit-drain";
+const AUDIT_DRAIN_LOCK_TTL_SEC = 60;
+
 export interface LogAuditInput {
   userId: string | null;
   action: string;
@@ -96,11 +99,22 @@ export class AuditService {
       });
       await redis.lpush(AUDIT_QUEUE_KEY, entry);
 
-      // Trim queue to prevent unbounded growth
+      // Trim queue to prevent unbounded growth.
+      // lpush adds newest entries at head (index 0); the tail holds oldest.
+      // We keep the last MAX_QUEUE_SIZE entries (most recent = head side)
+      // and discard the oldest tail entries.
       const size = await redis.llen(AUDIT_QUEUE_KEY);
       if (size > MAX_QUEUE_SIZE) {
-        await redis.ltrim(AUDIT_QUEUE_KEY, 0, MAX_QUEUE_SIZE - 1);
-        logger.warn({ size }, "[audit] Queue trimmed to max size");
+        // ltrim(-MAX, -1) keeps the final MAX elements (newest), drops oldest
+        await redis.ltrim(AUDIT_QUEUE_KEY, -MAX_QUEUE_SIZE, -1);
+        logger.warn(
+          {
+            event: "audit_queue_trimmed",
+            droppedCount: size - MAX_QUEUE_SIZE,
+            severity: "critical",
+          },
+          "Audit queue exceeded capacity — dropped oldest entries"
+        );
       }
     } catch (redisErr) {
       // Redis itself failed — log but don't throw (audit should not break main flow)
@@ -121,12 +135,31 @@ export class AuditService {
    * Process failed audit queue — retry entries from Redis into Prisma.
    *
    * Call this via cron job or during low-traffic periods.
-   * Returns the number of entries successfully processed.
+   * Returns the number of entries successfully processed, or 0 if the lock
+   * is already held by another cron invocation (skipped).
+   *
+   * Uses a Redis NX lock (TTL=60s) to prevent concurrent cron overlap.
    */
   async processAuditQueue(): Promise<number> {
     const redis = getRedisClient();
     if (!redis) {
       logger.warn("[audit] Redis unavailable for queue processing");
+      return 0;
+    }
+
+    // Acquire lock — NX = only set if not exists, EX = expire after TTL seconds
+    const acquired = await redis.set(
+      AUDIT_DRAIN_LOCK_KEY,
+      "1",
+      "EX",
+      AUDIT_DRAIN_LOCK_TTL_SEC,
+      "NX"
+    );
+    if (!acquired) {
+      logger.info(
+        { event: "audit_drain_skipped_locked" },
+        "[audit] Another audit-drain is running, skipping"
+      );
       return 0;
     }
 
@@ -147,7 +180,10 @@ export class AuditService {
           await this.log(entry);
           processed++;
         } catch (parseErr) {
-          logger.error({ err: parseErr, item: item.slice(0, 100) }, "[audit] Failed to parse queue entry");
+          logger.error(
+            { err: parseErr, item: item.slice(0, 100) },
+            "[audit] Failed to parse queue entry"
+          );
           dropped++;
         }
       }
@@ -157,6 +193,12 @@ export class AuditService {
       }
     } catch (err) {
       logger.error({ err }, "[audit] Queue processing error");
+    } finally {
+      try {
+        await redis.del(AUDIT_DRAIN_LOCK_KEY);
+      } catch {
+        /* swallow */
+      }
     }
 
     return processed;
