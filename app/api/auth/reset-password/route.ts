@@ -5,11 +5,10 @@
  * Does NOT require an existing session (user may be locked out).
  *
  * Flow:
- *   1. User enters email + OTP + new password
- *   2. Server validates OTP, checks expiry
- *   3. Password updated, OTP marked as used, mustChangePassword cleared
- *
- * Rate-limited by the global rate limiter in middleware.ts.
+ *   1. Rate limit by IP (prevents brute-force OTP guessing)
+ *   2. User enters email + OTP + new password
+ *   3. Server validates OTP, checks expiry
+ *   4. Password updated, OTP marked as used, mustChangePassword cleared
  */
 import { NextRequest } from "next/server";
 import { hash } from "bcryptjs";
@@ -20,10 +19,30 @@ import { isPasswordValid, PASSWORD_POLICY_DESCRIPTION } from "@/lib/password-pol
 import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
 import { getClientIp } from "@/lib/get-client-ip";
+import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 
 const auditService = new AuditService(prisma);
 
+// Rate limit password-reset attempts per IP to prevent OTP brute-force.
+// 5 attempts per 5 minutes is aggressive but reasonable for a bank platform.
+const resetRateLimiter = createLoginRateLimiter({
+  points: 5,
+  duration: 300,
+});
+
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+
+  // Rate limit by IP before any DB work. Same skip rule as mobile login (#1214).
+  if (process.env.NODE_ENV !== "test") {
+    try {
+      await checkRateLimit(resetRateLimiter, ip || "unknown");
+    } catch {
+      logger.warn({ ip, event: "password_reset_rate_limited" }, "Password reset rate limit exceeded");
+      return error("RateLimitError", "嘗試過於頻繁，請稍後再試", 429);
+    }
+  }
+
   let body: { email?: string; token?: string; newPassword?: string };
   try {
     body = await req.json();
@@ -107,8 +126,7 @@ export async function POST(req: NextRequest) {
     }),
   ]);
 
-  // Audit log
-  const ip = getClientIp(req);
+  // Audit log (ip already captured at top of handler)
   await auditService.log({
     action: "PASSWORD_RESET_COMPLETED",
     userId: user.id,

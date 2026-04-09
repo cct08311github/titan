@@ -15,8 +15,16 @@ import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
 import { getClientIp } from "@/lib/get-client-ip";
 import { apiHandler } from "@/lib/api-handler";
+import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 
 const auditService = new AuditService(prisma);
+
+// Rate limit password-change per user to prevent brute-forcing the current
+// password from an authenticated session (e.g., a stolen session token).
+const changePasswordRateLimiter = createLoginRateLimiter({
+  points: 10,
+  duration: 600,
+});
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const session = await getCachedSession(req);
@@ -24,6 +32,16 @@ export const POST = apiHandler(async (req: NextRequest) => {
 
   if (!userId) {
     return error("UnauthorizedError", "請先登入", 401);
+  }
+
+  // Rate limit per-user (not per-IP) so one user's abuse doesn't DoS others
+  if (process.env.NODE_ENV !== "test") {
+    try {
+      await checkRateLimit(changePasswordRateLimiter, userId);
+    } catch {
+      logger.warn({ userId, event: "change_password_rate_limited" }, "Change password rate limit exceeded");
+      return error("RateLimitError", "嘗試過於頻繁，請稍後再試", 429);
+    }
   }
 
   let body: { currentPassword?: string; newPassword?: string };
