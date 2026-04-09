@@ -220,6 +220,9 @@ rebuild_titan_app() {
   log_info "更新 Prisma migration 映像 titan-migrate:latest..."
   docker build -f Dockerfile.migrate -t titan-migrate:latest . 2>&1 | tail -5
 
+  log_info "更新 cron 排程映像 titan-cron:latest..."
+  docker build -f Dockerfile.cron -t titan-cron:latest . 2>&1 | tail -5
+
   log_ok "TITAN App 映像重建完成"
 }
 

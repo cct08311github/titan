@@ -11,8 +11,11 @@ import { checkEdgeJwt } from "@/lib/auth-depth";
 /**
  * Public routes that bypass JWT auth check — Issue #799 (AU-6)
  * These endpoints are accessible without authentication.
+ *
+ * /api/cron/* — protected by CRON_SECRET header (lib/cron-auth.ts), not JWT.
+ *               The cron container in docker-compose.yml calls these.
  */
-const AUTH_BYPASS_PREFIXES = ["/api/auth/"];
+const AUTH_BYPASS_PREFIXES = ["/api/auth/", "/api/cron/"];
 const AUTH_BYPASS_EXACT = [
   "/change-password",
   "/api/health",

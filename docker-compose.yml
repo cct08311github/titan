@@ -309,7 +309,13 @@ services:
   #   0    2 * * *   stale-task-scan      — 02:00 daily (low load)
   #   30   8 * * 1   verification-reminder — 08:30 Monday
   titan-cron:
-    image: alpine:3.19
+    # Locally built image with curl + dcron + tzdata pre-installed.
+    # Air-gapped friendly: no apk add at runtime.
+    # Build: docker build -f Dockerfile.cron -t titan-cron:latest .
+    image: titan-cron:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.cron
     container_name: titan-cron
     restart: unless-stopped
     depends_on:
@@ -320,19 +326,6 @@ services:
       TITAN_APP_URL: http://titan-app:3100
     networks:
       - titan-internal
-    command: >-
-      /bin/sh -c "
-      apk add --no-cache curl tzdata >/dev/null &&
-      cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime &&
-      echo 'Asia/Taipei' > /etc/timezone &&
-      echo '*/5 * * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/audit-queue-drain || true' > /etc/crontabs/root &&
-      echo '*/15 * * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/email-notifications || true' >> /etc/crontabs/root &&
-      echo '0 8 * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/daily-digest || true' >> /etc/crontabs/root &&
-      echo '0 17 * * 1-5 curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/daily-reminder || true' >> /etc/crontabs/root &&
-      echo '0 2 * * * curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/stale-task-scan || true' >> /etc/crontabs/root &&
-      echo '30 8 * * 1 curl -fsS -X POST -H \"x-cron-secret: $CRON_SECRET\" $TITAN_APP_URL/api/cron/verification-reminder || true' >> /etc/crontabs/root &&
-      crond -f -L /dev/stdout
-      "
     deploy:
       resources:
         limits:

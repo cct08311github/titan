@@ -1,0 +1,24 @@
+# Dockerfile.cron — TITAN cron scheduler
+# Pre-installs curl + dcron + tzdata so the container works in air-gapped envs
+# without needing apk add at runtime.
+#
+# Build: docker build -f Dockerfile.cron -t titan-cron:latest .
+# Used by: docker-compose.yml service `titan-cron`
+
+FROM alpine:3.19
+
+# Install required packages at build time (network access available here)
+RUN apk add --no-cache \
+      curl \
+      tzdata \
+      dcron \
+      tini \
+    && cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime \
+    && echo 'Asia/Taipei' > /etc/timezone
+
+# Copy the cron schedule script (entrypoint sets up crontab from env then runs crond)
+COPY scripts/cron-entrypoint.sh /usr/local/bin/cron-entrypoint.sh
+RUN chmod +x /usr/local/bin/cron-entrypoint.sh
+
+# Use tini as PID 1 to avoid setpgid Operation not permitted on crond -f
+ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/cron-entrypoint.sh"]

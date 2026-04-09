@@ -247,6 +247,9 @@ build_titan_app() {
   log_info "建構 Prisma migration 映像 titan-migrate:latest..."
   docker build -f Dockerfile.migrate -t titan-migrate:latest . 2>&1 | tail -5
 
+  log_info "建構 cron 排程映像 titan-cron:latest..."
+  docker build -f Dockerfile.cron -t titan-cron:latest . 2>&1 | tail -5
+
   log_ok "TITAN App 映像建構完成"
 }
 
