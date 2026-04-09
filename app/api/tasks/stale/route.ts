@@ -17,6 +17,7 @@ import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { listStaleTasksForUser } from "@/services/stale-task-service";
 import { UnauthorizedError } from "@/services/errors";
+import { logger } from "@/lib/logger";
 
 const querySchema = z.object({
   limit: z
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     return success({ tasks: limited, total: filtered.length });
   } catch (err) {
-    console.error("[stale-route] unexpected error", err);
+    logger.error({ err, event: "stale_route_error" }, "[stale-route] unexpected error");
     return error("InternalError", "伺服器錯誤，請稍後再試", 500);
   }
 }
