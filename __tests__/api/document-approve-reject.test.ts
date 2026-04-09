@@ -5,6 +5,7 @@
  * API route tests: /api/documents/{id}/approve and /api/documents/{id}/reject — Issue #1002
  */
 import { createMockRequest } from "../utils/test-utils";
+import { Prisma } from "@prisma/client";
 
 const mockDocument = {
   findUnique: jest.fn(),
@@ -85,6 +86,10 @@ describe("POST /api/documents/{id}/approve", () => {
   });
 
   it("returns 404 for nonexistent document", async () => {
+    // T1353: route now does atomic update first, falls back to findUnique on P2025
+    const p2025 = Object.assign(new Error("Record not found"), { code: "P2025" });
+    Object.setPrototypeOf(p2025, Prisma.PrismaClientKnownRequestError.prototype);
+    mockDocument.update.mockRejectedValue(p2025);
     mockDocument.findUnique.mockResolvedValue(null);
 
     const { POST } = await import("@/app/api/documents/[id]/approve/route");
@@ -96,10 +101,11 @@ describe("POST /api/documents/{id}/approve", () => {
   });
 
   it("returns 400 for non-IN_REVIEW document", async () => {
-    mockDocument.findUnique.mockResolvedValue({
-      ...MOCK_DOC_IN_REVIEW,
-      status: "DRAFT",
-    });
+    // T1353: atomic update fails with P2025; findUnique confirms doc exists → 400
+    const p2025 = Object.assign(new Error("Record not found"), { code: "P2025" });
+    Object.setPrototypeOf(p2025, Prisma.PrismaClientKnownRequestError.prototype);
+    mockDocument.update.mockRejectedValue(p2025);
+    mockDocument.findUnique.mockResolvedValue({ id: "doc-1" });
 
     const { POST } = await import("@/app/api/documents/[id]/approve/route");
     const res = await (POST as Function)(
@@ -180,6 +186,10 @@ describe("POST /api/documents/{id}/reject", () => {
   });
 
   it("returns 404 for nonexistent document", async () => {
+    // T1353: route now does atomic update first, falls back to findUnique on P2025
+    const p2025 = Object.assign(new Error("Record not found"), { code: "P2025" });
+    Object.setPrototypeOf(p2025, Prisma.PrismaClientKnownRequestError.prototype);
+    mockDocument.update.mockRejectedValue(p2025);
     mockDocument.findUnique.mockResolvedValue(null);
 
     const { POST } = await import("@/app/api/documents/[id]/reject/route");
@@ -194,10 +204,11 @@ describe("POST /api/documents/{id}/reject", () => {
   });
 
   it("returns 400 for non-IN_REVIEW document", async () => {
-    mockDocument.findUnique.mockResolvedValue({
-      ...MOCK_DOC_IN_REVIEW,
-      status: "PUBLISHED",
-    });
+    // T1353: atomic update fails with P2025; findUnique confirms doc exists → 400
+    const p2025 = Object.assign(new Error("Record not found"), { code: "P2025" });
+    Object.setPrototypeOf(p2025, Prisma.PrismaClientKnownRequestError.prototype);
+    mockDocument.update.mockRejectedValue(p2025);
+    mockDocument.findUnique.mockResolvedValue({ id: "doc-1" });
 
     const { POST } = await import("@/app/api/documents/[id]/reject/route");
     const res = await (POST as Function)(

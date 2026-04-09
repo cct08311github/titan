@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireMinRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
-import { NotFoundError, ValidationError } from "@/services/errors";
+import { ValidationError, NotFoundError } from "@/services/errors";
 
 /**
  * POST /api/documents/{id}/reject — Reviewer rejects document (Issue #1002)
@@ -19,12 +20,6 @@ export const POST = withManager(async (
   const session = await requireMinRole("MANAGER");
   const { id } = await context.params;
 
-  const doc = await prisma.document.findUnique({ where: { id } });
-  if (!doc) throw new NotFoundError(`Document not found: ${id}`);
-  if (doc.status !== "IN_REVIEW") {
-    throw new ValidationError("只有處於審核中的文件才能駁回");
-  }
-
   let reason: string | undefined;
   try {
     const body = await req.json();
@@ -37,17 +32,31 @@ export const POST = withManager(async (
     throw new ValidationError("駁回必須提供理由");
   }
 
-  const updated = await prisma.document.update({
-    where: { id },
-    data: {
-      status: "DRAFT",
-      updatedBy: session.user.id,
-    },
-    include: {
-      creator: { select: { id: true, name: true } },
-      updater: { select: { id: true, name: true } },
-    },
-  });
+  let updated;
+  let docTitle: string;
+  try {
+    // Atomic: only matches when status is still IN_REVIEW
+    updated = await prisma.document.update({
+      where: { id, status: "IN_REVIEW" },
+      data: {
+        status: "DRAFT",
+        updatedBy: session.user.id,
+      },
+      include: {
+        creator: { select: { id: true, name: true } },
+        updater: { select: { id: true, name: true } },
+      },
+    });
+    docTitle = updated.title;
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") {
+      // Disambiguate: not found vs status mismatch (no race risk after failed update)
+      const exists = await prisma.document.findUnique({ where: { id }, select: { id: true } });
+      if (!exists) throw new NotFoundError("文件不存在");
+      throw new ValidationError("只有處於審核中的文件才能駁回");
+    }
+    throw err;
+  }
 
   // Write explicit audit log for reject action
   await prisma.auditLog.create({
@@ -57,7 +66,7 @@ export const POST = withManager(async (
       module: "KNOWLEDGE",
       resourceType: "Document",
       resourceId: id,
-      detail: `Rejected document "${doc.title}" (IN_REVIEW → DRAFT): ${reason}`,
+      detail: `Rejected document "${docTitle}" (IN_REVIEW → DRAFT): ${reason}`,
       metadata: { reason },
     },
   });

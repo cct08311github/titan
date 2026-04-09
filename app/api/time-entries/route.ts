@@ -88,41 +88,48 @@ export const POST = withAuth(async (req: NextRequest) => {
     }
   }
 
-  // T-1: Enforce daily 24hr limit — sum existing entries for this date
+  // T-1: Enforce daily 24hr limit — read existing total and create atomically.
+  // Wrapping in a transaction prevents a race where two concurrent requests both
+  // pass the limit check before either insert commits.
+  // Note: Prisma uses REPEATABLE READ isolation by default, which prevents most
+  // phantom-read races; row-level locking would be needed for full serialization.
   const targetDate = new Date(date);
-  const existingEntries = await prisma.timeEntry.findMany({
-    where: {
-      userId: session.user.id,
-      date: targetDate,
-      isDeleted: false,
-    },
-    select: { hours: true },
-  });
-  const existingTotal = existingEntries.reduce((sum, e) => sum + e.hours, 0);
-  const limitError = validateDailyLimit(existingTotal, hours);
-  if (limitError) {
-    throw new ValidationError(limitError);
-  }
-
-  // Always create entries owned by the caller — ignores any userId in body.
-  // #928: Manager time entries auto-approve (no approval workflow needed)
   const isManager = session.user.role === "MANAGER" || session.user.role === "ADMIN";
   const cleanDescription = description ? sanitizeHtml(description) || null : null;
-  const entry = await prisma.timeEntry.create({
-    data: {
-      taskId: taskId || null,
-      subTaskId: subTaskId || null,       // Issue #933
-      userId: session.user.id,
-      date: new Date(date),
-      hours,
-      category: (category as TimeCategory) ?? "PLANNED_TASK",
-      description: cleanDescription,
-      ...(isManager ? { approvalStatus: "APPROVED", locked: true } : {}),
-    },
-    include: {
-      task: { select: { id: true, title: true, category: true } },
-      subTask: { select: { id: true, title: true } },  // Issue #933
-    },
+
+  const entry = await prisma.$transaction(async (tx) => {
+    const existingEntries = await tx.timeEntry.findMany({
+      where: {
+        userId: session.user.id,
+        date: targetDate,
+        isDeleted: false,
+      },
+      select: { hours: true },
+    });
+    const existingTotal = existingEntries.reduce((sum, e) => sum + e.hours, 0);
+    const limitError = validateDailyLimit(existingTotal, hours);
+    if (limitError) {
+      throw new ValidationError(limitError);
+    }
+
+    // Always create entries owned by the caller — ignores any userId in body.
+    // #928: Manager time entries auto-approve (no approval workflow needed)
+    return tx.timeEntry.create({
+      data: {
+        taskId: taskId || null,
+        subTaskId: subTaskId || null,       // Issue #933
+        userId: session.user.id,
+        date: new Date(date),
+        hours,
+        category: (category as TimeCategory) ?? "PLANNED_TASK",
+        description: cleanDescription,
+        ...(isManager ? { approvalStatus: "APPROVED", locked: true } : {}),
+      },
+      include: {
+        task: { select: { id: true, title: true, category: true } },
+        subTask: { select: { id: true, title: true } },  // Issue #933
+      },
+    });
   });
 
   return success(entry, 201);

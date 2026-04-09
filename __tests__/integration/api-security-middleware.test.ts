@@ -43,21 +43,25 @@ const mockTaskActivity = { create: jest.fn() };
 const mockTaskChange = { create: jest.fn() };
 const mockAuditLog = { create: jest.fn() };
 const mockPermission = { findFirst: jest.fn() };
-const mockTransaction = jest.fn();
+// T1353: time-entries POST and other routes wrap logic in $transaction.
+// Default mock invokes the callback with the prisma mock itself.
+const mockPrisma: Record<string, unknown> = {
+  task: mockTask,
+  user: mockUser,
+  kPI: mockKPI,
+  timeEntry: mockTimeEntry,
+  taskActivity: mockTaskActivity,
+  taskChange: mockTaskChange,
+  auditLog: mockAuditLog,
+  permission: mockPermission,
+};
+const mockTransaction = jest.fn().mockImplementation((arg: unknown) => {
+  if (typeof arg === "function") return (arg as (tx: unknown) => unknown)(mockPrisma);
+  return Promise.all(arg as unknown[]);
+});
+mockPrisma.$transaction = mockTransaction;
 
-jest.mock("@/lib/prisma", () => ({
-  prisma: {
-    task: mockTask,
-    user: mockUser,
-    kPI: mockKPI,
-    timeEntry: mockTimeEntry,
-    taskActivity: mockTaskActivity,
-    taskChange: mockTaskChange,
-    auditLog: mockAuditLog,
-    permission: mockPermission,
-    $transaction: mockTransaction,
-  },
-}));
+jest.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({

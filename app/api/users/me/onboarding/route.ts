@@ -10,37 +10,43 @@ import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
 import { seedSampleDataForUser } from "@/lib/seed-sample-data";
+import { NotFoundError } from "@/services/errors";
 import { logger } from "@/lib/logger";
 
 export const POST = withAuth(async (_req: NextRequest) => {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  // Guard: do not re-seed if already completed
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { hasCompletedOnboarding: true },
-  });
+  // Wrap in transaction so the guard read and the mark-complete update are atomic.
+  // Prevents double-seeding if the user clicks "開始使用" concurrently.
+  try {
+    await prisma.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { hasCompletedOnboarding: true },
+      });
 
-  if (!user) {
-    return error("NotFoundError", "使用者不存在", 404);
-  }
+      if (!user) {
+        throw new NotFoundError("使用者不存在");
+      }
 
-  if (!user.hasCompletedOnboarding) {
-    // Seed sample data first, then mark onboarding complete
-    try {
-      await seedSampleDataForUser(prisma, userId);
-    } catch (err) {
-      logger.error({ err, userId }, "[onboarding] Failed to seed sample data");
-      // Non-fatal: continue to mark onboarding complete even if seeding fails
-    }
+      if (!user.hasCompletedOnboarding) {
+        // Seed sample data then mark onboarding complete — both inside the transaction
+        await seedSampleDataForUser(tx, userId);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { hasCompletedOnboarding: true },
+        await tx.user.update({
+          where: { id: userId },
+          data: { hasCompletedOnboarding: true },
+        });
+
+        logger.info({ userId }, "[onboarding] Onboarding completed and sample data seeded");
+      }
     });
-
-    logger.info({ userId }, "[onboarding] Onboarding completed and sample data seeded");
+  } catch (err) {
+    if (err instanceof NotFoundError) {
+      return error("NotFoundError", "使用者不存在", 404);
+    }
+    throw err;
   }
 
   return success({ completed: true });

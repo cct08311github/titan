@@ -4,6 +4,10 @@ import { MockPrismaClient } from "../__mocks__/prisma";
 /**
  * Creates a fresh mock prisma instance for each test.
  * Each model method is reset to a new jest.fn().
+ *
+ * $transaction default behavior: invokes the callback with the same mock instance,
+ * so service code that wraps logic in `tx.model.update(...)` works transparently
+ * in tests. Tests can override with `.mockImplementation(...)` if needed.
  */
 export function createMockPrisma(): MockPrismaClient {
   const createMockModel = () => ({
@@ -21,7 +25,7 @@ export function createMockPrisma(): MockPrismaClient {
     createMany: jest.fn(),
   });
 
-  return {
+  const mock: Record<string, unknown> = {
     task: createMockModel(),
     annualPlan: createMockModel(),
     monthlyGoal: createMockModel(),
@@ -43,8 +47,20 @@ export function createMockPrisma(): MockPrismaClient {
     deliverable: createMockModel(),
     auditLog: createMockModel(),
     systemSetting: createMockModel(),
-    $transaction: jest.fn(),
+    monitoringAlert: createMockModel(),
+    pushToken: createMockModel(),
     $connect: jest.fn(),
     $disconnect: jest.fn(),
-  } as unknown as MockPrismaClient;
+  };
+
+  // $transaction passes `mock` itself to the callback so tx.model.method() === prisma.model.method()
+  mock.$transaction = jest.fn().mockImplementation((arg: unknown) => {
+    if (typeof arg === "function") {
+      return (arg as (tx: unknown) => unknown)(mock);
+    }
+    // Array form: $transaction([promise1, promise2])
+    return Promise.all(arg as unknown[]);
+  });
+
+  return mock as unknown as MockPrismaClient;
 }

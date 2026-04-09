@@ -9,6 +9,8 @@
  */
 import type { PrismaClient } from "@prisma/client";
 
+type PrismaTransactionClient = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+
 /**
  * Seeds sample tasks and an annual plan for the given user.
  * Idempotent: checks for existing sample data before inserting.
@@ -17,7 +19,7 @@ import type { PrismaClient } from "@prisma/client";
  * @param userId - The ID of the user to seed data for
  */
 export async function seedSampleDataForUser(
-  prisma: PrismaClient,
+  prisma: PrismaClient | PrismaTransactionClient,
   userId: string
 ): Promise<void> {
   const currentYear = new Date().getFullYear();
