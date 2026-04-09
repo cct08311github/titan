@@ -23,7 +23,7 @@ const mockMilestone = {
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
-  count: jest.fn(),
+  count: jest.fn().mockResolvedValue(1), // T1362: pagination calls count by default
 };
 
 const mockKPI = {
@@ -128,8 +128,9 @@ describe("GET /api/milestones", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
-    expect(body.data).toHaveLength(1);
-    expect(body.data[0].id).toBe("ms-1");
+    // T1362: response wrapped in { items, total, page, limit }
+    expect(body.data.items).toHaveLength(1);
+    expect(body.data.items[0].id).toBe("ms-1");
   });
 
   it("returns 401 when unauthenticated", async () => {

@@ -23,6 +23,7 @@ const mockUser = {
   findUnique: jest.fn(),
   create: jest.fn(),
   update: jest.fn(),
+  count: jest.fn().mockResolvedValue(1), // T1362: pagination
 };
 const mockKPI = {
   findMany: jest.fn(),
@@ -226,7 +227,7 @@ describe("A3: GET /api/users — withAuth middleware", () => {
     const res = await GET(createMockRequest("/api/users"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("user-1");
+    expect(body.data.items[0].id).toBe("user-1");
   });
 
   it("unauthenticated user receives 401", async () => {

@@ -67,6 +67,7 @@ jest.mock("@/lib/prisma", () => ({
 jest.mock("@/services/deliverable-service", () => ({
   DeliverableService: jest.fn().mockImplementation(() => ({
     listDeliverables: jest.fn().mockResolvedValue([]),
+    countDeliverables: jest.fn().mockResolvedValue(0), // T1362: pagination support
     createDeliverable: jest.fn().mockResolvedValue({ id: "d1" }),
     getDeliverable: jest.fn().mockResolvedValue({ id: "d1" }),
   })),

@@ -7,6 +7,7 @@ import { PermissionService } from "@/services/permission-service";
 import { AuditService } from "@/services/audit-service";
 import { prisma } from "@/lib/prisma";
 import { getClientIp } from "@/lib/get-client-ip";
+import { parsePagination } from "@/lib/pagination";
 
 const permissionService = new PermissionService(prisma);
 const auditService = new AuditService(prisma);
@@ -19,14 +20,16 @@ export const GET = withManager(async (req: NextRequest) => {
   const isActiveParam = url.searchParams.get("isActive");
   const isActive =
     isActiveParam === "true" ? true : isActiveParam === "false" ? false : undefined;
+  const { page, limit, skip } = parsePagination(url.searchParams);
 
-  const permissions = await permissionService.listPermissions({
-    granteeId,
-    permType,
-    isActive,
-  });
+  const filter = { granteeId, permType, isActive };
 
-  return success(permissions);
+  const [permissions, total] = await Promise.all([
+    permissionService.listPermissions(filter, { skip, take: limit }),
+    permissionService.countPermissions(filter),
+  ]);
+
+  return success({ items: permissions, total, page, limit });
 });
 
 /** POST /api/permissions — grant a permission (MANAGER only) */

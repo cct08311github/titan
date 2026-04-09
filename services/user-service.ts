@@ -37,7 +37,10 @@ export class UserService {
     this.auditor = new AuditService(prisma);
   }
 
-  async listUsers(filter: ListUsersFilter) {
+  async listUsers(
+    filter: ListUsersFilter,
+    pagination?: { skip: number; take: number }
+  ) {
     const where: Record<string, unknown> = {};
     if (filter.role) where.role = filter.role;
     // By default exclude suspended (isActive = false)
@@ -66,7 +69,23 @@ export class UserService {
         createdAt: true,
       },
       orderBy: { name: "asc" },
+      ...(pagination ?? {}),
     });
+  }
+
+  async countUsers(filter: ListUsersFilter) {
+    const where: Record<string, unknown> = {};
+    if (filter.role) where.role = filter.role;
+    if (!filter.includeSuspended) {
+      where.isActive = true;
+    }
+    if (filter.search) {
+      where.OR = [
+        { name: { contains: filter.search, mode: "insensitive" } },
+        { email: { contains: filter.search, mode: "insensitive" } },
+      ];
+    }
+    return this.prisma.user.count({ where });
   }
 
   async getUser(id: string) {

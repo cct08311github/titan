@@ -31,15 +31,29 @@ export interface UpdateMilestoneInput {
 export class MilestoneService {
   constructor(private readonly prisma: PrismaClient) {}
 
-  async listMilestones(filter: ListMilestonesFilter) {
+  async listMilestones(
+    filter: ListMilestonesFilter,
+    pagination?: { skip: number; take: number }
+  ) {
+    const where = {
+      ...(filter.planId && { annualPlanId: filter.planId }),
+    };
+
     return this.prisma.milestone.findMany({
-      where: {
-        ...(filter.planId && { annualPlanId: filter.planId }),
-      },
+      where,
       include: {
         annualPlan: { select: { id: true, title: true, year: true } },
       },
       orderBy: [{ order: "asc" }, { plannedEnd: "asc" }],
+      ...(pagination ?? {}),
+    });
+  }
+
+  async countMilestones(filter: ListMilestonesFilter) {
+    return this.prisma.milestone.count({
+      where: {
+        ...(filter.planId && { annualPlanId: filter.planId }),
+      },
     });
   }
 

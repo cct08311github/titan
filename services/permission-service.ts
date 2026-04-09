@@ -69,7 +69,10 @@ export class PermissionService {
   /**
    * List all permission records matching the given filter.
    */
-  async listPermissions(filter: ListPermissionsFilter) {
+  async listPermissions(
+    filter: ListPermissionsFilter,
+    pagination?: { skip: number; take: number }
+  ) {
     const where: Record<string, unknown> = {};
     if (filter.granteeId !== undefined) where.granteeId = filter.granteeId;
     if (filter.granterId !== undefined) where.granterId = filter.granterId;
@@ -83,7 +86,18 @@ export class PermissionService {
         granter: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: "desc" },
+      ...(pagination ?? {}),
     });
+  }
+
+  async countPermissions(filter: ListPermissionsFilter) {
+    const where: Record<string, unknown> = {};
+    if (filter.granteeId !== undefined) where.granteeId = filter.granteeId;
+    if (filter.granterId !== undefined) where.granterId = filter.granterId;
+    if (filter.permType !== undefined) where.permType = filter.permType;
+    if (filter.isActive !== undefined) where.isActive = filter.isActive;
+
+    return this.prisma.permission.count({ where });
   }
 
   /**
