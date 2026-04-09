@@ -41,17 +41,17 @@ const DEFAULT_CONFIG: StaleTaskConfig = {
 const StaleTaskConfigSchema = z
   .object({
     remindDays: z
-      .number({ invalid_type_error: "remindDays 必須是數字" })
+      .number({ error: "remindDays 必須是數字" })
       .int("remindDays 必須是整數")
       .min(1, "remindDays 最小為 1")
       .max(59, "remindDays 最大為 59"),
     warnDays: z
-      .number({ invalid_type_error: "warnDays 必須是數字" })
+      .number({ error: "warnDays 必須是數字" })
       .int("warnDays 必須是整數")
       .min(2, "warnDays 最小為 2")
       .max(60, "warnDays 最大為 60"),
     escalateDays: z
-      .number({ invalid_type_error: "escalateDays 必須是數字" })
+      .number({ error: "escalateDays 必須是數字" })
       .int("escalateDays 必須是整數")
       .min(3, "escalateDays 最小為 3")
       .max(60, "escalateDays 最大為 60"),
