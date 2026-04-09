@@ -12,6 +12,7 @@ import {
   STALE_WARN_DAYS,
   STALE_ESCALATE_DAYS,
 } from "../stale-task-service";
+import { clearSettingCache } from "../system-setting-service";
 import { createMockPrisma } from "../../lib/test-utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -91,9 +92,16 @@ describe("classifyStaleLevel", () => {
 describe("scanStaleTasks", () => {
   let prisma: ReturnType<typeof createMockPrisma>;
 
+  afterEach(() => {
+    // Clear module-level setting cache so tests don't bleed into each other
+    clearSettingCache();
+  });
+
   beforeEach(() => {
     prisma = createMockPrisma();
 
+    // Default: no SystemSetting config → use fallback defaults
+    (prisma.systemSetting.findUnique as jest.Mock).mockResolvedValue(null);
     // Default: no recent notifications
     (prisma.notification.findMany as jest.Mock).mockResolvedValue([]);
     // Default: one manager, one admin
@@ -289,6 +297,44 @@ describe("scanStaleTasks", () => {
     expect(result.remindCount).toBe(1);
     expect(result.warnCount).toBe(1);
     expect(result.escalateCount).toBe(1);
+  });
+
+  // ── T1313: Custom config overrides defaults ───────────────────────────────
+
+  test("custom config thresholds override hardcoded defaults", async () => {
+    // With custom config: remindDays=5, warnDays=10, escalateDays=20
+    // A task stale for 6 days should be REMIND (not the old 3-day threshold)
+    const task = makeTask({ updatedAt: daysAgoDate(6, NOW) });
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([task]);
+    // Reset and re-set user.findMany for this test
+    (prisma.user.findMany as jest.Mock)
+      .mockResolvedValueOnce([MANAGER_USER])
+      .mockResolvedValueOnce([ADMIN_USER]);
+    (prisma.notification.createMany as jest.Mock).mockResolvedValue({ count: 1 });
+
+    const customConfig = { remindDays: 5, warnDays: 10, escalateDays: 20 };
+    const result = await scanStaleTasks({
+      prisma: prisma as never,
+      now: NOW,
+      config: customConfig,
+    });
+
+    expect(result.remindCount).toBe(1);
+    expect(result.warnCount).toBe(0);
+    expect(result.escalateCount).toBe(0);
+  });
+
+  test("classifyStaleLevel uses custom thresholds when provided", () => {
+    const customConfig = { remindDays: 5, warnDays: 10, escalateDays: 20 };
+
+    // 4 days stale < custom remindDays (5) → null
+    expect(classifyStaleLevel(daysAgoDate(4, NOW), null, NOW, customConfig)).toBeNull();
+    // 6 days stale → REMIND (between 5 and 10)
+    expect(classifyStaleLevel(daysAgoDate(6, NOW), null, NOW, customConfig)).toBe("REMIND");
+    // 11 days stale → WARN (between 10 and 20)
+    expect(classifyStaleLevel(daysAgoDate(11, NOW), null, NOW, customConfig)).toBe("WARN");
+    // 21 days stale → ESCALATE (> 20)
+    expect(classifyStaleLevel(daysAgoDate(21, NOW), null, NOW, customConfig)).toBe("ESCALATE");
   });
 });
 

@@ -1724,3 +1724,16 @@ model ProjectCategory {
   @@index([isActive, sortOrder])
   @@map("project_categories")
 }
+
+// ═══════════════════════════════════════
+// 系統設定（T1313）
+// ═══════════════════════════════════════
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("system_settings")
+}

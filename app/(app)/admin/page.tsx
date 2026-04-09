@@ -33,6 +33,7 @@ import {
 import { AdminPermissions } from "@/app/components/admin-permissions";
 import { AdminMonitoringAlerts } from "@/app/components/admin-monitoring-alerts";
 import { AdminTools } from "@/app/components/admin-tools";
+import { AdminStaleTaskSettings } from "@/app/components/admin-stale-task-settings";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { hasMinimumRole } from "@/lib/auth/permissions";
@@ -1252,7 +1253,7 @@ function FeatureFlagsSection() {
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
-type AdminTab = "system" | "users" | "categories" | "flags" | "permissions" | "alerts";
+type AdminTab = "system" | "users" | "categories" | "flags" | "permissions" | "alerts" | "stale";
 
 
 export default function AdminPage() {
@@ -1365,6 +1366,20 @@ export default function AdminPage() {
           <Bell className="h-3.5 w-3.5" />
           監控警報
         </button>
+        {userRole === "ADMIN" && (
+          <button
+            onClick={() => setActiveTab("stale")}
+            className={cn(
+              "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
+              activeTab === "stale"
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            停滯設定
+          </button>
+        )}
       </div>
 
       {/* Tab content */}
@@ -1380,6 +1395,7 @@ export default function AdminPage() {
       {activeTab === "flags" && userRole === "ADMIN" && <FeatureFlagsSection />}
       {activeTab === "permissions" && <AdminPermissions />}
       {activeTab === "alerts" && <AdminMonitoringAlerts />}
+      {activeTab === "stale" && userRole === "ADMIN" && <AdminStaleTaskSettings />}
     </div>
   );
 }

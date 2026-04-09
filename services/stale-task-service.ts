@@ -1,10 +1,11 @@
 /**
- * Stale Task Detection Service — Issue #1311
+ * Stale Task Detection Service — Issue #1311, config integration #1313
  *
  * Scans for tasks that have not been updated within threshold windows
  * and creates Notification records for assignees and their managers/admins.
  *
- * Thresholds (easily overridden by T1313 config integration):
+ * Thresholds are now configurable via SystemSetting (T1313).
+ * Fallback defaults:
  *   REMIND    3–7 days stale
  *   WARN      7–14 days stale, or dueDate within 3 days but already stale
  *   ESCALATE  >14 days stale, or dueDate overdue by >3 days
@@ -16,14 +17,18 @@ import type { PrismaClient, TaskStatus } from "@prisma/client";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 import { sanitizeMarkdown } from "@/lib/security/sanitize";
 import { logger } from "@/lib/logger";
+import { getSetting } from "./system-setting-service";
 
-// ── Threshold constants (T1313 will replace with config reads) ──────────────
+// ── Threshold constants (fallback defaults when DB setting is absent) ────────
 export const STALE_REMIND_DAYS = 3;
 export const STALE_WARN_DAYS = 7;
 export const STALE_ESCALATE_DAYS = 14;
 export const STALE_DUE_WARN_DAYS = 3; // warn when dueDate ≤ 3 days away + already stale
 export const STALE_DUE_ESCALATE_DAYS = 3; // escalate when overdue by >3 days
 export const DEDUP_WINDOW_HOURS = 24;
+
+/** Key used in system_settings for stale-task thresholds */
+export const STALE_TASK_CONFIG_KEY = "system.staleTaskThresholds";
 
 export type StaleLevel = "REMIND" | "WARN" | "ESCALATE";
 
@@ -34,9 +39,17 @@ export interface ScanResult {
   skippedCount: number;
 }
 
+export interface StaleTaskConfig {
+  remindDays: number;
+  warnDays: number;
+  escalateDays: number;
+}
+
 type Deps = {
   prisma: PrismaClient;
   now: Date;
+  /** Injected config (overrides DB lookup — useful in tests) */
+  config?: StaleTaskConfig;
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -49,22 +62,43 @@ function daysUntil(date: Date, now: Date): number {
   return (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 }
 
+/** Fetch stale-task thresholds from DB, falling back to hard-coded defaults */
+export async function getStaleTaskConfig(deps?: Partial<Deps>): Promise<StaleTaskConfig> {
+  // If a config is injected directly (test / cron deps), use it as-is
+  if (deps?.config) return deps.config;
+
+  return getSetting<StaleTaskConfig>(
+    STALE_TASK_CONFIG_KEY,
+    {
+      remindDays: STALE_REMIND_DAYS,
+      warnDays: STALE_WARN_DAYS,
+      escalateDays: STALE_ESCALATE_DAYS,
+    },
+    deps?.prisma ? { prisma: deps.prisma } : undefined
+  );
+}
+
 /**
- * Determine the stale level for a task.
- * Returns null if the task is not yet stale (< STALE_REMIND_DAYS).
+ * Determine the stale level for a task given explicit config thresholds.
+ * Returns null if the task is not yet stale (< remindDays).
  */
 export function classifyStaleLevel(
   updatedAt: Date,
   dueDate: Date | null,
-  now: Date
+  now: Date,
+  config?: StaleTaskConfig
 ): StaleLevel | null {
+  const remindDays = config?.remindDays ?? STALE_REMIND_DAYS;
+  const warnDays = config?.warnDays ?? STALE_WARN_DAYS;
+  const escalateDays = config?.escalateDays ?? STALE_ESCALATE_DAYS;
+
   const staleDays = daysAgo(updatedAt, now);
 
   // Not yet stale
-  if (staleDays < STALE_REMIND_DAYS) return null;
+  if (staleDays < remindDays) return null;
 
-  // ESCALATE: >14 days stale
-  if (staleDays > STALE_ESCALATE_DAYS) return "ESCALATE";
+  // ESCALATE: > escalateDays stale
+  if (staleDays > escalateDays) return "ESCALATE";
 
   // ESCALATE: overdue by more than STALE_DUE_ESCALATE_DAYS
   if (dueDate !== null) {
@@ -72,13 +106,13 @@ export function classifyStaleLevel(
     if (dueDaysLeft < -STALE_DUE_ESCALATE_DAYS) return "ESCALATE";
 
     // WARN: dueDate is coming within 3 days but task is already stale
-    if (dueDaysLeft <= STALE_DUE_WARN_DAYS && staleDays >= STALE_REMIND_DAYS) return "WARN";
+    if (dueDaysLeft <= STALE_DUE_WARN_DAYS && staleDays >= remindDays) return "WARN";
   }
 
-  // WARN: 7–14 days stale
-  if (staleDays >= STALE_WARN_DAYS) return "WARN";
+  // WARN: warnDays–escalateDays stale
+  if (staleDays >= warnDays) return "WARN";
 
-  // REMIND: 3–7 days stale
+  // REMIND: remindDays–warnDays stale
   return "REMIND";
 }
 
@@ -186,7 +220,10 @@ export async function scanStaleTasks(deps?: Partial<Deps>): Promise<ScanResult> 
   const db = deps?.prisma ?? defaultPrisma;
   const now = deps?.now ?? new Date();
 
-  const remindCutoff = new Date(now.getTime() - STALE_REMIND_DAYS * 24 * 60 * 60 * 1000);
+  // Load thresholds (DB config or fallback)
+  const config = await getStaleTaskConfig(deps);
+
+  const remindCutoff = new Date(now.getTime() - config.remindDays * 24 * 60 * 60 * 1000);
   const dedupCutoff = new Date(now.getTime() - DEDUP_WINDOW_HOURS * 60 * 60 * 1000);
 
   // Query stale tasks with assignee info
@@ -265,7 +302,7 @@ export async function scanStaleTasks(deps?: Partial<Deps>): Promise<ScanResult> 
   let skippedCount = 0;
 
   for (const task of staleTasks) {
-    const level = classifyStaleLevel(task.updatedAt, task.dueDate, now);
+    const level = classifyStaleLevel(task.updatedAt, task.dueDate, now, config);
     if (!level) continue; // should not happen given query filter, but guard anyway
 
     const staleDays = Math.floor(daysAgo(task.updatedAt, now));
