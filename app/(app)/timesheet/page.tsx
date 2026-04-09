@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, CalendarDays, TableProperties } from "lucide-react";
+import { Loader2, CalendarDays, TableProperties, Clock } from "lucide-react";
+import Link from "next/link";
 import {
   useTimesheet,
   TimesheetGrid,
@@ -17,7 +18,7 @@ import {
 } from "@/app/components/timesheet";
 import { TimesheetListView } from "@/app/components/timesheet-list-view";
 import { TimeSummary } from "@/app/components/time-summary";
-import { PageLoading, PageError } from "@/app/components/page-states";
+import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
 import { TimesheetPivotTable, type TimesheetPivotData } from "@/app/components/timesheet-pivot-table";
 import { cn } from "@/lib/utils";
 
@@ -220,6 +221,20 @@ export default function TimesheetPage() {
             <PageLoading message="載入工時..." className="py-12" />
           ) : ts.loadError ? (
             <PageError message={ts.loadError} onRetry={ts.refresh} className="py-12" />
+          ) : ts.taskRows.filter(r => r.taskId !== null).length === 0 && viewMode === "grid" ? (
+            <PageEmpty
+              icon={<Clock className="h-10 w-10" />}
+              title="從看板選擇任務或先建立一個"
+              description="工時紀錄會依照你在看板上的任務自動帶入"
+              action={
+                <Link
+                  href="/kanban"
+                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm hover:shadow transition-all"
+                >
+                  前往看板
+                </Link>
+              }
+            />
           ) : viewMode === "grid" ? (
             <TimesheetGrid
               weekStart={ts.weekStart}

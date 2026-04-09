@@ -474,6 +474,30 @@ export default function KanbanPage() {
     [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
+  // ── Create task (used by header button and empty state CTA) ──────────────
+
+  async function handleCreateTask() {
+    const res = await fetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: "新任務",
+        status: "BACKLOG",
+        priority: "P2",
+        category: "PLANNED",
+      }),
+    });
+    if (res.ok) {
+      const created = await res.json();
+      const newId = created.id ?? created.data?.id;
+      await fetchTasks();
+      if (newId) setSelectedTaskId(newId);
+    } else {
+      const errBody = await res.json().catch(() => ({}));
+      toast.error(errBody?.message ?? errBody?.error ?? "建立失敗");
+    }
+  }
+
   // ── Multi-select mode toggle (Issue #1023) ─────────────────────────────
 
   function toggleMultiSelectMode() {
@@ -656,29 +680,7 @@ export default function KanbanPage() {
           </button>
 
           <button
-            onClick={async () => {
-              const res = await fetch("/api/tasks", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: "新任務",
-                  status: "BACKLOG",
-                  priority: "P2",
-                  category: "PLANNED",
-                }),
-              });
-              if (res.ok) {
-                const created = await res.json();
-                const newId = created.id ?? created.data?.id;
-                await fetchTasks();
-                if (newId) setSelectedTaskId(newId);
-              } else {
-                const errBody = await res.json().catch(() => ({}));
-                toast.error(
-                  errBody?.message ?? errBody?.error ?? "建立失敗"
-                );
-              }
-            }}
+            onClick={handleCreateTask}
             className="flex items-center justify-center gap-1.5 text-sm font-medium px-3 py-1.5 bg-primary text-primary-foreground rounded-lg shadow-sm transition-all hover:opacity-90 flex-1 sm:flex-none"
           >
             <Plus className="h-3.5 w-3.5" />
@@ -867,8 +869,17 @@ export default function KanbanPage() {
         <div className="flex-1">
           <PageEmpty
             icon={<Kanban className="h-10 w-10" />}
-            title="尚無任務"
-            description="目前沒有任何任務，請點擊「新增任務」開始"
+            title="建立第一個任務開始工作"
+            description="把待辦事項加入看板，拖曳卡片即可更新進度"
+            action={
+              <button
+                onClick={handleCreateTask}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                建立任務
+              </button>
+            }
           />
         </div>
       ) : (
