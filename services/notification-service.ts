@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { formatLocalDate } from "@/lib/utils/date";
+import { publishNotifications } from "@/lib/notification-publisher";
 
 const DAYS_AHEAD = 7;
 
@@ -525,6 +526,35 @@ export class NotificationService {
         data: toCreate,
       });
       created = result.count;
+
+      // Issue #1322 (SSE 通知即時化): 非同步推送到 Redis，不阻塞主流程
+      // createMany 不回傳 id，改用查詢取得剛建立的記錄以獲取真實 id
+      void this.prisma.notification
+        .findMany({
+          where: {
+            userId: { in: [...new Set(toCreate.map((n) => n.userId))] },
+            type: { in: [...new Set(toCreate.map((n) => n.type))] },
+            isRead: false,
+            relatedId: { in: [...new Set(toCreate.map((n) => n.relatedId))] },
+          },
+          select: {
+            id: true,
+            userId: true,
+            type: true,
+            title: true,
+            body: true,
+            isRead: true,
+            createdAt: true,
+            relatedId: true,
+            relatedType: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: toCreate.length,
+        })
+        .then((records) => publishNotifications(records))
+        .catch(() => {
+          /* SSE 推送失敗不影響主流程 */
+        });
     }
 
     return {

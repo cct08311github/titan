@@ -16,8 +16,14 @@ interface Notification {
   createdAt: string;
 }
 
-/** Polling interval for notification refresh (ms). */
-const NOTIFICATION_POLL_INTERVAL_MS = 60_000;
+/**
+ * Issue #1322 (SSE 通知即時化): SSE 為主，polling 為備援。
+ * 若 SSE 連線 60 秒內斷線超過 3 次，切換至慢速輪詢（5 分鐘）。
+ */
+const SSE_FAILURE_THRESHOLD = 3;
+const SSE_FAILURE_WINDOW_MS = 60_000;
+/** Fallback polling interval when SSE is unavailable (ms). */
+const FALLBACK_POLL_INTERVAL_MS = 300_000;
 
 const TYPE_LABELS: Record<string, string> = {
   TASK_ASSIGNED: "任務指派",
@@ -121,9 +127,82 @@ export function NotificationBell() {
   }
 
   useEffect(() => {
+    // 初始載入目前通知（SSE 只推送新通知，不補歷史）
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, NOTIFICATION_POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+
+    // ── SSE 連線 ────────────────────────────────────────────────────────────
+    let eventSource: EventSource | null = null;
+    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
+    let failureCount = 0;
+    let firstFailureAt = 0;
+    let useFallbackPolling = false;
+
+    function startFallbackPolling() {
+      if (fallbackInterval) return; // 已啟動
+      fallbackInterval = setInterval(fetchNotifications, FALLBACK_POLL_INTERVAL_MS);
+    }
+
+    function connectSSE() {
+      if (useFallbackPolling) return;
+
+      eventSource = new EventSource("/api/notifications/stream");
+
+      eventSource.addEventListener("connected", () => {
+        // 重置失敗計數（連線成功）
+        failureCount = 0;
+        firstFailureAt = 0;
+      });
+
+      eventSource.addEventListener("notification", (event: MessageEvent) => {
+        try {
+          const incoming = JSON.parse(event.data as string) as Notification;
+          setNotifications((prev) => {
+            // 避免重複（同 id 已存在則略過）
+            if (prev.some((n) => n.id === incoming.id)) return prev;
+            return [incoming, ...prev].slice(0, 15);
+          });
+          if (!incoming.isRead) {
+            setUnreadCount((c) => c + 1);
+          }
+        } catch {
+          // JSON 解析失敗 — 略過此事件
+        }
+      });
+
+      eventSource.addEventListener("error", () => {
+        eventSource?.close();
+        eventSource = null;
+
+        const now = Date.now();
+        if (failureCount === 0) firstFailureAt = now;
+        failureCount += 1;
+
+        // 60 秒內斷線超過閾值 → 切換至慢速 polling
+        if (
+          failureCount >= SSE_FAILURE_THRESHOLD &&
+          now - firstFailureAt < SSE_FAILURE_WINDOW_MS
+        ) {
+          useFallbackPolling = true;
+          startFallbackPolling();
+          // SSE 靜默失敗，不打擾使用者（仍會透過 polling 收到通知）
+          return;
+        }
+
+        // 尚未達閾值 — 瀏覽器 EventSource 會自動重連，無需手動 reconnect
+      });
+    }
+
+    if (typeof EventSource !== "undefined") {
+      connectSSE();
+    } else {
+      // 環境不支援 EventSource（例如 SSR 測試）→ 降級為 polling
+      startFallbackPolling();
+    }
+
+    return () => {
+      eventSource?.close();
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
   }, []);
 
   useEffect(() => {
