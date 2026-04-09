@@ -85,7 +85,7 @@ describe("Timesheet Extended — Basic render", () => {
     setupFetchWithEntries();
     const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
     await act(async () => { render(<TimesheetPage />); });
-    expect(screen.getByText("工時紀錄")).toBeInTheDocument();
+    expect(screen.getAllByText("工時紀錄")[0]).toBeInTheDocument();
   });
 
   it("renders week label with year and date range", async () => {
@@ -94,7 +94,7 @@ describe("Timesheet Extended — Basic render", () => {
     const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
     await act(async () => { render(<TimesheetPage />); });
     // Refactored toolbar shows page title
-    expect(screen.getByText("工時紀錄")).toBeInTheDocument();
+    expect(screen.getAllByText("工時紀錄")[0]).toBeInTheDocument();
   });
 
   it("renders 本週 navigation button", async () => {
