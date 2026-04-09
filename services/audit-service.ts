@@ -65,7 +65,16 @@ export class AuditService {
     try {
       await this.log(input);
     } catch (prismaErr) {
-      logger.error({ err: prismaErr, action: input.action }, "[audit] Prisma write failed, queuing to Redis");
+      logger.error(
+        {
+          event: "audit_write_failed",
+          severity: "critical",
+          action: input.action,
+          userId: input.userId,
+          err: prismaErr,
+        },
+        "Audit write failed"
+      );
       await this.enqueueFailedAudit(input);
     }
   }
@@ -95,7 +104,16 @@ export class AuditService {
       }
     } catch (redisErr) {
       // Redis itself failed — log but don't throw (audit should not break main flow)
-      logger.error({ err: redisErr }, "[audit] Failed to enqueue audit to Redis");
+      logger.error(
+        {
+          event: "audit_queue_failed",
+          severity: "critical",
+          action: input.action,
+          userId: input.userId,
+          err: redisErr,
+        },
+        "Audit write failed"
+      );
     }
   }
 

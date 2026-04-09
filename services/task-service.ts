@@ -1,5 +1,6 @@
 import { PrismaClient, TaskStatus, Priority, TaskCategory } from "@prisma/client";
 import { ConflictError, NotFoundError, ValidationError } from "./errors";
+import { logger } from "@/lib/logger";
 import { ChangeTrackingService } from "./change-tracking-service";
 import { AuditService } from "./audit-service";
 import { logActivity, ActivityAction, ActivityModule } from "./activity-logger";
@@ -439,7 +440,10 @@ export class TaskService {
     if (status === "DONE") {
       this.rollup.executeRollup(id).catch((err) => {
         // Log but don't fail the task update
-        console.error("[auto-rollup] Failed to rollup for task", id, err);
+        logger.error(
+          { event: "task_auto_rollup_failed", taskId: id, err },
+          "Auto-rollup failed"
+        );
       });
     }
 
