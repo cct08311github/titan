@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Filter, X, ArrowUpDown } from "lucide-react";
+import { Filter, X, ArrowUpDown, Bookmark, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
@@ -48,6 +48,14 @@ const SORT_OPTIONS = [
 type User = { id: string; name: string };
 type TagOption = { name: string; color: string };
 
+type SavedFilter = {
+  id: string;
+  name: string;
+  scope: "kanban" | "timesheet" | "plans";
+  filters: Record<string, unknown>;
+  createdAt: string;
+};
+
 interface TaskFiltersProps {
   filters: TaskFilters;
   onChange: (filters: TaskFilters) => void;
@@ -57,6 +65,8 @@ interface TaskFiltersProps {
   filteredCount?: number;
   /** Whether to sync filters to URL query string */
   syncUrl?: boolean;
+  /** Scope for saved filters (default: 'kanban') */
+  scope?: "kanban" | "timesheet" | "plans";
 }
 
 const priorities = [
@@ -135,10 +145,14 @@ export function hasActiveFilters(filters: TaskFilters): boolean {
   );
 }
 
-export function TaskFilters({ filters, onChange, totalCount, filteredCount, syncUrl }: TaskFiltersProps) {
+export function TaskFilters({ filters, onChange, totalCount, filteredCount, syncUrl, scope = "kanban" }: TaskFiltersProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [tags, setTags] = useState<TagOption[]>([]);
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<SavedFilter[]>([]);
+  const [savedFilterOpen, setSavedFilterOpen] = useState(false);
+  const [savingName, setSavingName] = useState("");
+  const [showSaveInput, setShowSaveInput] = useState(false);
 
   const router = useRouter();
   const pathname = usePathname();
@@ -168,6 +182,58 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
     router.replace(newUrl, { scroll: false });
   }, [filters, syncUrl, pathname, router]);
 
+  // Load saved filters on mount
+  useEffect(() => {
+    fetch("/api/users/me/filters")
+      .then((r) => r.json())
+      .then((body) => {
+        const data = extractData<{ filters: SavedFilter[] }>(body);
+        if (data?.filters) setSavedFilters(data.filters);
+      })
+      .catch(() => { /* non-fatal */ });
+  }, []);
+
+  const persistSavedFilters = useCallback(async (next: SavedFilter[]) => {
+    try {
+      const res = await fetch("/api/users/me/filters", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+      });
+      if (!res.ok) throw new Error("save failed");
+      setSavedFilters(next);
+    } catch {
+      toast.error("儲存篩選條件失敗");
+    }
+  }, []);
+
+  const handleSaveFilter = useCallback(async () => {
+    const name = savingName.trim();
+    if (!name) return;
+    const newEntry: SavedFilter = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name,
+      scope,
+      filters: filters as unknown as Record<string, unknown>,
+      createdAt: new Date().toISOString(),
+    };
+    await persistSavedFilters([...savedFilters, newEntry]);
+    setSavingName("");
+    setShowSaveInput(false);
+    toast.success(`已儲存篩選「${name}」`);
+  }, [savingName, scope, filters, savedFilters, persistSavedFilters]);
+
+  const handleDeleteSavedFilter = useCallback(async (id: string) => {
+    await persistSavedFilters(savedFilters.filter((f) => f.id !== id));
+  }, [savedFilters, persistSavedFilters]);
+
+  const handleApplySavedFilter = useCallback((saved: SavedFilter) => {
+    onChange(saved.filters as unknown as TaskFilters);
+    setSavedFilterOpen(false);
+  }, [onChange]);
+
+  const scopedSaved = savedFilters.filter((f) => f.scope === scope);
+
   const active = hasActiveFilters(filters);
 
   const clearFilters = () => onChange({ ...emptyFilters });
@@ -188,6 +254,75 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Saved filters */}
+        <div className="relative">
+          <button
+            onClick={() => setSavedFilterOpen((v) => !v)}
+            className={cn(
+              selectCls,
+              "flex items-center gap-1.5",
+              scopedSaved.length > 0 && savedFilterOpen && "border-primary/50"
+            )}
+            title="儲存的篩選條件"
+          >
+            <Bookmark className="h-3.5 w-3.5" />
+            {scopedSaved.length > 0 && (
+              <span className="text-[10px] font-bold text-muted-foreground">{scopedSaved.length}</span>
+            )}
+          </button>
+          {savedFilterOpen && (
+            <div className="absolute top-full mt-1 left-0 z-50 w-56 bg-card border border-border rounded-lg shadow-xl p-2">
+              {scopedSaved.length === 0 && !showSaveInput && (
+                <div className="text-xs text-muted-foreground px-2 py-1">尚無儲存的篩選</div>
+              )}
+              {scopedSaved.map((sf) => (
+                <div key={sf.id} className="flex items-center justify-between gap-1 px-2 py-1.5 rounded hover:bg-accent/30 group">
+                  <button
+                    className="flex-1 text-left text-xs text-foreground truncate"
+                    onClick={() => handleApplySavedFilter(sf)}
+                  >
+                    {sf.name}
+                  </button>
+                  <button
+                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                    onClick={() => handleDeleteSavedFilter(sf.id)}
+                    title="刪除"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              {showSaveInput ? (
+                <div className="flex items-center gap-1 mt-1 px-1">
+                  <input
+                    autoFocus
+                    value={savingName}
+                    onChange={(e) => setSavingName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleSaveFilter(); if (e.key === "Escape") { setShowSaveInput(false); setSavingName(""); } }}
+                    placeholder="篩選名稱"
+                    maxLength={50}
+                    className="flex-1 h-7 text-xs bg-background border border-border rounded px-2 focus:outline-none focus:border-primary"
+                  />
+                  <button
+                    onClick={handleSaveFilter}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    儲存
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowSaveInput(true)}
+                  className="flex items-center gap-1 w-full mt-1 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent/20 rounded transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                  儲存目前篩選
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center gap-1.5 text-muted-foreground">
           <Filter className="h-3.5 w-3.5" />
           <span className="text-xs font-medium">篩選</span>

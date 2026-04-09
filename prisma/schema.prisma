@@ -30,6 +30,7 @@ model User {
   mustChangePassword        Boolean  @default(true)   // Issue #182: 首次登入強制變更
   passwordChangedAt         DateTime @default(now())  // Issue #182: 密碼到期追蹤（90天）
   hasCompletedOnboarding    Boolean  @default(false)  // Issue #1315: 新手導覽完成旗標
+  savedFilters              Json     @default("[]")   // Issue #1325: 儲存的篩選條件
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

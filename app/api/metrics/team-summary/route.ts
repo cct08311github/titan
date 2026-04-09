@@ -3,6 +3,8 @@
  *
  * Returns: per-member task counts, overdue counts, weekly hours.
  * Only accessible by MANAGER/ADMIN roles.
+ *
+ * Issue #1327: Replaced N+1 (1 + 3×N queries) with 3 bulk groupBy queries.
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
@@ -11,57 +13,69 @@ import { withManager } from "@/lib/auth-middleware";
 
 export const GET = withManager(async (_req: NextRequest) => {
   const now = new Date();
+  const monday = getMonday(now);
+  const sunday = getSunday(now);
 
-  // Get all active users
+  // Query 1: all active users
   const users = await prisma.user.findMany({
     where: { isActive: true },
     select: { id: true, name: true, role: true, avatar: true },
     orderBy: { name: "asc" },
   });
 
-  // Get task counts per user
-  const memberSummaries = await Promise.all(
-    users.map(async (user) => {
-      const [taskCount, overdueCount, weeklyHours] = await Promise.all([
-        // Active tasks (TODO + IN_PROGRESS)
-        prisma.task.count({
-          where: {
-            primaryAssigneeId: user.id,
-            status: { in: ["TODO", "IN_PROGRESS"] },
-          },
-        }),
-        // Overdue tasks
-        prisma.task.count({
-          where: {
-            primaryAssigneeId: user.id,
-            status: { notIn: ["DONE"] },
-            dueDate: { lt: now },
-          },
-        }),
-        // Weekly hours (current week)
-        prisma.timeEntry.aggregate({
-          where: {
-            userId: user.id,
-            date: {
-              gte: getMonday(now),
-              lte: getSunday(now),
-            },
-          },
-          _sum: { hours: true },
-        }),
-      ]);
+  // Query 2: active task counts grouped by primaryAssigneeId
+  const taskCounts = await prisma.task.groupBy({
+    by: ["primaryAssigneeId"],
+    where: {
+      primaryAssigneeId: { in: users.map((u) => u.id) },
+      status: { in: ["TODO", "IN_PROGRESS"] },
+      isSample: false,
+    },
+    _count: { _all: true },
+  });
 
-      return {
-        userId: user.id,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar,
-        taskCount,
-        overdueCount,
-        weeklyHours: weeklyHours._sum.hours ?? 0,
-      };
-    })
+  // Query 3: overdue task counts grouped by primaryAssigneeId
+  const overdueCounts = await prisma.task.groupBy({
+    by: ["primaryAssigneeId"],
+    where: {
+      primaryAssigneeId: { in: users.map((u) => u.id) },
+      status: { notIn: ["DONE"] },
+      dueDate: { lt: now },
+      isSample: false,
+    },
+    _count: { _all: true },
+  });
+
+  // Query 4: weekly hours grouped by userId
+  const weeklyHoursRows = await prisma.timeEntry.groupBy({
+    by: ["userId"],
+    where: {
+      userId: { in: users.map((u) => u.id) },
+      date: { gte: monday, lte: sunday },
+    },
+    _sum: { hours: true },
+  });
+
+  // Build lookup maps
+  const taskCountMap = new Map<string, number>(
+    taskCounts.map((r) => [r.primaryAssigneeId as string, r._count._all])
   );
+  const overdueCountMap = new Map<string, number>(
+    overdueCounts.map((r) => [r.primaryAssigneeId as string, r._count._all])
+  );
+  const weeklyHoursMap = new Map<string, number>(
+    weeklyHoursRows.map((r) => [r.userId, r._sum.hours ?? 0])
+  );
+
+  const memberSummaries = users.map((user) => ({
+    userId: user.id,
+    name: user.name,
+    role: user.role,
+    avatar: user.avatar,
+    taskCount: taskCountMap.get(user.id) ?? 0,
+    overdueCount: overdueCountMap.get(user.id) ?? 0,
+    weeklyHours: weeklyHoursMap.get(user.id) ?? 0,
+  }));
 
   return success({
     members: memberSummaries,
