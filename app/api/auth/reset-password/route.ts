@@ -20,6 +20,7 @@ import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
 import { getClientIp } from "@/lib/get-client-ip";
 import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { apiHandler } from "@/lib/api-handler";
 
 const auditService = new AuditService(prisma);
 
@@ -30,7 +31,9 @@ const resetRateLimiter = createLoginRateLimiter({
   duration: 300,
 });
 
-export async function POST(req: NextRequest) {
+// Wrapped in apiHandler so CSRF validator runs (Round 7: custom
+// /api/auth/* routes are no longer blanket-exempted from CSRF).
+export const POST = apiHandler(async (req: NextRequest) => {
   const ip = getClientIp(req);
 
   // Rate limit by IP before any DB work. Same skip rule as mobile login (#1214).
@@ -142,4 +145,4 @@ export async function POST(req: NextRequest) {
   });
 
   return success({ message: "密碼已成功重設，請使用新密碼登入" });
-}
+});

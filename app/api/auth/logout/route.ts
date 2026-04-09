@@ -6,15 +6,18 @@
  */
 
 import { NextRequest } from "next/server";
-import { success, error } from "@/lib/api-response";
+import { success } from "@/lib/api-response";
 import { revokeRefreshToken, revokeAllRefreshTokens } from "@/lib/auth/jwt";
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { AuditService } from "@/services/audit-service";
 import { JwtBlacklist } from "@/lib/jwt-blacklist";
+import { apiHandler } from "@/lib/api-handler";
 
-export async function POST(req: NextRequest) {
+// Wrapped in apiHandler so the CSRF validator runs (Round 7: custom
+// /api/auth/* routes are no longer blanket-exempted from CSRF).
+export const POST = apiHandler(async (req: NextRequest) => {
   let body: { refreshToken?: string } = {};
   try {
     body = await req.json();
@@ -60,4 +63,4 @@ export async function POST(req: NextRequest) {
   }
 
   return success({ message: "已登出" });
-}
+});
