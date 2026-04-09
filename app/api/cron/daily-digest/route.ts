@@ -25,6 +25,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     where: {
       date: { gte: today },
       approvalStatus: "PENDING",
+      isDeleted: false,
     },
     select: {
       userId: true,

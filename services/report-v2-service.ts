@@ -48,7 +48,7 @@ export class ReportV2Service {
     });
 
     const timeEntries = await this.prisma.timeEntry.findMany({
-      where: { date: { gte: start, lte: end } },
+      where: { date: { gte: start, lte: end }, isDeleted: false },
       select: { userId: true, hours: true },
     });
 
@@ -82,7 +82,7 @@ export class ReportV2Service {
     const { start, end } = defaultDateRange(startDate, endDate);
 
     const timeEntries = await this.prisma.timeEntry.findMany({
-      where: { date: { gte: start, lte: end } },
+      where: { date: { gte: start, lte: end }, isDeleted: false },
       select: { date: true, hours: true, category: true },
     });
 
@@ -120,7 +120,7 @@ export class ReportV2Service {
     const { start, end } = defaultDateRange(startDate, endDate);
 
     const timeEntries = await this.prisma.timeEntry.findMany({
-      where: { date: { gte: start, lte: end } },
+      where: { date: { gte: start, lte: end }, isDeleted: false },
       select: {
         userId: true,
         hours: true,
@@ -198,7 +198,7 @@ export class ReportV2Service {
     const { start, end } = defaultDateRange(startDate, endDate);
 
     const timeEntries = await this.prisma.timeEntry.findMany({
-      where: { date: { gte: start, lte: end } },
+      where: { date: { gte: start, lte: end }, isDeleted: false },
       select: { userId: true, hours: true, user: { select: { id: true, name: true } } },
     });
 
@@ -438,7 +438,7 @@ export class ReportV2Service {
 
     const taskIds = kpis.flatMap((k) => k.taskLinks.map((tl) => tl.taskId));
     const timeEntries = await this.prisma.timeEntry.findMany({
-      where: { taskId: { in: taskIds } },
+      where: { taskId: { in: taskIds }, isDeleted: false },
       select: { taskId: true, hours: true },
     });
 
@@ -502,6 +502,7 @@ export class ReportV2Service {
       where: {
         date: { gte: start, lte: end },
         overtimeType: { not: "NONE" },
+        isDeleted: false,
       },
       select: {
         userId: true,

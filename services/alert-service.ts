@@ -110,7 +110,7 @@ export class AlertService {
     });
 
     const weekEntries = await this.prisma.timeEntry.findMany({
-      where: { date: { gte: weekStart, lte: now } },
+      where: { date: { gte: weekStart, lte: now }, isDeleted: false },
       select: { userId: true },
     });
 

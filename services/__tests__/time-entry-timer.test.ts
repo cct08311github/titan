@@ -105,7 +105,7 @@ describe("Timer — start/stop (TS-05)", () => {
     expect(result).toEqual(mockEntry);
     expect(prisma.timeEntry.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: "user-1", isRunning: true },
+        where: { userId: "user-1", isRunning: true, isDeleted: false },
       })
     );
   });
@@ -121,7 +121,7 @@ describe("Locked entries (TS-04)", () => {
   });
 
   test("updateTimeEntry throws ForbiddenError when entry is locked", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({
       id: "te-locked",
       userId: "user-1",
       locked: true,
@@ -133,7 +133,7 @@ describe("Locked entries (TS-04)", () => {
   });
 
   test("deleteTimeEntry throws ForbiddenError when entry is locked", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({
       id: "te-locked",
       userId: "user-1",
       locked: true,
@@ -145,7 +145,7 @@ describe("Locked entries (TS-04)", () => {
   });
 
   test("updateTimeEntry succeeds when entry is not locked", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue({
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue({
       id: "te-unlocked",
       userId: "user-1",
       locked: false,

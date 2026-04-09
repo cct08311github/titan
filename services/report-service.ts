@@ -165,8 +165,8 @@ export class ReportService {
     });
 
     const timeEntryFilter = filter.isManager
-      ? { date: { gte: weekStart, lte: weekEnd } }
-      : { userId: filter.userId, date: { gte: weekStart, lte: weekEnd } };
+      ? { date: { gte: weekStart, lte: weekEnd }, isDeleted: false }
+      : { userId: filter.userId, date: { gte: weekStart, lte: weekEnd }, isDeleted: false };
 
     const timeEntries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,
@@ -273,8 +273,8 @@ export class ReportService {
         : 0;
 
     const timeEntryFilter = filter.isManager
-      ? { date: { gte: monthStart, lte: monthEnd } }
-      : { userId: filter.userId, date: { gte: monthStart, lte: monthEnd } };
+      ? { date: { gte: monthStart, lte: monthEnd }, isDeleted: false }
+      : { userId: filter.userId, date: { gte: monthStart, lte: monthEnd }, isDeleted: false };
 
     const timeEntries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,
@@ -373,8 +373,8 @@ export class ReportService {
       new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
     const timeEntryFilter = filter.isManager
-      ? { date: { gte: startDate, lte: endDate } }
-      : { userId: filter.userId, date: { gte: startDate, lte: endDate } };
+      ? { date: { gte: startDate, lte: endDate }, isDeleted: false }
+      : { userId: filter.userId, date: { gte: startDate, lte: endDate }, isDeleted: false };
 
     const timeEntries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,
@@ -519,8 +519,8 @@ export class ReportService {
     isManager: boolean; userId?: string;
   }): Promise<TimesheetPivotData> {
     const timeEntryFilter = opts.isManager
-      ? { date: { gte: opts.start, lte: opts.end } }
-      : { userId: opts.userId, date: { gte: opts.start, lte: opts.end } };
+      ? { date: { gte: opts.start, lte: opts.end }, isDeleted: false }
+      : { userId: opts.userId, date: { gte: opts.start, lte: opts.end }, isDeleted: false };
 
     const entries = await this.prisma.timeEntry.findMany({
       where: timeEntryFilter,

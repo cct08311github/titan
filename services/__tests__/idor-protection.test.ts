@@ -43,7 +43,7 @@ describe("TimeEntryService IDOR protection", () => {
   // ──────────────────────────────────────────────
 
   test("ENGINEER can only update own time entries", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(engineerEntry);
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(engineerEntry);
     (prisma.timeEntry.update as jest.Mock).mockResolvedValue({ ...engineerEntry, hours: 4 });
 
     const result = await service.updateTimeEntry("te-1", { hours: 4 }, "user-engineer", "ENGINEER");
@@ -53,7 +53,7 @@ describe("TimeEntryService IDOR protection", () => {
   });
 
   test("ENGINEER cannot update other users time entries", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(otherEntry);
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(otherEntry);
 
     await expect(
       service.updateTimeEntry("te-2", { hours: 4 }, "user-engineer", "ENGINEER")
@@ -67,7 +67,7 @@ describe("TimeEntryService IDOR protection", () => {
   // ──────────────────────────────────────────────
 
   test("ENGINEER cannot delete other users entries", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(otherEntry);
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(otherEntry);
 
     await expect(
       service.deleteTimeEntry("te-2", "user-engineer", "ENGINEER")
@@ -94,7 +94,7 @@ describe("TimeEntryService IDOR protection", () => {
   // ──────────────────────────────────────────────
 
   test("MANAGER can only WRITE own entries by default", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(otherEntry);
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(otherEntry);
 
     await expect(
       service.updateTimeEntry("te-2", { hours: 5 }, "user-manager", "MANAGER")
@@ -108,7 +108,7 @@ describe("TimeEntryService IDOR protection", () => {
   // ──────────────────────────────────────────────
 
   test("return 403 not 404 for unauthorized access", async () => {
-    (prisma.timeEntry.findUnique as jest.Mock).mockResolvedValue(otherEntry);
+    (prisma.timeEntry.findFirst as jest.Mock).mockResolvedValue(otherEntry);
 
     let caughtError: Error | undefined;
     try {
