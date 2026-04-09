@@ -15,6 +15,7 @@ declare module "next-auth" {
       role: string;
       mustChangePassword?: boolean;
       passwordChangedAt?: string | null; // Issue #834: password expiry tracking
+      hasCompletedOnboarding?: boolean;  // Issue #1315: onboarding flow
     } & DefaultSession["user"];
   }
 
@@ -23,6 +24,7 @@ declare module "next-auth" {
     role: string;
     mustChangePassword?: boolean;
     passwordChangedAt?: string; // Issue #834
+    hasCompletedOnboarding?: boolean; // Issue #1315
   }
 }
 
@@ -32,6 +34,7 @@ declare module "next-auth/jwt" {
     role: string;
     mustChangePassword?: boolean;
     passwordChangedAt?: string | null; // Issue #834
+    hasCompletedOnboarding?: boolean;  // Issue #1315
     sessionId?: string;
   }
 }

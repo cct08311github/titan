@@ -172,6 +172,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           mustChangePassword: needsPasswordChange,
           passwordChangedAt: user.passwordChangedAt?.toISOString(),
+          hasCompletedOnboarding: user.hasCompletedOnboarding, // Issue #1315
         };
       },
     }),
@@ -181,16 +182,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     maxAge: 15 * 60, // 15 minutes (Issue #795: short-lived access token)
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.role = (user as { id: string; role: string }).role;
         token.mustChangePassword = (user as { mustChangePassword?: boolean }).mustChangePassword ?? false;
         token.passwordChangedAt = (user as { passwordChangedAt?: string | null }).passwordChangedAt ?? null;
+        token.hasCompletedOnboarding = (user as { hasCompletedOnboarding?: boolean }).hasCompletedOnboarding ?? false; // Issue #1315
         // Issue #184: generate session ID and register (invalidates previous session)
         const sessionId = crypto.randomUUID();
         token.sessionId = sessionId;
         registerSession(user.id!, sessionId).catch(() => {});
+      }
+      // Issue #1315: persist update() call so hasCompletedOnboarding survives token rotation
+      if (trigger === "update" && session && "hasCompletedOnboarding" in session) {
+        token.hasCompletedOnboarding = session.hasCompletedOnboarding as boolean;
       }
       return token;
     },
@@ -200,6 +206,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.role = token.role as string;
         session.user.mustChangePassword = token.mustChangePassword as boolean;
         session.user.passwordChangedAt = (token.passwordChangedAt as string) ?? null;
+        session.user.hasCompletedOnboarding = (token.hasCompletedOnboarding as boolean) ?? false; // Issue #1315
       }
       return session;
     },

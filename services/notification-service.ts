@@ -60,6 +60,7 @@ export class NotificationService {
 
     const tasks = await this.prisma.task.findMany({
       where: {
+        isSample: false,
         status: { notIn: ["DONE"] },
         dueDate: { gte: now, lte: cutoff },
       },
@@ -170,6 +171,7 @@ export class NotificationService {
   ): Promise<NotificationInput[]> {
     const tasks = await this.prisma.task.findMany({
       where: {
+        isSample: false,
         status: { notIn: ["DONE"] },
         dueDate: { lt: now },
       },

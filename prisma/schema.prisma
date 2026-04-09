@@ -27,8 +27,9 @@ model User {
   role                Role     @default(ENGINEER)
   avatar              String?  // base64 or filename
   isActive            Boolean  @default(true)
-  mustChangePassword  Boolean  @default(true)   // Issue #182: 首次登入強制變更
-  passwordChangedAt   DateTime @default(now())  // Issue #182: 密碼到期追蹤（90天）
+  mustChangePassword        Boolean  @default(true)   // Issue #182: 首次登入強制變更
+  passwordChangedAt         DateTime @default(now())  // Issue #182: 密碼到期追蹤（90天）
+  hasCompletedOnboarding    Boolean  @default(false)  // Issue #1315: 新手導覽完成旗標
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -221,6 +222,7 @@ model AnnualPlan {
   progressPct        Float     @default(0)
   copiedFromYear     Int?
   archivedAt         DateTime? // 封存時間（不可硬刪除，僅封存）
+  isSample           Boolean   @default(false) // Issue #1317: 範例資料旗標
   createdBy          String
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -358,6 +360,7 @@ model Task {
   addedReason       String?
   addedSource       String?
   slaDeadline       DateTime?    // Issue #860: SLA 截止時間
+  isSample          Boolean      @default(false) // Issue #1317: 範例資料旗標
   managerFlagged    Boolean      @default(false) // Issue #960: 主管標記
   flagReason        String?      // Issue #960: 標記原因
   flaggedAt         DateTime?    // Issue #960: 標記時間
