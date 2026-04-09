@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import { Plus, Loader2, X, ChevronRight, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
@@ -49,7 +49,7 @@ interface MilestoneSectionProps {
 const inputCls = "bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors placeholder:text-muted-foreground";
 const selectCls = "bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors cursor-pointer";
 
-export function MilestoneSection({ plans }: MilestoneSectionProps) {
+function MilestoneSectionComponent({ plans }: MilestoneSectionProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -277,3 +277,5 @@ export function MilestoneSection({ plans }: MilestoneSectionProps) {
     </div>
   );
 }
+
+export const MilestoneSection = memo(MilestoneSectionComponent);

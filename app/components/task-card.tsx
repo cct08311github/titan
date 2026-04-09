@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import {
   AlertCircle,
@@ -129,7 +130,7 @@ interface TaskCardProps {
   isDragging?: boolean;
 }
 
-export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
+function TaskCardComponent({ task, onClick, isDragging }: TaskCardProps) {
   const pConfig = priorityConfig[task.priority];
   const cConfig = categoryConfig[task.category];
   const PIcon = pConfig.icon;
@@ -277,3 +278,5 @@ export function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
     </div>
   );
 }
+
+export const TaskCard = memo(TaskCardComponent);

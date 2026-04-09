@@ -10,7 +10,7 @@
  * - Keyboard accessibility (Tab, Enter, Arrow keys)
  */
 
-import { useState, useRef, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useState, useRef, useCallback, memo, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Loader2, GripVertical, Pencil, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskCard, type TaskCardData } from "./task-card";
@@ -54,7 +54,7 @@ export interface KanbanColumnProps {
   onKeyboardReorder?: (taskId: string, direction: "up" | "down") => void;
 }
 
-export function KanbanColumn({
+function KanbanColumnComponent({
   status,
   label,
   color,
@@ -319,3 +319,5 @@ export function KanbanColumn({
     </div>
   );
 }
+
+export const KanbanColumn = memo(KanbanColumnComponent);

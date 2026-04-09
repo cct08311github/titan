@@ -13,7 +13,7 @@
  * - Multi-select mode with batch operations (Issue #1023)
  */
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Plus,
@@ -94,6 +94,8 @@ const PRIORITY_OPTIONS = [
 
 const COLUMN_NAMES_KEY = "titan-kanban-column-names";
 
+const EMPTY_TASK_ARRAY: (TaskCardData & { position?: number })[] = [];
+
 function loadColumnNames(): Record<string, string> {
   if (typeof window === "undefined") return {};
   try {
@@ -170,6 +172,10 @@ export default function KanbanPage() {
   // Ref to always access latest tasks (avoids stale closures in keyboard handlers)
   const tasksRef = useRef(tasks);
   useEffect(() => { tasksRef.current = tasks; }, [tasks]);
+
+  // Ref to always access latest moveTask without stale closures in useCallback handlers
+  const moveTaskRef = useRef<(taskId: string, newStatus: TaskStatus, targetIndex?: number) => Promise<void>>(async () => {});
+
 
   // Snapshot for rollback
   const tasksSnapshot = useRef<(TaskCardData & { position?: number })[]>([]);
@@ -348,6 +354,9 @@ export default function KanbanPage() {
     }
   }
 
+  // Keep ref in sync so useCallback handlers can call moveTask without stale closures
+  moveTaskRef.current = moveTask;
+
   // ── Reorder within same column ────────────────────────────────────────
 
   async function reorderInColumn(
@@ -395,47 +404,56 @@ export default function KanbanPage() {
 
   // ── Drag & drop handlers ──────────────────────────────────────────────
 
-  function handleDragStart(e: React.DragEvent, taskId: string) {
-    e.dataTransfer.setData("taskId", taskId);
-    e.dataTransfer.effectAllowed = "move";
-    setDraggingId(taskId);
-  }
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, taskId: string) => {
+      e.dataTransfer.setData("taskId", taskId);
+      e.dataTransfer.effectAllowed = "move";
+      setDraggingId(taskId);
+    },
+    []
+  );
 
-  function handleDragEnd() {
+  const handleDragEnd = useCallback(() => {
     setDraggingId(null);
     setDragOver(null);
-  }
+  }, []);
 
-  function handleDragOver(e: React.DragEvent, status: TaskStatus) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOver(status);
-  }
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, status: TaskStatus) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      setDragOver(status);
+    },
+    []
+  );
 
-  function handleDragLeave() {
+  const handleDragLeave = useCallback(() => {
     setDragOver(null);
-  }
+  }, []);
 
-  function handleDrop(e: React.DragEvent, status: TaskStatus) {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData("taskId");
-    if (taskId) {
-      // Calculate target index from drop position
-      const container = e.currentTarget as HTMLElement;
-      const cards = container.querySelectorAll("[data-task-id]");
-      let targetIdx = tasks.filter((t) => t.status === status).length;
-      for (let i = 0; i < cards.length; i++) {
-        const rect = cards[i].getBoundingClientRect();
-        if (e.clientY < rect.top + rect.height / 2) {
-          targetIdx = i;
-          break;
+  const handleDrop = useCallback(
+    (e: React.DragEvent, status: TaskStatus) => {
+      e.preventDefault();
+      const taskId = e.dataTransfer.getData("taskId");
+      if (taskId) {
+        // Calculate target index from drop position
+        const container = e.currentTarget as HTMLElement;
+        const cards = container.querySelectorAll("[data-task-id]");
+        let targetIdx = tasksRef.current.filter((t) => t.status === status).length;
+        for (let i = 0; i < cards.length; i++) {
+          const rect = cards[i].getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) {
+            targetIdx = i;
+            break;
+          }
         }
+        moveTaskRef.current(taskId, status, targetIdx);
       }
-      moveTask(taskId, status, targetIdx);
-    }
-    setDragOver(null);
-    setDraggingId(null);
-  }
+      setDragOver(null);
+      setDraggingId(null);
+    },
+    []
+  );
 
   // ── Keyboard navigation ───────────────────────────────────────────────
 
@@ -486,7 +504,7 @@ export default function KanbanPage() {
 
   // ── Bulk selection helpers ────────────────────────────────────────────
 
-  function toggleSelect(taskId: string) {
+  const toggleSelect = useCallback((taskId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(taskId)) {
@@ -496,7 +514,7 @@ export default function KanbanPage() {
       }
       return next;
     });
-  }
+  }, []);
 
   function clearSelection() {
     setSelectedIds(new Set());
@@ -611,10 +629,23 @@ export default function KanbanPage() {
 
   // ── Derived data ────────────────────────────────────────────────────────
 
-  const tasksByStatus = (status: TaskStatus) =>
-    tasks
-      .filter((t) => t.status === status)
-      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const tasksByStatusMap = useMemo(() => {
+    const map = new Map<TaskStatus, (TaskCardData & { position?: number })[]>();
+    for (const task of tasks) {
+      const status = task.status as TaskStatus;
+      const list = map.get(status) ?? [];
+      list.push(task);
+      map.set(status, list);
+    }
+    // Sort each column by position
+    for (const [status, list] of map) {
+      map.set(
+        status,
+        [...list].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+      );
+    }
+    return map;
+  }, [tasks]);
 
   const hasSelection = selectedIds.size > 0;
 
@@ -885,7 +916,7 @@ export default function KanbanPage() {
                 color={color}
                 borderClass={columnBorder[status]}
                 headerBgClass={columnHeaderBg[status]}
-                tasks={tasksByStatus(status)}
+                tasks={tasksByStatusMap.get(status) ?? EMPTY_TASK_ARRAY}
                 draggingId={draggingId}
                 isDragOver={dragOver === status}
                 movingTaskId={movingTask}
