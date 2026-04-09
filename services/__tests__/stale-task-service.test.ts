@@ -7,6 +7,7 @@
 import {
   scanStaleTasks,
   classifyStaleLevel,
+  listStaleTasksForUser,
   STALE_REMIND_DAYS,
   STALE_WARN_DAYS,
   STALE_ESCALATE_DAYS,
@@ -198,6 +199,7 @@ describe("scanStaleTasks", () => {
     await scanStaleTasks({ prisma: prisma as never, now: NOW });
 
     const queryArg = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
+    // TaskStatus enum does not include CANCELLED — only terminal status is DONE
     expect(queryArg.where.status).toEqual({ notIn: ["DONE"] });
   });
 
@@ -287,5 +289,138 @@ describe("scanStaleTasks", () => {
     expect(result.remindCount).toBe(1);
     expect(result.warnCount).toBe(1);
     expect(result.escalateCount).toBe(1);
+  });
+});
+
+// ── listStaleTasksForUser ─────────────────────────────────────────────────────
+
+function makeListTask(overrides: {
+  id?: string;
+  title?: string;
+  updatedAt: Date;
+  dueDate?: Date | null;
+  status?: string;
+  assigneeName?: string | null;
+}) {
+  return {
+    id: overrides.id ?? "task-list-1",
+    title: overrides.title ?? "List Task",
+    updatedAt: overrides.updatedAt,
+    dueDate: overrides.dueDate ?? null,
+    status: overrides.status ?? "IN_PROGRESS",
+    primaryAssignee: overrides.assigneeName !== undefined
+      ? { name: overrides.assigneeName }
+      : { name: "Default User" },
+  };
+}
+
+describe("listStaleTasksForUser", () => {
+  let prisma: ReturnType<typeof createMockPrisma>;
+
+  beforeEach(() => {
+    prisma = createMockPrisma();
+    (prisma.notification.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  it("returns empty array when no stale tasks", async () => {
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([]);
+    const result = await listStaleTasksForUser("user-eng", "ENGINEER", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+    expect(result).toHaveLength(0);
+  });
+
+  it("ENGINEER: includes primaryAssigneeId filter in query", async () => {
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([
+      makeListTask({ updatedAt: daysAgoDate(5, NOW) }),
+    ]);
+    await listStaleTasksForUser("user-eng", "ENGINEER", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+    const call = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.primaryAssigneeId).toBe("user-eng");
+  });
+
+  it("MANAGER: does not include primaryAssigneeId filter", async () => {
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([]);
+    await listStaleTasksForUser("user-mgr", "MANAGER", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+    const call = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.primaryAssigneeId).toBeUndefined();
+  });
+
+  it("ADMIN: does not include primaryAssigneeId filter", async () => {
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([]);
+    await listStaleTasksForUser("user-adm", "ADMIN", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+    const call = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where.primaryAssigneeId).toBeUndefined();
+  });
+
+  it("classifies and returns stale tasks with correct levels", async () => {
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([
+      makeListTask({ id: "t-remind", updatedAt: daysAgoDate(5, NOW), title: "Remind Task" }),
+      makeListTask({ id: "t-warn", updatedAt: daysAgoDate(10, NOW), title: "Warn Task" }),
+      makeListTask({ id: "t-escalate", updatedAt: daysAgoDate(20, NOW), title: "Escalate Task" }),
+    ]);
+
+    const result = await listStaleTasksForUser("user-mgr", "MANAGER", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+
+    expect(result).toHaveLength(3);
+    // Should be sorted ESCALATE first
+    expect(result[0].level).toBe("ESCALATE");
+    expect(result[0].title).toBe("Escalate Task");
+    expect(result[1].level).toBe("WARN");
+    expect(result[2].level).toBe("REMIND");
+  });
+
+  it("skips tasks that are not yet stale", async () => {
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([
+      // Not stale yet (1 day old) — classifyStaleLevel returns null
+      makeListTask({ id: "t-fresh", updatedAt: daysAgoDate(1, NOW), title: "Fresh Task" }),
+      makeListTask({ id: "t-stale", updatedAt: daysAgoDate(5, NOW), title: "Stale Task" }),
+    ]);
+
+    const result = await listStaleTasksForUser("user-mgr", "MANAGER", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+
+    // Only the stale one should be returned
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Stale Task");
+  });
+
+  it("includes daysSinceUpdate, assigneeName, dueDate in each item", async () => {
+    const dueDate = daysFromNow(2, NOW);
+    (prisma.task.findMany as jest.Mock).mockResolvedValue([
+      makeListTask({
+        id: "t-detail",
+        updatedAt: daysAgoDate(8, NOW),
+        dueDate,
+        assigneeName: "Test User",
+        title: "Detailed Task",
+      }),
+    ]);
+
+    const result = await listStaleTasksForUser("user-mgr", "MANAGER", {
+      prisma: prisma as never,
+      now: NOW,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].daysSinceUpdate).toBe(8);
+    expect(result[0].assigneeName).toBe("Test User");
+    expect(result[0].dueDate).toEqual(dueDate);
   });
 });
