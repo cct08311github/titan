@@ -23,8 +23,27 @@ import type { NextRequest } from "next/server";
 /** HTTP methods that do not mutate state — exempt from CSRF checks. */
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-/** URL prefix handled by NextAuth — has its own csrfToken mechanism. */
-const NEXTAUTH_PREFIX = "/api/auth/";
+/**
+ * URL prefixes exempt from our CSRF validation:
+ * - /api/auth/callback, /api/auth/signin, /api/auth/signout, /api/auth/session,
+ *   /api/auth/providers, /api/auth/csrf, /api/auth/error — all NextAuth's own
+ *   routes with their own csrfToken cookie mechanism.
+ *
+ * NOT exempt: /api/auth/change-password, /api/auth/reset-password,
+ * /api/auth/logout (our own logout), /api/auth/refresh, /api/auth/ldap,
+ * /api/auth/mobile/* — these are custom routes that need CSRF protection
+ * for cookie-authenticated requests.
+ */
+const NEXTAUTH_PREFIXES = [
+  "/api/auth/callback",
+  "/api/auth/signin",
+  "/api/auth/signout",
+  "/api/auth/session",
+  "/api/auth/providers",
+  "/api/auth/csrf",
+  "/api/auth/error",
+  "/api/auth/_log",
+];
 
 /**
  * Typed error thrown when CSRF validation fails.
@@ -55,9 +74,11 @@ export function validateCsrf(req: NextRequest): void {
     return;
   }
 
-  // 2. NextAuth manages its own CSRF — skip our check for /api/auth/*
+  // 2. NextAuth's own routes have internal csrfToken — skip our check.
+  //    Our custom auth routes (change-password, reset-password, mobile/*, etc.)
+  //    are NOT exempt and must pass Origin validation below.
   const pathname = new URL(url).pathname;
-  if (pathname.startsWith(NEXTAUTH_PREFIX)) {
+  if (NEXTAUTH_PREFIXES.some((p) => pathname.startsWith(p))) {
     return;
   }
 
