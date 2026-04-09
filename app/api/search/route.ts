@@ -69,6 +69,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     searchTasks
       ? prisma.task.findMany({
           where: {
+            isSample: false,
             OR: [
               { title: containsQuery },
               { description: containsQuery },

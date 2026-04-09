@@ -38,7 +38,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       await Promise.all([
         // Flagged tasks across team
         prisma.task.findMany({
-          where: { managerFlagged: true, status: { not: "DONE" } },
+          where: { isSample: false, managerFlagged: true, status: { not: "DONE" } },
           select: {
             id: true,
             title: true,
@@ -56,6 +56,7 @@ export const GET = withAuth(async (req: NextRequest) => {
         // Overdue tasks
         prisma.task.findMany({
           where: {
+            isSample: false,
             status: { not: "DONE" },
             dueDate: { lt: now },
           },
@@ -94,7 +95,7 @@ export const GET = withAuth(async (req: NextRequest) => {
         }),
         // Active plans for health snapshot
         prisma.annualPlan.findMany({
-          where: { year: now.getFullYear(), archivedAt: null },
+          where: { isSample: false, year: now.getFullYear(), archivedAt: null },
           select: {
             id: true,
             title: true,
@@ -182,6 +183,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // Flagged tasks for this engineer
       prisma.task.findMany({
         where: {
+          isSample: false,
           managerFlagged: true,
           status: { not: "DONE" },
           OR: [{ primaryAssigneeId: userId }, { backupAssigneeId: userId }],
@@ -201,6 +203,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // Due today
       prisma.task.findMany({
         where: {
+          isSample: false,
           status: { not: "DONE" },
           dueDate: { gte: todayStart, lt: todayEnd },
           OR: [{ primaryAssigneeId: userId }, { backupAssigneeId: userId }],
@@ -219,6 +222,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // In progress
       prisma.task.findMany({
         where: {
+          isSample: false,
           status: "IN_PROGRESS",
           OR: [{ primaryAssigneeId: userId }, { backupAssigneeId: userId }],
         },
@@ -245,7 +249,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // Current month goals
       prisma.monthlyGoal.findMany({
         where: {
-          annualPlan: { year: now.getFullYear(), archivedAt: null },
+          annualPlan: { isSample: false, year: now.getFullYear(), archivedAt: null },
           month: now.getMonth() + 1,
         },
         select: {

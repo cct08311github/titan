@@ -15,6 +15,7 @@ export const GET = withAuth(async () => {
   // Find tasks with slaDeadline in the next 2 hours that are not DONE
   const tasks = await prisma.task.findMany({
     where: {
+      isSample: false,
       slaDeadline: {
         gte: now,
         lte: twoHoursLater,
