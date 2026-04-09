@@ -41,6 +41,9 @@ jest.mock("next-auth", () => ({
   getServerSession: (...a: unknown[]) => mockGetServerSession(...a),
 }));
 
+// Mock @/auth for requireAuth() (Auth.js v5 uses auth() not getServerSession)
+jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockGetServerSession(...args) }));
+
 // ── Service mocks ────────────────────────────────────────────────────────────
 const mockGetWeeklyReport = jest.fn();
 const mockGetMonthlyReport = jest.fn();
@@ -335,10 +338,11 @@ describe("GET /api/reports/trends", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.metric).toBe("kpi");
-    expect(body.years).toEqual([2024, 2025]);
-    expect(body.data).toHaveProperty("2024");
-    expect(body.data).toHaveProperty("2025");
+    // Response is wrapped: { ok: true, data: { metric, years, data } }
+    expect(body.data.metric).toBe("kpi");
+    expect(body.data.years).toEqual([2024, 2025]);
+    expect(body.data.data).toHaveProperty("2024");
+    expect(body.data.data).toHaveProperty("2025");
   });
 
   it("returns workload trend data for specified metric", async () => {
@@ -353,8 +357,9 @@ describe("GET /api/reports/trends", () => {
     );
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.metric).toBe("workload");
-    expect(body.data[2024]).toHaveLength(12);
+    // Response is wrapped: { ok: true, data: { metric, years, data } }
+    expect(body.data.metric).toBe("workload");
+    expect(body.data.data[2024]).toHaveLength(12);
   });
 
   it("returns 400 for invalid years parameter", async () => {
@@ -377,13 +382,12 @@ describe("GET /api/reports/trends", () => {
     expect(res.status).toBe(400);
   });
 
-  it("throws UnauthorizedError when unauthenticated", async () => {
+  it("returns 401 when unauthenticated", async () => {
     mockGetServerSession.mockResolvedValue(null);
     const { GET } = await import("@/app/api/reports/trends/route");
-    // trends route does not use withAuth wrapper, so UnauthorizedError propagates
-    await expect(
-      GET(createMockRequest("/api/reports/trends")),
-    ).rejects.toThrow("未授權");
+    // trends route uses apiHandler which catches UnauthorizedError and returns 401
+    const res = await GET(createMockRequest("/api/reports/trends"));
+    expect(res.status).toBe(401);
   });
 });
 

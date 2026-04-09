@@ -91,13 +91,8 @@ describe("TaskDetailModal", () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue("Test Task")).toBeInTheDocument();
     });
-    // Click the X button — find it by looking for all buttons and picking the close one in the header
-    const buttons = screen.getAllByRole("button");
-    // The X button is after Save, tabs (詳情, 變更歷史, 評論), so find by iterating from end
-    const closeBtn = buttons.find((b) => {
-      // The X button is the one that is not Save, not a tab
-      return b.closest(".flex.items-center.gap-2") && !b.textContent?.includes("儲存");
-    }) ?? buttons[buttons.length - 1];
+    // Click the X button — identified by its aria-label="關閉任務詳情"
+    const closeBtn = screen.getByLabelText("關閉任務詳情");
     fireEvent.click(closeBtn);
     expect(onClose).toHaveBeenCalled();
   });

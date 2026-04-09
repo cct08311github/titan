@@ -43,6 +43,21 @@ jest.mock("@/lib/logger", () => ({
   logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
 }));
 
+// Mock @/auth for withAuth / requireAuth (Auth.js v5 uses auth() not getServerSession)
+const mockAuthSession = { user: { id: "sys-1", name: "System", email: "sys@e.com", role: "ADMIN" }, expires: "2099" };
+jest.mock("@/auth", () => ({ auth: jest.fn().mockResolvedValue(mockAuthSession) }));
+
+// Helper: create minimal NextRequest for metrics endpoint
+function createSystemRequest(url: string) {
+  return {
+    url: `http://localhost${url}`,
+    method: "GET",
+    json: jest.fn(() => Promise.resolve({})),
+    headers: { get: (_: string) => null },
+    nextUrl: new URL(`http://localhost${url}`),
+  } as unknown as import("next/server").NextRequest;
+}
+
 // ========================================================================
 // GET /api/health
 // ========================================================================
@@ -93,7 +108,7 @@ describe("GET /api/health", () => {
     const body = await res.json();
     expect(body.status).toBe("degraded");
     expect(body.checks.database.status).toBe("error");
-    expect(body.checks.database.error).toContain("Connection refused");
+    expect(body.checks.database.error).toContain("database connection failed");
   });
 
   it("returns 503 with status degraded when Redis connection fails", async () => {
@@ -104,7 +119,7 @@ describe("GET /api/health", () => {
     const body = await res.json();
     expect(body.status).toBe("degraded");
     expect(body.checks.redis.status).toBe("error");
-    expect(body.checks.redis.error).toContain("Redis timeout");
+    expect(body.checks.redis.error).toContain("redis connection failed");
   });
 
   it("returns 503 when Redis returns non-PONG response", async () => {
@@ -253,7 +268,7 @@ describe("GET /api/metrics", () => {
   it("returns Prometheus text format content type", async () => {
     mockSerializeMetrics.mockReturnValue("# HELP titan_uptime_seconds\n");
     const { GET } = await import("@/app/api/metrics/route");
-    const res = await GET();
+    const res = await GET(createSystemRequest("/api/metrics"));
     expect(res.headers.get("Content-Type")).toBe(
       "text/plain; version=0.0.4; charset=utf-8"
     );
@@ -272,7 +287,7 @@ describe("GET /api/metrics", () => {
 
     mockSerializeMetrics.mockReturnValue(metricsText);
     const { GET } = await import("@/app/api/metrics/route");
-    const res = await GET();
+    const res = await GET(createSystemRequest("/api/metrics"));
     const body = await res.text();
     expect(body).toBe(metricsText);
     expect(body).toContain("titan_http_requests_total");
@@ -282,14 +297,14 @@ describe("GET /api/metrics", () => {
   it("calls serializeMetrics exactly once", async () => {
     mockSerializeMetrics.mockReturnValue("");
     const { GET } = await import("@/app/api/metrics/route");
-    await GET();
+    await GET(createSystemRequest("/api/metrics"));
     expect(mockSerializeMetrics).toHaveBeenCalledTimes(1);
   });
 
   it("returns 200 status", async () => {
     mockSerializeMetrics.mockReturnValue("");
     const { GET } = await import("@/app/api/metrics/route");
-    const res = await GET();
+    const res = await GET(createSystemRequest("/api/metrics"));
     expect(res.status).toBe(200);
   });
 });

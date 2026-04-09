@@ -23,7 +23,31 @@ jest.mock("next-auth", () => ({
   getServerSession: (...a: unknown[]) => mockGetServerSession(...a),
 }));
 
+// Mock @/auth for apiHandler audit logging (Auth.js v5)
+jest.mock("@/auth", () => ({ auth: jest.fn().mockResolvedValue(null) }));
+
+// Helper: create a mock request with the CRON_SECRET header
+function createCronRequest(url: string) {
+  return {
+    url: `http://localhost${url}`,
+    method: "POST",
+    json: jest.fn(() => Promise.resolve({})),
+    headers: {
+      get: (name: string) =>
+        name === "x-cron-secret" ? "test-cron-secret" : null,
+    },
+    nextUrl: new URL(`http://localhost${url}`),
+  } as unknown as import("next/server").NextRequest;
+}
+
 describe("POST /api/cron/daily-digest", () => {
+  beforeAll(() => {
+    process.env.CRON_SECRET = "test-cron-secret";
+  });
+  afterAll(() => {
+    delete process.env.CRON_SECRET;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     // No session needed for cron endpoint
@@ -40,7 +64,7 @@ describe("POST /api/cron/daily-digest", () => {
 
     const { POST } = await import("@/app/api/cron/daily-digest/route");
     const res = await (POST as Function)(
-      createMockRequest("/api/cron/daily-digest", { method: "POST" })
+      createCronRequest("/api/cron/daily-digest")
     );
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -69,7 +93,7 @@ describe("POST /api/cron/daily-digest", () => {
 
     const { POST } = await import("@/app/api/cron/daily-digest/route");
     const res = await (POST as Function)(
-      createMockRequest("/api/cron/daily-digest", { method: "POST" })
+      createCronRequest("/api/cron/daily-digest")
     );
     expect(res.status).toBe(200);
     const body = await res.json();

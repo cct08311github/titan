@@ -6,12 +6,15 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockAnnualPlan = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockAnnualPlan = { findMany: jest.fn(), findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
 
 jest.mock("@/lib/prisma", () => ({ prisma: { annualPlan: mockAnnualPlan } }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));
+
+// Mock @/auth for requireAuth() (Auth.js v5 uses auth() not getServerSession)
+jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockGetServerSession(...args) }));
 
 const MANAGER_SESSION = { user: { id: "mgr-1", name: "Mgr", email: "m@e.com", role: "MANAGER" }, expires: "2099" };
 
@@ -67,6 +70,7 @@ describe("POST /api/plans", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
+    mockAnnualPlan.findFirst.mockResolvedValue(null); // no existing plan (conflict check)
     mockAnnualPlan.create.mockResolvedValue(MOCK_PLAN);
   });
 

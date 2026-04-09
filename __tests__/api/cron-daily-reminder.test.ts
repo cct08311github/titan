@@ -47,7 +47,28 @@ jest.mock("@/auth", () => ({
 // Suppress console.error
 jest.spyOn(console, "error").mockImplementation(() => {});
 
+// Helper: create a mock request with the CRON_SECRET header
+function createCronRequest(url: string) {
+  return {
+    url: `http://localhost${url}`,
+    method: "POST",
+    json: jest.fn(() => Promise.resolve({})),
+    headers: {
+      get: (name: string) =>
+        name === "x-cron-secret" ? "test-cron-secret" : null,
+    },
+    nextUrl: new URL(`http://localhost${url}`),
+  } as unknown as import("next/server").NextRequest;
+}
+
 describe("POST /api/cron/daily-reminder (TS-29)", () => {
+  beforeAll(() => {
+    process.env.CRON_SECRET = "test-cron-secret";
+  });
+  afterAll(() => {
+    delete process.env.CRON_SECRET;
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
@@ -65,7 +86,7 @@ describe("POST /api/cron/daily-reminder (TS-29)", () => {
 
     const { POST } = await import("@/app/api/cron/daily-reminder/route");
     const res = await POST(
-      createMockRequest("/api/cron/daily-reminder", { method: "POST" })
+      createCronRequest("/api/cron/daily-reminder")
     );
 
     expect(res.status).toBe(200);
@@ -86,7 +107,7 @@ describe("POST /api/cron/daily-reminder (TS-29)", () => {
 
     const { POST } = await import("@/app/api/cron/daily-reminder/route");
     const res = await POST(
-      createMockRequest("/api/cron/daily-reminder", { method: "POST" })
+      createCronRequest("/api/cron/daily-reminder")
     );
 
     // The endpoint itself should succeed (200) even on weekends
@@ -106,7 +127,7 @@ describe("POST /api/cron/daily-reminder (TS-29)", () => {
 
     const { POST } = await import("@/app/api/cron/daily-reminder/route");
     const res = await POST(
-      createMockRequest("/api/cron/daily-reminder", { method: "POST" })
+      createCronRequest("/api/cron/daily-reminder")
     );
 
     expect(res.status).toBe(200);
@@ -120,7 +141,7 @@ describe("POST /api/cron/daily-reminder (TS-29)", () => {
 
     const { POST } = await import("@/app/api/cron/daily-reminder/route");
     const res = await POST(
-      createMockRequest("/api/cron/daily-reminder", { method: "POST" })
+      createCronRequest("/api/cron/daily-reminder")
     );
 
     expect(res.status).toBe(200);
