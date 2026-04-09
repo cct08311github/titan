@@ -70,7 +70,7 @@ export class TaskService {
   }
 
   async listTasks(filter: ListTasksFilter) {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { isSample: false };
 
     if (filter.assignee) {
       where.OR = [

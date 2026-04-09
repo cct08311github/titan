@@ -62,7 +62,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
   // Fetch plan with goals, tasks, KPI links, time entries, milestones
   const plans = await prisma.annualPlan.findMany({
-    where: { year, archivedAt: null },
+    where: { isSample: false, year, archivedAt: null },
     include: {
       monthlyGoals: {
         include: {

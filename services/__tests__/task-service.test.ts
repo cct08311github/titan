@@ -26,7 +26,7 @@ describe("TaskService", () => {
       const result = await service.listTasks({});
 
       expect(prisma.task.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: {} })
+        expect.objectContaining({ where: { isSample: false } })
       );
       expect(result).toEqual({ tasks: mockTasks, total: 2 });
     });

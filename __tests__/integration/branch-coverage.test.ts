@@ -704,7 +704,8 @@ describe("TaskService — listTasks filter branches", () => {
   it("applies no filters when none provided", async () => {
     await service.listTasks({});
     const call = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toEqual({});
+    // T1340: listTasks now defaults to filtering out sample data
+    expect(call.where).toEqual({ isSample: false });
   });
 });
 
