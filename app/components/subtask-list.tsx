@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, memo } from "react";
 import { Plus, Trash2, Check, ChevronDown, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
@@ -33,7 +33,7 @@ interface SubTaskListProps {
   onUpdate?: (subtasks: SubTask[]) => void;
 }
 
-export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskListProps) {
+function SubTaskListComponent({ subtasks: initial, taskId, onUpdate }: SubTaskListProps) {
   const [subtasks, setSubtasks] = useState<SubTask[]>(initial);
   const [newTitle, setNewTitle] = useState("");
   const [adding, setAdding] = useState(false);
@@ -278,3 +278,5 @@ export function SubTaskList({ subtasks: initial, taskId, onUpdate }: SubTaskList
     </div>
   );
 }
+
+export const SubTaskList = memo(SubTaskListComponent);
