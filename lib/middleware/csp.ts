@@ -3,6 +3,14 @@
  *
  * Generates a per-request nonce and builds the Content-Security-Policy header.
  * Originally introduced in Issue #190.
+ *
+ * Issue #1288: This module is the SINGLE SOURCE OF TRUTH for the TITAN app's CSP.
+ * Nginx must NOT add a Content-Security-Policy header for the TITAN app virtual host —
+ * doing so causes browsers to intersect both policies, and the nginx $request_id nonce
+ * (hex) is not synchronized with the nonce generated here (base64), which would block
+ * the theme script in app/layout.tsx.
+ *
+ * Nonce flow: generateNonce() → applyCsp() → x-csp-nonce request header → app/layout.tsx
  */
 
 import { NextResponse } from "next/server";
