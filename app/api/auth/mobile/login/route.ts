@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
     return error("ValidationError", "缺少 deviceId", 400);
   }
 
-  const username = rawUsername.includes("@") ? rawUsername : `${rawUsername}@titan.local`;
+  // Normalize email to lowercase (see auth.ts for reasoning)
+  const username = (rawUsername.includes("@") ? rawUsername : `${rawUsername}@titan.local`).toLowerCase().trim();
   const ip = getClientIp(req) ?? "unknown";
   const rateLimitKey = `${ip}_${username}`;
   const lockKey = username;

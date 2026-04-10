@@ -53,11 +53,14 @@ export const POST = apiHandler(async (req: NextRequest) => {
     return error("ValidationError", "無效的請求格式", 400);
   }
 
-  const { email, token, newPassword } = body;
+  const { email: rawEmail, token, newPassword } = body;
 
-  if (!email || !token || !newPassword) {
+  if (!rawEmail || !token || !newPassword) {
     return error("ValidationError", "請填寫 email、重設碼與新密碼", 400);
   }
+
+  // Normalize email to lowercase (consistent with login — see auth.ts)
+  const email = rawEmail.toLowerCase().trim();
 
   // Find user by email
   const user = await prisma.user.findUnique({

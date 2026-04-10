@@ -115,13 +115,17 @@ export class UserService {
       throw new ValidationError("電子郵件為必填");
     }
 
+    // Normalize email to lowercase to prevent case-mismatch duplicates
+    // and ensure consistent login behavior (see auth.ts)
+    const normalizedEmail = input.email.toLowerCase().trim();
+
     // Check for duplicate email
     const existing = await this.prisma.user.findUnique({
-      where: { email: input.email },
+      where: { email: normalizedEmail },
       select: { id: true },
     });
     if (existing) {
-      throw new ValidationError(`Email already in use: ${input.email}`);
+      throw new ValidationError(`Email already in use: ${normalizedEmail}`);
     }
 
     const passwordHash = await hash(input.password, 12);
@@ -129,7 +133,7 @@ export class UserService {
     return this.prisma.user.create({
       data: {
         name: input.name,
-        email: input.email,
+        email: normalizedEmail,
         password: passwordHash,
         role: (input.role ?? "ENGINEER") as Role,
         avatar: input.avatar ?? null,
@@ -154,20 +158,21 @@ export class UserService {
     });
     if (!existing) throw new NotFoundError(`User not found: ${id}`);
 
-    // Validate email uniqueness
-    if (input.email && input.email !== existing.email) {
+    // Validate email uniqueness (normalize to lowercase for consistent matching)
+    const normalizedNewEmail = input.email?.toLowerCase().trim();
+    if (normalizedNewEmail && normalizedNewEmail !== existing.email) {
       const conflict = await this.prisma.user.findUnique({
-        where: { email: input.email },
+        where: { email: normalizedNewEmail },
         select: { id: true },
       });
       if (conflict) {
-        throw new ValidationError(`Email already in use: ${input.email}`);
+        throw new ValidationError(`Email already in use: ${normalizedNewEmail}`);
       }
     }
 
     const updates: Record<string, unknown> = {};
     if (input.name !== undefined) updates.name = input.name;
-    if (input.email !== undefined) updates.email = input.email;
+    if (normalizedNewEmail !== undefined) updates.email = normalizedNewEmail;
     if (input.role !== undefined) updates.role = input.role;
     if (input.avatar !== undefined) updates.avatar = input.avatar;
     if (input.isActive !== undefined) updates.isActive = input.isActive;
