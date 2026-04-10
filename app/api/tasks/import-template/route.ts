@@ -4,6 +4,7 @@ import { TaskService } from "@/services/task-service";
 import { success, error } from "@/lib/api-response";
 import { withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 /**
  * Template task structure for bulk creation.
@@ -77,6 +78,13 @@ export const POST = withManager(async (req: NextRequest) => {
       continue;
     }
 
+    const cleanTitle = sanitizeHtml(t.title.trim());
+    if (!cleanTitle) {
+      errors.push({ index: i, title: t.title ?? "(empty)", error: "標題清洗後為空" });
+      continue;
+    }
+    const cleanDescription = t.description ? sanitizeHtml(t.description.slice(0, 5000)) || undefined : undefined;
+
     try {
       let dueDate: Date | undefined;
       if (t.offsetDays !== undefined && t.offsetDays !== null) {
@@ -85,8 +93,8 @@ export const POST = withManager(async (req: NextRequest) => {
       }
 
       const task = await taskService.createTask({
-        title: t.title.trim(),
-        description: t.description,
+        title: cleanTitle,
+        description: cleanDescription,
         priority: t.priority ?? "P2",
         category: t.category ?? "PLANNED",
         status: t.status ?? "BACKLOG",
