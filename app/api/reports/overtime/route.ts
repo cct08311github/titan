@@ -6,14 +6,13 @@
  */
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireManagerOrAbove as requireManager } from "@/lib/auth";
+
 import { success, error } from "@/lib/api-response";
-import { apiHandler } from "@/lib/api-handler";
+import { withManager } from "@/lib/auth-middleware";
 
 const MONTHLY_OT_LIMIT = 46; // Taiwan Labor Standards Act
 
-export const GET = apiHandler(async (req: NextRequest) => {
-  try { await requireManager(); } catch { return error("ForbiddenError", "權限不足", 403); }
+export const GET = withManager(async (req: NextRequest) => {
 
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
