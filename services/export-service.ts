@@ -1,6 +1,23 @@
 import ExcelJS from "exceljs";
 import { formatLocalDate } from "@/lib/utils/date";
 
+/**
+ * Neutralize a value before writing to a spreadsheet cell so that Excel
+ * does not auto-evaluate it as a formula. Cells starting with =, +, -, @,
+ * tab, or CR are formula triggers per OWASP CSV-Injection prevention.
+ *
+ * Number/Date values are passed through unchanged so Excel can format
+ * them natively. Only string-typed cells need defense.
+ */
+function neutralizeFormula(value: unknown): unknown {
+  if (typeof value !== "string" || value.length === 0) return value;
+  const first = value[0];
+  if (first === "=" || first === "+" || first === "-" || first === "@" || first === "\t" || first === "\r") {
+    return "\t" + value;
+  }
+  return value;
+}
+
 export interface ExportColumn {
   header: string;
   key: string;
@@ -25,7 +42,8 @@ export class ExportService {
     for (const row of data) {
       const rowData: Record<string, unknown> = {};
       for (const col of columns) {
-        rowData[col.key] = row[col.key] ?? "";
+        // Neutralize formula triggers to prevent CSV/Excel injection
+        rowData[col.key] = neutralizeFormula(row[col.key] ?? "");
       }
       worksheet.addRow(rowData);
     }
