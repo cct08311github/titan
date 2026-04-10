@@ -646,9 +646,9 @@ describe("TaskService — deleteTask branch coverage", () => {
   beforeEach(() => {
     prisma = createMockPrisma();
     service = new TaskService(prisma as never);
-    (prisma.task.delete as jest.Mock).mockResolvedValue({});
+    (prisma.task.update as jest.Mock).mockResolvedValue({});
     (prisma.auditLog.create as jest.Mock).mockResolvedValue({});
-    // deleteTask wraps delete + auditLog in $transaction; execute the callback with a tx proxy
+    // deleteTask wraps update + auditLog in $transaction; execute the callback with a tx proxy
     (prisma.$transaction as jest.Mock).mockImplementation(
       async (fn: (tx: unknown) => Promise<unknown>) =>
         fn({ task: prisma.task, auditLog: prisma.auditLog })
@@ -656,12 +656,12 @@ describe("TaskService — deleteTask branch coverage", () => {
   });
 
   it("logs task title when task exists", async () => {
-    (prisma.task.findUnique as jest.Mock).mockResolvedValue({ id: "t1", title: "My Task" });
+    (prisma.task.findUnique as jest.Mock).mockResolvedValue({ id: "t1", title: "My Task", deletedAt: null });
     await service.deleteTask("t1", "u1", "127.0.0.1");
     expect(prisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          detail: "Deleted task: My Task",
+          detail: "Soft-deleted task: My Task",
         }),
       })
     );
@@ -673,7 +673,7 @@ describe("TaskService — deleteTask branch coverage", () => {
     expect(prisma.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          detail: "Deleted task: t1",
+          detail: "Soft-deleted task: t1",
         }),
       })
     );
@@ -709,8 +709,8 @@ describe("TaskService — listTasks filter branches", () => {
   it("applies no filters when none provided", async () => {
     await service.listTasks({});
     const call = (prisma.task.findMany as jest.Mock).mock.calls[0][0];
-    // T1340: listTasks now defaults to filtering out sample data
-    expect(call.where).toEqual({ isSample: false });
+    // T1324: listTasks now filters out soft-deleted tasks and sample data
+    expect(call.where).toEqual({ isSample: false, deletedAt: null });
   });
 });
 
@@ -821,9 +821,14 @@ describe("DocumentService — branch coverage", () => {
 
     it("deletes existing document", async () => {
       (prisma.document.findUnique as jest.Mock).mockResolvedValue({ id: "d1" });
-      (prisma.document.delete as jest.Mock).mockResolvedValue({ id: "d1" });
+      (prisma.document.update as jest.Mock).mockResolvedValue({ id: "d1", deletedAt: new Date() });
       await service.deleteDocument("d1");
-      expect(prisma.document.delete).toHaveBeenCalledWith({ where: { id: "d1" } });
+      expect(prisma.document.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "d1" },
+          data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+        })
+      );
     });
   });
 

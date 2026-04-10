@@ -21,27 +21,26 @@ describe("KPIService.deleteKPI", () => {
 
   test("deletes KPI and its task links", async () => {
     const mockKPI = { id: "kpi-1", year: 2026, title: "KPI 1" };
+    const softDeletedKPI = { ...mockKPI, deletedAt: new Date() };
     (prisma.kPI.findUnique as jest.Mock).mockResolvedValue(mockKPI);
-    (prisma.kPITaskLink.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
-    (prisma.kPI.delete as jest.Mock).mockResolvedValue(mockKPI);
+    (prisma.kPI.update as jest.Mock).mockResolvedValue(softDeletedKPI);
 
     const result = await service.deleteKPI("kpi-1");
 
-    expect(prisma.kPITaskLink.deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { kpiId: "kpi-1" } })
+    expect(prisma.kPI.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "kpi-1" },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      })
     );
-    expect(prisma.kPI.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "kpi-1" } })
-    );
-    expect(result).toEqual(mockKPI);
+    expect(result).toEqual(softDeletedKPI);
   });
 
   test("throws NotFoundError for invalid id", async () => {
     (prisma.kPI.findUnique as jest.Mock).mockResolvedValue(null);
 
     await expect(service.deleteKPI("nonexistent")).rejects.toThrow(NotFoundError);
-    expect(prisma.kPITaskLink.deleteMany).not.toHaveBeenCalled();
-    expect(prisma.kPI.delete).not.toHaveBeenCalled();
+    expect(prisma.kPI.update).not.toHaveBeenCalled();
   });
 });
 

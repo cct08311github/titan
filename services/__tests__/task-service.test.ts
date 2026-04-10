@@ -26,7 +26,7 @@ describe("TaskService", () => {
       const result = await service.listTasks({});
 
       expect(prisma.task.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { isSample: false } })
+        expect.objectContaining({ where: expect.objectContaining({ isSample: false, deletedAt: null }) })
       );
       expect(result).toEqual({ tasks: mockTasks, total: 2 });
     });
@@ -196,12 +196,21 @@ describe("TaskService", () => {
 
   describe("deleteTask", () => {
     test("deleteTask soft deletes", async () => {
-      (prisma.task.delete as jest.Mock).mockResolvedValue({ id: "task-1" });
+      (prisma.task.findUnique as jest.Mock).mockResolvedValue({ id: "task-1", title: "Task 1", deletedAt: null });
+      (prisma.task.update as jest.Mock).mockResolvedValue({ id: "task-1" });
+      (prisma.auditLog.create as jest.Mock).mockResolvedValue({});
+      (prisma.$transaction as jest.Mock).mockImplementation(
+        async (fn: (tx: unknown) => Promise<unknown>) =>
+          fn({ task: prisma.task, auditLog: prisma.auditLog })
+      );
 
       await service.deleteTask("task-1");
 
-      expect(prisma.task.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: "task-1" } })
+      expect(prisma.task.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "task-1" },
+          data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+        })
       );
     });
   });

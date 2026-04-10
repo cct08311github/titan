@@ -47,6 +47,9 @@ cat > /etc/crontabs/root <<EOF
 
 # 08:30 Mondays — weekly verification reminder
 30 8 * * 1 ${CURL} ${TITAN_APP_URL}/api/cron/verification-reminder || true
+
+# 03:00 daily — hard-delete soft-deleted records older than 24h (Issue #1324)
+0 3 * * * ${CURL} ${TITAN_APP_URL}/api/cron/cleanup-deleted || true
 EOF
 
 echo "[titan-cron] Crontab installed:"

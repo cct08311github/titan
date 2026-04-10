@@ -30,6 +30,7 @@ export class DocumentService {
   async listDocuments(filter: ListDocumentsFilter) {
     return this.prisma.document.findMany({
       where: {
+        deletedAt: null,
         ...(filter.parentId !== undefined && { parentId: filter.parentId }),
         ...(filter.search && {
           OR: [
@@ -144,6 +145,22 @@ export class DocumentService {
     const doc = await this.prisma.document.findUnique({ where: { id } });
     if (!doc) throw new NotFoundError(`Document not found: ${id}`);
 
-    return this.prisma.document.delete({ where: { id } });
+    // Issue #1324: soft delete — set deletedAt instead of hard delete
+    return this.prisma.document.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  /** Issue #1324: restore a soft-deleted document */
+  async restoreDocument(id: string) {
+    const doc = await this.prisma.document.findUnique({ where: { id } });
+    if (!doc) throw new NotFoundError(`Document not found: ${id}`);
+    if (!doc.deletedAt) throw new ValidationError("文件未被刪除，無需復原");
+
+    return this.prisma.document.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
   }
 }

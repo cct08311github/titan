@@ -156,6 +156,7 @@ model KPI {
   visibility     KPIVisibility @default(ALL)       // 可視權限
   status         KPIStatus     @default(DRAFT)     // 預設草稿
   autoCalc       Boolean       @default(false)
+  deletedAt      DateTime?     // Issue #1324: 軟刪除時間戳
   createdBy      String
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
@@ -171,6 +172,7 @@ model KPI {
   @@index([createdBy])
   @@index([status])
   @@index([frequency])
+  @@index([deletedAt])
   @@map("kpis")
 }
 
@@ -367,6 +369,7 @@ model Task {
   flaggedAt         DateTime?    // Issue #960: 標記時間
   flaggedBy         String?      // Issue #960: 標記者 userId
   projectId         String?      // Issue #1168: FK to Project (PMO)
+  deletedAt         DateTime?    // Issue #1324: 軟刪除時間戳
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
@@ -398,6 +401,7 @@ model Task {
   @@index([status, dueDate])
   @@index([primaryAssigneeId, status])
   @@index([managerFlagged, status])
+  @@index([deletedAt])
   @@map("tasks")
 }
 
@@ -545,18 +549,20 @@ model SubTask {
 }
 
 model TaskComment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   taskId    String
   userId    String
-  content   String   // Markdown
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  content   String    // Markdown
+  deletedAt DateTime? // Issue #1324: 軟刪除時間戳
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@index([taskId])
   @@index([userId])
+  @@index([deletedAt])
   @@map("task_comments")
 }
 
@@ -951,6 +957,7 @@ model Document {
   visibility         String         @default("TEAM")
   // Retirement fields (Issue #987)
   replacedById       String?        // 替代文件 ID（RETIRED 時使用）
+  deletedAt          DateTime?      // Issue #1324: 軟刪除時間戳
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -978,6 +985,7 @@ model Document {
   @@index([verifierId])
   @@index([verifyByDate])
   @@index([status, createdAt])
+  @@index([deletedAt])
   @@map("documents")
 }
 
