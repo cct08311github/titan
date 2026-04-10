@@ -118,6 +118,7 @@ export class UserService {
     // Check for duplicate email
     const existing = await this.prisma.user.findUnique({
       where: { email: input.email },
+      select: { id: true },
     });
     if (existing) {
       throw new ValidationError(`Email already in use: ${input.email}`);
@@ -146,13 +147,18 @@ export class UserService {
   }
 
   async updateUser(id: string, input: UpdateUserInput) {
-    const existing = await this.prisma.user.findUnique({ where: { id } });
+    // Don't fetch password — only diffable fields needed below
+    const existing = await this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, role: true, avatar: true, isActive: true },
+    });
     if (!existing) throw new NotFoundError(`User not found: ${id}`);
 
     // Validate email uniqueness
     if (input.email && input.email !== existing.email) {
       const conflict = await this.prisma.user.findUnique({
         where: { email: input.email },
+        select: { id: true },
       });
       if (conflict) {
         throw new ValidationError(`Email already in use: ${input.email}`);
