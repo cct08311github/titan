@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { UserService } from "@/services/user-service";
 import { AuditService } from "@/services/audit-service";
@@ -66,20 +66,14 @@ export const PATCH = withAuth(async (
 
   // Users can only PATCH their own profile
   if (session.user.id !== id) {
-    return NextResponse.json(
-      { ok: false, error: "ForbiddenError", message: "只能修改自己的資料" },
-      { status: 403 }
-    );
+    return error("ForbiddenError", "只能修改自己的資料", 403);
   }
 
   const raw = await req.json();
   // Only allow name updates via self-edit
   const rawName = typeof raw.name === "string" ? raw.name.trim() : undefined;
   if (!rawName || rawName.length === 0) {
-    return NextResponse.json(
-      { ok: false, error: "ValidationError", message: "姓名為必填" },
-      { status: 400 }
-    );
+    return error("ValidationError", "姓名為必填", 400);
   }
 
   const cleanName = sanitizeHtml(rawName)
