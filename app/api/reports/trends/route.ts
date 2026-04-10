@@ -55,7 +55,7 @@ export const GET = apiHandler(async (req: NextRequest) => {
     if (metric === "kpi" || metric === "kpi-achievement") {
       // KPI achievement rate by month (average across all KPIs)
       const kpis = await prisma.kPI.findMany({
-        where: { year },
+        where: { deletedAt: null, year },
         select: { code: true, title: true, target: true, actual: true, status: true, weight: true },
       });
 

@@ -40,7 +40,7 @@ export const POST = withManager(async (req: NextRequest) => {
 
   // Fetch all KPIs from source year
   const sourceKpis = await prisma.kPI.findMany({
-    where: { year: sourceYear },
+    where: { deletedAt: null, year: sourceYear },
     orderBy: { code: "asc" },
   });
 
@@ -51,7 +51,7 @@ export const POST = withManager(async (req: NextRequest) => {
   // Idempotency check: if target year already has KPIs, return existing data
   // instead of throwing an error (safe for re-calls)
   const existingKpis = await prisma.kPI.findMany({
-    where: { year: targetYear },
+    where: { deletedAt: null, year: targetYear },
     orderBy: { code: "asc" },
   });
   if (existingKpis.length > 0) {

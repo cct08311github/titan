@@ -56,7 +56,7 @@ export class AlertService {
 
     // 2. KPI critical (< 60% achievement)
     const kpis = await this.prisma.kPI.findMany({
-      where: { year: now.getFullYear(), status: "ACTIVE" },
+      where: { deletedAt: null, year: now.getFullYear(), status: "ACTIVE" },
       select: { id: true, title: true, target: true, actual: true },
     });
 

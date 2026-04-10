@@ -72,7 +72,7 @@ export const GET = withManager(async () => {
     // Only flag when month is already >50% through
     monthProgress > 50
       ? prisma.kPI.findMany({
-          where: {
+          where: { deletedAt: null,
             year: now.getFullYear(),
             status: "ACTIVE",
             frequency: "MONTHLY",

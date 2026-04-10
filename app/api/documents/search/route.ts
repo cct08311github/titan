@@ -40,7 +40,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   // PostgreSQL full-text search with 'simple' config tokenizes by whitespace,
   // which doesn't work for CJK languages where words aren't space-separated.
   const likeResults = await prisma.document.findMany({
-    where: {
+    where: { deletedAt: null,
       OR: [
         { title: { contains: q, mode: "insensitive" } },
         { content: { contains: q, mode: "insensitive" } },

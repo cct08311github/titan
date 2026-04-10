@@ -1,8 +1,8 @@
 /**
- * Feature Flags — Issue #988
+ * Feature Flags — Issue #1328 (DB化)
  *
- * Simple env-var based feature flag system.
- * Flags are read from process.env with prefix TITAN_FF_.
+ * Stores feature flags in PostgreSQL with 60s Redis cache TTL.
+ * Falls back to in-memory cache when both DB and Redis are down.
  *
  * Supported flags:
  * - V2_DASHBOARD: Toggle new dashboard vs old
@@ -10,43 +10,118 @@
  * - ALERT_BANNER: Toggle global alert banner
  */
 
-export type FeatureFlagName = "V2_DASHBOARD" | "V2_REPORTS" | "ALERT_BANNER";
+import { prisma } from "@/lib/prisma";
+import { getRedisClient } from "@/lib/redis";
+import { logger } from "@/lib/logger";
 
-/** Default values when env var is not set */
-const FLAG_DEFAULTS: Record<FeatureFlagName, boolean> = {
+const CACHE_KEY = "titan:feature-flags";
+const CACHE_TTL = 60; // seconds
+
+/** Default values when DB record does not exist yet */
+const FLAG_DEFAULTS: Record<string, boolean> = {
   V2_DASHBOARD: false,
   V2_REPORTS: false,
   ALERT_BANNER: true,
 };
 
+export type FeatureFlagName = "V2_DASHBOARD" | "V2_REPORTS" | "ALERT_BANNER";
+
 /** All known flag names */
-export const ALL_FLAGS: FeatureFlagName[] = ["V2_DASHBOARD", "V2_REPORTS", "ALERT_BANNER"];
+export const ALL_FLAGS: FeatureFlagName[] = [
+  "V2_DASHBOARD",
+  "V2_REPORTS",
+  "ALERT_BANNER",
+];
+
+/** In-memory fallback when both DB and Redis are down */
+let memoryCache: Record<string, boolean> = {};
+let memoryCacheAge = 0;
 
 /**
- * Get a feature flag value (server-side).
- * Reads from `process.env.TITAN_FF_<NAME>`.
- * Values: "true"/"1" = enabled, anything else = disabled.
+ * Get a single feature flag value (server-side).
+ * Lookup order: Redis → DB → in-memory fallback.
  */
-export function getFeatureFlag(name: FeatureFlagName): boolean {
-  const envKey = `TITAN_FF_${name}`;
-  const envVal = process.env[envKey];
+export async function getFeatureFlag(name: FeatureFlagName): Promise<boolean> {
+  const redis = getRedisClient();
 
-  if (envVal === undefined || envVal === "") {
-    return FLAG_DEFAULTS[name] ?? false;
+  // 1. Try Redis cache
+  if (redis) {
+    try {
+      const cached = await redis.hget(CACHE_KEY, name);
+      if (cached !== null) return cached === "true";
+    } catch {
+      // Redis unavailable — fall through to DB
+    }
   }
 
-  return envVal === "true" || envVal === "1";
+  // 2. DB lookup
+  try {
+    const flag = await prisma.featureFlag.findUnique({ where: { key: name } });
+    const value = flag?.enabled ?? (FLAG_DEFAULTS[name] ?? false);
+
+    // Update Redis cache
+    if (redis) {
+      try {
+        await redis.hset(CACHE_KEY, name, String(value));
+        await redis.expire(CACHE_KEY, CACHE_TTL);
+      } catch {
+        // Swallow Redis write errors
+      }
+    }
+
+    memoryCache[name] = value;
+    memoryCacheAge = Date.now();
+    return value;
+  } catch (err) {
+    logger.warn({ err, name }, "[feature-flags] DB lookup failed — using in-memory fallback");
+    // DB down — use memory cache if fresh enough
+    if (Date.now() - memoryCacheAge < CACHE_TTL * 1000) {
+      return memoryCache[name] ?? (FLAG_DEFAULTS[name] ?? false);
+    }
+    return FLAG_DEFAULTS[name] ?? false;
+  }
+}
+
+/**
+ * Set a feature flag value (ADMIN only — enforced at route layer).
+ * Writes to DB and invalidates Redis cache entry.
+ */
+export async function setFeatureFlag(
+  name: FeatureFlagName,
+  enabled: boolean,
+  updatedBy?: string,
+): Promise<void> {
+  await prisma.featureFlag.upsert({
+    where: { key: name },
+    create: { key: name, enabled, updatedBy },
+    update: { enabled, updatedBy },
+  });
+
+  // Invalidate this flag's Redis cache entry
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      await redis.hdel(CACHE_KEY, name);
+    } catch {
+      // Swallow Redis errors
+    }
+  }
+
+  memoryCache[name] = enabled;
+  memoryCacheAge = Date.now();
 }
 
 /**
  * Get all feature flags (server-side).
+ * Merges DB state with FLAG_DEFAULTS so every known flag is always returned.
  */
-export function getAllFeatureFlags(): Record<FeatureFlagName, boolean> {
-  const flags: Record<string, boolean> = {};
+export async function getAllFeatureFlags(): Promise<Record<FeatureFlagName, boolean>> {
+  const rows = await prisma.featureFlag.findMany();
+  const result: Record<string, boolean> = {};
   for (const name of ALL_FLAGS) {
-    flags[name] = getFeatureFlag(name);
+    result[name] = rows.find((f) => f.key === name)?.enabled ?? (FLAG_DEFAULTS[name] ?? false);
   }
-  return flags as Record<FeatureFlagName, boolean>;
+  return result as Record<FeatureFlagName, boolean>;
 }
 
 /**

@@ -21,7 +21,7 @@ export const GET = withAuth(async (req: NextRequest) => {
 
   // Get all documents with verification configured, using verifyByDate for query
   const docs = await prisma.document.findMany({
-    where: {
+    where: { deletedAt: null,
       verifyIntervalDays: { not: null },
       ...(userId && { verifierId: userId }),
     },

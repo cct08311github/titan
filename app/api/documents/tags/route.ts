@@ -9,7 +9,7 @@ import { withAuth } from "@/lib/auth-middleware";
  */
 export const GET = withAuth(async () => {
   const docs = await prisma.document.findMany({
-    where: { tags: { isEmpty: false } },
+    where: { deletedAt: null, tags: { isEmpty: false } },
     select: { tags: true },
   });
 
