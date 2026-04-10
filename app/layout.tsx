@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Toaster } from "sonner";
+import PWARegister from "@/app/components/pwa-register";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -27,11 +28,14 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#4f46e5" />
         <script nonce={cspNonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className={GeistSans.className}>
         {children}
         <Toaster richColors position="top-right" />
+        <PWARegister />
       </body>
     </html>
   );
