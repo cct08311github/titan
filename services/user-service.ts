@@ -250,13 +250,17 @@ export class UserService {
     const existing = await this.prisma.user.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`User not found: ${id}`);
 
-    // Issue #800: prevent disabling the last active MANAGER
-    if (existing.role === "MANAGER") {
-      const activeManagerCount = await this.prisma.user.count({
-        where: { role: "MANAGER", isActive: true },
+    // Prevent disabling the last active MANAGER or ADMIN (lock-yourself-out prevention)
+    if (existing.role === "MANAGER" || existing.role === "ADMIN") {
+      const activeCount = await this.prisma.user.count({
+        where: { role: existing.role, isActive: true },
       });
-      if (activeManagerCount <= 1) {
-        throw new ValidationError("無法停用最後一位管理員帳號");
+      if (activeCount <= 1) {
+        throw new ValidationError(
+          existing.role === "ADMIN"
+            ? "無法停用最後一位系統管理員帳號"
+            : "無法停用最後一位管理員帳號"
+        );
       }
     }
 

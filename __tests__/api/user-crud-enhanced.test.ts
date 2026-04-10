@@ -123,7 +123,8 @@ describe("GET /api/users with search", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("should pass search param to service", async () => {
-    mockAuthFn.mockResolvedValue({ user: { id: "u1", role: "MANAGER" }, expires: "2099-01-01" });
+    // Use unique userId to avoid collision with suspend test's blacklist entry for "u1"
+    mockAuthFn.mockResolvedValue({ user: { id: "search-user-mgr", role: "MANAGER", mustChangePassword: false }, sessionId: "test-sid-search", expires: "2099-01-01" });
     mockUserFindMany.mockResolvedValueOnce([]);
 
     const req = new NextRequest("http://localhost/api/users?search=alice&role=ENGINEER");
