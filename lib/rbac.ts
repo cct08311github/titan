@@ -20,6 +20,7 @@ export interface SessionUser {
   email?: string | null;
   image?: string | null;
   role: string;
+  mustChangePassword?: boolean;
 }
 
 export interface AuthSession {
@@ -61,6 +62,40 @@ export async function requireAuth(): Promise<AuthSession> {
   }
 
   return session as AuthSession;
+}
+
+/**
+ * Routes that are allowed even when mustChangePassword / password expired.
+ * Without this allowlist, the user would be locked out entirely with
+ * no way to change their password.
+ */
+const PASSWORD_CHANGE_ALLOWED_PATHS = new Set([
+  "/api/auth/change-password",
+  "/api/auth/logout",
+  "/api/auth/mobile/logout",
+  "/api/health",
+  "/api/error-report",
+]);
+
+/**
+ * Enforce server-side password change requirement.
+ *
+ * If the session has mustChangePassword=true (first login or password
+ * expired), block ALL API access except the password-change and
+ * logout endpoints. This prevents attackers from using an account
+ * with an expired/must-change password to access business data.
+ *
+ * Banking compliance: password expiry must be server-enforced, not
+ * just a client-side redirect hint.
+ */
+export function enforcePasswordChange(session: AuthSession, pathname: string): void {
+  const mustChange = session.user.mustChangePassword;
+  if (!mustChange) return;
+  if (PASSWORD_CHANGE_ALLOWED_PATHS.has(pathname)) return;
+  // Allow all /api/auth/* routes for login/logout flows
+  if (pathname.startsWith("/api/auth/")) return;
+
+  throw new ForbiddenError("密碼已過期或為初次登入，請先變更密碼");
 }
 
 /**

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth, requireMinRole } from "@/lib/rbac";
+import { requireAuth, requireMinRole, enforcePasswordChange } from "@/lib/rbac";
 import { apiHandler, RouteContext } from "@/lib/api-handler";
 import type { ApiResponse } from "@/lib/api-response";
 
@@ -13,21 +13,27 @@ type RouteHandler = (req: NextRequest, context?: any) => Promise<NextResponse<Ap
 
 export function withAuth<T extends RouteHandler>(fn: T): T {
   return apiHandler(async (req: NextRequest, context?: RouteContext) => {
-    await requireAuth();
+    const session = await requireAuth();
+    // Server-side enforcement of password change policy.
+    // If mustChangePassword is true (first login or expired), block
+    // non-exempt routes to prevent access with stale credentials.
+    enforcePasswordChange(session, new URL(req.url).pathname);
     return fn(req, context);
   }) as unknown as T;
 }
 
 export function withManager<T extends RouteHandler>(fn: T): T {
   return apiHandler(async (req: NextRequest, context?: RouteContext) => {
-    await requireMinRole("MANAGER");
+    const session = await requireMinRole("MANAGER");
+    enforcePasswordChange(session, new URL(req.url).pathname);
     return fn(req, context);
   }) as unknown as T;
 }
 
 export function withAdmin<T extends RouteHandler>(fn: T): T {
   return apiHandler(async (req: NextRequest, context?: RouteContext) => {
-    await requireMinRole("ADMIN");
+    const session = await requireMinRole("ADMIN");
+    enforcePasswordChange(session, new URL(req.url).pathname);
     return fn(req, context);
   }) as unknown as T;
 }
