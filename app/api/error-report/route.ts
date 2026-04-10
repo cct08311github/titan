@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
     logger.warn({ source, url, digest }, `Frontend error: ${String(message).slice(0, 200)}`);
 
-    return success({ ok: true });
+    return success(null);
   } catch (err) {
     logger.error({ err }, "Failed to persist error report");
     return error("InternalError", "internal", 500);

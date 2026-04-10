@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    return success({ ok: true });
+    return success(null);
   } catch {
     return error("InternalError", "Internal error", 500);
   }
