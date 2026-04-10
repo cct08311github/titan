@@ -93,7 +93,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     // Documents: search by title + content
     searchDocuments
       ? prisma.document.findMany({
-          where: {
+          where: { deletedAt: null,
             OR: [
               { title: containsQuery },
               { content: containsQuery },
@@ -144,7 +144,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     // KPIs: search by code or title (scope=all only)
     scope === "all"
       ? prisma.kPI.findMany({
-          where: {
+          where: { deletedAt: null,
             OR: [
               { code: containsQuery },
               { title: containsQuery },

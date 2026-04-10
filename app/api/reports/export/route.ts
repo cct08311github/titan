@@ -113,7 +113,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     const year = parseYear(searchParams.get("year"));
 
     const kpis = await prisma.kPI.findMany({
-      where: { year },
+      where: { deletedAt: null, year },
       include: {
         taskLinks: {
           include: { task: { select: { id: true, status: true, progressPct: true } } },

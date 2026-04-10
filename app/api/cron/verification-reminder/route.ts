@@ -24,7 +24,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
 
   // Get all documents with verification configured
   const docs = await prisma.document.findMany({
-    where: {
+    where: { deletedAt: null,
       verifyIntervalDays: { not: null },
       verifierId: { not: null },
     },
