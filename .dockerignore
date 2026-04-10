@@ -1,0 +1,66 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+__tests__
+e2e
+coverage
+test-results
+playwright-report
+.nyc_output
+
+# Build artifacts
+.next
+out
+dist
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.backup*
+.env.recovered
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Git
+.git
+.gitignore
+
+# Docker (prevent recursive copy)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+docs
+*.md
+!README.md
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Development tools
+.claude
+.serena
+.worktrees
+scripts/generate-icons.sh
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Backups
+backups
+
+# Logs
+*.log
+npm-debug.log*
