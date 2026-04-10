@@ -1,4 +1,4 @@
-import { PrismaClient, TimeCategory } from "@prisma/client";
+import { Prisma, PrismaClient, TimeCategory } from "@prisma/client";
 import { ForbiddenError, NotFoundError, ValidationError } from "./errors";
 
 export interface ListTimeEntriesFilter {
@@ -230,22 +230,33 @@ export class TimeEntryService {
     }
 
     const now = new Date();
-    return this.prisma.timeEntry.create({
-      data: {
-        userId: input.userId,
-        taskId: input.taskId ?? null,
-        category: (input.category as TimeCategory) ?? "PLANNED_TASK",
-        description: input.description ?? null,
-        date: now,
-        hours: 0,
-        startTime: now,
-        isRunning: true,
-      },
-      include: {
-        task: { select: { id: true, title: true } },
-        user: { select: { id: true, name: true } },
-      },
-    });
+    try {
+      return await this.prisma.timeEntry.create({
+        data: {
+          userId: input.userId,
+          taskId: input.taskId ?? null,
+          category: (input.category as TimeCategory) ?? "PLANNED_TASK",
+          description: input.description ?? null,
+          date: now,
+          hours: 0,
+          startTime: now,
+          isRunning: true,
+        },
+        include: {
+          task: { select: { id: true, title: true } },
+          user: { select: { id: true, name: true } },
+        },
+      });
+    } catch (err) {
+      // P2002: unique constraint violation — DB-level guard for concurrent startTimer() calls (Issue #1287)
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2002"
+      ) {
+        throw new ValidationError("您已有一個計時中的工時紀錄");
+      }
+      throw err;
+    }
   }
 
   /**
