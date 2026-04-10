@@ -10,6 +10,7 @@ import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { TaskDocumentService } from "@/services/task-document-service";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 const getService = () => new TaskDocumentService(prisma);
 
@@ -40,10 +41,16 @@ export const POST = withAuth(async (
     return error("ValidationError", "outlineDocumentId 和 title 為必填", 400);
   }
 
+  const rawTitle = typeof body.title === "string" ? body.title.trim().slice(0, 500) : "";
+  const title = sanitizeHtml(rawTitle);
+  if (!title) {
+    return error("ValidationError", "標題不可為空", 400);
+  }
+
   const doc = await getService().addDocument({
     taskId: id,
     outlineDocumentId: body.outlineDocumentId,
-    title: body.title,
+    title,
     addedBy: session.user.id,
   });
 

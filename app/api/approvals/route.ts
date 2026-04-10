@@ -8,6 +8,7 @@ import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { parsePagination, buildPaginationMeta } from "@/lib/pagination";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 /**
  * GET /api/approvals?status=PENDING&type=TASK_STATUS_CHANGE
@@ -121,6 +122,10 @@ export const POST = withAuth(async (req: NextRequest) => {
     }
   }
 
+  const sanitizedReason = typeof reason === "string" && reason.trim()
+    ? sanitizeHtml(reason.slice(0, 1000)) || null
+    : null;
+
   const approval = await prisma.approvalRequest.create({
     data: {
       requesterId: session.user.id,
@@ -128,7 +133,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       type: type as "TASK_STATUS_CHANGE" | "DELIVERABLE_ACCEPTANCE" | "PLAN_MODIFICATION",
       resourceId,
       resourceType,
-      reason: reason ?? null,
+      reason: sanitizedReason,
     },
     include: {
       requester: { select: { id: true, name: true, email: true } },
@@ -178,12 +183,16 @@ export const PATCH = withManager(async (req: NextRequest) => {
     return error("ConflictError", "Only PENDING requests can be reviewed", 409);
   }
 
+  const sanitizedNote = typeof reviewNote === "string" && reviewNote.trim()
+    ? sanitizeHtml(reviewNote.slice(0, 1000)) || null
+    : null;
+
   const updated = await prisma.approvalRequest.update({
     where: { id },
     data: {
       status: status as "APPROVED" | "REJECTED",
       approverId: session.user.id,
-      reviewNote: reviewNote ?? null,
+      reviewNote: sanitizedNote,
       reviewedAt: new Date(),
     },
     include: {

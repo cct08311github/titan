@@ -5,6 +5,7 @@ import { withManager } from "@/lib/auth-middleware";
 import { requireMinRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 import { ValidationError, NotFoundError } from "@/services/errors";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 /**
  * POST /api/documents/{id}/reject — Reviewer rejects document (Issue #1002)
@@ -20,16 +21,20 @@ export const POST = withManager(async (
   const session = await requireMinRole("MANAGER");
   const { id } = await context.params;
 
-  let reason: string | undefined;
+  let rawReason: unknown;
   try {
     const body = await req.json();
-    reason = body?.reason;
+    rawReason = body?.reason;
   } catch {
     // No body provided
   }
 
-  if (!reason || reason.trim().length === 0) {
+  if (!rawReason || typeof rawReason !== "string" || rawReason.trim().length === 0) {
     throw new ValidationError("駁回必須提供理由");
+  }
+  const reason = sanitizeHtml(rawReason.trim().slice(0, 1000));
+  if (!reason) {
+    throw new ValidationError("駁回理由不可為空");
   }
 
   let updated;

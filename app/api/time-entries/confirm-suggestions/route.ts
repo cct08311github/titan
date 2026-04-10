@@ -14,6 +14,7 @@ import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 import { ValidationError } from "@/services/errors";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 interface ConfirmItem {
   taskId: string;
@@ -57,7 +58,9 @@ export const POST = withAuth(async (req: NextRequest) => {
           date: new Date(item.date),
           hours: Math.round(item.hours * 100) / 100, // 2 decimal precision
           category: (item.category as TimeCategory) ?? "PLANNED_TASK",
-          description: item.description ?? "自動建議確認",
+          description: item.description
+            ? sanitizeHtml(item.description.slice(0, 500)) || "自動建議確認"
+            : "自動建議確認",
         },
       })
     )

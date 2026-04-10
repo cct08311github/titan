@@ -35,8 +35,9 @@ const PURIFY_CONFIG = {
     "span", "div",
   ],
   ALLOWED_ATTR: [
-    "href", "title", "class", "src", "alt", "width", "height", "style",
+    "href", "title", "class", "src", "alt", "width", "height",
   ],
+  FORBID_ATTR: ["style"],
   // Disallow data:// and other dangerous attributes
   ALLOW_DATA_ATTR: false,
   // Block javascript:, vbscript:, data: — only allow https?, mailto, tel
