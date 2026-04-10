@@ -5,7 +5,12 @@ import { validateBody } from "@/lib/validate";
 import { updateGoalSchema } from "@/validators/plan-validators";
 import { isValidGoalTransition } from "@/lib/state-machines";
 import { withAuth, withManager } from "@/lib/auth-middleware";
+import { requireRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { AuditService } from "@/services/audit-service";
+import { getClientIp } from "@/lib/get-client-ip";
+
+const auditService = new AuditService(prisma);
 
 export const GET = withAuth(async (
   _req: NextRequest,
@@ -85,9 +90,10 @@ export const PUT = withManager(async (
 });
 
 export const DELETE = withManager(async (
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireRole("MANAGER");
   const { id } = await context.params;
   const existing = await prisma.monthlyGoal.findUnique({
     where: { id },
@@ -100,5 +106,15 @@ export const DELETE = withManager(async (
 
   await prisma.task.updateMany({ where: { monthlyGoalId: id }, data: { monthlyGoalId: null } });
   await prisma.monthlyGoal.delete({ where: { id } });
+
+  await auditService.log({
+    userId: session.user.id,
+    action: "DELETE_GOAL",
+    resourceType: "MonthlyGoal",
+    resourceId: id,
+    detail: null,
+    ipAddress: getClientIp(req),
+  });
+
   return success({ deleted: true });
 });

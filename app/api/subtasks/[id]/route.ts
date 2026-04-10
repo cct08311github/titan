@@ -2,9 +2,14 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { ValidationError } from "@/services/errors";
 import { withAuth } from "@/lib/auth-middleware";
+import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
 import { updateSubTaskSchema } from "@/validators/subtask-validators";
 import { recalcParentProgress } from "@/lib/subtask-progress";
+import { AuditService } from "@/services/audit-service";
+import { getClientIp } from "@/lib/get-client-ip";
+
+const auditService = new AuditService(prisma);
 
 export const PATCH = withAuth(async (
   req: NextRequest,
@@ -54,9 +59,10 @@ export const PATCH = withAuth(async (
 });
 
 export const DELETE = withAuth(async (
-  _req: NextRequest,
+  req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireAuth();
   const { id } = await context.params;
 
   // Get taskId before deleting so we can recalculate parent progress
@@ -71,6 +77,15 @@ export const DELETE = withAuth(async (
   if (subtask) {
     await recalcParentProgress(subtask.taskId);
   }
+
+  await auditService.log({
+    userId: session.user.id,
+    action: "DELETE_SUBTASK",
+    resourceType: "SubTask",
+    resourceId: id,
+    detail: null,
+    ipAddress: getClientIp(req),
+  });
 
   return success({ success: true });
 });
