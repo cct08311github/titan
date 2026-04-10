@@ -173,6 +173,8 @@ export class UserService {
     const updates: Record<string, unknown> = {};
     if (input.name !== undefined) updates.name = input.name;
     if (normalizedNewEmail !== undefined) updates.email = normalizedNewEmail;
+    // IMPORTANT: role escalation guard is in the API route, NOT here.
+    // The route checks session.user.role before allowing role=ADMIN.
     if (input.role !== undefined) updates.role = input.role;
     if (input.avatar !== undefined) updates.avatar = input.avatar;
     if (input.isActive !== undefined) updates.isActive = input.isActive;

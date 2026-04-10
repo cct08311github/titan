@@ -4,7 +4,7 @@ import { UserService } from "@/services/user-service";
 import { AuditService } from "@/services/audit-service";
 import { validateBody } from "@/lib/validate";
 import { createUserSchema } from "@/validators/user-validators";
-import { success } from "@/lib/api-response";
+import { success, error } from "@/lib/api-response";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
@@ -34,6 +34,12 @@ export const POST = withManager(async (req: NextRequest) => {
   const session = await requireRole("MANAGER");
   const raw = await req.json();
   const body = validateBody(createUserSchema, raw);
+
+  // Privilege escalation guard: only ADMIN can create ADMIN users
+  if (body.role === "ADMIN" && session.user.role !== "ADMIN") {
+    return error("ForbiddenError", "只有管理員可以建立管理員帳號", 403);
+  }
+
   const user = await userService.createUser(body);
 
   await auditService.log({
