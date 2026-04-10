@@ -75,8 +75,10 @@ export const POST = apiHandler(async (req: NextRequest) => {
       });
       if (batch.length === 0) break;
       const batchIds = batch.map((k) => k.id);
-      await prisma.kPITaskLink.deleteMany({ where: { kpiId: { in: batchIds } } });
-      await prisma.kPI.deleteMany({ where: { id: { in: batchIds } } });
+      await prisma.$transaction([
+        prisma.kPITaskLink.deleteMany({ where: { kpiId: { in: batchIds } } }),
+        prisma.kPI.deleteMany({ where: { id: { in: batchIds } } }),
+      ]);
       kpisCount += batch.length;
     }
 

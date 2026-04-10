@@ -32,10 +32,6 @@ const REQUIRED_ENV: EnvRule[] = [
  */
 const OPTIONAL_ENV: EnvRule[] = [
   {
-    keys: ["CRON_SECRET"],
-    label: "Cron job secret (CRON_SECRET) — required in production to authenticate cron API routes",
-  },
-  {
     keys: ["REDIS_URL"],
     label: "Redis connection URL (REDIS_URL) — required for rate limiting, session limiter, JWT blacklist",
   },
