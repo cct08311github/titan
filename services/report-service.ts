@@ -147,7 +147,7 @@ export class ReportService {
     const completedTasks = await this.prisma.task.findMany({
       where: {
         ...userFilter,
-        isSample: false,
+        isSample: false, deletedAt: null,
         status: "DONE",
         updatedAt: { gte: weekStart, lte: weekEnd },
       },
@@ -185,7 +185,7 @@ export class ReportService {
     const overdueTasks = await this.prisma.task.findMany({
       where: {
         ...userFilter,
-        isSample: false,
+        isSample: false, deletedAt: null,
         status: { notIn: ["DONE"] },
         dueDate: { lt: new Date() },
       },
@@ -243,7 +243,7 @@ export class ReportService {
     const allTasks = await this.prisma.task.findMany({
       where: {
         ...userFilter,
-        isSample: false,
+        isSample: false, deletedAt: null,
         createdAt: { lte: monthEnd },
         OR: [
           { dueDate: { gte: monthStart, lte: monthEnd } },
@@ -435,7 +435,7 @@ export class ReportService {
         ...(filter.isManager
           ? {}
           : { primaryAssigneeId: filter.userId }),
-        isSample: false,
+        isSample: false, deletedAt: null,
         category: { in: ["ADDED", "INCIDENT", "SUPPORT"] },
         createdAt: { gte: startDate, lte: endDate },
       },

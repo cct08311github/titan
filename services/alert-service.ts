@@ -79,7 +79,7 @@ export class AlertService {
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
     const overdueTasks = await this.prisma.task.findMany({
-      where: {
+      where: { deletedAt: null,
         isSample: false,
         status: { not: "DONE" },
         dueDate: { lt: threeDaysAgo },
@@ -131,7 +131,7 @@ export class AlertService {
 
     // 5. Document verification expired
     const expiredDocs = await this.prisma.document.findMany({
-      where: {
+      where: { deletedAt: null,
         status: "PUBLISHED",
         verifyIntervalDays: { not: null },
         verifiedAt: { not: null },

@@ -22,7 +22,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const limit = parseLimit(searchParams.get("limit"), 100, 500);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: any = { year };
+  const where: any = { year, deletedAt: null };
 
   // Visibility: ENGINEER can only see ALL-visible KPIs
   if (session.user.role === "ENGINEER") {
