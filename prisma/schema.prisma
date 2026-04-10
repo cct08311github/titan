@@ -1749,3 +1749,16 @@ model SystemSetting {
 
   @@map("system_settings")
 }
+
+// ═══════════════════════════════════════
+// Feature Flags（T1328）
+// ═══════════════════════════════════════
+
+model FeatureFlag {
+  key       String   @id
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+
+  @@map("feature_flags")
+}
