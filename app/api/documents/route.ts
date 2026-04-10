@@ -13,7 +13,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const { page, limit, skip } = parsePagination(searchParams);
   const spaceId = searchParams.get("spaceId");
 
-  const where = spaceId ? { spaceId } : {};
+  const where = spaceId ? { spaceId, deletedAt: null } : { deletedAt: null };
 
   const select = {
     id: true,

@@ -115,6 +115,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     searchComments
       ? prisma.taskComment.findMany({
           where: {
+            deletedAt: null,
             content: containsQuery,
             ...(isManager
               ? {}
