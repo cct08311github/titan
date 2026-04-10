@@ -166,8 +166,11 @@ export class TaskService {
     const title = sanitizeHtml(input.title);
     const description = input.description ? sanitizeHtml(input.description) : input.description;
 
-    // Post-sanitize validation: title may become empty after stripping all tags (Issue #1226)
-    if (!title.trim()) {
+    // Post-sanitize validation: title may become empty after stripping tags,
+    // or consist entirely of zero-width Unicode characters (U+200B/200C/200D/FEFF)
+    // which pass trim() but render as invisible text.
+    const visibleTitle = title.replace(/[\u200B-\u200D\uFEFF\u00AD\u2060\u180E]/g, "").trim();
+    if (!visibleTitle) {
       throw new ValidationError("標題為必填");
     }
 
