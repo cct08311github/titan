@@ -26,12 +26,17 @@ export const GET = withManager(async (req: NextRequest) => {
     sizeMB: number;
   }> = [];
 
-  // Read last 20 lines of backup log
+  // Read last 20 lines of backup log, filtering out lines with sensitive data
+  // Issue #1330: log may contain connection strings, passwords, or secrets
+  const SENSITIVE_PATTERNS = [/password/i, /secret/i, /api[_-]?key/i, /token/i, /connection.*string/i, /postgresql:\/\//i];
   try {
     if (fs.existsSync(logFile)) {
       const content = fs.readFileSync(logFile, "utf-8");
       const lines = content.trim().split("\n");
-      lastLogLines = lines.slice(-20);
+      lastLogLines = lines
+        .slice(-30) // read more lines to account for filtered ones
+        .filter((line) => !SENSITIVE_PATTERNS.some((p) => p.test(line)))
+        .slice(-20); // return at most 20 after filtering
     }
   } catch {
     // Log file may not exist in dev environments
