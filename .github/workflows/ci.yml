@@ -48,8 +48,9 @@ jobs:
           DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
 
       - name: Unit + Integration tests
-        run: npx jest --forceExit --coverage
+        run: npx jest --forceExit --coverage --maxWorkers=2
         env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
           DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
           NEXTAUTH_SECRET: test-secret-for-ci
           NEXTAUTH_URL: http://localhost:3000
