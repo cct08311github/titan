@@ -48,14 +48,21 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 export const config = {
   matcher: [
     // Page routes that require a session
+    "/activity/:path*",
+    "/admin/:path*",
+    "/approvals/:path*",
+    "/cockpit/:path*",
     "/dashboard/:path*",
-    "/kanban/:path*",
     "/gantt/:path*",
+    "/kanban/:path*",
     "/knowledge/:path*",
     "/kpi/:path*",
     "/plans/:path*",
-    "/timesheet/:path*",
+    "/projects/:path*",
     "/reports/:path*",
+    "/settings/:path*",
+    "/timesheet/:path*",
+    "/work/:path*",
     // All API routes — auth routes are excluded inside the middleware function
     "/api/:path*",
   ],
