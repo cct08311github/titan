@@ -79,6 +79,16 @@ export function apiHandler<T extends (...args: any[]) => Promise<NextResponse<Ap
   ): Promise<NextResponse<ApiResponse>> => {
     return requestLogger(req, async () => {
       try {
+        // Body size guard: reject requests claiming > 10 MB before any parsing.
+        // nginx enforces 50 MB, but direct container access has no protection.
+        // This catches the Content-Length header early; req.json() still
+        // buffers the body if Content-Length is absent, but at least obvious
+        // attacks are rejected cheaply.
+        const contentLength = parseInt(req.headers.get("content-length") ?? "0", 10);
+        if (contentLength > 10 * 1024 * 1024) {
+          return error("ValidationError", "Request body too large", 413);
+        }
+
         validateCsrf(req);
 
         // Rate limit by IP (or forwarded IP) — applies to ALL API routes
