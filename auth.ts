@@ -85,7 +85,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const rawUsername = credentials.username as string;
-        const username = rawUsername.includes("@") ? rawUsername : `${rawUsername}@titan.local`;
+        // Normalize email to lowercase — PostgreSQL unique constraint is case-sensitive,
+        // so "Alice@" and "alice@" are different. Normalizing prevents:
+        //   1. Login failures when users type different casing
+        //   2. Duplicate accounts bypassing the @unique constraint
+        const username = (rawUsername.includes("@") ? rawUsername : `${rawUsername}@titan.local`).toLowerCase().trim();
         const password = credentials.password as string;
 
         const ip =
