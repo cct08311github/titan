@@ -30,6 +30,13 @@ export const PUT = withManager(async (
   const { id } = await context.params;
   const raw = await req.json();
   const body = validateBody(updateUserSchema, raw);
+
+  // Privilege escalation guard: only ADMIN can assign the ADMIN role.
+  // Without this, any MANAGER could promote themselves or others to ADMIN.
+  if (body.role === "ADMIN" && session.user.role !== "ADMIN") {
+    return error("ForbiddenError", "只有管理員可以指派管理員角色", 403);
+  }
+
   const user = await userService.updateUser(id, body);
 
   // Exclude sensitive fields from audit detail
