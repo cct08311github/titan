@@ -1,7 +1,7 @@
 /**
  * Feature Flags API — Issue #1328
  *
- * GET  /api/admin/feature-flags — read all flags (any authenticated user)
+ * GET  /api/admin/feature-flags — read all flags (ADMIN only)
  * PUT  /api/admin/feature-flags — update a flag (ADMIN only)
  */
 import { NextRequest } from "next/server";
