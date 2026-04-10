@@ -185,13 +185,35 @@ export function TaskDetailModal({ taskId, onClose, onUpdated }: TaskDetailModalP
   }
 
   async function deleteTask() {
-    if (!window.confirm("確定要刪除此任務嗎？此操作無法復原。")) return;
+    if (!window.confirm("確定要刪除此任務嗎？可在 5 秒內復原。")) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
       if (res.ok) {
-        toast.success("任務已刪除");
         onUpdated?.();
+        // Issue #1324: show undo toast with 5-second window
+        toast("任務已刪除", {
+          action: {
+            label: "復原",
+            onClick: () => {
+              fetch("/api/undo", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ resourceType: "Task", resourceId: taskId }),
+              })
+                .then((r) => {
+                  if (r.ok) {
+                    toast.success("任務已復原");
+                    onUpdated?.();
+                  } else {
+                    toast.error("復原失敗，請聯繫管理員");
+                  }
+                })
+                .catch(() => toast.error("復原失敗，請聯繫管理員"));
+            },
+          },
+          duration: 5000,
+        });
       } else {
         const errBody = await res.json().catch(() => ({}));
         toast.error(errBody?.message ?? errBody?.error ?? "刪除失敗");

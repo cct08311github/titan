@@ -33,7 +33,7 @@ export class KPIService {
   async listKPIs(filter: ListKPIsFilter) {
     const year = filter.year ?? new Date().getFullYear();
     return this.prisma.kPI.findMany({
-      where: { year },
+      where: { year, deletedAt: null },
       include: {
         taskLinks: {
           include: {
@@ -148,13 +148,23 @@ export class KPIService {
     const existing = await this.prisma.kPI.findUnique({ where: { id } });
     if (!existing) throw new NotFoundError(`KPI not found: ${id}`);
 
-    return this.prisma.$transaction(
-      async (tx) => {
-        await tx.kPITaskLink.deleteMany({ where: { kpiId: id } });
-        return tx.kPI.delete({ where: { id } });
-      },
-      { timeout: 10000 }
-    );
+    // Issue #1324: soft delete — set deletedAt instead of hard delete
+    return this.prisma.kPI.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  /** Issue #1324: restore a soft-deleted KPI */
+  async restoreKPI(id: string) {
+    const existing = await this.prisma.kPI.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundError(`KPI not found: ${id}`);
+    if (!existing.deletedAt) throw new ValidationError("KPI 未被刪除，無需復原");
+
+    return this.prisma.kPI.update({
+      where: { id },
+      data: { deletedAt: null },
+    });
   }
 
   async calculateAchievement(kpiId: string) {

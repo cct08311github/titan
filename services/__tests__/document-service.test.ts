@@ -84,12 +84,15 @@ describe("DocumentService", () => {
 
   test("deleteDocument removes document", async () => {
     (prisma.document.findUnique as jest.Mock).mockResolvedValue({ id: "doc-1" });
-    (prisma.document.delete as jest.Mock).mockResolvedValue({ id: "doc-1" });
+    (prisma.document.update as jest.Mock).mockResolvedValue({ id: "doc-1", deletedAt: new Date() });
 
     await service.deleteDocument("doc-1");
 
-    expect(prisma.document.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "doc-1" } })
+    expect(prisma.document.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "doc-1" },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      })
     );
   });
 });

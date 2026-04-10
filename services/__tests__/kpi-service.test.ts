@@ -239,16 +239,15 @@ describe("KPIService", () => {
     test("deletes kpi and its task links in transaction", async () => {
       const existingKPI = { id: "kpi-1", title: "KPI 1" };
       (prisma.kPI.findUnique as jest.Mock).mockResolvedValue(existingKPI);
-      (prisma.kPI.delete as jest.Mock).mockResolvedValue(existingKPI);
-      (prisma.kPITaskLink.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
+      (prisma.kPI.update as jest.Mock).mockResolvedValue({ ...existingKPI, deletedAt: new Date() });
 
       await service.deleteKPI("kpi-1");
 
-      expect(prisma.kPITaskLink.deleteMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { kpiId: "kpi-1" } })
-      );
-      expect(prisma.kPI.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: "kpi-1" } })
+      expect(prisma.kPI.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "kpi-1" },
+          data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+        })
       );
     });
   });

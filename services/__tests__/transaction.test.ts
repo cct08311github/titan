@@ -92,8 +92,10 @@ describe("GoalService.deleteGoal — transaction", () => {
 });
 
 // ─── KPIService.deleteKPI ─────────────────────────────────────────────────────
+// Issue #1324: deleteKPI now uses soft delete (prisma.kPI.update with deletedAt)
+// instead of a transaction with kPITaskLink.deleteMany + kPI.delete.
 
-describe("KPIService.deleteKPI — transaction", () => {
+describe("KPIService.deleteKPI — soft delete", () => {
   let service: KPIService;
   let prisma: ReturnType<typeof createMockPrisma>;
 
@@ -103,49 +105,34 @@ describe("KPIService.deleteKPI — transaction", () => {
     setupTransaction(prisma);
   });
 
-  test("calls $transaction when deleting a KPI", async () => {
+  test("soft-deletes the KPI by setting deletedAt", async () => {
     (prisma.kPI.findUnique as jest.Mock).mockResolvedValue({ id: "kpi-1" });
-    (prisma.kPITaskLink.deleteMany as jest.Mock).mockResolvedValue({ count: 1 });
-    (prisma.kPI.delete as jest.Mock).mockResolvedValue({ id: "kpi-1" });
+    (prisma.kPI.update as jest.Mock).mockResolvedValue({ id: "kpi-1", deletedAt: new Date() });
 
     await service.deleteKPI("kpi-1");
 
-    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(prisma.kPI.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "kpi-1" },
+        data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+      })
+    );
   });
 
-  test("deletes task links before the KPI inside the transaction", async () => {
+  test("does not use $transaction when deleting a KPI", async () => {
     (prisma.kPI.findUnique as jest.Mock).mockResolvedValue({ id: "kpi-1" });
-    (prisma.kPITaskLink.deleteMany as jest.Mock).mockResolvedValue({ count: 3 });
-    (prisma.kPI.delete as jest.Mock).mockResolvedValue({ id: "kpi-1" });
+    (prisma.kPI.update as jest.Mock).mockResolvedValue({ id: "kpi-1", deletedAt: new Date() });
 
     await service.deleteKPI("kpi-1");
 
-    expect(prisma.kPITaskLink.deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { kpiId: "kpi-1" } })
-    );
-    expect(prisma.kPI.delete).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "kpi-1" } })
-    );
-  });
-
-  test("throws NotFoundError without starting a transaction when KPI missing", async () => {
-    (prisma.kPI.findUnique as jest.Mock).mockResolvedValue(null);
-
-    await expect(service.deleteKPI("nonexistent")).rejects.toThrow(NotFoundError);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  test("passes timeout option to $transaction", async () => {
-    (prisma.kPI.findUnique as jest.Mock).mockResolvedValue({ id: "kpi-1" });
-    (prisma.kPITaskLink.deleteMany as jest.Mock).mockResolvedValue({ count: 0 });
-    (prisma.kPI.delete as jest.Mock).mockResolvedValue({ id: "kpi-1" });
+  test("throws NotFoundError without updating when KPI missing", async () => {
+    (prisma.kPI.findUnique as jest.Mock).mockResolvedValue(null);
 
-    await service.deleteKPI("kpi-1");
-
-    expect(prisma.$transaction).toHaveBeenCalledWith(
-      expect.any(Function),
-      expect.objectContaining({ timeout: 10000 })
-    );
+    await expect(service.deleteKPI("nonexistent")).rejects.toThrow(NotFoundError);
+    expect(prisma.kPI.update).not.toHaveBeenCalled();
   });
 });
 

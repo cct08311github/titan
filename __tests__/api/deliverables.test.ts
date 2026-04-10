@@ -7,8 +7,9 @@
 import { createMockRequest } from "../utils/test-utils";
 
 const mockDeliverable = { create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+const mockAuditLog = { create: jest.fn().mockResolvedValue({}) };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { deliverable: mockDeliverable } }));
+jest.mock("@/lib/prisma", () => ({ prisma: { deliverable: mockDeliverable, auditLog: mockAuditLog } }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));

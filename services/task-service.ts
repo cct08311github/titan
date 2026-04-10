@@ -71,7 +71,7 @@ export class TaskService {
   }
 
   async listTasks(filter: ListTasksFilter) {
-    const where: Record<string, unknown> = { isSample: false };
+    const where: Record<string, unknown> = { isSample: false, deletedAt: null };
 
     if (filter.assignee) {
       where.OR = [
@@ -451,11 +451,17 @@ export class TaskService {
   }
 
   async deleteTask(id: string, deletedBy?: string, ipAddress?: string) {
-    const task = await this.prisma.task.findUnique({ where: { id }, select: { id: true, title: true } });
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      select: { id: true, title: true, deletedAt: true },
+    });
 
-    // Issue #1213: wrap delete + audit in transaction for atomicity
+    // Issue #1324: soft delete — set deletedAt instead of hard delete
     return this.prisma.$transaction(async (tx) => {
-      const result = await tx.task.delete({ where: { id } });
+      const result = await tx.task.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
 
       await tx.auditLog.create({
         data: {
@@ -463,12 +469,27 @@ export class TaskService {
           action: "DELETE_TASK",
           resourceType: "Task",
           resourceId: id,
-          detail: task ? `Deleted task: ${task.title}` : `Deleted task: ${id}`,
+          detail: task ? `Soft-deleted task: ${task.title}` : `Soft-deleted task: ${id}`,
           ipAddress: ipAddress ?? null,
         },
       });
 
       return result;
+    });
+  }
+
+  /** Issue #1324: restore a soft-deleted task */
+  async restoreTask(id: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id },
+      select: { id: true, deletedAt: true },
+    });
+    if (!task) throw new NotFoundError(`Task not found: ${id}`);
+    if (!task.deletedAt) throw new ValidationError("任務未被刪除，無需復原");
+
+    return this.prisma.task.update({
+      where: { id },
+      data: { deletedAt: null },
     });
   }
 }

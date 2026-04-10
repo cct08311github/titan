@@ -31,6 +31,7 @@ jest.mock("@/lib/rbac", () => ({
   requireAuth: () => mockRequireAuth(),
   requireRole: jest.fn(),
   requireManagerOrAbove: jest.fn(),
+  enforcePasswordChange: jest.fn(),
 }));
 
 // Mock prisma (needed by imported dependencies)
@@ -115,7 +116,7 @@ describe("GET /api/tasks/stale", () => {
     expect(res.status).toBe(401);
     const body = await res.json();
     expect(body.ok).toBe(false);
-    expect(body.error).toBe("Unauthorized");
+    expect(body.error).toBe("UnauthorizedError");
   });
 
   it("returns 200 with tasks for ENGINEER (own tasks only)", async () => {

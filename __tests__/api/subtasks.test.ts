@@ -8,8 +8,9 @@ import { createMockRequest } from "../utils/test-utils";
 
 const mockSubTask = { create: jest.fn(), update: jest.fn(), delete: jest.fn(), findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() };
 const mockTask = { update: jest.fn() };
+const mockAuditLog = { create: jest.fn().mockResolvedValue({}) };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { subTask: mockSubTask, task: mockTask } }));
+jest.mock("@/lib/prisma", () => ({ prisma: { subTask: mockSubTask, task: mockTask, auditLog: mockAuditLog } }));
 
 const mockGetServerSession = jest.fn();
 jest.mock("next-auth", () => ({ getServerSession: (...a: unknown[]) => mockGetServerSession(...a) }));

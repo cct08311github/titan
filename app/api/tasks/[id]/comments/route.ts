@@ -42,7 +42,7 @@ export const GET = withAuth(async (
   const { id } = await context.params;
 
   const comments = await prisma.taskComment.findMany({
-    where: { taskId: id },
+    where: { taskId: id, deletedAt: null },
     include: {
       user: { select: { id: true, name: true, avatar: true } },
     },
@@ -175,10 +175,10 @@ export const DELETE = withAuth(async (
 
   const comment = await prisma.taskComment.findUnique({
     where: { id: commentId },
-    select: { id: true, userId: true, taskId: true },
+    select: { id: true, userId: true, taskId: true, deletedAt: true },
   });
 
-  if (!comment || comment.taskId !== taskId) {
+  if (!comment || comment.taskId !== taskId || comment.deletedAt) {
     return error("NotFoundError", "評論不存在", 404);
   }
 
@@ -187,7 +187,8 @@ export const DELETE = withAuth(async (
     throw new ForbiddenError("只能刪除自己的評論");
   }
 
-  await prisma.taskComment.delete({ where: { id: commentId } });
+  // Issue #1324: soft delete — set deletedAt instead of hard delete
+  await prisma.taskComment.update({ where: { id: commentId }, data: { deletedAt: new Date() } });
 
   // Fire-and-forget activity log
   logActivity({
