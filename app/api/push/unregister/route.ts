@@ -7,10 +7,11 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { success, error } from "@/lib/api-response";
+import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
 
   const deviceId = req.nextUrl.searchParams.get("deviceId");
@@ -34,4 +35,4 @@ export async function DELETE(req: NextRequest) {
     logger.error({ err, userId: session.user.id }, "[push] Failed to unregister token");
     return error("ServerError", "移除推播 Token 失敗", 500);
   }
-}
+});

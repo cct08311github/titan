@@ -16,8 +16,8 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { listStaleTasksForUser } from "@/services/stale-task-service";
-import { UnauthorizedError } from "@/services/errors";
 import { logger } from "@/lib/logger";
+import { withAuth } from "@/lib/auth-middleware";
 
 const querySchema = z.object({
   limit: z
@@ -30,17 +30,9 @@ const querySchema = z.object({
     .optional(),
 });
 
-export async function GET(req: NextRequest) {
-  // ── Auth ────────────────────────────────────────────────────────────────
-  let session;
-  try {
-    session = await requireAuth();
-  } catch (err) {
-    if (err instanceof UnauthorizedError) {
-      return error("Unauthorized", "請先登入", 401);
-    }
-    throw err;
-  }
+// Wrapped in withAuth for CSRF + rate limit + password-change enforcement
+export const GET = withAuth(async (req: NextRequest) => {
+  const session = await requireAuth();
 
   // ── Validate query params ────────────────────────────────────────────────
   const { searchParams } = new URL(req.url);
@@ -73,4 +65,4 @@ export async function GET(req: NextRequest) {
     logger.error({ err, event: "stale_route_error" }, "[stale-route] unexpected error");
     return error("InternalError", "伺服器錯誤，請稍後再試", 500);
   }
-}
+});
