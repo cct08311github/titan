@@ -61,12 +61,29 @@ export const POST = apiHandler(async (req: NextRequest) => {
       },
     });
 
+    // Clean up expired refresh tokens (7-day expiry in schema)
+    const expiredRefreshTokens = await prisma.refreshToken.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
+
+    // Clean up expired/used password reset tokens
+    const expiredResetTokens = await prisma.passwordResetToken.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { usedAt: { not: null } },  // used tokens no longer needed
+        ],
+      },
+    });
+
     const result = {
       tasks: deletedTasks.count,
       comments: deletedComments.count,
       documents: deletedDocuments.count,
       kpis: deletedKpis.count,
       timeEntries: deletedTimeEntries.count,
+      expiredRefreshTokens: expiredRefreshTokens.count,
+      expiredResetTokens: expiredResetTokens.count,
       cleanedAt: new Date().toISOString(),
       cutoff: cutoff.toISOString(),
     };
