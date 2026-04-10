@@ -805,6 +805,8 @@ enum NotificationType {
   SLA_EXPIRING          // Issue #860: SLA 即將到期
   VERIFICATION_DUE      // Issue #968: 文件驗證到期
   MANAGER_FLAG          // Issue #960: 主管標記任務
+  DAILY_DIGEST          // Issue #1321: 每日個人摘要
+  WEEKLY_DIGEST         // Issue #1321: 每週主管摘要
 }
 
 model Notification {

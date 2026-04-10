@@ -131,3 +131,214 @@ export function timesheetReminderEmail(currentHours: number, targetHours: number
     ${WRAPPER_END}`,
   };
 }
+
+// ─── Issue #1321: Daily Personal Digest ───────────────────────────────────────
+
+export interface DigestTaskItem {
+  taskId: string;
+  taskTitle: string;
+  dueDate?: string; // formatted date string
+}
+
+export interface DigestItems {
+  dueTodayTasks: DigestTaskItem[];
+  newAssignments: DigestTaskItem[];
+  unreadMentionCount: number;
+  pendingApprovalCount: number; // MANAGER only; 0 for ENGINEER
+}
+
+export function dailyDigestEmail(
+  userName: string,
+  items: DigestItems,
+  date: string
+): { subject: string; html: string } {
+  const safeName = escapeHtml(userName);
+  const safeDate = escapeHtml(date);
+
+  const dueTodayRows = items.dueTodayTasks
+    .map(t => {
+      const safeTitle = escapeHtml(t.taskTitle);
+      const safeId = urlPart(t.taskId);
+      return `<tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+          <a href="${BASE_URL}/kanban?taskId=${safeId}" style="color: #4f46e5; text-decoration: none;">${safeTitle}</a>
+        </td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #666; font-size: 13px; text-align: right;">${escapeHtml(t.dueDate ?? "")}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const newAssignRows = items.newAssignments
+    .map(t => {
+      const safeTitle = escapeHtml(t.taskTitle);
+      const safeId = urlPart(t.taskId);
+      return `<tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+          <a href="${BASE_URL}/kanban?taskId=${safeId}" style="color: #4f46e5; text-decoration: none;">${safeTitle}</a>
+        </td>
+      </tr>`;
+    })
+    .join("");
+
+  const dueTodaySection =
+    items.dueTodayTasks.length > 0
+      ? `<h3 style="color: #f59e0b; margin: 24px 0 8px; font-size: 15px;">今日到期任務（${items.dueTodayTasks.length} 筆）</h3>
+         <table style="width: 100%; border-collapse: collapse;">${dueTodayRows}</table>`
+      : "";
+
+  const newAssignSection =
+    items.newAssignments.length > 0
+      ? `<h3 style="color: #4f46e5; margin: 24px 0 8px; font-size: 15px;">昨日新指派任務（${items.newAssignments.length} 筆）</h3>
+         <table style="width: 100%; border-collapse: collapse;">${newAssignRows}</table>`
+      : "";
+
+  const mentionSection =
+    items.unreadMentionCount > 0
+      ? `<div style="background: #f0f4ff; border-left: 4px solid #6366f1; padding: 10px 14px; margin: 16px 0; border-radius: 4px;">
+           <strong>${items.unreadMentionCount}</strong> 則未讀 @提及或留言，
+           <a href="${BASE_URL}/activity" style="color: #4f46e5;">前往查看</a>
+         </div>`
+      : "";
+
+  const approvalSection =
+    items.pendingApprovalCount > 0
+      ? `<div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 10px 14px; margin: 16px 0; border-radius: 4px;">
+           <strong>${items.pendingApprovalCount}</strong> 筆申請待您審核，
+           <a href="${BASE_URL}/kanban" style="color: #f97316;">前往審核</a>
+         </div>`
+      : "";
+
+  return {
+    subject: safeSubject(`[TITAN] ${safeDate} 每日摘要`),
+    html: `${WRAPPER_START}
+      <h2 style="color: #333; margin: 0 0 4px;">每日工作摘要</h2>
+      <p style="color: #666; margin: 0 0 16px;">${safeName}，${safeDate}</p>
+      ${dueTodaySection}
+      ${newAssignSection}
+      ${mentionSection}
+      ${approvalSection}
+      <div style="margin-top: 20px;">
+        <a href="${BASE_URL}/dashboard" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none;">前往儀表板</a>
+      </div>
+    ${WRAPPER_END}`,
+  };
+}
+
+// ─── Issue #1321: Weekly Manager Summary ─────────────────────────────────────
+
+export interface KpiBehindItem {
+  kpiCode: string;
+  kpiTitle: string;
+  actual: number;
+  target: number;
+  unit: string;
+}
+
+export interface NextWeekDueItem {
+  taskId: string;
+  taskTitle: string;
+  dueDate: string;
+  assigneeName: string;
+}
+
+export interface ManagerSummary {
+  overdueCount: number;
+  flaggedCount: number;
+  weeklyCompletedCount: number;
+  kpiBehindItems: KpiBehindItem[];
+  nextWeekDueItems: NextWeekDueItem[];
+  weekLabel: string; // e.g. "2026/04/07 ~ 04/11"
+}
+
+export function weeklyManagerEmail(
+  userName: string,
+  summary: ManagerSummary
+): { subject: string; html: string } {
+  const safeName = escapeHtml(userName);
+  const safeWeek = escapeHtml(summary.weekLabel);
+
+  const kpiBehindRows = summary.kpiBehindItems
+    .map(k => {
+      const pct = k.target > 0 ? Math.round((k.actual / k.target) * 100) : 0;
+      return `<tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px;">${escapeHtml(k.kpiCode)}</td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">${escapeHtml(k.kpiTitle)}</td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #dc2626; text-align: right;">${k.actual} / ${k.target} ${escapeHtml(k.unit ?? "")} (${pct}%)</td>
+      </tr>`;
+    })
+    .join("");
+
+  const nextWeekRows = summary.nextWeekDueItems
+    .map(t => {
+      const safeId = urlPart(t.taskId);
+      return `<tr>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
+          <a href="${BASE_URL}/kanban?taskId=${safeId}" style="color: #4f46e5; text-decoration: none;">${escapeHtml(t.taskTitle)}</a>
+        </td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #666; font-size: 13px;">${escapeHtml(t.assigneeName)}</td>
+        <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0; color: #666; font-size: 13px; text-align: right;">${escapeHtml(t.dueDate)}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const healthBlock = `
+    <div style="display: flex; gap: 16px; margin: 16px 0;">
+      <div style="flex: 1; background: #fef2f2; border-radius: 8px; padding: 14px 16px; text-align: center;">
+        <div style="font-size: 28px; font-weight: bold; color: #dc2626;">${summary.overdueCount}</div>
+        <div style="color: #666; font-size: 13px; margin-top: 4px;">逾期任務</div>
+      </div>
+      <div style="flex: 1; background: #fff7ed; border-radius: 8px; padding: 14px 16px; text-align: center;">
+        <div style="font-size: 28px; font-weight: bold; color: #f97316;">${summary.flaggedCount}</div>
+        <div style="color: #666; font-size: 13px; margin-top: 4px;">主管標記</div>
+      </div>
+      <div style="flex: 1; background: #f0fdf4; border-radius: 8px; padding: 14px 16px; text-align: center;">
+        <div style="font-size: 28px; font-weight: bold; color: #16a34a;">${summary.weeklyCompletedCount}</div>
+        <div style="color: #666; font-size: 13px; margin-top: 4px;">本週完成</div>
+      </div>
+    </div>`;
+
+  const kpiBehindSection =
+    summary.kpiBehindItems.length > 0
+      ? `<h3 style="color: #dc2626; margin: 24px 0 8px; font-size: 15px;">落後 KPI 項目（${summary.kpiBehindItems.length} 項）</h3>
+         <table style="width: 100%; border-collapse: collapse;">
+           <thead>
+             <tr style="color: #999; font-size: 12px; text-align: left;">
+               <th style="padding: 4px 0; font-weight: normal;">代碼</th>
+               <th style="padding: 4px 0; font-weight: normal;">名稱</th>
+               <th style="padding: 4px 0; font-weight: normal; text-align: right;">實績 / 目標</th>
+             </tr>
+           </thead>
+           <tbody>${kpiBehindRows}</tbody>
+         </table>`
+      : `<p style="color: #16a34a; margin: 16px 0;">✓ 本週無落後 KPI 項目</p>`;
+
+  const nextWeekSection =
+    summary.nextWeekDueItems.length > 0
+      ? `<h3 style="color: #4f46e5; margin: 24px 0 8px; font-size: 15px;">下週到期任務（${summary.nextWeekDueItems.length} 筆）</h3>
+         <table style="width: 100%; border-collapse: collapse;">
+           <thead>
+             <tr style="color: #999; font-size: 12px; text-align: left;">
+               <th style="padding: 4px 0; font-weight: normal;">任務</th>
+               <th style="padding: 4px 0; font-weight: normal;">負責人</th>
+               <th style="padding: 4px 0; font-weight: normal; text-align: right;">到期日</th>
+             </tr>
+           </thead>
+           <tbody>${nextWeekRows}</tbody>
+         </table>`
+      : "";
+
+  return {
+    subject: safeSubject(`[TITAN] ${safeWeek} 週報摘要`),
+    html: `${WRAPPER_START}
+      <h2 style="color: #333; margin: 0 0 4px;">每週主管摘要</h2>
+      <p style="color: #666; margin: 0 0 16px;">${safeName}，${safeWeek}</p>
+      <h3 style="color: #333; margin: 16px 0 8px; font-size: 15px;">團隊健康狀況</h3>
+      ${healthBlock}
+      ${kpiBehindSection}
+      ${nextWeekSection}
+      <div style="margin-top: 20px;">
+        <a href="${BASE_URL}/dashboard" style="display: inline-block; background: #4f46e5; color: #fff; padding: 10px 20px; border-radius: 6px; text-decoration: none;">前往儀表板</a>
+      </div>
+    ${WRAPPER_END}`,
+  };
+}
