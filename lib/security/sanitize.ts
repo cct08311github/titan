@@ -82,14 +82,25 @@ export function sanitizeHtml(html: string): string {
 
   let result = html;
 
-  // Pass 1: Remove dangerous tags entirely (including their content)
-  for (const tag of DISALLOWED_TAGS) {
-    // Match opening tag with any attributes
-    const openTag = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi");
-    result = result.replace(openTag, "");
-    // Match self-closing/void tags
-    const voidTag = new RegExp(`<${tag}\\b[^>]*(?:\\/\\s*)?>`, "gi");
-    result = result.replace(voidTag, "");
+  // Pass 1: Remove dangerous tags entirely (including their content).
+  // Iterate until stable to defeat nested-tag bypasses like
+  //   <scr<script>ipt>alert(1)</script>
+  // where a single-pass removal leaves a valid <script> behind.
+  // Cap at 10 iterations to prevent pathological input from DoS'ing the loop.
+  for (let iter = 0; iter < 10; iter++) {
+    const before = result;
+    for (const tag of DISALLOWED_TAGS) {
+      // Match opening tag with any attributes
+      const openTag = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?<\\/${tag}>`, "gi");
+      result = result.replace(openTag, "");
+      // Match self-closing/void tags
+      const voidTag = new RegExp(`<${tag}\\b[^>]*(?:\\/\\s*)?>`, "gi");
+      result = result.replace(voidTag, "");
+      // Match orphan opening tag without close (prevents <script> with no </script> surviving)
+      const orphanTag = new RegExp(`<${tag}\\b[^>]*>`, "gi");
+      result = result.replace(orphanTag, "");
+    }
+    if (result === before) break;
   }
 
   // Pass 2: Remove SVG-based XSS vectors (animate, set, animation, keyframe)
@@ -131,16 +142,17 @@ export function sanitizeHtml(html: string): string {
     'style=""'
   );
 
-  // Pass 8: Remove CSS escape sequences that could bypass filters
-  result = result.replace(/\\/g, "\\\\");
-
-  // Pass 9: Normalize whitespace in URLs to prevent bypass via special chars
+  // Pass 8: normalize whitespace in URLs to prevent bypass via special chars
+  // (Previous "double all backslashes" pass was removed — it corrupted
+  // legitimate content like Windows paths and code-block escape sequences
+  // without providing meaningful XSS protection. CSS expression() is
+  // already neutralized by Pass 7 on the style attribute itself.)
   result = result.replace(
     /(href|src)\s*=\s*["']\s*[\s\n\r\t]+/gi,
     '$1="'
   );
 
-  // Pass 10: Final sweep for any remaining XSS patterns
+  // Pass 9: Final sweep for any remaining XSS patterns
   for (const pattern of XSS_ATTR_PATTERNS) {
     result = result.replace(pattern, "");
   }

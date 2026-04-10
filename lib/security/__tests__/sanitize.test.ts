@@ -57,6 +57,32 @@ describe("sanitizeHtml", () => {
     expect(result).not.toContain("<object");
     expect(result).not.toContain("<embed");
   });
+
+  // Regression: single-pass removal left a <script> behind when nested.
+  // Iterative pass now cleans these up.
+  test("defeats nested-tag script bypass", () => {
+    const html = "<scr<script>ipt>alert(1)</script><p>ok</p>";
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain("<script");
+    expect(result).not.toContain("alert(1)");
+    expect(result).toContain("<p>ok</p>");
+  });
+
+  test("removes orphan opening script tag without close", () => {
+    const html = "<p>before</p><script>alert(1)<p>after</p>";
+    const result = sanitizeHtml(html);
+    expect(result).not.toContain("<script");
+    expect(result).toContain("<p>before</p>");
+  });
+
+  // Regression: old Pass 8 doubled all backslashes, corrupting legitimate
+  // content like file paths and code-block escape sequences.
+  test("preserves backslashes in legitimate content", () => {
+    const html = "<pre><code>path: C:\\Users\\name\\file.txt</code></pre>";
+    const result = sanitizeHtml(html);
+    expect(result).toContain("C:\\Users\\name\\file.txt");
+    expect(result).not.toContain("\\\\\\\\");
+  });
 });
 
 describe("sanitizeMarkdown", () => {
