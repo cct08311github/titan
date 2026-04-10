@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom";
 
+// Use the __mocks__/isomorphic-dompurify.ts shim for all tests (#1326).
+// isomorphic-dompurify bundles jsdom v29 which fails to initialise correctly
+// inside Jest worker processes.  The shim creates a dedicated jsdom v26 window
+// (already available via jest-environment-jsdom) and passes it to dompurify,
+// giving every test environment a fully functional DOMPurify instance.
+jest.mock("isomorphic-dompurify");
+
 // Auto-mock @/auth for all tests (Auth.js v5 migration — Issue #200)
 // Tests that need to control the session should override via:
 //   jest.mock("@/auth", () => ({ auth: jest.fn().mockResolvedValue(...) }))
