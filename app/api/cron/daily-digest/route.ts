@@ -13,59 +13,80 @@ import { prisma } from "@/lib/prisma";
 import { success } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { getRedisClient } from "@/lib/redis";
+import { logger } from "@/lib/logger";
+
+const LOCK_KEY = "cron:daily-digest:lock";
+const LOCK_TTL = 300; // 5 minutes
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const authError = verifyCronSecret(req);
   if (authError) return authError;
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // Find all users with unconfirmed time entries (PENDING approval) for today
-  const pendingEntries = await prisma.timeEntry.findMany({
-    where: {
-      date: { gte: today },
-      approvalStatus: "PENDING",
-      isDeleted: false,
-    },
-    select: {
-      userId: true,
-      hours: true,
-      task: { select: { title: true } },
-    },
-  });
-
-  // Group by user
-  const userMap = new Map<string, { totalHours: number; taskCount: number }>();
-  for (const entry of pendingEntries) {
-    const existing = userMap.get(entry.userId) ?? { totalHours: 0, taskCount: 0 };
-    existing.totalHours += entry.hours;
-    existing.taskCount += 1;
-    userMap.set(entry.userId, existing);
+  const redis = getRedisClient();
+  if (redis) {
+    const acquired = await redis.set(LOCK_KEY, "1", "EX", LOCK_TTL, "NX");
+    if (!acquired) {
+      logger.warn({ event: "cron_daily_digest_skipped" }, "Skipped: previous run still active");
+      return success({ skipped: true, reason: "lock_held" });
+    }
   }
 
-  // Create notifications for each user with unconfirmed entries
-  const notifications = [];
-  for (const [userId, stats] of userMap.entries()) {
-    notifications.push({
-      userId,
-      type: "TIMESHEET_REMINDER" as const,
-      title: "每日工時摘要",
-      body: `您有 ${stats.taskCount} 筆未確認工時紀錄，共 ${stats.totalHours.toFixed(1)} 小時。請至工時頁面確認。`,
-      relatedType: "DIGEST",
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    // Find all users with unconfirmed time entries (PENDING approval) for today
+    const pendingEntries = await prisma.timeEntry.findMany({
+      where: {
+        date: { gte: today },
+        approvalStatus: "PENDING",
+        isDeleted: false,
+      },
+      select: {
+        userId: true,
+        hours: true,
+        task: { select: { title: true } },
+      },
     });
-  }
 
-  let created = 0;
-  if (notifications.length > 0) {
-    const result = await prisma.notification.createMany({
-      data: notifications,
+    // Group by user
+    const userMap = new Map<string, { totalHours: number; taskCount: number }>();
+    for (const entry of pendingEntries) {
+      const existing = userMap.get(entry.userId) ?? { totalHours: 0, taskCount: 0 };
+      existing.totalHours += entry.hours;
+      existing.taskCount += 1;
+      userMap.set(entry.userId, existing);
+    }
+
+    // Create notifications for each user with unconfirmed entries
+    const notifications = [];
+    for (const [userId, stats] of userMap.entries()) {
+      notifications.push({
+        userId,
+        type: "TIMESHEET_REMINDER" as const,
+        title: "每日工時摘要",
+        body: `您有 ${stats.taskCount} 筆未確認工時紀錄，共 ${stats.totalHours.toFixed(1)} 小時。請至工時頁面確認。`,
+        relatedType: "DIGEST",
+      });
+    }
+
+    let created = 0;
+    if (notifications.length > 0) {
+      const result = await prisma.notification.createMany({
+        data: notifications,
+      });
+      created = result.count;
+    }
+
+    return success({
+      created,
+      usersNotified: userMap.size,
+      checkedAt: now.toISOString(),
     });
-    created = result.count;
+  } finally {
+    if (redis) {
+      await redis.del(LOCK_KEY).catch(() => {});
+    }
   }
-
-  return success({
-    created,
-    usersNotified: userMap.size,
-    checkedAt: now.toISOString(),
-  });
 });

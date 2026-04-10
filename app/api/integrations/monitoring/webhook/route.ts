@@ -15,8 +15,28 @@ import { validateBody } from "@/lib/validate";
 import { webhookPayloadSchema } from "@/validators/monitoring-validators";
 import { success, error } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
+import { createApiRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { getRedisClient } from "@/lib/redis";
+import { getClientIp } from "@/lib/get-client-ip";
+
+// 60 requests per minute per IP (higher than user endpoints since monitoring sends bursts)
+const redis = getRedisClient();
+const webhookLimiter = createApiRateLimiter({
+  redisClient: redis ?? undefined,
+  useMemory: !redis,
+  points: 60,
+  duration: 60,
+});
 
 export const POST = apiHandler(async (req: NextRequest) => {
+  // Rate limit first — before auth to prevent unauthenticated flood attacks
+  const ip = getClientIp(req) ?? "unknown";
+  try {
+    await checkRateLimit(webhookLimiter, `webhook_${ip}`);
+  } catch {
+    return error("RateLimitError", "Too many requests", 429);
+  }
+
   // API key auth (no user session required)
   const expectedKey = process.env.MONITORING_WEBHOOK_KEY;
   if (!expectedKey) {
