@@ -4,8 +4,10 @@ import { success } from "@/lib/api-response";
 import { DeliverableService } from "@/services/deliverable-service";
 import { AuditService } from "@/services/audit-service";
 import { withAuth, withManager } from "@/lib/auth-middleware";
-import { requireRole } from "@/lib/rbac";
+import { requireRole, requireMinRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
+import { validateBody } from "@/lib/validate";
+import { updateDeliverableSchema } from "@/validators/deliverable-validators";
 
 const auditService = new AuditService(prisma);
 
@@ -23,18 +25,29 @@ export const PATCH = withManager(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireMinRole("MANAGER");
   const { id } = await context.params;
-  const body = await req.json();
+  const raw = await req.json();
+  const body = validateBody(updateDeliverableSchema, raw);
+
+  // Server-side enforcement: acceptedBy/acceptedAt come from session, not client
+  const data: Record<string, unknown> = {
+    ...(body.status !== undefined && { status: body.status }),
+    ...(body.title !== undefined && { title: body.title }),
+    ...(body.attachmentUrl !== undefined && { attachmentUrl: body.attachmentUrl }),
+  };
+  if (body.status === "ACCEPTED") {
+    data.acceptedBy = session.user.id;
+    data.acceptedAt = new Date();
+  } else if (body.status !== undefined) {
+    // Reset acceptance when status changes away from ACCEPTED
+    data.acceptedBy = null;
+    data.acceptedAt = null;
+  }
 
   const deliverable = await prisma.deliverable.update({
     where: { id },
-    data: {
-      ...(body.status !== undefined && { status: body.status }),
-      ...(body.title !== undefined && { title: body.title }),
-      ...(body.attachmentUrl !== undefined && { attachmentUrl: body.attachmentUrl }),
-      ...(body.acceptedBy !== undefined && { acceptedBy: body.acceptedBy }),
-      ...(body.acceptedAt !== undefined && { acceptedAt: body.acceptedAt ? new Date(body.acceptedAt) : null }),
-    },
+    data,
   });
 
   return success(deliverable);

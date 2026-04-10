@@ -10,6 +10,8 @@ import { MonitoringService } from "@/services/monitoring-service";
 import { success, error } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
+import { validateBody } from "@/lib/validate";
+import { acknowledgeAlertSchema, createTaskFromAlertSchema } from "@/validators/monitoring-validators";
 
 const service = new MonitoringService(prisma);
 
@@ -19,6 +21,7 @@ export const PATCH = withAuth(async (req: NextRequest, context: { params: Promis
   const raw = await req.json();
 
   if (raw.action === "acknowledge") {
+    validateBody(acknowledgeAlertSchema, raw);
     if (session.user.role !== "MANAGER" && session.user.role !== "ADMIN") {
       return error("FORBIDDEN", "僅限管理員可確認警報", 403);
     }
@@ -27,6 +30,7 @@ export const PATCH = withAuth(async (req: NextRequest, context: { params: Promis
   }
 
   if (raw.action === "create_task") {
+    validateBody(createTaskFromAlertSchema, raw);
     const task = await service.createTaskFromAlert(id, session.user.id);
     if (!task) {
       return error("NOT_FOUND", "Alert not found", 404);

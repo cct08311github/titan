@@ -1,17 +1,17 @@
 /**
  * Feature Flags API — Issue #1328
  *
- * GET  /api/admin/feature-flags — read all flags (any authenticated user)
+ * GET  /api/admin/feature-flags — read all flags (ADMIN only)
  * PUT  /api/admin/feature-flags — update a flag (ADMIN only)
  */
 import { NextRequest } from "next/server";
 import { success } from "@/lib/api-response";
-import { withAuth, withAdmin } from "@/lib/auth-middleware";
+import { withAdmin } from "@/lib/auth-middleware";
 import { getAllFeatureFlags, setFeatureFlag, isValidFlagName } from "@/lib/feature-flags";
 import { requireAuth } from "@/lib/rbac";
 import { ValidationError } from "@/services/errors";
 
-export const GET = withAuth(async (_req: NextRequest) => {
+export const GET = withAdmin(async (_req: NextRequest) => {
   const flags = await getAllFeatureFlags();
   return success({ flags });
 });
