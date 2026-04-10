@@ -53,12 +53,16 @@ export async function requireAuth(): Promise<AuthSession> {
     throw new UnauthorizedError("未授權");
   }
 
-  // [SA C-4 web path] Check if the session has been revoked via blacklist.
-  // Without this, a web cookie stays valid for up to 15 min after logout,
-  // defeating the revocation flow in /api/auth/logout.
+  // [SA C-4 web path] Check if the session or user has been revoked via blacklist.
+  // Two key patterns:
+  //   "session:{sessionId}" — logout revokes specific session
+  //   "user:{userId}"       — suspendUser revokes ALL sessions for that user
   const sessionId = (session as { sessionId?: string }).sessionId;
   if (sessionId && await JwtBlacklist.has(`session:${sessionId}`)) {
     throw new UnauthorizedError("Session 已撤銷");
+  }
+  if (await JwtBlacklist.has(`user:${session.user.id}`)) {
+    throw new UnauthorizedError("帳號已被停用");
   }
 
   return session as AuthSession;
@@ -125,10 +129,14 @@ async function verifyMobileToken(jwe: string): Promise<AuthSession> {
     throw new UnauthorizedError("無效的存取權杖");
   }
 
-  // [SA C-4] Check if session has been revoked via blacklist
+  // [SA C-4] Check if session or user has been revoked via blacklist
   const sessionId = payload.sessionId as string | undefined;
   if (sessionId && await JwtBlacklist.has(`session:${sessionId}`)) {
     throw new UnauthorizedError("Session 已撤銷");
+  }
+  // Check user-level blacklist (set by suspendUser)
+  if (await JwtBlacklist.has(`user:${payload.id}`)) {
+    throw new UnauthorizedError("帳號已被停用");
   }
 
   return {
