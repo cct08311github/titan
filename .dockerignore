@@ -39,10 +39,8 @@ Dockerfile*
 docker-compose*.yml
 .dockerignore
 
-# Documentation
+# Documentation (keep root README for Docker image metadata)
 docs
-*.md
-!README.md
 
 # CI/CD
 .github
@@ -52,7 +50,6 @@ docs
 .claude
 .serena
 .worktrees
-scripts/generate-icons.sh
 
 # OS files
 .DS_Store
