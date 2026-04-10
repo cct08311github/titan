@@ -12,6 +12,7 @@ import { withManager } from "@/lib/auth-middleware";
 import { requireMinRole } from "@/lib/rbac";
 import { NotFoundError } from "@/services/errors";
 import { getClientIp } from "@/lib/get-client-ip";
+import { sanitizeHtml } from "@/lib/security/sanitize";
 
 export const PATCH = withManager(async (
   req: NextRequest,
@@ -22,7 +23,9 @@ export const PATCH = withManager(async (
 
   const body = await req.json();
   const flagged: boolean = body.flagged ?? true;
-  const reason: string | null = body.reason ?? null;
+  // Sanitize reason — it flows into notification body + audit log visible to other users
+  const rawReason: string | null = typeof body.reason === "string" ? body.reason.slice(0, 500) : null;
+  const reason: string | null = rawReason ? sanitizeHtml(rawReason) || null : null;
 
   // Verify task exists
   const task = await prisma.task.findUnique({

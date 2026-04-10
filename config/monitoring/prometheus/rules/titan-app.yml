@@ -1,0 +1,68 @@
+groups:
+  - name: titan-app
+    rules:
+      # ── HTTP Error Rate ──────────────────────────────────────────────────
+      - alert: HighErrorRate
+        expr: rate(titan_http_errors_total[5m]) / rate(titan_http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          scope: application
+        annotations:
+          summary: "TITAN HTTP 錯誤率 > 5%"
+          description: "TITAN 應用錯誤率 {{ $value | humanizePercentage }} 已超過 5% 並持續 5 分鐘。"
+
+      # ── API Latency ──────────────────────────────────────────────────────
+      - alert: HighLatency
+        expr: titan_http_request_duration_ms_sum / titan_http_request_duration_ms_count > 3000
+        for: 5m
+        labels:
+          severity: warning
+          scope: application
+        annotations:
+          summary: "TITAN API 回應時間 > 3s"
+          description: "TITAN API 平均回應時間 {{ $value | humanizeDuration }} 已超過 3 秒並持續 5 分鐘。"
+
+      # ── Audit Queue Backlog ──────────────────────────────────────────────
+      - alert: AuditQueueBacklog
+        expr: titan_audit_queue_depth > 1000
+        for: 10m
+        labels:
+          severity: critical
+          scope: application
+        annotations:
+          summary: "稽核佇列積壓超過 1000 筆"
+          description: "TITAN 稽核佇列深度 {{ $value }} 筆，已持續 10 分鐘未消化，可能影響合規記錄完整性。"
+
+      # ── Authentication Failures ──────────────────────────────────────────
+      - alert: HighAuthFailureRate
+        expr: rate(titan_auth_failures_total[5m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+          scope: security
+        annotations:
+          summary: "認證失敗頻率異常"
+          description: "過去 5 分鐘認證失敗次數 {{ $value | humanize }} 次/秒，可能有暴力破解攻擊。"
+
+      # ── Application Down ─────────────────────────────────────────────────
+      - alert: TitanAppDown
+        expr: up{job="titan"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          scope: application
+        annotations:
+          summary: "TITAN 應用服務不可達"
+          description: "TITAN Next.js 應用無法回應監控探測，已超過 2 分鐘。"
+
+      # ── P99 Latency ──────────────────────────────────────────────────────
+      - alert: P99LatencyHigh
+        expr: histogram_quantile(0.99, rate(titan_http_request_duration_ms_bucket[5m])) > 5000
+        for: 5m
+        labels:
+          severity: warning
+          scope: application
+        annotations:
+          summary: "TITAN P99 延遲 > 5s"
+          description: "TITAN P99 請求延遲 {{ $value | humanizeDuration }} 已超過 5 秒並持續 5 分鐘。"
