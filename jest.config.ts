@@ -39,9 +39,10 @@ const config: Config = {
     ],
   },
   // ESM-only packages — must be transformed by SWC
-  // next-auth v5, @auth/core, and Prisma 7 client runtime deps
+  // next-auth v5, @auth/core, Prisma 7 client runtime deps,
+  // and isomorphic-dompurify transitive deps (#1326)
   transformIgnorePatterns: [
-    "/node_modules/(?!(next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi|preact-render-to-string|preact|@paralleldrive|@prisma/client-engine-runtime)/)",
+    "/node_modules/(?!(next-auth|@auth/core|@panva/hkdf|jose|oauth4webapi|preact-render-to-string|preact|@paralleldrive|@prisma/client-engine-runtime|@exodus)/)",
   ],
   modulePathIgnorePatterns: ["<rootDir>/.claude/worktrees/"],
   setupFiles: ["<rootDir>/jest.polyfills.ts"],
