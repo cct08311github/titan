@@ -33,30 +33,32 @@ export const POST = apiHandler(async (req: NextRequest) => {
     }
   }
 
-  const service = new NotificationService(prisma);
-  const now = new Date();
+  try {
+    const service = new NotificationService(prisma);
+    const now = new Date();
 
-  // Get existing keys to avoid duplicates
-  const existingKeys = await service.getExistingKeys();
+    // Get existing keys to avoid duplicates
+    const existingKeys = await service.getExistingKeys();
 
-  // Build daily reminders (skips weekends internally)
-  const reminders = await service.buildDailyTimesheetReminders(now, existingKeys);
+    // Build daily reminders (skips weekends internally)
+    const reminders = await service.buildDailyTimesheetReminders(now, existingKeys);
 
-  let created = 0;
-  if (reminders.length > 0) {
-    const result = await prisma.notification.createMany({
-      data: reminders,
+    let created = 0;
+    if (reminders.length > 0) {
+      const result = await prisma.notification.createMany({
+        data: reminders,
+      });
+      created = result.count;
+    }
+
+    return success({
+      created,
+      checked: now.toISOString(),
+      isWeekend: now.getDay() === 0 || now.getDay() === 6,
     });
-    created = result.count;
+  } finally {
+    if (redis) {
+      await redis.del(LOCK_KEY).catch(() => {});
+    }
   }
-
-  if (redis) {
-    await redis.del(LOCK_KEY).catch(() => {}); // Release lock early
-  }
-
-  return success({
-    created,
-    checked: now.toISOString(),
-    isWeekend: now.getDay() === 0 || now.getDay() === 6,
-  });
 });

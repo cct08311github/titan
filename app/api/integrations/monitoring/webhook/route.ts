@@ -29,6 +29,14 @@ const webhookLimiter = createApiRateLimiter({
 });
 
 export const POST = apiHandler(async (req: NextRequest) => {
+  // Rate limit first — before auth to prevent unauthenticated flood attacks
+  const ip = getClientIp(req) ?? "unknown";
+  try {
+    await checkRateLimit(webhookLimiter, `webhook_${ip}`);
+  } catch {
+    return error("RateLimitError", "Too many requests", 429);
+  }
+
   // API key auth (no user session required)
   const expectedKey = process.env.MONITORING_WEBHOOK_KEY;
   if (!expectedKey) {
@@ -40,13 +48,6 @@ export const POST = apiHandler(async (req: NextRequest) => {
   const providedBuf = Buffer.from(token ?? "", "utf8");
   if (expectedBuf.length !== providedBuf.length || !timingSafeEqual(expectedBuf, providedBuf)) {
     return error("UNAUTHORIZED", "Invalid API key", 401);
-  }
-
-  const ip = getClientIp(req) ?? "unknown";
-  try {
-    await checkRateLimit(webhookLimiter, `webhook_${ip}`);
-  } catch {
-    return error("RateLimitError", "Too many requests", 429);
   }
 
   const raw = await req.json();

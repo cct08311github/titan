@@ -37,69 +37,71 @@ export const POST = apiHandler(async (req: NextRequest) => {
     }
   }
 
-  const now = new Date();
-  const today = now.toISOString().slice(0, 10);
+  try {
+    const now = new Date();
+    const today = now.toISOString().slice(0, 10);
 
-  // Get all documents with verification configured
-  const docs = await prisma.document.findMany({
-    where: { deletedAt: null,
-      verifyIntervalDays: { not: null },
-      verifierId: { not: null },
-    },
-    select: {
-      id: true,
-      title: true,
-      verifierId: true,
-      verifiedAt: true,
-      verifyIntervalDays: true,
-    },
-  });
-
-  // Filter to those that are due
-  const dueDocs = docs.filter((doc) => {
-    if (!doc.verifiedAt) return true; // never verified
-    const dueDate = new Date(doc.verifiedAt.getTime() + (doc.verifyIntervalDays ?? 0) * 86400000);
-    return dueDate <= now;
-  });
-
-  // Dedup: skip if same user+doc was already notified today
-  const todayStart = new Date(today + "T00:00:00.000Z");
-  const existingNotifs = await prisma.notification.findMany({
-    where: {
-      type: "VERIFICATION_DUE",
-      createdAt: { gte: todayStart },
-    },
-    select: { userId: true, relatedId: true },
-  });
-  const existingSet = new Set(existingNotifs.map((n) => `${n.userId}-${n.relatedId}`));
-
-  const newNotifications = dueDocs
-    .filter((doc) => !existingSet.has(`${doc.verifierId}-${doc.id}`))
-    .map((doc) => ({
-      userId: doc.verifierId!,
-      type: "VERIFICATION_DUE" as const,
-      title: "文件驗證到期",
-      body: `「${doc.title}」需要驗證，請確認內容是否仍然正確。`,
-      relatedId: doc.id,
-      relatedType: "Document",
-    }));
-
-  let created = 0;
-  if (newNotifications.length > 0) {
-    const result = await prisma.notification.createMany({
-      data: newNotifications,
+    // Get all documents with verification configured
+    const docs = await prisma.document.findMany({
+      where: { deletedAt: null,
+        verifyIntervalDays: { not: null },
+        verifierId: { not: null },
+      },
+      select: {
+        id: true,
+        title: true,
+        verifierId: true,
+        verifiedAt: true,
+        verifyIntervalDays: true,
+      },
     });
-    created = result.count;
-  }
 
-  if (redis) {
-    await redis.del(LOCK_KEY).catch(() => {}); // Release lock early
-  }
+    // Filter to those that are due
+    const dueDocs = docs.filter((doc) => {
+      if (!doc.verifiedAt) return true; // never verified
+      const dueDate = new Date(doc.verifiedAt.getTime() + (doc.verifyIntervalDays ?? 0) * 86400000);
+      return dueDate <= now;
+    });
 
-  return success({
-    checked: now.toISOString(),
-    totalWithVerification: docs.length,
-    dueCount: dueDocs.length,
-    notificationsCreated: created,
-  });
+    // Dedup: skip if same user+doc was already notified today
+    const todayStart = new Date(today + "T00:00:00.000Z");
+    const existingNotifs = await prisma.notification.findMany({
+      where: {
+        type: "VERIFICATION_DUE",
+        createdAt: { gte: todayStart },
+      },
+      select: { userId: true, relatedId: true },
+    });
+    const existingSet = new Set(existingNotifs.map((n) => `${n.userId}-${n.relatedId}`));
+
+    const newNotifications = dueDocs
+      .filter((doc) => !existingSet.has(`${doc.verifierId}-${doc.id}`))
+      .map((doc) => ({
+        userId: doc.verifierId!,
+        type: "VERIFICATION_DUE" as const,
+        title: "文件驗證到期",
+        body: `「${doc.title}」需要驗證，請確認內容是否仍然正確。`,
+        relatedId: doc.id,
+        relatedType: "Document",
+      }));
+
+    let created = 0;
+    if (newNotifications.length > 0) {
+      const result = await prisma.notification.createMany({
+        data: newNotifications,
+      });
+      created = result.count;
+    }
+
+    return success({
+      checked: now.toISOString(),
+      totalWithVerification: docs.length,
+      dueCount: dueDocs.length,
+      notificationsCreated: created,
+    });
+  } finally {
+    if (redis) {
+      await redis.del(LOCK_KEY).catch(() => {});
+    }
+  }
 });
