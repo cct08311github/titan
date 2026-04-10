@@ -78,12 +78,13 @@ export const POST = withManager(async (req: NextRequest) => {
       continue;
     }
 
-    const cleanTitle = sanitizeHtml(t.title.trim());
+    const cleanTitle = sanitizeHtml(t.title.trim().slice(0, 500));
     if (!cleanTitle) {
       errors.push({ index: i, title: t.title ?? "(empty)", error: "標題清洗後為空" });
       continue;
     }
     const cleanDescription = t.description ? sanitizeHtml(t.description.slice(0, 5000)) || undefined : undefined;
+    const cleanTags = (t.tags ?? []).map(tag => sanitizeHtml(String(tag).slice(0, 100))).filter(Boolean);
 
     try {
       let dueDate: Date | undefined;
@@ -103,7 +104,7 @@ export const POST = withManager(async (req: NextRequest) => {
         primaryAssigneeId: t.primaryAssigneeId ?? null,
         backupAssigneeId: t.backupAssigneeId ?? null,
         monthlyGoalId: t.monthlyGoalId ?? null,
-        tags: t.tags ?? [],
+        tags: cleanTags,
         creatorId: session.user.id,
       });
 
@@ -119,7 +120,7 @@ export const POST = withManager(async (req: NextRequest) => {
 
   return success(
     {
-      templateName: body.templateName ?? null,
+      templateName: body.templateName ? sanitizeHtml(String(body.templateName).slice(0, 200)) || null : null,
       created: created.length,
       failed: errors.length,
       tasks: created,

@@ -41,7 +41,7 @@ export const POST = withAuth(async (
     return error("ValidationError", "outlineDocumentId 和 title 為必填", 400);
   }
 
-  const rawTitle = typeof body.title === "string" ? body.title.trim() : "";
+  const rawTitle = typeof body.title === "string" ? body.title.trim().slice(0, 500) : "";
   const title = sanitizeHtml(rawTitle);
   if (!title) {
     return error("ValidationError", "標題不可為空", 400);

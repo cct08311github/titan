@@ -122,7 +122,9 @@ export const POST = withAuth(async (req: NextRequest) => {
     }
   }
 
-  const sanitizedReason = reason ? sanitizeHtml(reason.slice(0, 1000)) || null : null;
+  const sanitizedReason = typeof reason === "string" && reason.trim()
+    ? sanitizeHtml(reason.slice(0, 1000)) || null
+    : null;
 
   const approval = await prisma.approvalRequest.create({
     data: {
@@ -181,7 +183,9 @@ export const PATCH = withManager(async (req: NextRequest) => {
     return error("ConflictError", "Only PENDING requests can be reviewed", 409);
   }
 
-  const sanitizedNote = reviewNote ? sanitizeHtml(reviewNote.slice(0, 1000)) || null : null;
+  const sanitizedNote = typeof reviewNote === "string" && reviewNote.trim()
+    ? sanitizeHtml(reviewNote.slice(0, 1000)) || null
+    : null;
 
   const updated = await prisma.approvalRequest.update({
     where: { id },

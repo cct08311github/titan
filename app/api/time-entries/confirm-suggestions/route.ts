@@ -58,7 +58,9 @@ export const POST = withAuth(async (req: NextRequest) => {
           date: new Date(item.date),
           hours: Math.round(item.hours * 100) / 100, // 2 decimal precision
           category: (item.category as TimeCategory) ?? "PLANNED_TASK",
-          description: item.description ? sanitizeHtml(item.description.slice(0, 500)) : "自動建議確認",
+          description: item.description
+            ? sanitizeHtml(item.description.slice(0, 500)) || "自動建議確認"
+            : "自動建議確認",
         },
       })
     )
