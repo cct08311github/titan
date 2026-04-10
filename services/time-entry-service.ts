@@ -99,10 +99,19 @@ export class TimeEntryService {
 
     if (filter.taskId) where.taskId = filter.taskId;
     if (filter.dateFrom || filter.dateTo) {
-      where.date = {
-        ...(filter.dateFrom && { gte: new Date(filter.dateFrom) }),
-        ...(filter.dateTo && { lte: new Date(filter.dateTo) }),
-      };
+      const dateFilter: Record<string, Date> = {};
+      if (filter.dateFrom) {
+        const fromDate = new Date(filter.dateFrom);
+        if (!isNaN(fromDate.getTime())) dateFilter.gte = fromDate;
+      }
+      if (filter.dateTo) {
+        const endDate = new Date(filter.dateTo);
+        if (!isNaN(endDate.getTime())) {
+          endDate.setHours(23, 59, 59, 999);
+          dateFilter.lte = endDate;
+        }
+      }
+      where.date = dateFilter;
     }
 
     where.isDeleted = false;

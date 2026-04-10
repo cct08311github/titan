@@ -61,6 +61,17 @@ export function validateEnv(): void {
     }
   }
 
+  // CRON_SECRET is required in production
+  if (process.env.NODE_ENV === "production") {
+    const cronSecretSet =
+      process.env.CRON_SECRET && process.env.CRON_SECRET.trim() !== "";
+    if (!cronSecretSet) {
+      missing.push(
+        "  - Cron job secret (CRON_SECRET) — required in production [CRON_SECRET]"
+      );
+    }
+  }
+
   if (missing.length > 0) {
     const message = [
       "",

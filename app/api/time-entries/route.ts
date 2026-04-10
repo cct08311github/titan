@@ -9,6 +9,7 @@ import { validateDailyLimit } from "@/validators/shared/time-entry";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { parsePagination, buildPaginationMeta } from "@/lib/pagination";
 
 const READ_ALL_ROLES = new Set(["MANAGER", "ADMIN"]);
 
@@ -21,6 +22,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const { searchParams } = new URL(req.url);
   const requestedUserId = searchParams.get("userId");
   const weekStart = searchParams.get("weekStart");
+  const pagination = parsePagination(searchParams);
 
   // IDOR: non-privileged callers can only query their own entries.
   if (requestedUserId && requestedUserId !== callerId && !READ_ALL_ROLES.has(callerRole)) {
@@ -45,27 +47,35 @@ export const GET = withAuth(async (req: NextRequest) => {
   // Issue #940: defensive try — if subTask relation is unavailable (e.g. pending
   // migration), fall back to a query without the subTask include so the API
   // never returns 500 for a missing column.
-  let entries;
-  try {
-    entries = await prisma.timeEntry.findMany({
-      where,
-      include: {
-        task: { select: { id: true, title: true, category: true } },
-        subTask: { select: { id: true, title: true } },  // Issue #933
-      },
-      orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-    });
-  } catch {
-    entries = await prisma.timeEntry.findMany({
-      where,
-      include: {
-        task: { select: { id: true, title: true, category: true } },
-      },
-      orderBy: [{ date: "asc" }, { createdAt: "asc" }],
-    });
-  }
+  const [total, entries] = await Promise.all([
+    prisma.timeEntry.count({ where }),
+    (async () => {
+      try {
+        return await prisma.timeEntry.findMany({
+          where,
+          include: {
+            task: { select: { id: true, title: true, category: true } },
+            subTask: { select: { id: true, title: true } },  // Issue #933
+          },
+          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+          skip: pagination.skip,
+          take: pagination.limit,
+        });
+      } catch {
+        return prisma.timeEntry.findMany({
+          where,
+          include: {
+            task: { select: { id: true, title: true, category: true } },
+          },
+          orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+          skip: pagination.skip,
+          take: pagination.limit,
+        });
+      }
+    })(),
+  ]);
 
-  return success(entries);
+  return success({ items: entries, pagination: buildPaginationMeta(total, pagination) });
 });
 
 export const POST = withAuth(async (req: NextRequest) => {
