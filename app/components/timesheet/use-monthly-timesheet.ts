@@ -340,8 +340,14 @@ export function useMonthlyTimesheet() {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function escapeCSV(value: string): string {
-  if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-    return `"${value.replace(/"/g, '""')}"`;
+  // CSV-injection defense: neutralize formula prefix at start of cell.
+  // Excel/LibreOffice auto-evaluate =, +, -, @ → can lead to RCE / data exfil.
+  let str = value;
+  if (str.length > 0 && (str[0] === "=" || str[0] === "+" || str[0] === "-" || str[0] === "@" || str[0] === "\t" || str[0] === "\r")) {
+    str = "\t" + str;
   }
-  return value;
+  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
 }

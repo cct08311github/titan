@@ -253,8 +253,14 @@ interface CsvColumn {
  * Handles quoting for values containing commas, quotes, or newlines.
  */
 function generateCsv(rows: Record<string, unknown>[], columns: CsvColumn[]): string {
+  // CSV-injection defense: neutralize cells starting with formula triggers.
+  // Excel/LibreOffice auto-evaluate =cmd|'/c calc'!A1 → RCE.
+  const FORMULA_PREFIXES = new Set(["=", "+", "-", "@", "\t", "\r"]);
   const escapeCsvField = (value: unknown): string => {
-    const str = value == null ? "" : String(value);
+    let str = value == null ? "" : String(value);
+    if (str.length > 0 && FORMULA_PREFIXES.has(str[0])) {
+      str = "\t" + str;
+    }
     // Quote fields that contain comma, double-quote, or newline
     if (str.includes(",") || str.includes('"') || str.includes("\n")) {
       return `"${str.replace(/"/g, '""')}"`;

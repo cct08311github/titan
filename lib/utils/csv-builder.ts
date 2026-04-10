@@ -14,11 +14,30 @@ export interface CsvColumn {
 }
 
 /**
- * Escape a CSV field value according to RFC 4180.
- * Quotes fields containing commas, double-quotes, or newlines.
+ * Characters that Excel/LibreOffice/Numbers interpret as formula prefix
+ * when found at the start of a cell. An attacker who controls a CSV cell
+ * can inject formulas like =cmd|'/c calc'!A1 or =HYPERLINK("evil.com").
+ *
+ * Mitigation: prefix the cell with a single tab, which Excel renders as
+ * empty and a sane importer ignores. Per OWASP CSV-Injection prevention.
+ */
+const FORMULA_PREFIXES = ["=", "+", "-", "@", "\t", "\r"];
+
+/**
+ * Escape a CSV field value according to RFC 4180 plus CSV-injection
+ * prevention (OWASP).
+ *
+ * - Prefixes formula triggers (= + - @) with a tab to neutralize.
+ * - Quotes fields containing commas, double-quotes, or newlines.
  */
 export function escapeCsvField(value: unknown): string {
-  const str = value == null ? "" : String(value);
+  let str = value == null ? "" : String(value);
+
+  // CSV-injection defense: neutralize formula prefix at start of cell.
+  if (str.length > 0 && FORMULA_PREFIXES.includes(str[0])) {
+    str = "\t" + str;
+  }
+
   if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
     return `"${str.replace(/"/g, '""')}"`;
   }
