@@ -23,7 +23,7 @@ export const createTaskFromAlertSchema = z.object({
 });
 
 export const kpiHistorySchema = z.object({
-  actual: z.number(),
+  actual: z.number().finite().min(-1e9).max(1e9),  // guard against Infinity/NaN/overflow
   period: z.string().regex(/^\d{4}-\d{2}$/),
   source: z.string().max(500).optional(),
 });

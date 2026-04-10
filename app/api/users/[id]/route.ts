@@ -82,7 +82,9 @@ export const PATCH = withAuth(async (
     );
   }
 
-  const cleanName = sanitizeHtml(rawName);
+  const cleanName = sanitizeHtml(rawName)
+    .replace(/[\u200B-\u200D\uFEFF\u00AD\u2060\u180E]/g, "")
+    .trim();
   if (!cleanName) {
     return error("ValidationError", "姓名不可為空", 400);
   }
