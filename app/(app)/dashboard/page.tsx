@@ -22,6 +22,7 @@ import { safeFixed } from "@/lib/safe-number";
 import Link from "next/link";
 import { StaleTaskWidget } from "@/app/components/stale-task-widget";
 import ManagerTodayCard from "@/app/components/dashboard/manager-today-card";
+import WidgetSettings, { DEFAULT_WIDGETS, type WidgetConfig } from "@/app/components/dashboard/widget-settings";
 
 // ── Skeleton loader ─────────────────────────────────────────────────────
 
@@ -239,7 +240,7 @@ function MyProjectsCard() {
 
 // ── Engineer My Day ─────────────────────────────────────────────────────
 
-function EngineerMyDay({ data }: { data: EngineerData }) {
+function EngineerMyDay({ data, isVisible }: { data: EngineerData; isVisible: (id: string) => boolean }) {
   const hoursPct = Math.min((data.todayHours / data.dailyTarget) * 100, 100);
 
   return (
@@ -247,7 +248,7 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
       {/* Left column — Task sections */}
       <div className="space-y-4">
         {/* Flagged tasks (red top) — always reserve space to prevent CLS (#1149) */}
-        {data.flaggedTasks.length > 0 ? (
+        {isVisible("flagged-tasks") && data.flaggedTasks.length > 0 ? (
           <div className="bg-card rounded-xl shadow-card p-5 border-l-[3px] border-l-red-500">
             <h2 className="text-sm font-medium mb-3 flex items-center gap-2 text-red-600 dark:text-red-400">
               <Flame className="h-4 w-4 fill-current" />
@@ -262,43 +263,48 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
         ) : null}
 
         {/* Due today (yellow) */}
-        <div className="bg-card rounded-xl shadow-card p-5">
-          <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-yellow-500" />
-            今日到期
-            <span className="text-xs text-muted-foreground font-normal">({data.dueTodayTasks.length})</span>
-          </h2>
-          {data.dueTodayTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-2">今天沒有到期任務</p>
-          ) : (
-            <div className="space-y-2">
-              {data.dueTodayTasks.map((t) => (
-                <TaskRow key={t.id} task={t} />
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Due today (yellow) */}
+        {isVisible("due-today") && (
+          <div className="bg-card rounded-xl shadow-card p-5">
+            <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-yellow-500" />
+              今日到期
+              <span className="text-xs text-muted-foreground font-normal">({data.dueTodayTasks.length})</span>
+            </h2>
+            {data.dueTodayTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">今天沒有到期任務</p>
+            ) : (
+              <div className="space-y-2">
+                {data.dueTodayTasks.map((t) => (
+                  <TaskRow key={t.id} task={t} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* In progress */}
-        <div className="bg-card rounded-xl shadow-card p-5">
-          <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-500" />
-            進行中
-            <span className="text-xs text-muted-foreground font-normal">({data.inProgressTasks.length})</span>
-          </h2>
-          {data.inProgressTasks.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-2">目前沒有進行中的任務</p>
-          ) : (
-            <div className="space-y-2">
-              {data.inProgressTasks.map((t) => (
-                <TaskRow key={t.id} task={t} />
-              ))}
-            </div>
-          )}
-        </div>
+        {isVisible("in-progress") && (
+          <div className="bg-card rounded-xl shadow-card p-5">
+            <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-blue-500" />
+              進行中
+              <span className="text-xs text-muted-foreground font-normal">({data.inProgressTasks.length})</span>
+            </h2>
+            {data.inProgressTasks.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">目前沒有進行中的任務</p>
+            ) : (
+              <div className="space-y-2">
+                {data.inProgressTasks.map((t) => (
+                  <TaskRow key={t.id} task={t} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Time suggestions */}
-        {data.timeSuggestions.length > 0 && (
+        {isVisible("time-suggestions") && data.timeSuggestions.length > 0 && (
           <div className="bg-card rounded-xl shadow-card p-5">
             <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
               <Clock className="h-4 w-4 text-purple-500" />
@@ -319,7 +325,7 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
       {/* Right column — Info panels */}
       <div className="space-y-4">
         {/* Today hours summary */}
-        <div className="bg-card rounded-xl shadow-card p-5">
+        {isVisible("today-hours") && <div className="bg-card rounded-xl shadow-card p-5">
           <h2 className="text-sm font-medium mb-3">今日工時</h2>
           <div className="text-2xl font-semibold tabular-nums">
             {safeFixed(data.todayHours, 1)}h <span className="text-sm text-muted-foreground font-normal">/ {data.dailyTarget}h</span>
@@ -339,10 +345,10 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
               尚未記錄任何工時
             </p>
           )}
-        </div>
+        </div>}
 
         {/* Monthly goals */}
-        {data.monthlyGoals.length > 0 && (
+        {isVisible("monthly-goals") && data.monthlyGoals.length > 0 && (
           <div className="bg-card rounded-xl shadow-card p-5">
             <h2 className="text-sm font-medium mb-3 flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
@@ -371,10 +377,10 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
         )}
 
         {/* My projects — Issue #1176 */}
-        <MyProjectsCard />
+        {isVisible("my-projects") && <MyProjectsCard />}
 
         {/* Stale task widget — Issue #1312 */}
-        <StaleTaskWidget role="ENGINEER" />
+        {isVisible("stale-tasks") && <StaleTaskWidget role="ENGINEER" />}
       </div>
     </div>
   );
@@ -382,7 +388,7 @@ function EngineerMyDay({ data }: { data: EngineerData }) {
 
 // ── Manager My Day ──────────────────────────────────────────────────────
 
-function ManagerMyDay({ data }: { data: ManagerData }) {
+function ManagerMyDay({ data, isVisible }: { data: ManagerData; isVisible: (id: string) => boolean }) {
   return (
     <div className="space-y-6">
       {/* 今日必辦 — Issue #1323: first thing a manager sees */}
@@ -485,7 +491,7 @@ function ManagerMyDay({ data }: { data: ManagerData }) {
         {/* Right — Workload + plan summaries + stale tasks */}
         <div className="space-y-4">
           {/* Stale task widget — Issue #1312 */}
-          <StaleTaskWidget role={data.role as "ADMIN" | "MANAGER" | "ENGINEER"} />
+          {isVisible("stale-tasks") && <StaleTaskWidget role={data.role as "ADMIN" | "MANAGER" | "ENGINEER"} />}
 
           {/* Plan summaries */}
           {data.planSummaries.length > 0 && (
@@ -608,6 +614,13 @@ export default function DashboardPage() {
   const [data, setData] = useState<MyDayData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(DEFAULT_WIDGETS);
+
+  // Helper: check if a specific widget is visible
+  const isVisible = (id: string) => {
+    const w = widgets.find((x) => x.id === id);
+    return w ? w.visible : true;
+  };
 
   const isManager = session?.user?.role === "MANAGER" || session?.user?.role === "ADMIN";
 
@@ -673,11 +686,14 @@ export default function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       {/* Header */}
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight" suppressHydrationWarning>
-          {greeting}，{userName}
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight" suppressHydrationWarning>
+            {greeting}，{userName}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
+        </div>
+        <WidgetSettings onChange={setWidgets} />
       </div>
 
       {/* Tabs — only shown for Manager/Admin */}
@@ -703,9 +719,9 @@ export default function DashboardPage() {
         ) : !data ? (
           <PageEmpty title="尚無資料" description="無法載入 My Day 資料" />
         ) : data.role === "MANAGER" ? (
-          <ManagerMyDay data={data} />
+          <ManagerMyDay data={data} isVisible={isVisible} />
         ) : (
-          <EngineerMyDay data={data} />
+          <EngineerMyDay data={data} isVisible={isVisible} />
         )}
       </div>
     </div>
