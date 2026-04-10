@@ -41,11 +41,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "message required" }, { status: 400 });
     }
 
+    // Cap each field to prevent log-flood DoS via giant payloads.
     const detail = JSON.stringify({
       message: String(message).slice(0, 2000),
-      digest: digest ?? null,
-      source: source ?? "unknown",
-      url: url ?? null,
+      digest: digest ? String(digest).slice(0, 200) : null,
+      source: source ? String(source).slice(0, 100) : "unknown",
+      url: url ? String(url).slice(0, 500) : null,
       userAgent: req.headers.get("user-agent")?.slice(0, 500) ?? null,
     });
 
