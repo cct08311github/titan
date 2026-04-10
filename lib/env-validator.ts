@@ -32,6 +32,10 @@ const REQUIRED_ENV: EnvRule[] = [
  */
 const OPTIONAL_ENV: EnvRule[] = [
   {
+    keys: ["CRON_SECRET"],
+    label: "Cron job secret (CRON_SECRET) — required in production to authenticate cron API routes",
+  },
+  {
     keys: ["REDIS_URL"],
     label: "Redis connection URL (REDIS_URL) — required for rate limiting, session limiter, JWT blacklist",
   },
@@ -58,6 +62,17 @@ export function validateEnv(): void {
     );
     if (!found) {
       missing.push(`  - ${rule.label} [${rule.keys.join(" | ")}]`);
+    }
+  }
+
+  // CRON_SECRET is required in production
+  if (process.env.NODE_ENV === "production") {
+    const cronSecretSet =
+      process.env.CRON_SECRET && process.env.CRON_SECRET.trim() !== "";
+    if (!cronSecretSet) {
+      missing.push(
+        "  - Cron job secret (CRON_SECRET) — required in production [CRON_SECRET]"
+      );
     }
   }
 

@@ -44,7 +44,7 @@ export const GET = withManager(async (req: NextRequest) => {
   // Get all active users (not just those with entries)
   const allUsers = await prisma.user.findMany({
     where: { isActive: true },
-    select: { id: true, name: true, email: true },
+    select: { id: true, name: true, email: true, role: true, isActive: true },
   });
 
   const CATS = ["PLANNED_TASK", "ADDED_TASK", "INCIDENT", "SUPPORT", "ADMIN", "LEARNING"] as const;

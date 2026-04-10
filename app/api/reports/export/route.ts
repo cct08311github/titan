@@ -9,6 +9,8 @@ import { parseYear } from "@/lib/query-params";
 
 const exportService = new ExportService();
 
+const MAX_EXPORT_ROWS = 10000;
+
 export const GET = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
   const { searchParams } = new URL(req.url);
@@ -47,6 +49,7 @@ export const GET = withAuth(async (req: NextRequest) => {
         primaryAssignee: { select: { id: true, name: true } },
       },
       orderBy: { updatedAt: "desc" },
+      take: MAX_EXPORT_ROWS,
     });
 
     const timeEntryFilter = isManager
@@ -56,6 +59,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     const timeEntries = await prisma.timeEntry.findMany({
       where: timeEntryFilter,
       select: { hours: true, category: true },
+      take: MAX_EXPORT_ROWS,
     });
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
     const hoursByCategory = timeEntries.reduce((acc, e) => {
@@ -94,6 +98,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       },
       select: { id: true, title: true, status: true, priority: true, dueDate: true },
       orderBy: { updatedAt: "desc" },
+      take: MAX_EXPORT_ROWS,
     });
 
     const doneTasks = tasks.filter((t) => t.status === "DONE").length;
@@ -120,6 +125,7 @@ export const GET = withAuth(async (req: NextRequest) => {
         },
       },
       orderBy: { code: "asc" },
+      take: MAX_EXPORT_ROWS,
     });
 
     const kpisWithAchievement = kpis.map((kpi) => ({
@@ -165,6 +171,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     const timeEntries = await prisma.timeEntry.findMany({
       where: timeEntryFilter,
       include: { user: { select: { id: true, name: true } } },
+      take: MAX_EXPORT_ROWS,
     });
 
     const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
