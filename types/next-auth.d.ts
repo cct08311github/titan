@@ -17,6 +17,10 @@ declare module "next-auth" {
       passwordChangedAt?: string | null; // Issue #834: password expiry tracking
       hasCompletedOnboarding?: boolean;  // Issue #1315: onboarding flow
     } & DefaultSession["user"];
+    // Issue #184: propagated from JWT so requireAuth() can check the
+    // web-session blacklist (T1352 follow-up — web path had no revocation
+    // enforcement until the JWT expired naturally).
+    sessionId?: string;
   }
 
   interface User {

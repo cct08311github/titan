@@ -221,6 +221,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.mustChangePassword = token.mustChangePassword as boolean;
         session.user.passwordChangedAt = (token.passwordChangedAt as string) ?? null;
         session.user.hasCompletedOnboarding = (token.hasCompletedOnboarding as boolean) ?? false; // Issue #1315
+        // Propagate sessionId so requireAuth() can enforce JWT blacklist on web path
+        (session as { sessionId?: string }).sessionId = (token as { sessionId?: string }).sessionId;
       }
       return session;
     },

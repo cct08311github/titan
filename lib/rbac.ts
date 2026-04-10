@@ -51,6 +51,15 @@ export async function requireAuth(): Promise<AuthSession> {
   if (!session || !session.user) {
     throw new UnauthorizedError("未授權");
   }
+
+  // [SA C-4 web path] Check if the session has been revoked via blacklist.
+  // Without this, a web cookie stays valid for up to 15 min after logout,
+  // defeating the revocation flow in /api/auth/logout.
+  const sessionId = (session as { sessionId?: string }).sessionId;
+  if (sessionId && await JwtBlacklist.has(`session:${sessionId}`)) {
+    throw new UnauthorizedError("Session 已撤銷");
+  }
+
   return session as AuthSession;
 }
 
