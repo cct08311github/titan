@@ -54,31 +54,36 @@ export class AutoRollupService {
   /**
    * Recalculate MonthlyGoal.progressPct based on task completion ratio.
    * Formula: (done tasks / total tasks) * 100
+   *
+   * Wrapped in a $transaction so concurrent calls for the same goal
+   * serialize at DB level and cannot produce a stale read+write race — Issue #1286.
    */
   async recalculateGoalProgress(goalId: string): Promise<number> {
-    const tasks = await this.prisma.task.findMany({
-      where: { monthlyGoalId: goalId },
-      select: { status: true },
-    });
-
-    if (tasks.length === 0) {
-      // No tasks — keep progress at 0
-      await this.prisma.monthlyGoal.update({
-        where: { id: goalId },
-        data: { progressPct: 0 },
+    return this.prisma.$transaction(async (tx) => {
+      const tasks = await tx.task.findMany({
+        where: { monthlyGoalId: goalId },
+        select: { status: true },
       });
-      return 0;
-    }
 
-    const doneCount = tasks.filter((t) => t.status === "DONE").length;
-    const progressPct = Math.round((doneCount / tasks.length) * 10000) / 100; // 2 decimal places
+      if (tasks.length === 0) {
+        // No tasks — keep progress at 0
+        await tx.monthlyGoal.update({
+          where: { id: goalId },
+          data: { progressPct: 0 },
+        });
+        return 0;
+      }
 
-    await this.prisma.monthlyGoal.update({
-      where: { id: goalId },
-      data: { progressPct },
+      const doneCount = tasks.filter((t) => t.status === "DONE").length;
+      const progressPct = Math.round((doneCount / tasks.length) * 10000) / 100; // 2 decimal places
+
+      await tx.monthlyGoal.update({
+        where: { id: goalId },
+        data: { progressPct },
+      });
+
+      return progressPct;
     });
-
-    return progressPct;
   }
 
   /**
