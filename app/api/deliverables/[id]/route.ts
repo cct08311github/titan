@@ -6,6 +6,8 @@ import { AuditService } from "@/services/audit-service";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { getClientIp } from "@/lib/get-client-ip";
+import { validateBody } from "@/lib/validate";
+import { updateDeliverableSchema } from "@/validators/deliverable-validators";
 
 const auditService = new AuditService(prisma);
 
@@ -24,7 +26,8 @@ export const PATCH = withManager(async (
   context: { params: Promise<Record<string, string>> }
 ) => {
   const { id } = await context.params;
-  const body = await req.json();
+  const raw = await req.json();
+  const body = validateBody(updateDeliverableSchema, raw);
 
   const deliverable = await prisma.deliverable.update({
     where: { id },

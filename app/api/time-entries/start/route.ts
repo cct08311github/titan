@@ -5,12 +5,20 @@
  * Returns 409 if the user already has a running timer.
  */
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { TimeCategory } from "@prisma/client";
 import { ConflictError } from "@/services/errors";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { validateBody } from "@/lib/validate";
+
+const startTimerSchema = z.object({
+  taskId: z.string().min(1).optional(),
+  category: z.enum(["PLANNED_TASK", "ADDED_TASK", "INCIDENT", "SUPPORT", "ADMIN", "LEARNING"]).optional(),
+  description: z.string().max(500).optional(),
+});
 
 export const POST = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
@@ -31,7 +39,8 @@ export const POST = withAuth(async (req: NextRequest) => {
   let description: string | null = null;
 
   try {
-    const body = await req.json();
+    const raw = await req.json();
+    const body = validateBody(startTimerSchema, raw);
     if (body.taskId) taskId = body.taskId;
     if (body.category) category = body.category as TimeCategory;
     if (body.description) description = body.description;
