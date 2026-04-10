@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { createApiRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { getRedisClient } from "@/lib/redis";
 import { getClientIp } from "@/lib/get-client-ip";
 import { logger } from "@/lib/logger";
+import { success, error } from "@/lib/api-response";
 
 // Issue #1217: rate limit feedback submissions (5 per minute per IP)
 const redis = getRedisClient();
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     await checkRateLimit(feedbackLimiter, `feedback_${ip}`);
   } catch {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return error("RateLimitError", "Too many requests", 429);
   }
 
   try {
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     const { message } = body as { message?: string };
 
     if (!message || typeof message !== "string" || !message.trim()) {
-      return NextResponse.json({ error: "message required" }, { status: 400 });
+      return error("ValidationError", "message required", 400);
     }
 
     // Log feedback — practical approach without requiring DB migration
@@ -47,8 +48,8 @@ export async function POST(req: NextRequest) {
       timestamp: new Date().toISOString(),
     });
 
-    return NextResponse.json({ ok: true });
+    return success({ ok: true });
   } catch {
-    return NextResponse.json({ error: "Internal error" }, { status: 500 });
+    return error("InternalError", "Internal error", 500);
   }
 }

@@ -7,6 +7,7 @@
  * Issue #863: External Monitoring Integration
  */
 
+import { timingSafeEqual } from "crypto";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MonitoringService } from "@/services/monitoring-service";
@@ -23,7 +24,9 @@ export const POST = apiHandler(async (req: NextRequest) => {
   }
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.replace(/^Bearer\s+/i, "");
-  if (token !== expectedKey) {
+  const expectedBuf = Buffer.from(expectedKey ?? "", "utf8");
+  const providedBuf = Buffer.from(token ?? "", "utf8");
+  if (expectedBuf.length !== providedBuf.length || !timingSafeEqual(expectedBuf, providedBuf)) {
     return error("UNAUTHORIZED", "Invalid API key", 401);
   }
 

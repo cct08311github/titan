@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { logger } from "@/lib/logger";
 import { createApiRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { getRedisClient } from "@/lib/redis";
 import { getClientIp } from "@/lib/get-client-ip";
+import { success, error } from "@/lib/api-response";
 
 // Issue #1217: rate limit unauthenticated error reports (10 per minute per IP)
 const redis = getRedisClient();
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
   try {
     await checkRateLimit(errorReportLimiter, `error_report_${ip}`);
   } catch {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return error("RateLimitError", "Too many requests", 429);
   }
 
   try {
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     };
 
     if (!message) {
-      return NextResponse.json({ error: "message required" }, { status: 400 });
+      return error("ValidationError", "message required", 400);
     }
 
     // Cap each field to prevent log-flood DoS via giant payloads.
@@ -63,9 +64,9 @@ export async function POST(req: NextRequest) {
 
     logger.warn({ source, url, digest }, `Frontend error: ${String(message).slice(0, 200)}`);
 
-    return NextResponse.json({ ok: true });
+    return success({ ok: true });
   } catch (err) {
     logger.error({ err }, "Failed to persist error report");
-    return NextResponse.json({ error: "internal" }, { status: 500 });
+    return error("InternalError", "internal", 500);
   }
 }
