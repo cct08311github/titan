@@ -41,8 +41,26 @@ export const DEFAULT_LDAP_CONFIG: LdapConfig = {
 /**
  * Build LDAP config from environment variables.
  * Falls back to DEFAULT_LDAP_CONFIG for missing values.
+ *
+ * If LDAP_URL is set (indicating LDAP is intended), validates that
+ * critical env vars (BIND_DN, BIND_PASSWORD, BASE_DN) are also present.
+ * Throws at startup to prevent silent fallback to insecure defaults.
  */
 export function getLdapConfig(): LdapConfig {
+  // Issue #1331: fail-fast if LDAP partially configured
+  if (process.env.LDAP_URL) {
+    const missing: string[] = [];
+    if (!process.env.LDAP_BIND_DN) missing.push("LDAP_BIND_DN");
+    if (!process.env.LDAP_BIND_PASSWORD) missing.push("LDAP_BIND_PASSWORD");
+    if (!process.env.LDAP_BASE_DN) missing.push("LDAP_BASE_DN");
+    if (missing.length > 0) {
+      throw new Error(
+        `LDAP_URL is set but required env vars are missing: ${missing.join(", ")}. ` +
+        `Either set all LDAP vars or remove LDAP_URL to disable LDAP.`
+      );
+    }
+  }
+
   return {
     url: process.env.LDAP_URL || DEFAULT_LDAP_CONFIG.url,
     bindDn: process.env.LDAP_BIND_DN || DEFAULT_LDAP_CONFIG.bindDn,
