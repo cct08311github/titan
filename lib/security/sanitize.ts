@@ -7,11 +7,21 @@
  * Works on both server (jsdom) and client (native DOM).
  */
 
-import DOMPurify from "isomorphic-dompurify";
-import type { Config } from "dompurify";
+// Lazy-load isomorphic-dompurify to avoid jsdom initialization at build time.
+// Next.js evaluates imports during SSG/prerender — jsdom tries to load browser
+// CSS files that don't exist in the build environment.
+let _purify: typeof import("isomorphic-dompurify").default | null = null;
+
+function getPurify() {
+  if (!_purify) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _purify = require("isomorphic-dompurify").default;
+  }
+  return _purify!;
+}
 
 /** DOMPurify config matching the existing allowlist behavior */
-const PURIFY_CONFIG: Config = {
+const PURIFY_CONFIG = {
   ALLOWED_TAGS: [
     "h1", "h2", "h3", "h4", "h5", "h6",
     "p", "br", "hr",
@@ -44,7 +54,7 @@ const PURIFY_CONFIG: Config = {
  */
 export function sanitizeHtml(html: string): string {
   if (!html) return "";
-  return DOMPurify.sanitize(html, PURIFY_CONFIG) as string;
+  return getPurify().sanitize(html, PURIFY_CONFIG) as string;
 }
 
 /**
@@ -55,7 +65,7 @@ export function sanitizeHtml(html: string): string {
  */
 export function sanitizeMarkdown(md: string): string {
   if (!md) return "";
-  return DOMPurify.sanitize(md, {
+  return getPurify().sanitize(md, {
     ...PURIFY_CONFIG,
     // In Markdown source mode, strip img tags (tracking pixel risk)
     FORBID_TAGS: ["img"],
