@@ -10,9 +10,9 @@
  * production behaviour (same dompurify, same config).
  */
 import { JSDOM } from "jsdom";
-import createDOMPurify from "dompurify";
+import createDOMPurify, { type WindowLike } from "dompurify";
 
-const window = new JSDOM("<!DOCTYPE html>").window as unknown as Window;
+const window = new JSDOM("<!DOCTYPE html>").window as unknown as WindowLike;
 const DOMPurify = createDOMPurify(window);
 
 // Named exports matching isomorphic-dompurify's public surface

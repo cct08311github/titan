@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bell, CheckCheck, X } from "lucide-react";
+import { Bell, CheckCheck, X, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData } from "@/lib/api-client";
@@ -34,6 +34,8 @@ const TYPE_LABELS: Record<string, string> = {
   BACKUP_ACTIVATED: "B 角啟動",
   TASK_CHANGED: "任務變更",
   DELIVERABLE_PENDING: "交付項待辦",
+  SYSTEM_CRITICAL: "系統嚴重告警",
+  SYSTEM_WARNING: "系統警告",
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -45,7 +47,53 @@ const TYPE_COLORS: Record<string, string> = {
   BACKUP_ACTIVATED: "bg-orange-500",
   TASK_CHANGED: "bg-cyan-500",
   DELIVERABLE_PENDING: "bg-pink-500",
+  SYSTEM_CRITICAL: "bg-red-600",
+  SYSTEM_WARNING: "bg-amber-500",
 };
+
+type NotificationFilter = "ALL" | "OVERDUE" | "DUE_SOON" | "ASSIGNED" | "COMMENTS" | "SYSTEM";
+
+const FILTER_OPTIONS: { value: NotificationFilter; label: string }[] = [
+  { value: "ALL", label: "全部" },
+  { value: "OVERDUE", label: "逾期" },
+  { value: "DUE_SOON", label: "即將到期" },
+  { value: "ASSIGNED", label: "指派" },
+  { value: "COMMENTS", label: "留言" },
+  { value: "SYSTEM", label: "系統" },
+];
+
+const FILTER_TYPE_MAP: Record<NotificationFilter, string[]> = {
+  ALL: [],
+  OVERDUE: ["TASK_OVERDUE"],
+  DUE_SOON: ["TASK_DUE_SOON", "MILESTONE_DUE", "DELIVERABLE_PENDING"],
+  ASSIGNED: ["TASK_ASSIGNED", "BACKUP_ACTIVATED", "TASK_CHANGED"],
+  COMMENTS: ["TASK_COMMENTED"],
+  SYSTEM: ["SYSTEM_CRITICAL", "SYSTEM_WARNING"],
+};
+
+/** Lower number = higher priority for "urgent first" sort. */
+const PRIORITY_ORDER: Record<string, number> = {
+  SYSTEM_CRITICAL: 0,
+  SYSTEM_WARNING: 1,
+  TASK_OVERDUE: 2,
+  TASK_ASSIGNED: 3,
+  TASK_DUE_SOON: 4,
+  MILESTONE_DUE: 5,
+  DELIVERABLE_PENDING: 6,
+  TASK_CHANGED: 7,
+  BACKUP_ACTIVATED: 8,
+  TASK_COMMENTED: 9,
+};
+
+function getStoredFilter(): NotificationFilter {
+  if (typeof window === "undefined") return "ALL";
+  return (localStorage.getItem("titan-notif-filter") as NotificationFilter) ?? "ALL";
+}
+
+function getStoredSort(): "newest" | "priority" {
+  if (typeof window === "undefined") return "newest";
+  return (localStorage.getItem("titan-notif-sort") as "newest" | "priority") ?? "newest";
+}
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -63,7 +111,23 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<NotificationFilter>(getStoredFilter);
+  const [sortMode, setSortMode] = useState<"newest" | "priority">(getStoredSort);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const filteredNotifications = (() => {
+    const allowedTypes = FILTER_TYPE_MAP[filter];
+    const filtered = allowedTypes.length === 0
+      ? notifications
+      : notifications.filter((n) => allowedTypes.includes(n.type));
+
+    if (sortMode === "priority") {
+      return [...filtered].sort(
+        (a, b) => (PRIORITY_ORDER[a.type] ?? 99) - (PRIORITY_ORDER[b.type] ?? 99)
+      );
+    }
+    return filtered;
+  })();
 
   async function fetchNotifications() {
     setLoading(true);
@@ -87,7 +151,8 @@ export function NotificationBell() {
           const alerts = extractData<{ alerts?: Array<{ type: string; message: string }> }>(alertBody)?.alerts ?? [];
           const alertNotifs = alerts.map((a, i) => ({
             id: `alert-${i}`,
-            type: a.type === "CRITICAL" ? "TASK_OVERDUE" : "TASK_DUE_SOON",
+            type: a.type === "CRITICAL" ? "SYSTEM_CRITICAL" : "SYSTEM_WARNING",
+            title: a.type === "CRITICAL" ? "系統嚴重告警" : "系統警告",
             message: a.message,
             isRead: false,
             createdAt: new Date().toISOString(),
@@ -124,6 +189,17 @@ export function NotificationBell() {
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
       setUnreadCount(0);
     }
+  }
+
+  function handleFilterChange(newFilter: NotificationFilter) {
+    setFilter(newFilter);
+    localStorage.setItem("titan-notif-filter", newFilter);
+  }
+
+  function handleSortToggle() {
+    const next = sortMode === "newest" ? "priority" : "newest";
+    setSortMode(next);
+    localStorage.setItem("titan-notif-sort", next);
   }
 
   useEffect(() => {
@@ -269,34 +345,82 @@ export function NotificationBell() {
             </div>
           </div>
 
+          {/* Filter pills + sort toggle */}
+          <div className="flex items-center gap-1.5 px-3 py-2 border-b border-border overflow-x-auto">
+            {FILTER_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => handleFilterChange(opt.value)}
+                className={cn(
+                  "px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap transition-colors",
+                  filter === opt.value
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-accent"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+            <button
+              onClick={handleSortToggle}
+              className={cn(
+                "ml-auto p-1 rounded transition-colors flex-shrink-0",
+                sortMode === "priority"
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              )}
+              title={sortMode === "newest" ? "切換為緊急優先" : "切換為最新優先"}
+            >
+              <ArrowUpDown className="h-3 w-3" />
+            </button>
+          </div>
+
           {/* List */}
           <div className="max-h-80 overflow-y-auto">
             {loading && notifications.length === 0 ? (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 載入中...
               </div>
-            ) : notifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <div className="py-8 text-center px-4">
-                <p className="text-sm text-muted-foreground">目前沒有通知</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">任務被指派、留言、到期時會通知你</p>
+                <p className="text-sm text-muted-foreground">
+                  {notifications.length === 0 ? "目前沒有通知" : "此類別沒有通知"}
+                </p>
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  {notifications.length === 0
+                    ? "任務被指派、留言、到期時會通知你"
+                    : "嘗試切換其他篩選條件"}
+                </p>
               </div>
             ) : (
-              notifications.map((n) => (
+              filteredNotifications.map((n) => (
                 <button
                   key={n.id}
                   onClick={() => !n.isRead && markRead(n.id)}
                   className={cn(
                     "w-full text-left px-4 py-3 border-b border-border/50 hover:bg-accent/50 transition-colors flex gap-3",
-                    !n.isRead && "bg-primary/5"
+                    !n.isRead && "bg-primary/5",
+                    (n.type === "SYSTEM_CRITICAL" || n.type === "SYSTEM_WARNING") &&
+                      "border-l-2 border-l-red-500 bg-red-500/5"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "mt-1.5 w-2 h-2 rounded-full flex-shrink-0",
-                      TYPE_COLORS[n.type] ?? "bg-muted-foreground",
-                      n.isRead && "opacity-30"
-                    )}
-                  />
+                  {n.type === "SYSTEM_CRITICAL" || n.type === "SYSTEM_WARNING" ? (
+                    <AlertTriangle
+                      className={cn(
+                        "mt-0.5 h-4 w-4 flex-shrink-0",
+                        n.type === "SYSTEM_CRITICAL" ? "text-red-500" : "text-amber-500",
+                        n.isRead && "opacity-30"
+                      )}
+                    />
+                  ) : (
+                    <span
+                      className={cn(
+                        "mt-1.5 w-2 h-2 rounded-full flex-shrink-0",
+                        TYPE_COLORS[n.type] ?? "bg-muted-foreground",
+                        n.isRead && "opacity-30"
+                      )}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-[11px] font-medium text-muted-foreground">
