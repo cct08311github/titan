@@ -6,8 +6,9 @@
  */
 
 import { NextRequest } from "next/server";
-import { writeFile, mkdir, unlink, readFile } from "fs/promises";
+import { writeFile, mkdir, unlink } from "fs/promises";
 import path from "path";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
@@ -114,9 +115,10 @@ export const POST = withAuth(async (
     return error("ValidationError", magicResult.error.message, 400);
   }
 
-  // Generate safe storage path
+  // Generate safe storage path with crypto-strong random ID
+  // (Math.random has weak entropy and is deterministic in some test envs)
   const ext = path.extname(file.name) || "";
-  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`;
+  const safeName = `${Date.now()}-${crypto.randomUUID()}${ext}`;
   const taskDir = path.join(UPLOAD_ROOT, id);
   const storagePath = path.join(id, safeName);
   const fullPath = path.join(taskDir, safeName);
@@ -187,7 +189,9 @@ export const DELETE = withAuth(async (
   // Delete file from disk — validate path stays within UPLOAD_ROOT (Issue #1207)
   try {
     const resolved = path.resolve(UPLOAD_ROOT, attachment.storagePath);
-    if (!resolved.startsWith(UPLOAD_ROOT)) {
+    // Append path.sep to prevent /uploads-evil from matching /uploads prefix
+    const rootWithSep = UPLOAD_ROOT.endsWith(path.sep) ? UPLOAD_ROOT : UPLOAD_ROOT + path.sep;
+    if (!resolved.startsWith(rootWithSep) && resolved !== UPLOAD_ROOT) {
       return error("ValidationError", "Invalid storage path", 400);
     }
     await unlink(resolved);
