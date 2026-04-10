@@ -30,8 +30,14 @@ cat > /etc/crontabs/root <<EOF
 # Every 15 minutes — trigger email notifications
 */15 * * * * ${CURL} ${TITAN_APP_URL}/api/cron/email-notifications || true
 
-# 08:00 daily — daily digest
+# 08:00 daily — daily digest (push notifications)
 0 8 * * * ${CURL} ${TITAN_APP_URL}/api/cron/daily-digest || true
+
+# 08:00 daily — daily personal digest email (Issue #1321)
+0 8 * * * ${CURL} ${TITAN_APP_URL}/api/cron/email-digest || true
+
+# 16:00 Fridays — weekly manager summary email (Issue #1321)
+0 16 * * 5 ${CURL} ${TITAN_APP_URL}/api/cron/weekly-manager-digest || true
 
 # 17:00 weekdays — daily reminder
 0 17 * * 1-5 ${CURL} ${TITAN_APP_URL}/api/cron/daily-reminder || true
