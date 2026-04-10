@@ -46,7 +46,7 @@ function hashColor(name: string): string {
 export const GET = withAuth(async (_req: NextRequest) => {
   // Fetch all unique tags from existing tasks
   const tasks = await prisma.task.findMany({
-    where: { isSample: false, tags: { isEmpty: false } },
+    where: { isSample: false, deletedAt: null, tags: { isEmpty: false } },
     select: { tags: true },
   });
 

@@ -27,7 +27,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   // 1. Completed tasks
   const completedTasks = await prisma.task.findMany({
     where: {
-      isSample: false,
+      isSample: false, deletedAt: null,
       status: "DONE",
       updatedAt: { gte: startDate, lt: endDate },
     },

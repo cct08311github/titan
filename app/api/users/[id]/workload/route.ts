@@ -40,7 +40,7 @@ export const GET = withAuth(async (
   // Active tasks (exclude DONE) assigned to this user
   const activeTasks = await prisma.task.findMany({
     where: {
-      isSample: false,
+      isSample: false, deletedAt: null,
       primaryAssigneeId: id,
       status: { notIn: ["DONE"] },
     },

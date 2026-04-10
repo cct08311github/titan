@@ -38,7 +38,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       await Promise.all([
         // Flagged tasks across team
         prisma.task.findMany({
-          where: { isSample: false, managerFlagged: true, status: { not: "DONE" } },
+          where: { isSample: false, deletedAt: null, managerFlagged: true, status: { not: "DONE" } },
           select: {
             id: true,
             title: true,
@@ -56,7 +56,7 @@ export const GET = withAuth(async (req: NextRequest) => {
         // Overdue tasks
         prisma.task.findMany({
           where: {
-            isSample: false,
+            isSample: false, deletedAt: null,
             status: { not: "DONE" },
             dueDate: { lt: now },
           },
@@ -184,7 +184,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // Flagged tasks for this engineer
       prisma.task.findMany({
         where: {
-          isSample: false,
+          isSample: false, deletedAt: null,
           managerFlagged: true,
           status: { not: "DONE" },
           OR: [{ primaryAssigneeId: userId }, { backupAssigneeId: userId }],
@@ -204,7 +204,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // Due today
       prisma.task.findMany({
         where: {
-          isSample: false,
+          isSample: false, deletedAt: null,
           status: { not: "DONE" },
           dueDate: { gte: todayStart, lt: todayEnd },
           OR: [{ primaryAssigneeId: userId }, { backupAssigneeId: userId }],
@@ -223,7 +223,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       // In progress
       prisma.task.findMany({
         where: {
-          isSample: false,
+          isSample: false, deletedAt: null,
           status: "IN_PROGRESS",
           OR: [{ primaryAssigneeId: userId }, { backupAssigneeId: userId }],
         },
