@@ -13,10 +13,25 @@ import { prisma } from "@/lib/prisma";
 import { success } from "@/lib/api-response";
 import { apiHandler } from "@/lib/api-handler";
 import { verifyCronSecret } from "@/lib/cron-auth";
+import { getRedisClient } from "@/lib/redis";
+import { logger } from "@/lib/logger";
+
+const LOCK_KEY = "cron:daily-digest:lock";
+const LOCK_TTL = 300; // 5 minutes
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const authError = verifyCronSecret(req);
   if (authError) return authError;
+
+  const redis = getRedisClient();
+  if (redis) {
+    const acquired = await redis.set(LOCK_KEY, "1", "EX", LOCK_TTL, "NX");
+    if (!acquired) {
+      logger.warn({ event: "cron_daily_digest_skipped" }, "Skipped: previous run still active");
+      return success({ skipped: true, reason: "lock_held" });
+    }
+  }
+
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -61,6 +76,10 @@ export const POST = apiHandler(async (req: NextRequest) => {
       data: notifications,
     });
     created = result.count;
+  }
+
+  if (redis) {
+    await redis.del(LOCK_KEY).catch(() => {}); // Release lock early
   }
 
   return success({
