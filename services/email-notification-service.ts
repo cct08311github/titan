@@ -320,7 +320,7 @@ export class EmailNotificationService {
     const dueTodayTasks = await this.prisma.task.findMany({
       where: {
         status: { notIn: ["DONE"] },
-        isSample: false,
+        isSample: false, deletedAt: null,
         dueDate: { gte: todayStart, lt: todayEnd },
         primaryAssigneeId: { not: null },
       },
@@ -335,7 +335,7 @@ export class EmailNotificationService {
     // Tasks assigned yesterday (not sample)
     const newAssignedTasks = await this.prisma.task.findMany({
       where: {
-        isSample: false,
+        isSample: false, deletedAt: null,
         createdAt: { gte: yesterdayStart, lt: todayStart },
         primaryAssigneeId: { not: null },
       },
@@ -509,7 +509,7 @@ export class EmailNotificationService {
     const overdueCount = await this.prisma.task.count({
       where: {
         status: { notIn: ["DONE"] },
-        isSample: false,
+        isSample: false, deletedAt: null,
         dueDate: { lt: now },
       },
     });
@@ -518,7 +518,7 @@ export class EmailNotificationService {
     const flaggedCount = await this.prisma.task.count({
       where: {
         status: { notIn: ["DONE"] },
-        isSample: false,
+        isSample: false, deletedAt: null,
         managerFlagged: true,
       },
     });
@@ -527,7 +527,7 @@ export class EmailNotificationService {
     const weeklyCompletedCount = await this.prisma.task.count({
       where: {
         status: "DONE",
-        isSample: false,
+        isSample: false, deletedAt: null,
         updatedAt: { gte: thisMonday, lt: thisSunday },
       },
     });
@@ -551,7 +551,7 @@ export class EmailNotificationService {
     const nextWeekTasks = await this.prisma.task.findMany({
       where: {
         status: { notIn: ["DONE"] },
-        isSample: false,
+        isSample: false, deletedAt: null,
         dueDate: { gte: nextMonday, lt: nextSunday },
       },
       select: {
