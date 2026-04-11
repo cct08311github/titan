@@ -17,6 +17,16 @@
 
 set -euo pipefail
 
+# ─── 載入 .env（取得 REDIS_PASSWORD 等環境變數）────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$PROJECT_ROOT/.env"
+  set +a
+fi
+
 # ─── 設定區 ────────────────────────────────────────────────────────────────
 
 # 工具路徑（可從環境變數覆蓋）
@@ -708,7 +718,7 @@ print_report_footer() {
       1) status_text="部分降級 (Degraded)" ;;
       2) status_text="嚴重異常 (Critical)" ;;
     esac
-    echo "整體狀態：$status_text（結束碼 $OVERALL_STATUS）"
+    echo "Overall: $status_text (exit code $OVERALL_STATUS)"
     return
   fi
 
