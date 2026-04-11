@@ -8,13 +8,16 @@
 FROM alpine:3.19
 
 # Install required packages at build time (network access available here)
+# su-exec is used to drop privileges when running curl commands inside cron jobs
 RUN apk add --no-cache \
       curl \
       tzdata \
       dcron \
       tini \
+      su-exec \
     && cp /usr/share/zoneinfo/Asia/Taipei /etc/localtime \
-    && echo 'Asia/Taipei' > /etc/timezone
+    && echo 'Asia/Taipei' > /etc/timezone \
+    && addgroup -g 1001 -S croner && adduser -S -u 1001 croner -G croner
 
 # Copy the cron schedule script (entrypoint sets up crontab from env then runs crond)
 COPY scripts/cron-entrypoint.sh /usr/local/bin/cron-entrypoint.sh
