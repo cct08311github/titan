@@ -53,7 +53,25 @@ jest.mock("next-auth", () => ({
   getServerSession: (...a: unknown[]) => mockGetServerSession(...a),
 }));
 
+// Mock @/auth for Auth.js v5 requireAuth() (api-handler + rbac both use auth())
+jest.mock("@/auth", () => ({ auth: (...args: unknown[]) => mockGetServerSession(...args) }));
+
+// Mock next/headers — rbac.ts calls headers() for Bearer token detection
+jest.mock("next/headers", () => ({
+  headers: jest.fn(() => ({ get: jest.fn().mockReturnValue(null) })),
+  cookies: jest.fn(() => ({ get: jest.fn() })),
+}));
+
+// Mock JwtBlacklist — rbac.ts checks blacklist for revoked sessions/users
+jest.mock("@/lib/jwt-blacklist", () => ({
+  JwtBlacklist: {
+    has: jest.fn().mockResolvedValue(false),
+    add: jest.fn(),
+  },
+}));
+
 // ── Mock @prisma/client for NotificationType enum ────────────────────────────
+// Must include Prisma.Decimal.isDecimal — api-response.ts uses it in decimalReplacer.
 jest.mock("@prisma/client", () => ({
   NotificationType: {
     TASK_ASSIGNED: "TASK_ASSIGNED",
@@ -63,6 +81,11 @@ jest.mock("@prisma/client", () => ({
     MILESTONE_DUE: "MILESTONE_DUE",
     BACKUP_ACTIVATED: "BACKUP_ACTIVATED",
     TASK_CHANGED: "TASK_CHANGED",
+  },
+  Prisma: {
+    Decimal: {
+      isDecimal: (v: unknown) => false,
+    },
   },
 }));
 
@@ -83,7 +106,7 @@ jest.mock("@/lib/rate-limiter", () => ({
   RateLimitError: class RateLimitError extends Error {},
 }));
 jest.mock("@/services/audit-service", () => ({
-  AuditService: jest.fn().mockImplementation(() => ({ log: jest.fn() })),
+  AuditService: jest.fn().mockImplementation(() => ({ log: jest.fn(), logAsync: jest.fn() })),
 }));
 
 // ── fs mock for admin/backup-status ──────────────────────────────────────────
