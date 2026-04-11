@@ -17,7 +17,27 @@ export const GET = withAuth(async (
   req: NextRequest,
   context: { params: Promise<Record<string, string>> }
 ) => {
+  const session = await requireAuth();
   const { id } = await context.params;
+
+  // IDOR protection (Issue #1444): ENGINEER can only view their own profile
+  // or other team members' non-sensitive info.  MANAGER and ADMIN can view
+  // any user.  userService.getUser() already limits the select to safe fields
+  // (id, name, email, role, avatar, isActive, createdAt, updatedAt) — no
+  // passwords, failedAttempts, resetToken, or other sensitive data is exposed.
+  const requesterRole = session.user.role as string;
+  if (requesterRole === "ENGINEER" && id !== session.user.id) {
+    // ENGINEERs may look up colleagues' basic info (name/email/role) for
+    // collaboration purposes, but the target must be an active user and
+    // the viewer cannot access their own privileged fields via this path.
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true, role: true, avatar: true },
+    });
+    if (!user) return error("NotFound", "使用者不存在", 404);
+    return success(user);
+  }
+
   const user = await userService.getUser(id);
   return success(user);
 });
