@@ -46,6 +46,18 @@ export function ActivityTimeline() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  // Keep latest scroll-guard state in refs so the observer callback always
+  // reads fresh values without being recreated on every render.
+  const hasMoreRef = useRef(hasMore);
+  const loadingMoreRef = useRef(loadingMore);
+  const loadingRef = useRef(loading);
+  const pageRef = useRef(page);
+
+  // Sync refs on every render
+  hasMoreRef.current = hasMore;
+  loadingMoreRef.current = loadingMore;
+  loadingRef.current = loading;
+  pageRef.current = page;
 
   const fetchPage = useCallback(
     async (pageNum: number, append: boolean) => {
@@ -98,17 +110,18 @@ export function ActivityTimeline() {
     fetchPage(1, false);
   }, [fetchPage]);
 
-  // Infinite scroll: observe sentinel
+  // Infinite scroll: build observer once; read latest state through refs.
   useEffect(() => {
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry?.isIntersecting && hasMore && !loadingMore && !loading) {
-          const nextPage = page + 1;
+        if (
+          entry?.isIntersecting &&
+          hasMoreRef.current &&
+          !loadingMoreRef.current &&
+          !loadingRef.current
+        ) {
+          const nextPage = pageRef.current + 1;
           setPage(nextPage);
           fetchPage(nextPage, true);
         }
@@ -123,7 +136,8 @@ export function ActivityTimeline() {
     return () => {
       observerRef.current?.disconnect();
     };
-  }, [hasMore, loadingMore, loading, page, fetchPage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchPage]); // fetchPage is stable (useCallback with empty deps)
 
   // ── Render ─────────────────────────────────────────────────────────────
 

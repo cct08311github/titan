@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { success, error } from "@/lib/api-response";
 import { withAuth } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
+import { escapeHtml } from "@/lib/security/sanitize";
 
 /**
  * Extract a snippet around the matched keyword.
@@ -18,9 +19,9 @@ function extractSnippet(text: string, keyword: string, contextLen = 50): string 
   const end = Math.min(text.length, idx + keyword.length + contextLen);
   let snippet = "";
   if (start > 0) snippet += "...";
-  snippet += text.substring(start, idx);
-  snippet += `<mark>${text.substring(idx, idx + keyword.length)}</mark>`;
-  snippet += text.substring(idx + keyword.length, end);
+  snippet += escapeHtml(text.substring(start, idx));
+  snippet += `<mark>${escapeHtml(text.substring(idx, idx + keyword.length))}</mark>`;
+  snippet += escapeHtml(text.substring(idx + keyword.length, end));
   if (end < text.length) snippet += "...";
   return snippet;
 }
