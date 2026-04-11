@@ -122,6 +122,7 @@ export class EmailNotificationService {
         primaryAssigneeId: true,
         primaryAssignee: { select: { email: true } },
       },
+      take: 500,
     });
 
     for (const task of dueSoonTasks) {
@@ -172,6 +173,7 @@ export class EmailNotificationService {
         primaryAssigneeId: true,
         primaryAssignee: { select: { email: true } },
       },
+      take: 500,
     });
 
     for (const task of overdueTasks) {
@@ -354,12 +356,14 @@ export class EmailNotificationService {
         isRead: false,
       },
       select: { userId: true },
+      take: 500,
     });
 
     // Pending approvals (for MANAGER/ADMIN) — any PENDING ApprovalRequest
     const pendingApprovals = await this.prisma.approvalRequest.findMany({
       where: { status: "PENDING" },
       select: { approverId: true },
+      take: 500,
     });
 
     // Group by userId

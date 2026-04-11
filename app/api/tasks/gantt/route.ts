@@ -37,6 +37,7 @@ export const GET = withAuth(async (req: NextRequest) => {
               backupAssignee: { select: { id: true, name: true } },
             },
             orderBy: [{ priority: "asc" }, { startDate: "asc" }, { dueDate: "asc" }],
+            take: 500,
           },
         },
       },
