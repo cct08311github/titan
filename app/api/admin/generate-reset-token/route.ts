@@ -16,7 +16,6 @@ import { randomBytes, createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
 import { requireMinRole } from "@/lib/rbac";
-import { hasMinimumRole } from "@/lib/auth/permissions";
 import { success, error } from "@/lib/api-response";
 import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
@@ -60,17 +59,22 @@ export const POST = withManager(async (req: NextRequest) => {
     return error("ValidationError", "該使用者已停用", 400);
   }
 
-  // Privilege escalation guard: caller can only reset passwords for users
-  // with a LOWER role. ADMIN can reset anyone; MANAGER can only reset ENGINEER.
-  if (targetUser.role === "ADMIN" && callerRole !== "ADMIN") {
-    return error("ForbiddenError", "只有管理員可以為其他管理員重設密碼", 403);
-  }
-  if (targetUser.role === "MANAGER" && callerRole !== "ADMIN") {
-    return error("ForbiddenError", "只有管理員可以為主管重設密碼", 403);
-  }
   // Self-reset is blocked: managers should use /change-password instead
   if (targetUser.id === adminId) {
     return error("ValidationError", "不可為自己產生重設令牌，請使用變更密碼功能", 400);
+  }
+
+  // Privilege escalation guard (deny-by-default):
+  // Only ADMIN can generate tokens for ADMIN or MANAGER targets.
+  // MANAGER can only generate tokens for ENGINEER.
+  // Unknown/future roles are denied by default.
+  const allowedTargetRoles: Record<string, string[]> = {
+    ADMIN: ["ADMIN", "MANAGER", "ENGINEER"],
+    MANAGER: ["ENGINEER"],
+  };
+  const allowed = allowedTargetRoles[callerRole];
+  if (!allowed || !allowed.includes(targetUser.role)) {
+    return error("ForbiddenError", "權限不足：無法為此角色的使用者產生重設令牌", 403);
   }
 
   // Invalidate any existing unused tokens for this user
