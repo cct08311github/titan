@@ -6,6 +6,7 @@
  * Updates passwordChangedAt and clears mustChangePassword.
  */
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { compare, hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getCachedSession } from "@/lib/session-cache";
@@ -16,6 +17,12 @@ import { logger } from "@/lib/logger";
 import { getClientIp } from "@/lib/get-client-ip";
 import { apiHandler } from "@/lib/api-handler";
 import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
+import { validateBody } from "@/lib/validate";
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
 
 const auditService = new AuditService(prisma);
 
@@ -44,18 +51,14 @@ export const POST = apiHandler(async (req: NextRequest) => {
     }
   }
 
-  let body: { currentPassword?: string; newPassword?: string };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return error("ValidationError", "無效的請求格式", 400);
   }
 
-  const { currentPassword, newPassword } = body;
-
-  if (!currentPassword || !newPassword) {
-    return error("ValidationError", "請填寫目前密碼與新密碼", 400);
-  }
+  const { currentPassword, newPassword } = validateBody(changePasswordSchema, rawBody);
 
   if (currentPassword === newPassword) {
     return error("ValidationError", "新密碼不得與目前密碼相同", 400);

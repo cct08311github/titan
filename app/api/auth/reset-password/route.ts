@@ -11,6 +11,7 @@
  *   4. Password updated, OTP marked as used, mustChangePassword cleared
  */
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { hash } from "bcryptjs";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
@@ -21,6 +22,13 @@ import { logger } from "@/lib/logger";
 import { getClientIp } from "@/lib/get-client-ip";
 import { createLoginRateLimiter, checkRateLimit } from "@/lib/rate-limiter";
 import { apiHandler } from "@/lib/api-handler";
+import { validateBody } from "@/lib/validate";
+
+const resetPasswordSchema = z.object({
+  email: z.string().min(1),
+  token: z.string().min(1),
+  newPassword: z.string().min(8).max(128),
+});
 
 const auditService = new AuditService(prisma);
 
@@ -46,18 +54,14 @@ export const POST = apiHandler(async (req: NextRequest) => {
     }
   }
 
-  let body: { email?: string; token?: string; newPassword?: string };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return error("ValidationError", "無效的請求格式", 400);
   }
 
-  const { email: rawEmail, token, newPassword } = body;
-
-  if (!rawEmail || !token || !newPassword) {
-    return error("ValidationError", "請填寫 email、重設碼與新密碼", 400);
-  }
+  const { email: rawEmail, token, newPassword } = validateBody(resetPasswordSchema, rawBody);
 
   // Normalize email to lowercase (consistent with login — see auth.ts)
   const email = rawEmail.toLowerCase().trim();

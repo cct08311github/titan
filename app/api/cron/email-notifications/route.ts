@@ -15,19 +15,38 @@ import { verifyCronSecret } from "@/lib/cron-auth";
 import { prisma } from "@/lib/prisma";
 import { EmailNotificationService } from "@/services/email-notification-service";
 import { logger } from "@/lib/logger";
+import { getRedisClient } from "@/lib/redis";
+
+const LOCK_KEY = "cron:email-notifications:lock";
+const LOCK_TTL = 300; // 5 minutes
 
 export const POST = apiHandler(async (req: NextRequest) => {
   const authError = verifyCronSecret(req);
   if (authError) return authError;
 
-  const service = new EmailNotificationService(prisma);
-  const now = new Date();
-  const result = await service.trigger(now);
+  const redis = getRedisClient();
+  if (redis) {
+    const acquired = await redis.set(LOCK_KEY, "1", "EX", LOCK_TTL, "NX");
+    if (!acquired) {
+      logger.warn({ event: "cron_email_notifications_skipped" }, "Skipped: previous run still active");
+      return success({ skipped: true, reason: "lock_held" });
+    }
+  }
 
-  logger.info(
-    { event: "cron_email_trigger_complete", ...result },
-    "Email notification trigger complete"
-  );
+  try {
+    const service = new EmailNotificationService(prisma);
+    const now = new Date();
+    const result = await service.trigger(now);
 
-  return success({ ...result, timestamp: now.toISOString() });
+    logger.info(
+      { event: "cron_email_trigger_complete", ...result },
+      "Email notification trigger complete"
+    );
+
+    return success({ ...result, timestamp: now.toISOString() });
+  } finally {
+    if (redis) {
+      await redis.del(LOCK_KEY).catch(() => {});
+    }
+  }
 });
