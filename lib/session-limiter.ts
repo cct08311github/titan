@@ -24,14 +24,17 @@ export type SessionPlatform = "web" | "mobile";
 const REDIS_PREFIX = "titan:sessions:";
 const SESSION_TTL = 8 * 60 * 60; // 8 hours (matches JWT maxAge)
 
-/** Maximum concurrent sessions per user per platform — configurable via env */
-const WEB_MAX_SESSIONS = parseInt(
-  process.env.WEB_MAX_SESSIONS ?? process.env.MAX_CONCURRENT_SESSIONS ?? "2",
-  10
+/** Maximum concurrent sessions per user per platform — configurable via env.
+ *  Guards against NaN from invalid env values: falls back to 2. */
+function parseSessionLimit(raw: string | undefined, fallback: number): number {
+  const parsed = parseInt(raw ?? String(fallback), 10);
+  return Number.isFinite(parsed) && parsed >= 1 ? parsed : fallback;
+}
+const WEB_MAX_SESSIONS = parseSessionLimit(
+  process.env.WEB_MAX_SESSIONS ?? process.env.MAX_CONCURRENT_SESSIONS, 2
 );
-const MOBILE_MAX_SESSIONS = parseInt(
-  process.env.MOBILE_MAX_SESSIONS ?? "2",
-  10
+const MOBILE_MAX_SESSIONS = parseSessionLimit(
+  process.env.MOBILE_MAX_SESSIONS, 2
 );
 
 /** Resolve the max sessions limit for a given platform */
