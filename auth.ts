@@ -32,6 +32,7 @@ import { isPasswordExpired } from "@/lib/password-expiry";
 import { getRedisClient } from "@/lib/redis";
 import { AuditService } from "@/services/audit-service";
 import { registerSession } from "@/lib/session-limiter";
+import { JwtBlacklist } from "@/lib/jwt-blacklist";
 
 /**
  * Singletons — created once at module load.
@@ -148,18 +149,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const isValid = await compare(password, user.password);
         if (!isValid) {
-          await accountLockService.recordFailure(lockKey);
+          const { locked } = await accountLockService.recordFailure(lockKey);
           logger.warn(
-            { username, ip },
+            { username, ip, locked },
             "[auth] Failed login attempt"
           );
+          // Issue #1444: revoke existing sessions immediately on lock
+          if (locked) {
+            JwtBlacklist.add(`user:${user.id}`);
+            logger.warn(
+              { userId: user.id, username },
+              "[auth] Account locked — existing sessions revoked"
+            );
+          }
           // Issue #187: persist login failure to AuditLog DB
           auditService.log({
             userId: user.id,
             action: "LOGIN_FAILURE",
             resourceType: "Auth",
             resourceId: user.id,
-            detail: JSON.stringify({ username, reason: "invalid_password" }),
+            detail: JSON.stringify({ username, reason: "invalid_password", locked }),
             ipAddress: ip,
           }).catch(() => {});
           return null;
