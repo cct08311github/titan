@@ -108,14 +108,13 @@ export const POST = withAuth(async (req: NextRequest) => {
   const cleanDescription = description ? sanitizeHtml(description) || null : null;
 
   const entry = await prisma.$transaction(async (tx) => {
-    const existingEntries = await tx.timeEntry.findMany({
-      where: {
-        userId: session.user.id,
-        date: targetDate,
-        isDeleted: false,
-      },
-      select: { hours: true },
-    });
+    // Row-level locking prevents concurrent requests from bypassing the 24hr limit.
+    // FOR UPDATE locks matching rows so parallel transactions must wait.
+    const existingEntries = await tx.$queryRaw<Array<{ hours: number }>>`
+      SELECT hours FROM time_entries
+      WHERE "userId" = ${session.user.id} AND date = ${targetDate}::date AND "isDeleted" = false
+      FOR UPDATE
+    `;
     const existingTotal = existingEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const limitError = validateDailyLimit(existingTotal, hours);
     if (limitError) {

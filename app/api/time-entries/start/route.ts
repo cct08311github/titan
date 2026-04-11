@@ -24,15 +24,6 @@ export const POST = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  // Check for an already-running timer
-  const existing = await prisma.timeEntry.findFirst({
-    where: { userId, isRunning: true },
-  });
-
-  if (existing) {
-    throw new ConflictError("已有正在計時的項目，請先停止目前計時器");
-  }
-
   // Parse optional fields from body
   let taskId: string | null = null;
   let category: TimeCategory = "PLANNED_TASK";
@@ -50,21 +41,33 @@ export const POST = withAuth(async (req: NextRequest) => {
 
   const now = new Date();
 
-  const entry = await prisma.timeEntry.create({
-    data: {
-      userId,
-      taskId,
-      date: now,
-      hours: 0,
-      startTime: now,
-      endTime: null,
-      isRunning: true,
-      category,
-      description,
-    },
-    include: {
-      task: { select: { id: true, title: true, category: true } },
-    },
+  // TOCTOU fix: wrap findFirst + create in a transaction so concurrent requests
+  // cannot both pass the running-timer check before either insert commits.
+  const entry = await prisma.$transaction(async (tx) => {
+    const existing = await tx.timeEntry.findFirst({
+      where: { userId, isRunning: true },
+    });
+
+    if (existing) {
+      throw new ConflictError("已有正在計時的項目，請先停止目前計時器");
+    }
+
+    return tx.timeEntry.create({
+      data: {
+        userId,
+        taskId,
+        date: now,
+        hours: 0,
+        startTime: now,
+        endTime: null,
+        isRunning: true,
+        category,
+        description,
+      },
+      include: {
+        task: { select: { id: true, title: true, category: true } },
+      },
+    });
   });
 
   return success(entry, 201);
