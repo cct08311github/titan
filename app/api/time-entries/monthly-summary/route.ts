@@ -71,25 +71,37 @@ export const GET = withManager(async (req: NextRequest) => {
     },
   });
 
+  // Pre-build a Map for O(1) per-user entry lookup instead of O(N×M) filtering
+  const entriesByUser = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    const list = entriesByUser.get(entry.userId) ?? [];
+    list.push(entry);
+    entriesByUser.set(entry.userId, list);
+  }
+
   // Per-member stats
   const memberStats = users.map((user) => {
-    const userEntries = entries.filter((e) => e.userId === user.id);
+    const userEntries = entriesByUser.get(user.id) ?? [];
 
-    // Total hours
-    const totalHours = userEntries.reduce((sum, e) => sum + e.hours, 0);
+    // Total hours, overtime breakdown, and approval counts in a single pass
+    let totalHours = 0;
+    let weekdayOvertime = 0;
+    let holidayOvertime = 0;
+    const approval = { pending: 0, approved: 0, rejected: 0 };
+    const datesWithEntries = new Set<string>();
 
-    // Overtime breakdown
-    const weekdayOvertime = userEntries
-      .filter((e) => e.overtimeType === "WEEKDAY")
-      .reduce((sum, e) => sum + e.hours, 0);
-    const holidayOvertime = userEntries
-      .filter((e) => e.overtimeType === "HOLIDAY")
-      .reduce((sum, e) => sum + e.hours, 0);
+    for (const e of userEntries) {
+      totalHours += e.hours;
+      if (e.overtimeType === "WEEKDAY") weekdayOvertime += e.hours;
+      else if (e.overtimeType === "HOLIDAY") holidayOvertime += e.hours;
 
-    // Days with entries
-    const datesWithEntries = new Set(
-      userEntries.map((e) => formatLocalDate(e.date))
-    );
+      const status = (e as Record<string, unknown>).approvalStatus;
+      if (status === "PENDING") approval.pending++;
+      else if (status === "APPROVED") approval.approved++;
+      else if (status === "REJECTED") approval.rejected++;
+
+      datesWithEntries.add(formatLocalDate(e.date));
+    }
 
     // Missing workdays (no entries filed)
     const missingDays: string[] = [];
@@ -102,17 +114,6 @@ export const GET = withManager(async (req: NextRequest) => {
       }
     }
 
-    // Approval status counts
-    const pending = userEntries.filter(
-      (e) => (e as Record<string, unknown>).approvalStatus === "PENDING"
-    ).length;
-    const approved = userEntries.filter(
-      (e) => (e as Record<string, unknown>).approvalStatus === "APPROVED"
-    ).length;
-    const rejected = userEntries.filter(
-      (e) => (e as Record<string, unknown>).approvalStatus === "REJECTED"
-    ).length;
-
     return {
       userId: user.id,
       name: user.name,
@@ -123,7 +124,7 @@ export const GET = withManager(async (req: NextRequest) => {
       totalOvertime: weekdayOvertime + holidayOvertime,
       missingDays,
       missingDayCount: missingDays.length,
-      approval: { pending, approved, rejected, total: userEntries.length },
+      approval: { ...approval, total: userEntries.length },
     };
   });
 

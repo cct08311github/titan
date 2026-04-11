@@ -65,3 +65,12 @@ dump.rdb
 test-screenshots/
 auth-test-screenshots/
 /*.png
+
+# Backups (database dumps, never commit)
+backups/
+
+# Recovered env files
+.env.recovered
+
+# Serena cache
+.serena/cache/
