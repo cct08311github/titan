@@ -11,8 +11,8 @@ test-results
 playwright-report
 .nyc_output
 
-# Build artifacts
-.next
+# Build artifacts (keep .next/standalone and .next/static for Docker COPY)
+.next/cache
 out
 dist
 
