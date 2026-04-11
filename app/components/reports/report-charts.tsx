@@ -39,10 +39,8 @@ export function exportCSV(headers: string[], rows: string[][], filename: string)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface DateRangeProps {
-  from: string;
-  to: string;
-}
+import type { DateRangeProps } from "./report-types";
+export type { DateRangeProps } from "./report-types";
 
 interface UtilizationRow {
   userId: string;

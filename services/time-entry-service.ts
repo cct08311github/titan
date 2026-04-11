@@ -317,9 +317,9 @@ export class TimeEntryService {
   ): Promise<TimeEntryStats> {
     const entries = await this.listTimeEntries(filter, callerId, callerRole);
 
-    const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = entries.reduce((sum, e) => sum + Number(e.hours), 0);
     const byCategory = entries.reduce<Record<string, number>>((acc, e) => {
-      acc[e.category] = (acc[e.category] ?? 0) + e.hours;
+      acc[e.category] = (acc[e.category] ?? 0) + Number(e.hours);
       return acc;
     }, {});
 

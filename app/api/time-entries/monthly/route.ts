@@ -68,7 +68,7 @@ export const GET = withManager(async (req: NextRequest) => {
       if (!days[dateKey]) {
         days[dateKey] = { totalHours: 0, entries: [], approvalStatus: "PENDING" };
       }
-      days[dateKey].totalHours += entry.hours;
+      days[dateKey].totalHours += Number(entry.hours);
       days[dateKey].entries.push(entry);
     }
 

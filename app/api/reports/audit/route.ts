@@ -57,13 +57,13 @@ export const GET = withAuth(async (req: NextRequest) => {
   });
 
   // Calculate summary stats
-  const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+  const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
   const incidentHours = timeEntries
     .filter((e) => e.category === "INCIDENT")
-    .reduce((sum, e) => sum + e.hours, 0);
+    .reduce((sum, e) => sum + Number(e.hours), 0);
   const plannedHours = timeEntries
     .filter((e) => e.category === "PLANNED_TASK")
-    .reduce((sum, e) => sum + e.hours, 0);
+    .reduce((sum, e) => sum + Number(e.hours), 0);
 
   return success({
     period: { from, to },

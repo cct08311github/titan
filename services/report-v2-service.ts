@@ -55,7 +55,7 @@ export class ReportV2Service {
     const weeks = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)));
     const hoursByUser: Record<string, number> = {};
     for (const e of timeEntries) {
-      hoursByUser[e.userId] = (hoursByUser[e.userId] ?? 0) + e.hours;
+      hoursByUser[e.userId] = (hoursByUser[e.userId] ?? 0) + Number(e.hours);
     }
 
     const userResults = users.map((u) => {
@@ -93,9 +93,9 @@ export class ReportV2Service {
       const d = new Date(e.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!monthMap[key]) monthMap[key] = { total: 0, unplanned: 0 };
-      monthMap[key].total += e.hours;
+      monthMap[key].total += Number(e.hours);
       if (UNPLANNED_CATEGORIES.includes(e.category)) {
-        monthMap[key].unplanned += e.hours;
+        monthMap[key].unplanned += Number(e.hours);
       }
     }
 
@@ -134,8 +134,8 @@ export class ReportV2Service {
       if (!userMap[e.userId]) {
         userMap[e.userId] = { userId: e.userId, name: e.user.name, byCategory: {}, total: 0 };
       }
-      userMap[e.userId].byCategory[e.category] = (userMap[e.userId].byCategory[e.category] ?? 0) + e.hours;
-      userMap[e.userId].total += e.hours;
+      userMap[e.userId].byCategory[e.category] = (userMap[e.userId].byCategory[e.category] ?? 0) + Number(e.hours);
+      userMap[e.userId].total += Number(e.hours);
     }
 
     return {
@@ -210,7 +210,7 @@ export class ReportV2Service {
     const hoursByUser: Record<string, { name: string; hours: number }> = {};
     for (const e of timeEntries) {
       if (!hoursByUser[e.userId]) hoursByUser[e.userId] = { name: e.user.name, hours: 0 };
-      hoursByUser[e.userId].hours += e.hours;
+      hoursByUser[e.userId].hours += Number(e.hours);
     }
 
     const tasksByUser: Record<string, number> = {};
@@ -262,18 +262,18 @@ export class ReportV2Service {
     if (!plan) return null;
 
     const asOf = asOfDate ? new Date(asOfDate + "T23:59:59.999") : new Date();
-    const totalEstimated = plan.linkedTasks.reduce((s, t) => s + (t.estimatedHours ?? 0), 0);
+    const totalEstimated = plan.linkedTasks.reduce((s, t) => s + Number(t.estimatedHours ?? 0), 0);
 
     // PV: planned value — estimated hours for tasks due before asOf
     const pv = plan.linkedTasks
       .filter((t) => t.dueDate && t.dueDate <= asOf)
-      .reduce((s, t) => s + (t.estimatedHours ?? 0), 0);
+      .reduce((s, t) => s + Number(t.estimatedHours ?? 0), 0);
 
     // EV: earned value — weighted by progress
-    const ev = plan.linkedTasks.reduce((s, t) => s + (t.estimatedHours ?? 0) * (t.progressPct / 100), 0);
+    const ev = plan.linkedTasks.reduce((s, t) => s + Number(t.estimatedHours ?? 0) * (t.progressPct / 100), 0);
 
     // AC: actual cost (hours)
-    const ac = plan.linkedTasks.reduce((s, t) => s + t.actualHours, 0);
+    const ac = plan.linkedTasks.reduce((s, t) => s + Number(t.actualHours), 0);
 
     const sv = ev - pv;
     const cv = ev - ac;
@@ -444,7 +444,7 @@ export class ReportV2Service {
 
     const hoursByTask: Record<string, number> = {};
     for (const e of timeEntries) {
-      if (e.taskId) hoursByTask[e.taskId] = (hoursByTask[e.taskId] ?? 0) + e.hours;
+      if (e.taskId) hoursByTask[e.taskId] = (hoursByTask[e.taskId] ?? 0) + Number(e.hours);
     }
 
     const results = kpis.map((kpi) => {
@@ -521,15 +521,15 @@ export class ReportV2Service {
       if (!userMap[e.userId]) {
         userMap[e.userId] = { name: e.user.name, byType: {}, totalOvertimeHours: 0 };
       }
-      userMap[e.userId].byType[e.overtimeType] = (userMap[e.userId].byType[e.overtimeType] ?? 0) + e.hours;
-      userMap[e.userId].totalOvertimeHours += e.hours;
+      userMap[e.userId].byType[e.overtimeType] = (userMap[e.userId].byType[e.overtimeType] ?? 0) + Number(e.hours);
+      userMap[e.userId].totalOvertimeHours += Number(e.hours);
 
       // By month
       const d = new Date(e.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!monthMap[key]) monthMap[key] = { totalOvertimeHours: 0, byType: {} };
-      monthMap[key].totalOvertimeHours += e.hours;
-      monthMap[key].byType[e.overtimeType] = (monthMap[key].byType[e.overtimeType] ?? 0) + e.hours;
+      monthMap[key].totalOvertimeHours += Number(e.hours);
+      monthMap[key].byType[e.overtimeType] = (monthMap[key].byType[e.overtimeType] ?? 0) + Number(e.hours);
     }
 
     return {

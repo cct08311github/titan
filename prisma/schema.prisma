@@ -355,8 +355,8 @@ model Task {
   priority          Priority     @default(P2)
   dueDate           DateTime?
   startDate         DateTime?
-  estimatedHours    Float?
-  actualHours       Float        @default(0)
+  estimatedHours    Decimal?     @db.Decimal(5, 2)
+  actualHours       Decimal      @default(0) @db.Decimal(5, 2)
   progressPct       Float        @default(0)
   position          Float        @default(0)
   tags              String[]
@@ -688,7 +688,7 @@ model TimeEntry {
   taskId      String?
   userId      String
   date        DateTime     @db.Date
-  hours       Float
+  hours       Decimal      @db.Decimal(5, 2)
   category    TimeCategory @default(PLANNED_TASK)
   description String?
   createdAt   DateTime     @default(now())
@@ -784,7 +784,7 @@ model TimeEntryTemplateItem {
   id          String       @id @default(cuid())
   templateId  String
   taskId      String?
-  hours       Float
+  hours       Decimal      @db.Decimal(5, 2)
   category    TimeCategory @default(PLANNED_TASK)
   description String?
   sortOrder   Int          @default(0)

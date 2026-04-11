@@ -41,11 +41,11 @@ export const GET = withAuth(async (req: NextRequest) => {
     take: 5000, // safety cap
   });
 
-  const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
+  const totalHours = entries.reduce((sum, e) => sum + Number(e.hours), 0);
 
   const byCategory: Record<string, number> = {};
   for (const e of entries) {
-    byCategory[e.category] = (byCategory[e.category] ?? 0) + e.hours;
+    byCategory[e.category] = (byCategory[e.category] ?? 0) + Number(e.hours);
   }
 
   const categories = [

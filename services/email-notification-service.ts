@@ -233,7 +233,7 @@ export class EmailNotificationService {
 
       const hoursByUser: Record<string, number> = {};
       for (const entry of timeEntries) {
-        hoursByUser[entry.userId] = (hoursByUser[entry.userId] ?? 0) + entry.hours;
+        hoursByUser[entry.userId] = (hoursByUser[entry.userId] ?? 0) + Number(entry.hours);
       }
 
       for (const eng of engineers) {

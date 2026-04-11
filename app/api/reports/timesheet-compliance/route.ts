@@ -82,7 +82,7 @@ export const GET = withManager(async (req: NextRequest) => {
       category: e.category,
     }));
 
-    const totalHours = userEntries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = userEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const hasOvertime = dailyEntries.some((d) => d.overtime);
     const hasUnlocked = dailyEntries.some((d) => !d.locked);
 

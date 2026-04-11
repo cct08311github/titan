@@ -72,12 +72,12 @@ export const GET = withManager(async (req: NextRequest) => {
     }
 
     const userEntry = byUserMap.get(userId)!;
-    userEntry.totalHours += entry.hours;
-    userEntry.byDay[dateStr] = (userEntry.byDay[dateStr] ?? 0) + entry.hours;
+    userEntry.totalHours += Number(entry.hours);
+    userEntry.byDay[dateStr] = (userEntry.byDay[dateStr] ?? 0) + Number(entry.hours);
   }
 
   const byUser = Object.fromEntries(byUserMap);
-  const grandTotal = entries.reduce((sum, e) => sum + e.hours, 0);
+  const grandTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
 
   return success({
     weekStart: formatLocalDate(start),

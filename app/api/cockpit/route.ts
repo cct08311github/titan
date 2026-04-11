@@ -187,9 +187,9 @@ export const GET = withManager(async (req: NextRequest) => {
     // Time investment
     const timeInvestment = { planned: 0, actual: 0, overtimeHours: 0 };
     for (const t of uniqueTasks) {
-      timeInvestment.planned += t.estimatedHours ?? 0;
+      timeInvestment.planned += Number(t.estimatedHours ?? 0);
       for (const te of t.timeEntries) {
-        timeInvestment.actual += te.hours;
+        timeInvestment.actual += Number(te.hours);
       }
     }
     timeInvestment.overtimeHours = Math.max(0, timeInvestment.actual - timeInvestment.planned);

@@ -54,7 +54,7 @@ export const POST = apiHandler(async (req: NextRequest) => {
     const userMap = new Map<string, { totalHours: number; taskCount: number }>();
     for (const entry of pendingEntries) {
       const existing = userMap.get(entry.userId) ?? { totalHours: 0, taskCount: 0 };
-      existing.totalHours += entry.hours;
+      existing.totalHours += Number(entry.hours);
       existing.taskCount += 1;
       userMap.set(entry.userId, existing);
     }

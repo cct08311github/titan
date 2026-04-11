@@ -15,7 +15,7 @@ import { NextRequest } from "next/server";
 import { randomBytes, createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
-import { requireMinRole } from "@/lib/rbac";
+import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
@@ -30,7 +30,8 @@ function generateOTP(): string {
 }
 
 export const POST = withManager(async (req: NextRequest) => {
-  const session = await requireMinRole("MANAGER");
+  // Role check already performed by withManager; use requireAuth() to get session.
+  const session = await requireAuth();
   const adminId = session.user.id;
   const callerRole = session.user.role;
 

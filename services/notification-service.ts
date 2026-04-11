@@ -265,7 +265,7 @@ export class NotificationService {
     });
 
     const hoursByUser = timeEntries.reduce((acc, e) => {
-      acc[e.userId] = (acc[e.userId] ?? 0) + e.hours;
+      acc[e.userId] = (acc[e.userId] ?? 0) + Number(e.hours);
       return acc;
     }, {} as Record<string, number>);
 
@@ -419,7 +419,7 @@ export class NotificationService {
       const dateStr = formatLocalDate(new Date(entry.date));
       if (!hoursByUserDate[entry.userId]) hoursByUserDate[entry.userId] = {};
       hoursByUserDate[entry.userId][dateStr] =
-        (hoursByUserDate[entry.userId][dateStr] ?? 0) + entry.hours;
+        (hoursByUserDate[entry.userId][dateStr] ?? 0) + Number(entry.hours);
     }
 
     const todayKey = formatLocalDate(now);

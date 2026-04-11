@@ -71,9 +71,9 @@ export const GET = withAuth(async (
   });
 
   const taskCount = activeTasks.length;
-  const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+  const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
   const estimatedHours = activeTasks.reduce(
-    (sum, t) => sum + (t.estimatedHours ?? 0),
+    (sum, t) => sum + Number(t.estimatedHours ?? 0),
     0
   );
   const loadPct =
@@ -82,12 +82,12 @@ export const GET = withAuth(async (
   // Unplanned ratio calculation
   const plannedHours = timeEntries
     .filter((e) => e.category === "PLANNED_TASK")
-    .reduce((sum, e) => sum + e.hours, 0);
+    .reduce((sum, e) => sum + Number(e.hours), 0);
   const unplannedHours = timeEntries
     .filter((e) =>
       ["ADDED_TASK", "INCIDENT", "SUPPORT"].includes(e.category)
     )
-    .reduce((sum, e) => sum + e.hours, 0);
+    .reduce((sum, e) => sum + Number(e.hours), 0);
   const unplannedRatio =
     totalHours > 0
       ? Math.round((unplannedHours / totalHours) * 1000) / 1000
@@ -99,7 +99,7 @@ export const GET = withAuth(async (
   weekStart.setHours(0, 0, 0, 0);
   const weeklyHours = timeEntries
     .filter((e) => new Date(e.date) >= weekStart)
-    .reduce((sum, e) => sum + e.hours, 0);
+    .reduce((sum, e) => sum + Number(e.hours), 0);
 
   return success({
     userId: id,

@@ -116,7 +116,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       },
       select: { hours: true },
     });
-    const existingTotal = existingEntries.reduce((sum, e) => sum + e.hours, 0);
+    const existingTotal = existingEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const limitError = validateDailyLimit(existingTotal, hours);
     if (limitError) {
       throw new ValidationError(limitError);
