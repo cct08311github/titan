@@ -20,7 +20,17 @@ const mockTimeEntry = {
   delete: jest.fn(),
 };
 
-jest.mock("@/lib/prisma", () => ({ prisma: { timeEntry: mockTimeEntry } }));
+// T1452: start/stop routes wrap logic in $transaction. Mock invokes the
+// callback with the same prisma mock so tx.timeEntry.* calls work correctly.
+const mockPrismaTimer = {
+  timeEntry: mockTimeEntry,
+  $transaction: jest.fn().mockImplementation((arg: unknown) => {
+    if (typeof arg === "function") return (arg as (tx: unknown) => unknown)(mockPrismaTimer);
+    return Promise.all(arg as unknown[]);
+  }),
+};
+
+jest.mock("@/lib/prisma", () => ({ prisma: mockPrismaTimer }));
 
 // ── Auth mock ────────────────────────────────────────────────────────────────
 const mockGetServerSession = jest.fn();

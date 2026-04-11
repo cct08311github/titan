@@ -65,14 +65,15 @@ describe("PATCH/DELETE /api/deliverables/[id]", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetServerSession.mockResolvedValue(MANAGER_SESSION);
-    mockDeliverable.update.mockResolvedValue({ ...MOCK_DEL, status: "DONE" });
+    // T1452: Zod schema only allows NOT_STARTED|IN_PROGRESS|DELIVERED|ACCEPTED
+    mockDeliverable.update.mockResolvedValue({ ...MOCK_DEL, status: "DELIVERED" });
     mockDeliverable.delete.mockResolvedValue(MOCK_DEL);
   });
 
   it("PATCH updates deliverable status", async () => {
     const { PATCH } = await import("@/app/api/deliverables/[id]/route");
     const res = await PATCH(
-      createMockRequest("/api/deliverables/del-1", { method: "PATCH", body: { status: "DONE" } }),
+      createMockRequest("/api/deliverables/del-1", { method: "PATCH", body: { status: "DELIVERED" } }),
       { params: Promise.resolve({ id: "del-1" }) }
     );
     expect(res.status).toBe(200);

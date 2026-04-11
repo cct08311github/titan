@@ -19,17 +19,33 @@ jest.mock("next-auth", () => ({
 }));
 
 // ── Mock next/server ────────────────────────────────────────────────────────
+// T1452: success() uses `new NextResponse(body, {status, headers})` constructor.
+// Mock both constructor and static .json() method.
 jest.mock("next/server", () => {
   const actual = jest.requireActual("next/server");
+
+  function MockNextResponse(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
+    const status = init?.status ?? 200;
+    let parsed: unknown = body;
+    if (typeof body === "string") {
+      try { parsed = JSON.parse(body); } catch { /* leave as-is */ }
+    }
+    return {
+      status,
+      _body: parsed,
+      json: async () => parsed,
+      headers: { set: jest.fn(), get: jest.fn() },
+    };
+  }
+  MockNextResponse.json = jest.fn((body: unknown, init?: { status?: number }) => ({
+    status: init?.status ?? 200,
+    _body: body,
+    json: async () => body,
+  }));
+
   return {
     ...actual,
-    NextResponse: {
-      json: jest.fn((body: unknown, init?: { status?: number }) => ({
-        status: init?.status ?? 200,
-        _body: body,
-        json: async () => body,
-      })),
-    },
+    NextResponse: MockNextResponse,
   };
 });
 

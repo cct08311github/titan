@@ -71,14 +71,22 @@ describe("GET /api/admin/feature-flags", () => {
     mockFeatureFlagFindMany.mockResolvedValue([]);
   });
 
-  it("returns flags for any authenticated user", async () => {
-    mockGetServerSession.mockResolvedValue(ENGINEER_SESSION);
+  // T1452: GET /api/admin/feature-flags requires ADMIN (withAdmin middleware).
+  it("returns flags for ADMIN user", async () => {
+    mockGetServerSession.mockResolvedValue(ADMIN_SESSION);
     const { GET } = await import("@/app/api/admin/feature-flags/route");
     const res = await GET(createMockRequest("/api/admin/feature-flags"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(body.data.flags).toBeDefined();
+  });
+
+  it("returns 403 for non-ADMIN user", async () => {
+    mockGetServerSession.mockResolvedValue(ENGINEER_SESSION);
+    const { GET } = await import("@/app/api/admin/feature-flags/route");
+    const res = await GET(createMockRequest("/api/admin/feature-flags"));
+    expect(res.status).toBe(403);
   });
 
   it("returns 401 when not authenticated", async () => {

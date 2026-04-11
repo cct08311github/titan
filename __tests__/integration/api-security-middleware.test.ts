@@ -39,6 +39,8 @@ const mockTimeEntry = {
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  // T1452: GET /api/time-entries uses Promise.all([count, findMany])
+  count: jest.fn().mockResolvedValue(0),
 };
 const mockTaskActivity = { create: jest.fn() };
 const mockTaskChange = { create: jest.fn() };
@@ -61,6 +63,8 @@ const mockTransaction = jest.fn().mockImplementation((arg: unknown) => {
   return Promise.all(arg as unknown[]);
 });
 mockPrisma.$transaction = mockTransaction;
+// T1452: POST /api/time-entries uses tx.$queryRaw FOR UPDATE inside transaction
+mockPrisma.$queryRaw = jest.fn().mockResolvedValue([{ hours: 0 }]);
 
 jest.mock("@/lib/prisma", () => ({ prisma: mockPrisma }));
 

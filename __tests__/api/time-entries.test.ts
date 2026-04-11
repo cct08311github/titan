@@ -6,14 +6,17 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockTimeEntry = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
+// T1452: GET route uses Promise.all([count, findMany]) — count must be mocked.
+const mockTimeEntry = { findMany: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 const mockAuditLog = { create: jest.fn() };
 
-// T1353: time-entries POST now wraps daily-limit check + create in $transaction.
-// Mock invokes the callback with the same prisma mock, so tx.timeEntry.findMany etc. work.
+// T1353/T1452: time-entries POST wraps daily-limit check ($queryRaw FOR UPDATE) +
+// create in $transaction. Mock invokes callback with prisma mock and provides
+// $queryRaw returning [{hours: 0}] so the daily limit check passes.
 const mockPrisma = {
   timeEntry: mockTimeEntry,
   auditLog: mockAuditLog,
+  $queryRaw: jest.fn().mockResolvedValue([{ hours: 0 }]),
   $transaction: jest.fn().mockImplementation((arg: unknown) => {
     if (typeof arg === "function") return (arg as (tx: unknown) => unknown)(mockPrisma);
     return Promise.all(arg as unknown[]);
@@ -49,7 +52,8 @@ describe("GET /api/time-entries", () => {
     const res = await GET(createMockRequest("/api/time-entries"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("entry-1");
+    // T1452: GET returns paginated { items, pagination } shape
+    expect(body.data.items[0].id).toBe("entry-1");
   });
 
   it("returns 401 when no session", async () => {

@@ -6,7 +6,8 @@
  */
 import { createMockRequest } from "../utils/test-utils";
 
-const mockMonthlyGoal = { findMany: jest.fn(), create: jest.fn() };
+// T1452: GET route uses Promise.all([findMany, count]) — count must be mocked.
+const mockMonthlyGoal = { findMany: jest.fn(), create: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 const mockAnnualPlan = { findUnique: jest.fn() };
 const mockUser = { findUnique: jest.fn() };
 
@@ -40,7 +41,8 @@ describe("GET /api/goals", () => {
     const res = await GET(createMockRequest("/api/goals"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.data[0].id).toBe("goal-1");
+    // T1452: GET returns paginated { items, total, page, limit } shape
+    expect(body.data.items[0].id).toBe("goal-1");
   });
 
   it("returns 401 when no session", async () => {

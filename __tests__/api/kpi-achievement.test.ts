@@ -13,8 +13,20 @@ const mockKPIAchievement = {
   upsert: jest.fn(),
 };
 
+// T1452: POST route wraps upsert + kpi.update in $transaction to prevent
+// partial writes. Mock invokes the callback with the same prisma mock.
+const mockPrismaKpi = {
+  kPI: mockKPI,
+  kPIAchievement: mockKPIAchievement,
+  auditLog: { create: jest.fn() },
+  $transaction: jest.fn().mockImplementation((arg: unknown) => {
+    if (typeof arg === "function") return (arg as (tx: unknown) => unknown)(mockPrismaKpi);
+    return Promise.all(arg as unknown[]);
+  }),
+};
+
 jest.mock("@/lib/prisma", () => ({
-  prisma: { kPI: mockKPI, kPIAchievement: mockKPIAchievement },
+  prisma: mockPrismaKpi,
 }));
 
 const mockGetServerSession = jest.fn();
