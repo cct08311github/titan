@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuth } from "@/lib/auth-middleware";
 import { success } from "@/lib/api-response";
+import { escapeHtml } from "@/lib/security/sanitize";
 
 type SearchResult = {
   id: string;
@@ -31,9 +32,13 @@ export const GET = withAuth(async (req: NextRequest) => {
     LIMIT 20
   `;
 
-  // If FTS returned results, use them
+  // If FTS returned results, escape snippets before returning
   if (ftsResults.length > 0) {
-    return success(ftsResults);
+    const escaped = ftsResults.map((r) => ({
+      ...r,
+      snippet: escapeHtml(r.snippet),
+    }));
+    return success(escaped);
   }
 
   // Fallback: ILIKE search for CJK text (Chinese/Japanese/Korean)
@@ -61,7 +66,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     title: doc.title,
     slug: doc.slug,
     parentId: doc.parentId,
-    snippet: doc.content.substring(0, 200),
+    snippet: escapeHtml(doc.content.substring(0, 200)),
   }));
 
   return success(mapped);

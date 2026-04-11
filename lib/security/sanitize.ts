@@ -1,4 +1,18 @@
 /**
+ * Escape HTML special characters to prevent XSS when inserting text into HTML context.
+ * Use this when you need to embed plain text inside an HTML string (e.g. search snippets).
+ */
+export function escapeHtml(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * XSS Sanitizer — Issue #805 (K-3a), enhanced Issue #1124, DOMPurify migration Issue #1326
  *
  * Sanitizes Markdown/HTML content to prevent XSS attacks.

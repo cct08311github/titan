@@ -129,11 +129,11 @@ export function NotificationBell() {
     return filtered;
   })();
 
-  async function fetchNotifications() {
+  async function fetchNotifications(signal?: AbortSignal) {
     setLoading(true);
     try {
       // Fetch regular notifications
-      const res = await fetch("/api/notifications?limit=15");
+      const res = await fetch("/api/notifications?limit=15", { signal });
       let items: Notification[] = [];
       let unread = 0;
       if (res.ok) {
@@ -145,7 +145,7 @@ export function NotificationBell() {
 
       // Fetch system alerts and prepend as notifications
       try {
-        const alertRes = await fetch("/api/alerts/active");
+        const alertRes = await fetch("/api/alerts/active", { signal });
         if (alertRes.ok) {
           const alertBody = await alertRes.json();
           const alerts = extractData<{ alerts?: Array<{ type: string; message: string }> }>(alertBody)?.alerts ?? [];
@@ -164,7 +164,9 @@ export function NotificationBell() {
 
       setNotifications(items);
       setUnreadCount(unread);
-    } catch {
+    } catch (err) {
+      // Ignore abort errors — component was unmounted or signal was cancelled
+      if (err instanceof Error && err.name === "AbortError") return;
       toast.error("通知載入失敗");
     } finally {
       setLoading(false);
@@ -204,7 +206,8 @@ export function NotificationBell() {
 
   useEffect(() => {
     // 初始載入目前通知（SSE 只推送新通知，不補歷史）
-    fetchNotifications();
+    const initController = new AbortController();
+    fetchNotifications(initController.signal);
 
     // ── SSE 連線 ────────────────────────────────────────────────────────────
     let eventSource: EventSource | null = null;
@@ -213,9 +216,15 @@ export function NotificationBell() {
     let firstFailureAt = 0;
     let useFallbackPolling = false;
 
+    let pollController: AbortController | null = null;
+
     function startFallbackPolling() {
       if (fallbackInterval) return; // 已啟動
-      fallbackInterval = setInterval(fetchNotifications, FALLBACK_POLL_INTERVAL_MS);
+      fallbackInterval = setInterval(() => {
+        pollController?.abort();
+        pollController = new AbortController();
+        fetchNotifications(pollController.signal);
+      }, FALLBACK_POLL_INTERVAL_MS);
     }
 
     function connectSSE() {
@@ -276,6 +285,8 @@ export function NotificationBell() {
     }
 
     return () => {
+      initController.abort();
+      pollController?.abort();
       eventSource?.close();
       if (fallbackInterval) clearInterval(fallbackInterval);
     };

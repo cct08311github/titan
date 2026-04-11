@@ -83,6 +83,13 @@ export function DocumentSearch({ onSelect }: DocumentSearchProps) {
     setHistory(loadHistory());
   }, []);
 
+  // Clear debounce timer on unmount to prevent state updates after unmount
+  useEffect(() => {
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
