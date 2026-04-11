@@ -1,13 +1,22 @@
 import { NextRequest } from "next/server";
-import { ValidationError } from "@/services/errors";
+import { z } from "zod";
 import { withManager } from "@/lib/auth-middleware";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { success } from "@/lib/api-response";
+import { validateBody } from "@/lib/validate";
+import { ValidationError } from "@/services/errors";
 import { PermissionService } from "@/services/permission-service";
 import { AuditService } from "@/services/audit-service";
 import { prisma } from "@/lib/prisma";
 import { getClientIp } from "@/lib/get-client-ip";
 import { parsePagination } from "@/lib/pagination";
+
+const createPermissionSchema = z.object({
+  granteeId: z.string().min(1),
+  permType: z.string().min(1),
+  targetId: z.string().optional(),
+  expiresAt: z.string().datetime().optional(),
+});
 
 const permissionService = new PermissionService(prisma);
 const auditService = new AuditService(prisma);
@@ -36,12 +45,8 @@ export const GET = withManager(async (req: NextRequest) => {
 export const POST = withManager(async (req: NextRequest) => {
   const session = await requireAuth();
 
-  const body = await req.json();
-  const { granteeId, permType, targetId, expiresAt } = body;
-
-  if (!granteeId || !permType) {
-    throw new ValidationError("缺少必填欄位：granteeId, permType");
-  }
+  const rawBody = await req.json();
+  const { granteeId, permType, targetId, expiresAt } = validateBody(createPermissionSchema, rawBody);
 
   const permission = await permissionService.grantPermission({
     granteeId,
