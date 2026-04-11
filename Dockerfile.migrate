@@ -23,4 +23,8 @@ COPY prisma.config.ts ./
 RUN npm ci --ignore-scripts && \
     DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" npx prisma generate
 
+# Run as non-root user (least-privilege principle)
+RUN addgroup -g 1001 -S prisma && adduser -S -u 1001 prisma -G prisma
+USER prisma
+
 CMD ["npx", "prisma", "db", "push", "--accept-data-loss"]

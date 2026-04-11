@@ -11,11 +11,24 @@ set -eu
 : "${CRON_SECRET:?CRON_SECRET is required}"
 TITAN_APP_URL="${TITAN_APP_URL:-http://titan-app:3100}"
 
+# Write CRON_SECRET to a header file readable only by croner user.
+# This avoids exposing the secret in the process list (ps aux would show
+# command-line args including -H headers, but not file contents).
+# Risk assessment: this container is single-purpose and isolated; the
+# /tmp/cron-headers file is only accessible within the container.
+CRON_HEADER_FILE="/tmp/cron-headers"
+printf 'x-cron-secret: %s\n' "${CRON_SECRET}" > "${CRON_HEADER_FILE}"
+chmod 640 "${CRON_HEADER_FILE}"
+# croner (uid 1001) needs to read the header file at job runtime
+chown root:croner "${CRON_HEADER_FILE}" 2>/dev/null || true
+
 # Common curl options:
 # -fsS  — fail on HTTP error, silent except on error, show error message
 # --max-time 60 — abort if takes longer than 60s
+# -H @FILE — read headers from file (secret never appears in process list)
+# su-exec croner — drop from root to unprivileged croner user before exec
 # || true — never let cron fail; we log success/failure to stdout via crond
-CURL="curl -fsS --max-time 60 -X POST -H 'x-cron-secret: ${CRON_SECRET}'"
+CURL="su-exec croner curl -fsS --max-time 60 -X POST -H @${CRON_HEADER_FILE}"
 
 cat > /etc/crontabs/root <<EOF
 # TITAN cron schedule (Asia/Taipei timezone)
