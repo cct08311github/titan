@@ -17,6 +17,15 @@
 
 set -euo pipefail
 
+# ── Concurrency guard (flock) ────────────────────────────────────────────────
+# Prevent concurrent backup runs which could corrupt archives or exhaust disk.
+LOCK_FILE="/tmp/titan-backup.lock"
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+  echo "[ERROR] Another backup is already running (lock: $LOCK_FILE). Exiting." >&2
+  exit 1
+fi
+
 # ── 基礎設定 ─────────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

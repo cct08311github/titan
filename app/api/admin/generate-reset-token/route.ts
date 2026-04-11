@@ -15,7 +15,7 @@ import { NextRequest } from "next/server";
 import { randomBytes, createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { withManager } from "@/lib/auth-middleware";
-import { requireAuth } from "@/lib/rbac";
+import { requireMinRole } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
 import { AuditService } from "@/services/audit-service";
 import { logger } from "@/lib/logger";
@@ -30,8 +30,9 @@ function generateOTP(): string {
 }
 
 export const POST = withManager(async (req: NextRequest) => {
-  const session = await requireAuth();
-  const adminId = (session.user as { id: string }).id;
+  const session = await requireMinRole("MANAGER");
+  const adminId = session.user.id;
+  const callerRole = session.user.role;
 
   let body: { userId?: string };
   try {
@@ -47,7 +48,7 @@ export const POST = withManager(async (req: NextRequest) => {
   // Verify target user exists
   const targetUser = await prisma.user.findUnique({
     where: { id: body.userId },
-    select: { id: true, name: true, email: true, isActive: true },
+    select: { id: true, name: true, email: true, role: true, isActive: true },
   });
 
   if (!targetUser) {
@@ -56,6 +57,24 @@ export const POST = withManager(async (req: NextRequest) => {
 
   if (!targetUser.isActive) {
     return error("ValidationError", "該使用者已停用", 400);
+  }
+
+  // Self-reset is blocked: managers should use /change-password instead
+  if (targetUser.id === adminId) {
+    return error("ValidationError", "不可為自己產生重設令牌，請使用變更密碼功能", 400);
+  }
+
+  // Privilege escalation guard (deny-by-default):
+  // Only ADMIN can generate tokens for ADMIN or MANAGER targets.
+  // MANAGER can only generate tokens for ENGINEER.
+  // Unknown/future roles are denied by default.
+  const allowedTargetRoles: Record<string, string[]> = {
+    ADMIN: ["ADMIN", "MANAGER", "ENGINEER"],
+    MANAGER: ["ENGINEER"],
+  };
+  const allowed = allowedTargetRoles[callerRole];
+  if (!allowed || !allowed.includes(targetUser.role)) {
+    return error("ForbiddenError", "權限不足：無法為此角色的使用者產生重設令牌", 403);
   }
 
   // Invalidate any existing unused tokens for this user
@@ -96,10 +115,14 @@ export const POST = withManager(async (req: NextRequest) => {
     expiresAt: expiresAt.toISOString(),
   });
 
-  return success({
+  // Prevent caching of plaintext OTP in browser/proxy
+  const response = success({
     token,
     expiresAt: expiresAt.toISOString(),
     expiresInMinutes: TOKEN_EXPIRY_MINUTES,
     userName: targetUser.name,
   });
+  response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  response.headers.set("Pragma", "no-cache");
+  return response;
 });
