@@ -117,7 +117,7 @@ export const POST = withAuth(async (
     orderBy: { period: "desc" },
   });
   if (allAchievements.length > 0) {
-    const latestActual = allAchievements[0].actualValue;
+    const latestActual = Number(allAchievements[0].actualValue);
     await prisma.kPI.update({
       where: { id },
       data: { actual: latestActual },
