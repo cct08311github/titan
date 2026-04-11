@@ -3,12 +3,22 @@
 // See Issue #382 for the full approval workflow design.
 
 import { NextRequest } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuth, withManager } from "@/lib/auth-middleware";
 import { requireAuth } from "@/lib/rbac";
 import { success, error } from "@/lib/api-response";
+import { validateBody } from "@/lib/validate";
 import { parsePagination, buildPaginationMeta } from "@/lib/pagination";
 import { sanitizeHtml } from "@/lib/security/sanitize";
+
+const createApprovalSchema = z.object({
+  type: z.enum(["TASK_STATUS_CHANGE", "DELIVERABLE_ACCEPTANCE", "PLAN_MODIFICATION"]),
+  resourceId: z.string().min(1),
+  resourceType: z.string().min(1),
+  reason: z.string().max(1000).optional(),
+  approverId: z.string().optional(),
+});
 
 /**
  * GET /api/approvals?status=PENDING&type=TASK_STATUS_CHANGE
@@ -75,41 +85,14 @@ export const GET = withAuth(async (req: NextRequest) => {
 export const POST = withAuth(async (req: NextRequest) => {
   const session = await requireAuth();
 
-  let body: {
-    type?: string;
-    resourceId?: string;
-    resourceType?: string;
-    reason?: string;
-    approverId?: string;
-  };
+  let rawBody: unknown;
   try {
-    body = await req.json();
+    rawBody = await req.json();
   } catch {
     return error("ParseError", "Invalid JSON body", 400);
   }
 
-  const { type, resourceId, resourceType, reason, approverId } = body;
-
-  if (!type || !resourceId || !resourceType) {
-    return error(
-      "ValidationError",
-      "type, resourceId, and resourceType are required",
-      400
-    );
-  }
-
-  const validTypes = [
-    "TASK_STATUS_CHANGE",
-    "DELIVERABLE_ACCEPTANCE",
-    "PLAN_MODIFICATION",
-  ];
-  if (!validTypes.includes(type)) {
-    return error(
-      "ValidationError",
-      `type must be one of: ${validTypes.join(", ")}`,
-      400
-    );
-  }
+  const { type, resourceId, resourceType, reason, approverId } = validateBody(createApprovalSchema, rawBody);
 
   // If approverId specified, verify it's a valid MANAGER
   if (approverId) {
@@ -130,7 +113,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     data: {
       requesterId: session.user.id,
       approverId: approverId ?? null,
-      type: type as "TASK_STATUS_CHANGE" | "DELIVERABLE_ACCEPTANCE" | "PLAN_MODIFICATION",
+      type,
       resourceId,
       resourceType,
       reason: sanitizedReason,

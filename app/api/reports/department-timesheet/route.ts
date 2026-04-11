@@ -59,7 +59,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
   for (const entry of entries) {
     const userId = entry.userId;
-    const userName = (entry as unknown as { user: { name: string } }).user?.name ?? "Unknown";
+    const userName = entry.user?.name ?? "Unknown";
     const dateStr = formatLocalDate(new Date(entry.date));
 
     if (!byUserMap.has(userId)) {

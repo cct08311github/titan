@@ -63,7 +63,7 @@ export const GET = withManager(async (req: NextRequest) => {
 
   for (const entry of entries) {
     const userId = entry.userId;
-    const userName = (entry as unknown as { user: { name: string } }).user?.name ?? "Unknown";
+    const userName = entry.user?.name ?? "Unknown";
     if (!byUser.has(userId)) {
       byUser.set(userId, { userName, entries: [] });
     }
@@ -77,8 +77,8 @@ export const GET = withManager(async (req: NextRequest) => {
     const dailyEntries: DailyEntry[] = userEntries.map((e) => ({
       date: formatLocalDate(new Date(e.date)),
       hours: Number(e.hours),
-      overtime: Boolean((e as Record<string, unknown>).overtime),
-      locked: Boolean((e as Record<string, unknown>).locked),
+      overtime: Boolean(e.overtime),
+      locked: Boolean(e.locked),
       category: e.category,
     }));
 
