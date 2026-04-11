@@ -168,21 +168,18 @@ describe("Dashboard Extended — Error recovery interaction", () => {
 
   it("Manager: error state shows 發生錯誤 and retry triggers re-fetch", async () => {
     setSession("MANAGER");
-    let callCount = 0;
-    mockFetch.mockImplementation(() => {
-      callCount++;
-      if (callCount <= 1) {
-        return Promise.resolve({ ok: false, json: async () => ({}) } as Response);
-      }
-      return Promise.resolve({ ok: true, json: async () => MANAGER_DATA_HAPPY } as Response);
-    });
+    // All fetches fail until we explicitly switch to success after verifying error state.
+    const failResponse = { ok: false, status: 500, json: async () => ({}) } as Response;
+    mockFetch.mockResolvedValue(failResponse);
     await act(async () => { render(<DashboardPage />); });
     await waitFor(() => {
       expect(screen.getAllByText("發生錯誤").length).toBeGreaterThan(0);
-    });
+    }, { timeout: 3000 });
 
     const retryButtons = screen.getAllByText("重試");
     expect(retryButtons.length).toBeGreaterThan(0);
+    // Switch to success before clicking retry
+    mockFetch.mockResolvedValue({ ok: true, json: async () => MANAGER_DATA_HAPPY } as Response);
     await act(async () => { fireEvent.click(retryButtons[0]); });
 
     await waitFor(() => {
