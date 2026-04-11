@@ -176,6 +176,7 @@ model KPI {
   @@unique([year, title])
   @@index([createdBy])
   @@index([status])
+  @@index([year, status])
   @@index([frequency])
   @@index([deletedAt])
   @@map("kpis")
@@ -244,6 +245,7 @@ model AnnualPlan {
 
   @@unique([year])
   @@index([createdBy])
+  @@index([archivedAt, year])
   @@map("annual_plans")
 }
 
@@ -839,6 +841,7 @@ model Notification {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@index([userId, type, isRead])
   @@map("notifications")
 }
 

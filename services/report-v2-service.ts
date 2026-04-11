@@ -246,6 +246,7 @@ export class ReportV2Service {
       where: { id: planId },
       include: {
         linkedTasks: {
+          take: 500,
           select: {
             id: true,
             status: true,

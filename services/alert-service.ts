@@ -38,6 +38,7 @@ export class AlertService {
     const plans = await this.prisma.annualPlan.findMany({
       where: { archivedAt: null, year: now.getFullYear() },
       select: { id: true, title: true, progressPct: true, createdAt: true },
+      take: 1000,
     });
 
     const monthProgress = ((now.getMonth() + 1) / 12) * 100;
@@ -58,6 +59,7 @@ export class AlertService {
     const kpis = await this.prisma.kPI.findMany({
       where: { deletedAt: null, year: now.getFullYear(), status: "ACTIVE" },
       select: { id: true, title: true, target: true, actual: true },
+      take: 1000,
     });
 
     for (const kpi of kpis) {
@@ -85,6 +87,7 @@ export class AlertService {
         dueDate: { lt: threeDaysAgo },
       },
       select: { id: true },
+      take: 1000,
     });
 
     if (overdueTasks.length > 0) {
@@ -107,11 +110,13 @@ export class AlertService {
     const activeUsers = await this.prisma.user.findMany({
       where: { isActive: true },
       select: { id: true, name: true },
+      take: 1000,
     });
 
     const weekEntries = await this.prisma.timeEntry.findMany({
       where: { date: { gte: weekStart, lte: now }, isDeleted: false },
       select: { userId: true },
+      take: 1000,
     });
 
     const usersWithEntries = new Set(weekEntries.map((e) => e.userId));
@@ -137,6 +142,7 @@ export class AlertService {
         verifiedAt: { not: null },
       },
       select: { id: true, title: true, verifiedAt: true, verifyIntervalDays: true },
+      take: 1000,
     });
 
     for (const doc of expiredDocs) {
