@@ -297,10 +297,10 @@ export function useTimesheet(userFilter?: string) {
     const dateStr = week.getDateStr(i);
     return entries
       .filter((e) => e.date.split("T")[0] === dateStr)
-      .reduce((sum, e) => sum + e.hours, 0);
+      .reduce((sum, e) => sum + Number(e.hours), 0);
   });
 
-  const weeklyTotal = entries.reduce((sum, e) => sum + e.hours, 0);
+  const weeklyTotal = entries.reduce((sum, e) => sum + Number(e.hours), 0);
 
   // Get entries for a specific cell
   function getEntriesForCell(taskId: string | null, dateStr: string): TimeEntry[] {

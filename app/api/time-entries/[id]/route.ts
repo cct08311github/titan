@@ -84,7 +84,7 @@ export const PUT = withAuth(async (
       },
       select: { hours: true },
     });
-    const dayTotal = dayEntries.reduce((sum, e) => sum + e.hours, 0);
+    const dayTotal = dayEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const limitError = validateDailyLimit(dayTotal, hours);
     if (limitError) {
       throw new ValidationError(limitError);

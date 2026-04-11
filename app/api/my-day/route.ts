@@ -172,7 +172,7 @@ export const GET = withAuth(async (req: NextRequest) => {
       flaggedTasks,
       overdueTasks,
       memberWorkload,
-      todayHours: todayTimeEntries._sum.hours ?? 0,
+      todayHours: Number(todayTimeEntries._sum.hours ?? 0),
       alerts,
       planSummaries,
     });
@@ -266,19 +266,22 @@ export const GET = withAuth(async (req: NextRequest) => {
   // Time suggestions: tasks with estimated hours that haven't been started
   const timeSuggestions = dueTodayTasks
     .filter((t) => t.estimatedHours && t.status === "TODO")
-    .map((t) => ({
-      taskId: t.id,
-      title: t.title,
-      estimatedHours: t.estimatedHours,
-      suggestion: `建議分配 ${t.estimatedHours}h 給「${t.title}」`,
-    }));
+    .map((t) => {
+      const estH = Number(t.estimatedHours);
+      return {
+        taskId: t.id,
+        title: t.title,
+        estimatedHours: estH,
+        suggestion: `建議分配 ${estH}h 給「${t.title}」`,
+      };
+    });
 
   return success({
     role: "ENGINEER",
     flaggedTasks,
     dueTodayTasks,
     inProgressTasks,
-    todayHours: todayHours._sum.hours ?? 0,
+    todayHours: Number(todayHours._sum.hours ?? 0),
     dailyTarget: 8,
     timeSuggestions,
     monthlyGoals,

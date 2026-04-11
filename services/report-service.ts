@@ -118,11 +118,11 @@ function computeWeekBounds(refDate: Date): { weekStart: Date; weekEnd: Date } {
 }
 
 function sumHoursByCategory(
-  entries: Array<{ hours: number; category: string }>
+  entries: Array<{ hours: { toNumber(): number } | number; category: string }>
 ): Record<string, number> {
   return entries.reduce(
     (acc, e) => {
-      acc[e.category] = (acc[e.category] ?? 0) + e.hours;
+      acc[e.category] = (acc[e.category] ?? 0) + Number(e.hours);
       return acc;
     },
     {} as Record<string, number>
@@ -179,7 +179,7 @@ export class ReportService {
       take: 1000,
     });
 
-    const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const hoursByCategory = sumHoursByCategory(timeEntries);
 
     const overdueTasks = await this.prisma.task.findMany({
@@ -287,7 +287,7 @@ export class ReportService {
       take: 1000,
     });
 
-    const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const hoursByCategory = sumHoursByCategory(timeEntries);
 
     const monthlyGoals = await this.prisma.monthlyGoal.findMany({
@@ -388,15 +388,15 @@ export class ReportService {
       take: 1000,
     });
 
-    const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const plannedHours = timeEntries
       .filter((e) => e.category === "PLANNED_TASK")
-      .reduce((sum, e) => sum + e.hours, 0);
+      .reduce((sum, e) => sum + Number(e.hours), 0);
     const unplannedHours = timeEntries
       .filter((e) =>
         ["ADDED_TASK", "INCIDENT", "SUPPORT"].includes(e.category)
       )
-      .reduce((sum, e) => sum + e.hours, 0);
+      .reduce((sum, e) => sum + Number(e.hours), 0);
 
     const hoursByCategory = sumHoursByCategory(timeEntries);
 
@@ -412,10 +412,10 @@ export class ReportService {
             unplanned: 0,
           };
         }
-        acc[key].total += e.hours;
-        if (e.category === "PLANNED_TASK") acc[key].planned += e.hours;
+        acc[key].total += Number(e.hours);
+        if (e.category === "PLANNED_TASK") acc[key].planned += Number(e.hours);
         if (["ADDED_TASK", "INCIDENT", "SUPPORT"].includes(e.category))
-          acc[key].unplanned += e.hours;
+          acc[key].unplanned += Number(e.hours);
         return acc;
       },
       {} as Record<
@@ -550,10 +550,10 @@ export class ReportService {
       }
 
       const row = userMap.get(e.userId)!;
-      row.cells[e.category] = (row.cells[e.category] ?? 0) + e.hours;
-      row.total += e.hours;
+      row.cells[e.category] = (row.cells[e.category] ?? 0) + Number(e.hours);
+      row.total += Number(e.hours);
       if (e.overtimeType !== "NONE") {
-        row.overtimeTotal += e.hours;
+        row.overtimeTotal += Number(e.hours);
       }
     }
 

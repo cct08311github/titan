@@ -67,7 +67,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     for (const e of existing) {
       const dateStr = formatLocalDate(new Date(e.date));
       existingKeys.add(`${dateStr}:${e.taskId ?? ""}`);
-      existingHoursByDate.set(dateStr, (existingHoursByDate.get(dateStr) ?? 0) + e.hours);
+      existingHoursByDate.set(dateStr, (existingHoursByDate.get(dateStr) ?? 0) + Number(e.hours));
     }
 
     // Also detect duplicates within the batch itself

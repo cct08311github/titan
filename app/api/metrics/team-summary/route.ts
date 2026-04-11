@@ -64,7 +64,7 @@ export const GET = withManager(async (_req: NextRequest) => {
     overdueCounts.map((r) => [r.primaryAssigneeId as string, r._count._all])
   );
   const weeklyHoursMap = new Map<string, number>(
-    weeklyHoursRows.map((r) => [r.userId, r._sum.hours ?? 0])
+    weeklyHoursRows.map((r) => [r.userId, Number(r._sum.hours ?? 0)])
   );
 
   const memberSummaries = users.map((user) => ({

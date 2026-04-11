@@ -91,9 +91,9 @@ export const GET = withManager(async (req: NextRequest) => {
     const datesWithEntries = new Set<string>();
 
     for (const e of userEntries) {
-      totalHours += e.hours;
-      if (e.overtimeType === "WEEKDAY") weekdayOvertime += e.hours;
-      else if (e.overtimeType === "HOLIDAY") holidayOvertime += e.hours;
+      totalHours += Number(e.hours);
+      if (e.overtimeType === "WEEKDAY") weekdayOvertime += Number(e.hours);
+      else if (e.overtimeType === "HOLIDAY") holidayOvertime += Number(e.hours);
 
       const status = (e as Record<string, unknown>).approvalStatus;
       if (status === "PENDING") approval.pending++;

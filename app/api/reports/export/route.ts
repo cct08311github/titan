@@ -61,9 +61,9 @@ export const GET = withAuth(async (req: NextRequest) => {
       select: { hours: true, category: true },
       take: MAX_EXPORT_ROWS,
     });
-    const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const hoursByCategory = timeEntries.reduce((acc, e) => {
-      acc[e.category] = (acc[e.category] ?? 0) + e.hours;
+      acc[e.category] = (acc[e.category] ?? 0) + Number(e.hours);
       return acc;
     }, {} as Record<string, number>);
 
@@ -174,22 +174,22 @@ export const GET = withAuth(async (req: NextRequest) => {
       take: MAX_EXPORT_ROWS,
     });
 
-    const totalHours = timeEntries.reduce((sum, e) => sum + e.hours, 0);
+    const totalHours = timeEntries.reduce((sum, e) => sum + Number(e.hours), 0);
     const plannedHours = timeEntries
       .filter((e) => e.category === "PLANNED_TASK")
-      .reduce((sum, e) => sum + e.hours, 0);
+      .reduce((sum, e) => sum + Number(e.hours), 0);
     const unplannedHours = timeEntries
       .filter((e) => ["ADDED_TASK", "INCIDENT", "SUPPORT"].includes(e.category))
-      .reduce((sum, e) => sum + e.hours, 0);
+      .reduce((sum, e) => sum + Number(e.hours), 0);
 
     const byPersonMap = timeEntries.reduce((acc, e) => {
       if (!acc[e.userId]) {
         acc[e.userId] = { userId: e.userId, name: e.user.name, total: 0, planned: 0, unplanned: 0 };
       }
-      acc[e.userId].total += e.hours;
-      if (e.category === "PLANNED_TASK") acc[e.userId].planned += e.hours;
+      acc[e.userId].total += Number(e.hours);
+      if (e.category === "PLANNED_TASK") acc[e.userId].planned += Number(e.hours);
       if (["ADDED_TASK", "INCIDENT", "SUPPORT"].includes(e.category))
-        acc[e.userId].unplanned += e.hours;
+        acc[e.userId].unplanned += Number(e.hours);
       return acc;
     }, {} as Record<string, { userId: string; name: string; total: number; planned: number; unplanned: number }>);
 
