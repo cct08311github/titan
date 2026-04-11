@@ -1,8 +1,8 @@
 // goal-validators tests cover the MonthlyGoal model standalone operations
 import {
-  createMonthlyGoalSchema,
-  updateMonthlyGoalSchema,
-} from "../goal-validators";
+  createGoalSchema as createMonthlyGoalSchema,
+  updateGoalSchema as updateMonthlyGoalSchema,
+} from "../plan-validators";
 
 describe("createMonthlyGoalSchema", () => {
   const validInput = {

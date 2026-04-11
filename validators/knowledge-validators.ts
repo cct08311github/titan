@@ -7,10 +7,6 @@ export const addSpaceMemberSchema = z.object({
   role: z.enum(["OWNER", "EDITOR", "VIEWER"]).default("VIEWER"),
 });
 
-export const updateSpaceMemberSchema = z.object({
-  role: z.enum(["OWNER", "EDITOR", "VIEWER"]),
-});
-
 // ── KnowledgeCategory ──
 
 export const createCategorySchema = z.object({
@@ -43,10 +39,6 @@ export const createDocCommentSchema = z.object({
   parentId: z.string().nullish(),
 });
 
-export const updateDocCommentSchema = z.object({
-  content: z.string().min(1),
-});
-
 // ── DocumentLink ──
 
 export const createDocLinkSchema = z.object({
@@ -57,10 +49,8 @@ export const createDocLinkSchema = z.object({
 // ── Type exports ──
 
 export type AddSpaceMemberInput = z.infer<typeof addSpaceMemberSchema>;
-export type UpdateSpaceMemberInput = z.infer<typeof updateSpaceMemberSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
 export type UpdateCategoryInput = z.infer<typeof updateCategorySchema>;
 export type CreateDocAttachmentInput = z.infer<typeof createDocAttachmentSchema>;
 export type CreateDocCommentInput = z.infer<typeof createDocCommentSchema>;
-export type UpdateDocCommentInput = z.infer<typeof updateDocCommentSchema>;
 export type CreateDocLinkInput = z.infer<typeof createDocLinkSchema>;

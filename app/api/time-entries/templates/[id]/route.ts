@@ -26,10 +26,18 @@ export const GET = withAuth(async (
 
   const template = await prisma.timeEntryTemplate.findUnique({
     where: { id },
-    include: { items: { orderBy: { sortOrder: "asc" } } },
+    select: {
+      id: true,
+      name: true,
+      userId: true,
+      entries: true,
+      createdAt: true,
+      updatedAt: true,
+      items: { orderBy: { sortOrder: "asc" } },
+    },
   });
   if (!template) throw new NotFoundError(`Template not found: ${id}`);
-  if ((template as unknown as { userId: string }).userId !== userId) {
+  if (template.userId !== userId) {
     throw new ForbiddenError("只能查看自己的模板");
   }
 
@@ -45,9 +53,12 @@ export const PATCH = withAuth(async (
   const userId = session.user.id;
   const { id } = await context.params;
 
-  const template = await prisma.timeEntryTemplate.findUnique({ where: { id } });
+  const template = await prisma.timeEntryTemplate.findUnique({
+    where: { id },
+    select: { id: true, userId: true },
+  });
   if (!template) throw new NotFoundError(`Template not found: ${id}`);
-  if ((template as unknown as { userId: string }).userId !== userId) {
+  if (template.userId !== userId) {
     throw new ForbiddenError("只能編輯自己的模板");
   }
 
@@ -71,10 +82,13 @@ export const DELETE = withAuth(async (
   const userId = session.user.id;
   const { id } = await context.params;
 
-  const template = await prisma.timeEntryTemplate.findUnique({ where: { id } });
+  const template = await prisma.timeEntryTemplate.findUnique({
+    where: { id },
+    select: { id: true, userId: true },
+  });
   if (!template) throw new NotFoundError(`Template not found: ${id}`);
 
-  if ((template as unknown as { userId: string }).userId !== userId) {
+  if (template.userId !== userId) {
     throw new ForbiddenError("只能刪除自己的模板");
   }
 
