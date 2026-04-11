@@ -181,7 +181,9 @@ describe("POST /api/error-report", () => {
     const res = await POST(makeRequest({ digest: "abc123" }));
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("message required");
+    // T1452: error() returns { error: <errorName>, message: <msg> }
+    expect(body.error).toBe("ValidationError");
+    expect(body.message).toBe("message required");
   });
 
   it("returns 200 and persists error to auditLog on valid report", async () => {
@@ -242,7 +244,8 @@ describe("POST /api/error-report", () => {
     const res = await POST(makeRequest({ message: "some error" }));
     expect(res.status).toBe(500);
     const body = await res.json();
-    expect(body.error).toBe("internal");
+    // T1452: error() returns { error: <errorName>, message: <msg> }
+    expect(body.error).toBe("InternalError");
   });
 
   it("returns 500 when request JSON parsing fails", async () => {

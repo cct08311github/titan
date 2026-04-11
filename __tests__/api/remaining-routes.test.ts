@@ -20,7 +20,8 @@ const mockDocument = { findMany: jest.fn() };
 const mockTaskComment = { findMany: jest.fn() };
 const mockKPI = { findMany: jest.fn() };
 const mockUser = { findMany: jest.fn(), findUnique: jest.fn() };
-const mockTimeEntry = { findMany: jest.fn() };
+// T1452: GET /api/time-entries uses Promise.all([count, findMany]) — count must be mocked.
+const mockTimeEntry = { findMany: jest.fn(), count: jest.fn().mockResolvedValue(0) };
 const mockApprovalRequest = {
   findMany: jest.fn(),
   findUnique: jest.fn(),

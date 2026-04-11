@@ -393,11 +393,14 @@ describe("POST /api/auth/reset-password", () => {
 // ========================================================================
 
 describe("POST /api/admin/generate-reset-token", () => {
+  // T1452: generate-reset-token now checks caller vs target role hierarchy.
+  // MANAGER can only generate tokens for ENGINEER targets.
   const TARGET_USER = {
     id: "target-1",
     name: "Bob",
     email: "bob@example.com",
     isActive: true,
+    role: "ENGINEER",
   };
 
   beforeEach(() => {

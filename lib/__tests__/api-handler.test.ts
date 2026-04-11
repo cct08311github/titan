@@ -15,17 +15,34 @@ import {
 } from "@/services/errors";
 
 // ── Mock next/server ──────────────────────────────────────────────────────
+// T1452: success() now uses `new NextResponse(body, {status, headers})`.
+// Mock NextResponse as a constructor that also exposes the .json() static method.
 jest.mock("next/server", () => {
   const actual = jest.requireActual("next/server");
+
+  function MockNextResponse(body: unknown, init?: { status?: number; headers?: Record<string, string> }) {
+    const status = init?.status ?? 200;
+    // Parse body if it is a JSON string (as success() passes JSON.stringify output)
+    let parsed: unknown = body;
+    if (typeof body === "string") {
+      try { parsed = JSON.parse(body); } catch { /* leave as-is */ }
+    }
+    return {
+      status,
+      _body: parsed,
+      json: async () => parsed,
+      headers: { set: jest.fn(), get: jest.fn() },
+    };
+  }
+  MockNextResponse.json = jest.fn((body: unknown, init?: { status?: number }) => ({
+    status: init?.status ?? 200,
+    _body: body,
+    json: async () => body,
+  }));
+
   return {
     ...actual,
-    NextResponse: {
-      json: jest.fn((body: unknown, init?: { status?: number }) => ({
-        status: init?.status ?? 200,
-        _body: body,
-        json: async () => body,
-      })),
-    },
+    NextResponse: MockNextResponse,
   };
 });
 

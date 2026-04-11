@@ -35,10 +35,13 @@ describe("lib/auth/ldap-config", () => {
     const origUrl = process.env.LDAP_URL;
     const origBindDn = process.env.LDAP_BIND_DN;
     const origBaseDn = process.env.LDAP_BASE_DN;
+    // T1452: getLdapConfig now requires LDAP_BIND_PASSWORD when LDAP_URL is set
+    const origBindPassword = process.env.LDAP_BIND_PASSWORD;
 
     process.env.LDAP_URL = "ldap://test.local:389";
     process.env.LDAP_BIND_DN = "cn=admin,dc=test,dc=local";
     process.env.LDAP_BASE_DN = "dc=test,dc=local";
+    process.env.LDAP_BIND_PASSWORD = "test-password";
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { getLdapConfig } = require("@/lib/auth/ldap-config");
@@ -52,6 +55,7 @@ describe("lib/auth/ldap-config", () => {
     process.env.LDAP_URL = origUrl;
     process.env.LDAP_BIND_DN = origBindDn;
     process.env.LDAP_BASE_DN = origBaseDn;
+    process.env.LDAP_BIND_PASSWORD = origBindPassword;
   });
 });
 
