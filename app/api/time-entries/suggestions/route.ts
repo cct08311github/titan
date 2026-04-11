@@ -77,7 +77,7 @@ export const GET = withAuth(async (req: NextRequest) => {
     if (entry.taskId) {
       loggedHoursByTask.set(
         entry.taskId,
-        (loggedHoursByTask.get(entry.taskId) ?? 0) + entry.hours
+        (loggedHoursByTask.get(entry.taskId) ?? 0) + Number(entry.hours)
       );
     }
   }

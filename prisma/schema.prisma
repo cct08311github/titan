@@ -81,6 +81,10 @@ model User {
   projectRisks             ProjectRisk[]        @relation("RiskOwner")
   projectIssues            ProjectIssue[]       @relation("IssueAssignee")
   gateReviews              ProjectGate[]        @relation("GateReviewer")
+  reportedKPIAchievements  KPIAchievement[]     @relation("KPIAchievementReporter")
+  assignedSubTasks         SubTask[]            @relation("SubTaskAssignee")
+  assignedRecurringRules   RecurringRule[]      @relation("RecurringRuleAssignee")
+  acknowledgedAlerts       MonitoringAlert[]    @relation("MonitoringAlertAcknowledger")
 
   @@map("users")
 }
@@ -182,13 +186,14 @@ model KPIAchievement {
   id          String   @id @default(cuid())
   kpiId       String
   period      String   // e.g., "2026-01", "2026-Q1", "2026"
-  actualValue Float
+  actualValue Decimal  @db.Decimal(10, 4)
   note        String?
   reportedBy  String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   kpi      KPI  @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+  reporter User @relation("KPIAchievementReporter", fields: [reportedBy], references: [id])
 
   @@unique([kpiId, period])
   @@index([kpiId])
@@ -403,6 +408,8 @@ model Task {
   @@index([primaryAssigneeId, status])
   @@index([managerFlagged, status])
   @@index([deletedAt])
+  @@index([deletedAt, status])
+  @@index([monthlyGoalId, status])
   @@map("tasks")
 }
 
@@ -543,9 +550,11 @@ model SubTask {
   createdAt   DateTime  @default(now())
 
   task        Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  assignee    User?       @relation("SubTaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   timeEntries TimeEntry[]
 
   @@index([taskId])
+  @@index([assigneeId])
   @@map("sub_tasks")
 }
 
@@ -1016,7 +1025,7 @@ model TaskTemplate {
   description    String?
   priority       Priority     @default(P2)
   category       TaskCategory @default(PLANNED)
-  estimatedHours Float?
+  estimatedHours Decimal?  @db.Decimal(5, 2)
   creatorId      String
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
@@ -1054,7 +1063,7 @@ model RecurringRule {
   dayOfMonth      Int?                // MONTHLY: 1-31
   monthOfYear     Int?                // YEARLY/QUARTERLY: 1-12
   timeOfDay       String?             // "HH:MM"
-  estimatedHours  Float?
+  estimatedHours  Decimal?            @db.Decimal(5, 2)
   isActive        Boolean             @default(true)
   lastGeneratedAt DateTime?
   nextDueAt       DateTime?
@@ -1063,9 +1072,11 @@ model RecurringRule {
   updatedAt       DateTime            @updatedAt
 
   creator  User          @relation("RecurringRuleCreator", fields: [creatorId], references: [id])
+  assignee User?         @relation("RecurringRuleAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   template TaskTemplate? @relation(fields: [templateId], references: [id])
 
   @@index([isActive, nextDueAt])
+  @@index([assigneeId])
   @@map("recurring_rules")
 }
 
@@ -1164,10 +1175,12 @@ model MonitoringAlert {
   updatedAt      DateTime    @updatedAt
 
   relatedTask Task? @relation(fields: [relatedTaskId], references: [id])
+  acknowledger User? @relation("MonitoringAlertAcknowledger", fields: [acknowledgedBy], references: [id], onDelete: SetNull)
 
   @@unique([alertName, startsAt])
   @@index([status])
   @@index([startsAt])
+  @@index([acknowledgedBy])
   @@map("monitoring_alerts")
 }
 

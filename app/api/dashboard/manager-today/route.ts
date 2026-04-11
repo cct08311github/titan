@@ -94,7 +94,7 @@ export const GET = withManager(async () => {
     ? behindKpis.filter((kpi) => {
         const ach = kpi.achievements[0];
         if (!ach) return true; // No entry yet = behind
-        const pct = kpi.target > 0 ? (ach.actualValue / kpi.target) * 100 : 0;
+        const pct = kpi.target > 0 ? (Number(ach.actualValue) / kpi.target) * 100 : 0;
         return pct < 80;
       }).length
     : 0;

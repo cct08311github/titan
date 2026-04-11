@@ -44,7 +44,14 @@ export const GET = withAuth(async (req: NextRequest) => {
     },
   });
 
-  const result = aggregateTimeDistribution(entries);
+  const result = aggregateTimeDistribution(
+    entries.map((e) => ({
+      userId: e.userId,
+      hours: Number(e.hours),
+      category: e.category,
+      user: e.user ? { name: e.user.name } : null,
+    }))
+  );
 
   return success({
     from: startDate.toISOString(),

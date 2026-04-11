@@ -76,7 +76,7 @@ export const GET = withManager(async (req: NextRequest) => {
   for (const [userId, { userName, entries: userEntries }] of byUser) {
     const dailyEntries: DailyEntry[] = userEntries.map((e) => ({
       date: formatLocalDate(new Date(e.date)),
-      hours: e.hours,
+      hours: Number(e.hours),
       overtime: Boolean((e as Record<string, unknown>).overtime),
       locked: Boolean((e as Record<string, unknown>).locked),
       category: e.category,
