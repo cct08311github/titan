@@ -94,35 +94,40 @@ export const POST = withAuth(async (
     );
   }
 
-  // Upsert: 同一 KPI + 同一週期只有一筆（重複填報為更新）
-  const achievement = await prisma.kPIAchievement.upsert({
-    where: { kpiId_period: { kpiId: id, period } },
-    create: {
-      kpiId: id,
-      period,
-      actualValue,
-      note: note || null,
-      reportedBy: session.user.id,
-    },
-    update: {
-      actualValue,
-      note: note || null,
-      reportedBy: session.user.id,
-    },
-  });
-
-  // 更新 KPI 的 actual 值（取所有填報的平均或最新值）
-  const allAchievements = await prisma.kPIAchievement.findMany({
-    where: { kpiId: id },
-    orderBy: { period: "desc" },
-  });
-  if (allAchievements.length > 0) {
-    const latestActual = Number(allAchievements[0].actualValue);
-    await prisma.kPI.update({
-      where: { id },
-      data: { actual: latestActual },
+  // Upsert + KPI actual update in one transaction to prevent the achievement
+  // being written without the parent KPI.actual being updated (or vice versa).
+  const achievement = await prisma.$transaction(async (tx) => {
+    const upserted = await tx.kPIAchievement.upsert({
+      where: { kpiId_period: { kpiId: id, period } },
+      create: {
+        kpiId: id,
+        period,
+        actualValue,
+        note: note || null,
+        reportedBy: session.user.id,
+      },
+      update: {
+        actualValue,
+        note: note || null,
+        reportedBy: session.user.id,
+      },
     });
-  }
+
+    // 更新 KPI 的 actual 值（取最新週期的填報值）
+    const allAchievements = await tx.kPIAchievement.findMany({
+      where: { kpiId: id },
+      orderBy: { period: "desc" },
+    });
+    if (allAchievements.length > 0) {
+      const latestActual = Number(allAchievements[0].actualValue);
+      await tx.kPI.update({
+        where: { id },
+        data: { actual: latestActual },
+      });
+    }
+
+    return upserted;
+  });
 
   // Banking compliance: audit trail for KPI achievement changes
   const auditService = new AuditService(prisma);

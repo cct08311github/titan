@@ -28,30 +28,34 @@ export const POST = withAuth(async (_req: NextRequest) => {
   const session = await requireAuth();
   const userId = session.user.id;
 
-  // Find the running timer for this user
-  const running = await prisma.timeEntry.findFirst({
-    where: { userId, isRunning: true },
-  });
-
-  if (!running) {
-    throw new NotFoundError("目前沒有正在計時的項目");
-  }
-
   const now = new Date();
-  const hours = running.startTime
-    ? calculateHours(running.startTime, now)
-    : 0.25; // Fallback if startTime is somehow null
 
-  const entry = await prisma.timeEntry.update({
-    where: { id: running.id },
-    data: {
-      endTime: now,
-      hours,
-      isRunning: false,
-    },
-    include: {
-      task: { select: { id: true, title: true, category: true } },
-    },
+  // Phantom-read fix: wrap findFirst + update in a transaction so concurrent
+  // stop requests cannot both see the same running timer before either update commits.
+  const entry = await prisma.$transaction(async (tx) => {
+    const running = await tx.timeEntry.findFirst({
+      where: { userId, isRunning: true },
+    });
+
+    if (!running) {
+      throw new NotFoundError("目前沒有正在計時的項目");
+    }
+
+    const hours = running.startTime
+      ? calculateHours(running.startTime, now)
+      : 0.25; // Fallback if startTime is somehow null
+
+    return tx.timeEntry.update({
+      where: { id: running.id },
+      data: {
+        endTime: now,
+        hours,
+        isRunning: false,
+      },
+      include: {
+        task: { select: { id: true, title: true, category: true } },
+      },
+    });
   });
 
   return success(entry);

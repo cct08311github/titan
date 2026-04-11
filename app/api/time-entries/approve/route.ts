@@ -12,7 +12,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { ForbiddenError } from "@/services/errors";
+import { ForbiddenError, ConflictError } from "@/services/errors";
 import { withManager } from "@/lib/auth-middleware";
 import { requireRole } from "@/lib/rbac";
 import { validateBody } from "@/lib/validate";
@@ -56,14 +56,23 @@ export const POST = withManager(async (req: NextRequest) => {
 
   // Transaction: update entries + create approval records + audit log
   await prisma.$transaction(async (tx) => {
-    // Batch update entries
-    await tx.timeEntry.updateMany({
-      where: { id: { in: eligibleIds } },
+    // Double-approve fix: add approvalStatus condition so concurrent approve
+    // requests only update entries that are still PENDING/REJECTED.
+    const result = await tx.timeEntry.updateMany({
+      where: {
+        id: { in: eligibleIds },
+        approvalStatus: { in: ["PENDING", "REJECTED"] },
+      },
       data: {
         locked: true,
         approvalStatus: "APPROVED",
       },
     });
+
+    // If count mismatches, some entries were already approved by a concurrent request.
+    if (result.count !== eligibleIds.length) {
+      throw new ConflictError("部分工時記錄已被其他請求審核，請重新整理後再試");
+    }
 
     // Create approval records
     await tx.timesheetApproval.createMany({
