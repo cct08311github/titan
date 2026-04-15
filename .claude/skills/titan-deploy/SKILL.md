@@ -118,6 +118,22 @@ docker compose exec titan-app wget -qO- http://localhost:3100/api/health
 - **Next.js standalone 路徑**: `npm run build` 產生的 standalone 輸出嵌套在絕對路徑下（如 `.next/standalone/.openclaw/shared/projects/titan/`）。`upgrade.sh` 會自動 flatten 到 `.next/standalone/`，Dockerfile 也已對應調整。
 - **Prisma v7 config**: `Dockerfile.migrate` 必須包含 `prisma.config.ts`，否則 Prisma 無法讀取 `DATABASE_URL`。
 - **DB Migration 非必要**: 若 schema 未變更（僅程式碼更新），migration 失敗不影響服務。
+- **titan-migrate 跑的是 `prisma db push` 而非 `migrate deploy`**: 見 `Dockerfile.migrate` 的 `CMD`。這代表生產 DB 的 `_prisma_migrations` table 一直是空的，schema 變更靠 `db push` 直接對齊 `schema.prisma`。CI 的 `test` job 反而跑 `prisma migrate deploy`，兩條路徑不同——**如果有任何 model 只靠 `db push` 建過 table 而沒有對應 migration file，CI 會在第一個 ALTER 該 table 的 migration 爆 `relation "X" does not exist`**（2026-04-15 T1463 案例：`recurring_rules`）。新增 model 時一律補 `prisma/migrations/<ts>_create_X_table/migration.sql`，並用 `CREATE TABLE IF NOT EXISTS` + `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN null; END $$` 包 enum 和 FK 以對生產相容。
+- **本地驗證 migration**: 推 PR 前用 throwaway postgres 確認，避免 CI red：
+  ```bash
+  docker network create titan-ci-test
+  docker run -d --name titan-pg-ci --network titan-ci-test \
+    -e POSTGRES_USER=titan -e POSTGRES_PASSWORD=ci -e POSTGRES_DB=titan postgres:16-alpine
+  sleep 4
+  docker run --rm --network titan-ci-test \
+    -v "$PWD/prisma:/app/prisma:ro" -v "$PWD/prisma.config.ts:/app/prisma.config.ts:ro" \
+    -w /app -e DATABASE_URL='postgresql://titan:ci@titan-pg-ci:5432/titan' \
+    --entrypoint sh node:20-alpine -c \
+    'apk add --no-cache openssl >/dev/null && npm init -y >/dev/null 2>&1 \
+     && npm install prisma@7.6.0 dotenv --silent 2>&1 | tail -1 \
+     && npx prisma migrate deploy'
+  docker rm -f titan-pg-ci && docker network rm titan-ci-test
+  ```
 
 ---
 
@@ -311,6 +327,103 @@ Nginx Proxy (TLS) ─┬─ Homepage (:3000) ─── 統一入口
 | Redis | titan-redis | 6379 | 不暴露 |
 | MinIO | titan-minio | 9000 | 不暴露 |
 | MinIO Console | titan-minio | 9001 | 9001 |
+| Nginx HTTP | titan-nginx | 80 | `NGINX_HTTP_PORT` (預設 8080) |
+| Nginx HTTPS | titan-nginx | 443 | `NGINX_HTTPS_PORT` (預設 8443) |
+| Nginx Outline | titan-nginx | 8443 | `NGINX_OUTLINE_PORT` (預設 8444) |
+
+## Nginx 反向代理
+
+Nginx 定義在**獨立的 compose file**：`nginx/docker-compose.yml`，**不是** root `docker-compose.yml` 的一部分。這代表：
+
+```bash
+# ❌ 不會啟動 nginx
+docker compose up -d
+
+# ✅ 需要 explicit 指定檔案 + --env-file
+docker compose -f nginx/docker-compose.yml --env-file .env up -d
+
+# force recreate（改 port 或 compose 設定後需要）
+docker compose -f nginx/docker-compose.yml --env-file .env up -d --force-recreate
+```
+
+**為什麼需要 `--env-file .env`**: compose v2 只會自動讀取**與 compose file 同目錄**的 `.env`。因為 `nginx/docker-compose.yml` 在 `nginx/` 子目錄，它不會自動吃到根目錄的 `.env`，導致 `NGINX_HTTP_PORT` 等變數 fallback 到 compose file 裡的 `${VAR:-default}`。
+
+### Port 衝突
+
+`NGINX_HTTP_PORT=8080` 預設值常跟其他本機服務衝突（Python dev server、Grafana 舊版、cAdvisor 等）。本機若 `lsof -iTCP:8080 -sTCP:LISTEN` 有佔用，改為 `NGINX_HTTP_PORT=8090` 或其他 free port。
+
+### 與 Tailscale Serve 整合
+
+生產環境透過 `tailscale serve` 把 TITAN 發佈到 tailnet 上：
+
+```bash
+# 把 TITAN nginx 綁到 tailnet 根路徑
+tailscale serve --bg https+insecure://127.0.0.1:8443
+
+# 若需要跟其他 web app 共存（例如 family-ledger-web），用 path 路由
+tailscale serve --bg --set-path=/family-ledger-web http://127.0.0.1:3013
+
+# 查看目前路由
+tailscale serve status
+```
+
+`https+insecure://` 是因為 titan-nginx 使用 self-signed 憑證，tailscale 前端會重簽合法憑證給 tailnet 使用者。
+
+---
+
+## 生產環境故障排除
+
+### `.env` 常見陷阱（T1460 學到的）
+
+生產 `.env` 最容易出現以下 4 種問題，任一個都會讓 upgrade / force recreate 失敗：
+
+1. **literal shell expansion 未展開**: 值裡出現 `$(openssl rand -hex 32)` 字面字串，代表當初有人把 `.env.example` 複製過來但沒真的跑 shell 展開。這在 JWT/session 相關欄位（`AUTH_SECRET`、`NEXTAUTH_SECRET`）會讓 Auth.js 永遠用同一個可預測字串當 HMAC key。
+2. **container_name vs service name 搞混**: `DATABASE_URL=postgresql://titan:...@titan-db:5432/titan` 是錯的——`titan-db` 是 container_name，但 compose 內部 DNS 解析用的是 **service name**（看 `docker-compose.yml` 的 service key），實際是 `postgres`。`DATABASE_URL` host 應該是 `postgres`、`REDIS_URL` host 應該是 `redis`。
+3. **新 compose 變數未補**: 升級到含新 service 的版本後，`.env` 缺 `CRON_SECRET` / `NGINX_HTTP_PORT` / `NGINX_HTTPS_PORT` / `NGINX_OUTLINE_PORT` 等變數，會讓 `docker compose config` / `up` 在解析時 fail with `required variable X is missing a value`。
+4. **URL 指向過期的對外入口**: `TITAN_URL` / `NEXTAUTH_URL` 應該指向 tailscale / nginx 入口（`https://mac-mini.tailde842d.ts.net`），不是 `http://...:3100`。
+
+### 從 running container 重建 `.env`（救援流程）
+
+當 `.env` 壞掉但 running container 還健康時（例如舊容器是用另一份現在已遺失的 `.env` 啟動的），**不要**直接 force recreate——新容器會拿到壞的值。先從 running state 把實際環境變數撈出來當 baseline：
+
+```bash
+# Dump 關鍵容器的 env
+docker inspect titan-app --format '{{range .Config.Env}}{{println .}}{{end}}' \
+  | grep -E "AUTH_SECRET|NEXTAUTH|DATABASE_URL|REDIS|CRON_SECRET|TITAN_URL"
+docker inspect titan-outline --format '{{range .Config.Env}}{{println .}}{{end}}' \
+  | grep -E "SECRET_KEY|UTILS_SECRET|DATABASE_URL|REDIS_URL|URL"
+docker inspect titan-postgres --format '{{range .Config.Env}}{{println .}}{{end}}' \
+  | grep POSTGRES
+docker inspect titan-redis --format '{{.Config.Cmd}}'   # redis password 在 cmd args
+docker inspect titan-minio --format '{{range .Config.Env}}{{println .}}{{end}}' \
+  | grep MINIO
+```
+
+**關鍵：絕對不能隨便換 `OUTLINE_SECRET_KEY` / `OUTLINE_UTILS_SECRET`**——Outline 用它做 column-level 加密（integration secrets 等），換掉舊加密欄位會讀不出、且無法復原。`AUTH_SECRET` / `NEXTAUTH_SECRET` 只用於 JWT 簽發，換掉只會讓現有 session 失效、不影響 DB（T1460 驗證過）。
+
+先把 `.env` 備份（`.env.backup-<ticket>-<ts>`），再用 dump 出來的值重寫，然後 `docker compose up -d --force-recreate` 對應服務。
+
+### `upgrade.sh` Step 3 / Step 5 失敗排查
+
+從 T1461 開始 `upgrade.sh` 在 Step 1 preflight 會跑 `docker compose config --quiet`，若 `.env` 缺變數會直接 fail fast 並印出 compose 的 validation error。舊版的失敗徵兆是 Step 3 備份噴 `WARN 備份失敗` 但看不到任何原因（因為 `2>/dev/null`），或 Step 5 migration 噴 `P1000 Authentication failed`——兩者常常是**同一個 env 問題**（尤其 `.env` 的 DATABASE_URL host 寫錯、或缺 `CRON_SECRET` 造成整個 compose 解析失敗）。手動復現 + 看 real error：
+
+```bash
+cd /path/to/titan
+docker compose config --quiet                # 檢查 .env 是否完整
+docker compose exec -T postgres pg_dump -U titan -d titan --no-owner --no-acl > /tmp/t.sql  # 不 pipe 不 silent
+```
+
+### 生產部署 clone 位置
+
+生產運行的 clone **不一定**是你當前 shell 的 cwd。用 `docker inspect` 確認：
+
+```bash
+docker inspect titan-nginx --format '{{range .HostConfig.Binds}}{{println .}}{{end}}'
+```
+
+輸出會是 `<host-path>:/etc/nginx/nginx.conf:ro` 形式，左邊就是實際生產 clone 的絕對路徑。升級時務必 `cd` 到那個路徑再跑 `scripts/upgrade.sh`。
+
+---
 
 ## 執行前確認清單
 
@@ -318,6 +431,9 @@ Nginx Proxy (TLS) ─┬─ Homepage (:3000) ─── 統一入口
 
 - [ ] Docker daemon 運行中（`docker info`）
 - [ ] `.env` 存在且密鑰已設定
+- [ ] `docker compose config --quiet` 通過（驗證 `.env` 變數完整，避免 T1461 pitfall）
+- [ ] `cd` 到實際生產 clone（用 `docker inspect titan-nginx --format '{{range .HostConfig.Binds}}{{println .}}{{end}}'` 確認）
 - [ ] 磁碟空間 > 10 GB（`df -h`）
 - [ ] 已備份資料庫（`scripts/backup/backup-postgres.sh`）
 - [ ] 知道如何回滾（`docker tag titan-app:previous titan-app:latest`）
+- [ ] 若本次有 schema 變更：新 migration 先在 throwaway postgres 驗證（見「版本更新 → 本地驗證 migration」）
