@@ -95,6 +95,15 @@ preflight_check() {
     exit 1
   fi
 
+  # 驗證 compose 設定可解析（避免 .env 缺變數時後續 docker compose 指令全部 silent fail）
+  local compose_err
+  compose_err=$(docker compose config --quiet 2>&1) || {
+    log_error "docker compose 設定解析失敗："
+    echo "${compose_err}" >&2
+    log_error "請檢查 .env 是否缺少必要變數"
+    exit 1
+  }
+
   log_ok "前置檢查通過"
 }
 
@@ -148,16 +157,24 @@ backup_database() {
   mkdir -p "${backup_dir}"
 
   log_info "備份 PostgreSQL 到 ${backup_file}..."
+  local backup_err="${backup_dir}/pre-upgrade_${timestamp}.err"
   if docker compose exec -T postgres pg_dump \
     -U "${POSTGRES_USER:-titan}" \
     -d "${POSTGRES_DB:-titan}" \
     --no-owner --no-acl \
-    2>/dev/null | gzip > "${backup_file}"; then
+    2>"${backup_err}" | gzip > "${backup_file}"; then
     local size
     size=$(du -h "${backup_file}" | cut -f1)
     log_ok "備份完成（${size}）：${backup_file}"
+    rm -f "${backup_err}"
   else
-    log_warn "備份失敗，但不阻止更新。建議手動檢查：docker compose exec postgres pg_dump ..."
+    log_warn "備份失敗，但不阻止更新。錯誤輸出："
+    if [[ -s "${backup_err}" ]]; then
+      sed 's/^/    /' "${backup_err}" >&2
+    else
+      echo "    （無 stderr 輸出；可能為 compose 設定或網路錯誤，手動檢查：docker compose exec postgres pg_dump ...）" >&2
+    fi
+    rm -f "${backup_file}"
   fi
 }
 
