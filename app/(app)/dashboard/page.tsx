@@ -23,6 +23,7 @@ import Link from "next/link";
 import { StaleTaskWidget } from "@/app/components/stale-task-widget";
 import ManagerTodayCard from "@/app/components/dashboard/manager-today-card";
 import WidgetSettings, { DEFAULT_WIDGETS, type WidgetConfig } from "@/app/components/dashboard/widget-settings";
+import { StartTimerButton, ApplySuggestionButton } from "@/app/components/dashboard/quick-log-actions";
 
 // ── Skeleton loader ─────────────────────────────────────────────────────
 
@@ -151,11 +152,11 @@ const PRIORITY_DOT: Record<string, string> = {
   P3: "bg-gray-400",
 };
 
-function TaskRow({ task }: { task: TaskItem }) {
+function TaskRow({ task, actions }: { task: TaskItem; actions?: React.ReactNode }) {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== "DONE";
 
   return (
-    <Link href={`/kanban?task=${task.id}`} className="flex items-center gap-2 p-2.5 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors cursor-pointer">
+    <Link href={`/kanban?task=${task.id}`} className="group flex items-center gap-2 p-2.5 bg-accent/40 rounded-md hover:bg-accent/60 transition-colors cursor-pointer">
       {task.managerFlagged && (
         <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500 flex-shrink-0" />
       )}
@@ -170,6 +171,7 @@ function TaskRow({ task }: { task: TaskItem }) {
           {formatDate(task.dueDate)}
         </span>
       )}
+      {actions}
     </Link>
   );
 }
@@ -240,7 +242,7 @@ function MyProjectsCard() {
 
 // ── Engineer My Day ─────────────────────────────────────────────────────
 
-function EngineerMyDay({ data, isVisible }: { data: EngineerData; isVisible: (id: string) => boolean }) {
+function EngineerMyDay({ data, isVisible, onRefresh }: { data: EngineerData; isVisible: (id: string) => boolean; onRefresh: () => void }) {
   const hoursPct = Math.min((data.todayHours / data.dailyTarget) * 100, 100);
 
   return (
@@ -296,7 +298,7 @@ function EngineerMyDay({ data, isVisible }: { data: EngineerData; isVisible: (id
             ) : (
               <div className="space-y-2">
                 {data.inProgressTasks.map((t) => (
-                  <TaskRow key={t.id} task={t} />
+                  <TaskRow key={t.id} task={t} actions={<StartTimerButton compact taskId={t.id} onSuccess={onRefresh} />} />
                 ))}
               </div>
             )}
@@ -314,7 +316,8 @@ function EngineerMyDay({ data, isVisible }: { data: EngineerData; isVisible: (id
               {data.timeSuggestions.map((s) => (
                 <div key={s.taskId} className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-950/30 rounded text-sm text-purple-700 dark:text-purple-300">
                   <ArrowRight className="h-3 w-3 flex-shrink-0" />
-                  <span>{s.suggestion}</span>
+                  <span className="flex-1">{s.suggestion}</span>
+                  <ApplySuggestionButton suggestion={s} onSuccess={onRefresh} />
                 </div>
               ))}
             </div>
@@ -340,10 +343,13 @@ function EngineerMyDay({ data, isVisible }: { data: EngineerData; isVisible: (id
             />
           </div>
           {data.todayHours === 0 && (
-            <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              尚未記錄任何工時
-            </p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                尚未記錄任何工時
+              </p>
+              <StartTimerButton onSuccess={onRefresh} />
+            </div>
           )}
         </div>}
 
@@ -721,7 +727,7 @@ export default function DashboardPage() {
         ) : data.role === "MANAGER" ? (
           <ManagerMyDay data={data} isVisible={isVisible} />
         ) : (
-          <EngineerMyDay data={data} isVisible={isVisible} />
+          <EngineerMyDay data={data} isVisible={isVisible} onRefresh={() => fetchMyDay()} />
         )}
       </div>
     </div>
