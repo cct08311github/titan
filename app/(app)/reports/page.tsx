@@ -28,15 +28,19 @@ import {
   ProjectBudgetReport,
 } from "@/app/components/reports/report-table-audit";
 import { ReportsExtended } from "@/app/components/reports-extended";
+import { formatLocalDate } from "@/lib/utils/date";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
 function defaultDateRange(): { from: string; to: string } {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  // Issue #1479: use local-timezone YYYY-MM-DD so evening UTC+8 users
+  // see today's data, not yesterday's. toISOString() converts to UTC
+  // and silently drifts by up to a day for non-UTC timezones.
   return {
-    from: from.toISOString().split("T")[0],
-    to: now.toISOString().split("T")[0],
+    from: formatLocalDate(from),
+    to: formatLocalDate(now),
   };
 }
 

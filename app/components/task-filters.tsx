@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems, extractData } from "@/lib/api-client";
 import { useRouter, usePathname } from "next/navigation";
+import { formatLocalDate } from "@/lib/utils/date";
 
 export type TaskFilters = {
   assignee: string;
@@ -465,12 +466,14 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
             <button
               key={days}
               onClick={() => {
+                // Issue #1479: local-timezone YYYY-MM-DD so filter matches
+                // the user's calendar day, not a UTC-shifted one.
                 const to = new Date();
                 const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
                 onChange({
                   ...filters,
-                  createdAtFrom: from.toISOString().split("T")[0],
-                  createdAtTo: to.toISOString().split("T")[0],
+                  createdAtFrom: formatLocalDate(from),
+                  createdAtTo: formatLocalDate(to),
                 });
               }}
               className="text-[10px] px-2 py-1 rounded border border-border hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
