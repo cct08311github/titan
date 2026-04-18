@@ -15,9 +15,6 @@
     "db:studio": "prisma studio",
     "generate:mobile-types": "tsx scripts/generate-mobile-types.ts"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@prisma/adapter-pg": "7.6.0",
     "@prisma/client": "7.6.0",

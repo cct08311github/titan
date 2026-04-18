@@ -208,6 +208,23 @@ jobs:
         env:
           DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
 
+      # Issue #1478: fail-loud if seed silently no-op'd (happened on
+      # Prisma 7 upgrade when migrations.seed moved from package.json).
+      # The seed CLI exits 0 even when no seed command is configured,
+      # so we verify fixture users actually exist before proceeding.
+      - name: Verify seed created fixtures
+        env:
+          PGPASSWORD: titan_test
+          FIXTURE_EMAIL: admin@titan.local
+        run: |
+          count=$(psql -h localhost -U titan -d titan_test -tAc "SELECT COUNT(*) FROM \"User\" WHERE email = '$FIXTURE_EMAIL'")
+          if [ "$count" -lt 1 ]; then
+            echo "::error::Seed step produced 0 admin users — seed did not run."
+            echo "Check that prisma.config.ts has migrations.seed configured (Prisma 7+)."
+            exit 1
+          fi
+          echo "Seed verified: $FIXTURE_EMAIL present (count=$count)"
+
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
