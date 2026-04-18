@@ -17,6 +17,15 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
 
+  // Issue #1496: isomorphic-dompurify bundles jsdom which reads this CSS file at
+  // runtime via readFileSync. Next.js standalone build does not auto-trace static
+  // assets referenced by readFileSync, so we must include it explicitly.
+  outputFileTracingIncludes: {
+    "**": [
+      "./node_modules/isomorphic-dompurify/node_modules/jsdom/lib/jsdom/browser/default-stylesheet.css",
+    ],
+  },
+
   // Feature flag: TITAN_V2_ENABLED — toggle new vs old UI (Issue #970)
   env: {
     NEXT_PUBLIC_TITAN_V2_ENABLED: process.env.TITAN_V2_ENABLED ?? "true",
