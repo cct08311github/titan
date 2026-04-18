@@ -15,6 +15,7 @@ import { useState, useCallback } from "react";
 import { Play, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
+import { formatLocalDate } from "@/lib/utils/date";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -106,8 +107,10 @@ export function ApplySuggestionButton({ suggestion, onSuccess }: ApplySuggestion
   const handleApply = useCallback(async () => {
     setLoading(true);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Send YYYY-MM-DD in the user's local timezone.
+    // The server-side Zod schema (pastOrTodayDate) rejects full ISO timestamps,
+    // and toISOString() would shift evening entries in UTC+8 to the previous day.
+    const localDate = formatLocalDate(new Date());
 
     const { error } = await apiFetch("/api/time-entries", {
       method: "POST",
@@ -115,7 +118,7 @@ export function ApplySuggestionButton({ suggestion, onSuccess }: ApplySuggestion
       body: JSON.stringify({
         taskId: suggestion.taskId,
         hours: suggestion.estimatedHours ?? 1,
-        date: today.toISOString(),
+        date: localDate,
         category: "PLANNED_TASK",
         description: `自動套用建議：${suggestion.title}`,
       }),

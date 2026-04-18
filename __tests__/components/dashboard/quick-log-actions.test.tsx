@@ -230,6 +230,16 @@ describe("ApplySuggestionButton", () => {
     expect(body.hours).toBe(SUGGESTION.estimatedHours);
     expect(body.category).toBe("PLANNED_TASK");
     expect(body.description).toContain(SUGGESTION.title);
+
+    // Issue #1474: date must be local YYYY-MM-DD (not ISO timestamp),
+    // matching Zod pastOrTodayDate schema and avoiding UTC+8 evening drift.
+    expect(body.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const now = new Date();
+    const expectedDate =
+      `${now.getFullYear()}-` +
+      `${String(now.getMonth() + 1).padStart(2, "0")}-` +
+      `${String(now.getDate()).padStart(2, "0")}`;
+    expect(body.date).toBe(expectedDate);
   });
 
   it("shows error toast on failure and stays enabled", async () => {
