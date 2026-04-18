@@ -57,7 +57,9 @@ export function StartTimerButton({ taskId, compact, onSuccess }: StartTimerButto
       if (status === 409) {
         toast.error("已有正在計時的項目，請先停止目前計時器");
       } else {
-        toast.error(error);
+        // Don't forward the raw server error — can leak Prisma/stack detail.
+        toast.error("無法啟動計時器，請稍後再試");
+        console.error("[quick-log] start timer failed", { status, error });
       }
       return;
     }
@@ -127,7 +129,9 @@ export function ApplySuggestionButton({ suggestion, onSuccess }: ApplySuggestion
     setLoading(false);
 
     if (error) {
-      toast.error(error);
+      // Don't forward the raw server error — can leak Prisma/stack detail.
+      toast.error("套用建議失敗，請稍後再試");
+      console.error("[quick-log] apply suggestion failed", { error });
       return;
     }
 

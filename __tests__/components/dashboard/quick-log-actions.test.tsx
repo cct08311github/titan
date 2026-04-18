@@ -114,11 +114,11 @@ describe("StartTimerButton", () => {
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
-  it("shows generic error toast on non-409 errors", async () => {
+  it("shows generic error toast on non-409 errors (no raw server message leak)", async () => {
     mockFetch.mockResolvedValue({
       ok: false,
       status: 500,
-      json: async () => ({ message: "內部伺服器錯誤" }),
+      json: async () => ({ message: "內部伺服器錯誤：Prisma ... stack ..." }),
     } as unknown as Response);
     const onSuccess = jest.fn();
 
@@ -135,7 +135,12 @@ describe("StartTimerButton", () => {
       expect(mockToastError).toHaveBeenCalled();
     });
 
-    // Should not show the 409-specific message
+    // Issue #1475: non-409 errors must use a generic fallback string,
+    // not the raw server-provided message (prevents Prisma/stack leaks).
+    expect(mockToastError).toHaveBeenCalledWith("無法啟動計時器，請稍後再試");
+    expect(mockToastError).not.toHaveBeenCalledWith(
+      expect.stringContaining("Prisma"),
+    );
     expect(mockToastError).not.toHaveBeenCalledWith(
       "已有正在計時的項目，請先停止目前計時器"
     );
@@ -242,8 +247,8 @@ describe("ApplySuggestionButton", () => {
     expect(body.date).toBe(expectedDate);
   });
 
-  it("shows error toast on failure and stays enabled", async () => {
-    mockFetch.mockImplementation(makeFetchError(400, "時數不能為零"));
+  it("shows generic error toast on failure and stays enabled (no raw message leak)", async () => {
+    mockFetch.mockImplementation(makeFetchError(400, "Prisma constraint X violated"));
     const onSuccess = jest.fn();
 
     const { ApplySuggestionButton } = await import(
@@ -260,6 +265,12 @@ describe("ApplySuggestionButton", () => {
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalled();
     });
+
+    // Issue #1475: use generic fallback, never forward raw server error to users.
+    expect(mockToastError).toHaveBeenCalledWith("套用建議失敗，請稍後再試");
+    expect(mockToastError).not.toHaveBeenCalledWith(
+      expect.stringContaining("Prisma"),
+    );
 
     expect(onSuccess).not.toHaveBeenCalled();
 
