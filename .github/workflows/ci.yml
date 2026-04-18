@@ -155,6 +155,8 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    # Issue #1480: cap total job time so a hung test cannot burn 6h of runner budget.
+    timeout-minutes: 20
     needs: test
 
     services:
