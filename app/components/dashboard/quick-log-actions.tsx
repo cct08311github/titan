@@ -16,15 +16,7 @@ import { Play, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api-client";
 import { formatLocalDate } from "@/lib/utils/date";
-
-// ── Types ───────────────────────────────────────────────────────────────
-
-interface TimeSuggestion {
-  taskId: string;
-  title: string;
-  estimatedHours: number | null;
-  suggestion: string;
-}
+import type { TimeSuggestion } from "./types";
 
 // ── Start Timer Button ──────────────────────────────────────────────────
 
@@ -75,6 +67,7 @@ export function StartTimerButton({ taskId, compact, onSuccess }: StartTimerButto
         disabled={loading}
         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-primary/10 text-primary disabled:opacity-50 flex-shrink-0"
         title="開始計時"
+        aria-label="開始計時"
         data-testid="task-timer-btn"
       >
         {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
@@ -149,8 +142,6 @@ export function ApplySuggestionButton({ suggestion, onSuccess }: ApplySuggestion
     >
       {loading ? (
         <Loader2 className="h-3 w-3 animate-spin" />
-      ) : applied ? (
-        <Check className="h-3 w-3" />
       ) : (
         <Check className="h-3 w-3" />
       )}

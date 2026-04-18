@@ -113,12 +113,7 @@ interface MonthlyGoalItem {
   status: string;
 }
 
-interface TimeSuggestion {
-  taskId: string;
-  title: string;
-  estimatedHours: number | null;
-  suggestion: string;
-}
+import type { TimeSuggestion } from "@/app/components/dashboard/types";
 
 interface EngineerData {
   role: "ENGINEER";
@@ -721,13 +716,13 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : error ? (
-          <PageError message={error} onRetry={() => fetchMyDay()} />
+          <PageError message={error} onRetry={fetchMyDay} />
         ) : !data ? (
           <PageEmpty title="尚無資料" description="無法載入 My Day 資料" />
         ) : data.role === "MANAGER" ? (
           <ManagerMyDay data={data} isVisible={isVisible} />
         ) : (
-          <EngineerMyDay data={data} isVisible={isVisible} onRefresh={() => fetchMyDay()} />
+          <EngineerMyDay data={data} isVisible={isVisible} onRefresh={fetchMyDay} />
         )}
       </div>
     </div>
