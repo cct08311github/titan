@@ -516,3 +516,39 @@ DO $$ BEGIN
   ALTER TABLE "project_gates" ADD CONSTRAINT "project_gates_reviewerId_fkey" FOREIGN KEY ("reviewerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+
+-- ==========================================================
+-- Column-level schema drift fix (28 columns across 8 tables)
+-- Detected by parsing `prisma migrate diff --from-empty --to-schema`
+-- against cumulative migration state.
+-- ==========================================================
+-- Auto-generated missing column ALTERs
+
+ALTER TABLE "notification_preferences" ADD COLUMN IF NOT EXISTS "emailEnabled" BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "slug" TEXT;
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "icon" TEXT;
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "color" TEXT;
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "visibility" TEXT NOT NULL DEFAULT 'TEAM';
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "sortOrder" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "updatedBy" TEXT;
+ALTER TABLE "knowledge_spaces" ADD COLUMN IF NOT EXISTS "createdBy" TEXT NOT NULL;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "tags" TEXT[];
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "verifyByDate" TIMESTAMP(3);
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "categoryId" TEXT;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "summary" TEXT;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "pinned" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "coverImage" TEXT;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "publishedVersion" INTEGER;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "publishedAt" TIMESTAMP(3);
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "publishedBy" TEXT;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3);
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "archivedBy" TEXT;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "wordCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "readTimeMin" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "visibility" TEXT NOT NULL DEFAULT 'TEAM';
+ALTER TABLE "documents" ADD COLUMN IF NOT EXISTS "replacedById" TEXT;
+ALTER TABLE "document_versions" ADD COLUMN IF NOT EXISTS "title" TEXT;
+ALTER TABLE "reading_list_items" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "reading_list_assignments" ADD COLUMN IF NOT EXISTS "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE "knowledge_categories" ADD COLUMN IF NOT EXISTS "updatedAt" TIMESTAMP(3) NOT NULL;
+ALTER TABLE "document_attachments" ADD COLUMN IF NOT EXISTS "uploaderId" TEXT NOT NULL;
