@@ -13,6 +13,7 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
+    "test:db": "jest --config jest.config.db-integration.js --forceExit",
     "generate:mobile-types": "tsx scripts/generate-mobile-types.ts"
   },
   "prisma": {

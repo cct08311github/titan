@@ -62,6 +62,52 @@ jobs:
           NEXTAUTH_SECRET: test-secret-for-ci
           NEXTAUTH_URL: http://localhost:3000
 
+  db-integration:
+    runs-on: ubuntu-latest
+    # Issue #1486: catches Prisma driver/adapter-level bugs that mocked
+    # unit tests miss (e.g. enum column type drift). Fast (<3 min) so it
+    # surfaces in the PR feedback loop well before E2E.
+    timeout-minutes: 5
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: titan
+          POSTGRES_PASSWORD: titan_test
+          POSTGRES_DB: titan_test
+        ports:
+          - '5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
+
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
+
+      - name: Run DB integration tests
+        run: npm run test:db
+        env:
+          DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
+
   docker-build:
     runs-on: ubuntu-latest
     needs: test
