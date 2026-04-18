@@ -16,9 +16,10 @@ async function loginAndSave(
   const page = await browser.newPage();
 
   await page.goto(`${BASE_URL}/login`);
-  await page.waitForLoadState('networkidle');
-
-  // 等待 React 水合完成
+  // Issue #1480: dropped `waitForLoadState('networkidle')`. networkidle
+  // hangs when long-polls / beacons keep connections open — was the root
+  // of the 2h+ E2E hangs. Waiting for the hydrated submit button is a
+  // reliable interactive-readiness signal.
   await page.waitForSelector('button[type="submit"]', { state: 'visible', timeout: 10000 });
 
   await page.locator('#username').click();
