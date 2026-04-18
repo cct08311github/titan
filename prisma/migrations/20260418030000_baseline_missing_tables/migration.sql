@@ -2,6 +2,42 @@
 -- All statements are idempotent so this is safe on both fresh CI DBs and existing prod DBs.
 -- Tables: change_records, notification_logs, project_gates, project_issues, project_risks, project_stakeholders, projects, push_tokens, reading_list_item_reads, task_attachments, task_documents
 
+-- CreateEnum (idempotent): CMChangeType
+DO $$ BEGIN
+  CREATE TYPE "CMChangeType" AS ENUM ('NORMAL', 'STANDARD', 'EMERGENCY');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- CreateEnum (idempotent): RiskLevel
+DO $$ BEGIN
+  CREATE TYPE "RiskLevel" AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- CreateEnum (idempotent): ChangeStatus
+DO $$ BEGIN
+  CREATE TYPE "ChangeStatus" AS ENUM ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'IN_PROGRESS', 'VERIFYING', 'COMPLETED', 'ROLLED_BACK', 'CANCELLED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- CreateEnum (idempotent): SpaceRole
+DO $$ BEGIN
+  CREATE TYPE "SpaceRole" AS ENUM ('OWNER', 'EDITOR', 'VIEWER');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- CreateEnum (idempotent): LinkType
+DO $$ BEGIN
+  CREATE TYPE "LinkType" AS ENUM ('REFERENCE', 'RELATED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- CreateEnum (idempotent): PushPlatform
+DO $$ BEGIN
+  CREATE TYPE "PushPlatform" AS ENUM ('IOS', 'ANDROID');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+-- CreateEnum (idempotent): ProjectStatus
+DO $$ BEGIN
+  CREATE TYPE "ProjectStatus" AS ENUM ('PROPOSED', 'EVALUATING', 'APPROVED', 'SCHEDULED', 'REQUIREMENTS', 'DESIGN', 'DEVELOPMENT', 'TESTING', 'DEPLOYMENT', 'WARRANTY', 'COMPLETED', 'POST_REVIEW', 'CLOSED', 'ON_HOLD', 'CANCELLED');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 -- AddColumn: tasks.projectId (retroactive FK column, never migrated)
 ALTER TABLE "tasks" ADD COLUMN IF NOT EXISTS "projectId" TEXT;
 
