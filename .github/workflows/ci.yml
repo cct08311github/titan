@@ -220,10 +220,13 @@ jobs:
           AUTH_SECRET: test-secret-for-ci
 
       - name: Start server and run E2E tests
+        # Issue #1484: dropped `--workers=1` override so playwright.config.ts
+        # `workers: 3` takes effect. Saved auth state bypasses the login
+        # rate limiter, so concurrent workers are safe.
         run: |
           npm run start &
           npx wait-on http://localhost:3100/api/health --timeout 60000
-          npx playwright test --project=chromium --workers=1
+          npx playwright test --project=chromium
         env:
           DATABASE_URL: postgresql://titan:titan_test@localhost:5432/titan_test
           REDIS_URL: redis://localhost:6379/0
