@@ -112,5 +112,24 @@ describe("AlertService", () => {
         })
       );
     });
+
+    // Issue #1481: document query used to cascade into dashboard polling storms
+    test("文件查詢失敗時，其他告警仍正常產生（不連鎖崩潰）", async () => {
+      // Simulate the Prisma 7 DocumentStatus driver adapter failure
+      (prisma.document.findMany as jest.Mock).mockRejectedValue(
+        new Error('operator does not exist: text = "DocumentStatus"'),
+      );
+      (prisma.kPI.findMany as jest.Mock).mockResolvedValue([
+        { id: "kpi-1", title: "可用率", target: 100, actual: 30 },
+      ]);
+
+      const alerts = await service.getActiveAlerts();
+
+      // KPI alert should still fire even though document query threw
+      const kpiAlert = alerts.find((a) => a.category === "kpi_critical");
+      expect(kpiAlert).toBeDefined();
+      // No verification-expired alerts (query failed silently — degraded)
+      expect(alerts.some((a) => a.category === "verification_expired")).toBe(false);
+    });
   });
 });

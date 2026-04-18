@@ -8,7 +8,7 @@
  * - Timesheet not submitted this week
  * - Document verification expired
  */
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, DocumentStatus } from "@prisma/client";
 
 export type AlertLevel = "CRITICAL" | "WARNING";
 export type AlertCategory =
@@ -134,32 +134,43 @@ export class AlertService {
       });
     }
 
-    // 5. Document verification expired
-    const expiredDocs = await this.prisma.document.findMany({
-      where: { deletedAt: null,
-        status: "PUBLISHED",
-        verifyIntervalDays: { not: null },
-        verifiedAt: { not: null },
-      },
-      select: { id: true, title: true, verifiedAt: true, verifyIntervalDays: true },
-      take: 1000,
-    });
+    // 5. Document verification expired.
+    // Issue #1481: wrapped in try/catch because a DocumentStatus enum
+    // cast failure here used to cascade into dashboard polling storms
+    // (/api/alerts/active would 500 every ~30s, hanging E2E). The
+    // verification-expired alert is non-critical, so we degrade to zero
+    // alerts here rather than fail the whole endpoint.
+    try {
+      const expiredDocs = await this.prisma.document.findMany({
+        where: {
+          deletedAt: null,
+          status: DocumentStatus.PUBLISHED,
+          verifyIntervalDays: { not: null },
+          verifiedAt: { not: null },
+        },
+        select: { id: true, title: true, verifiedAt: true, verifyIntervalDays: true },
+        take: 1000,
+      });
 
-    for (const doc of expiredDocs) {
-      if (doc.verifiedAt && doc.verifyIntervalDays) {
-        const expiryDate = new Date(doc.verifiedAt);
-        expiryDate.setDate(expiryDate.getDate() + doc.verifyIntervalDays);
-        if (expiryDate < now) {
-          alerts.push({
-            id: `verification-expired-${doc.id}`,
-            level: "WARNING",
-            category: "verification_expired",
-            message: `文件「${doc.title}」驗證已過期`,
-            link: `/knowledge`,
-            createdAt: now,
-          });
+      for (const doc of expiredDocs) {
+        if (doc.verifiedAt && doc.verifyIntervalDays) {
+          const expiryDate = new Date(doc.verifiedAt);
+          expiryDate.setDate(expiryDate.getDate() + doc.verifyIntervalDays);
+          if (expiryDate < now) {
+            alerts.push({
+              id: `verification-expired-${doc.id}`,
+              level: "WARNING",
+              category: "verification_expired",
+              message: `文件「${doc.title}」驗證已過期`,
+              link: `/knowledge`,
+              createdAt: now,
+            });
+          }
         }
       }
+    } catch {
+      // Non-critical branch: skip verification-expired alerts on query failure
+      // so the rest of the alert payload still ships to the dashboard.
     }
 
     // Sort: CRITICAL first, then by createdAt
