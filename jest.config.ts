@@ -14,6 +14,10 @@ const config: Config = {
     "^@/(.*)$": "<rootDir>/$1",
   },
   testMatch: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
+  // Issue #1486: db-integration suites need a real Postgres and run via
+  // `npm run test:db` with a dedicated config. Exclude them here so the
+  // default Jest run (mocked Prisma) doesn't pick them up.
+  testPathIgnorePatterns: ["/node_modules/", "/__tests__/db-integration/"],
   collectCoverageFrom: [
     "services/**/*.ts",
     "!services/**/__tests__/**",
