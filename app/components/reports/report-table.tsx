@@ -96,7 +96,7 @@ export function TimeSummaryReport({ from, to }: DateRangeProps) {
           <Download className="h-3.5 w-3.5" />CSV
         </button>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="工作負載報表">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b bg-muted/30">
@@ -210,7 +210,7 @@ export function OvertimeReport({ from, to }: DateRangeProps) {
           <div className="text-[10px] text-muted-foreground">超標人數</div>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="加班報表">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b bg-muted/30">

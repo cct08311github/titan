@@ -188,7 +188,7 @@ export function ActivityTimeline() {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto" tabIndex={0} role="region" aria-label="團隊動態列表">
       {grouped.map((group) => (
         <div key={group.label}>
           <DateGroupHeader label={group.label} />

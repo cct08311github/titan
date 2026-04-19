@@ -428,7 +428,7 @@ export default function PlansPage() {
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-sm font-medium text-foreground">新增年度計畫</h3>
-            <button onClick={() => setShowPlanForm(false)} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => setShowPlanForm(false)} className="text-muted-foreground hover:text-foreground" aria-label="關閉">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -482,7 +482,7 @@ export default function PlansPage() {
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-sm font-medium text-foreground">從上年複製計畫</h3>
-            <button onClick={() => setShowCopyForm(false)} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => setShowCopyForm(false)} className="text-muted-foreground hover:text-foreground" aria-label="關閉">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -525,7 +525,7 @@ export default function PlansPage() {
         <div className="bg-card border border-border rounded-xl p-4 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <h3 className="text-sm font-medium text-foreground">新增月度目標</h3>
-            <button onClick={() => setShowGoalForm(false)} className="text-muted-foreground hover:text-foreground">
+            <button onClick={() => setShowGoalForm(false)} className="text-muted-foreground hover:text-foreground" aria-label="關閉">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -655,6 +655,7 @@ export default function PlansPage() {
               <button
                 onClick={() => setSelectedGoal(null)}
                 className="text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="關閉目標詳情"
               >
                 <X className="h-4 w-4" />
               </button>

@@ -50,9 +50,9 @@ function CopyYearDialog({ year, onConfirm, onClose }: CopyYearDialogProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-labelledby="copy-year-dialog-title">
       <div className="bg-card rounded-xl shadow-lg w-full max-w-sm p-5 space-y-4">
-        <h3 className="text-sm font-medium">複製至下年</h3>
+        <h3 id="copy-year-dialog-title" className="text-sm font-medium">複製至下年</h3>
         <p className="text-sm text-muted-foreground">
           確定將 <strong>{year}</strong> 年度的 KPI 複製到 <strong>{year + 1}</strong> 年度？
         </p>

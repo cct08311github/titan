@@ -531,6 +531,7 @@ export default function KanbanPage() {
           <button
             onClick={() => { setShowDragHint(false); localStorage.setItem("titan-kanban-onboarded", "1"); }}
             className="ml-auto text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="關閉提示"
           >
             <X className="h-3.5 w-3.5" />
           </button>

@@ -156,6 +156,7 @@ export function TimesheetToolbar({
               onClick={onPrevWeek}
               className="p-1.5 hover:bg-accent rounded-l-md transition-colors"
               data-testid="prev-week-btn"
+              aria-label="上一週"
             >
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -170,6 +171,7 @@ export function TimesheetToolbar({
               onClick={onNextWeek}
               className="p-1.5 hover:bg-accent rounded-r-md transition-colors"
               data-testid="next-week-btn"
+              aria-label="下一週"
             >
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -181,6 +183,7 @@ export function TimesheetToolbar({
             disabled={loading}
             className="p-1.5 rounded-md bg-background border border-border hover:bg-accent transition-colors"
             data-testid="refresh-btn"
+            aria-label="重新整理"
           >
             <RefreshCw className={cn("h-4 w-4 text-muted-foreground", loading && "animate-spin")} />
           </button>

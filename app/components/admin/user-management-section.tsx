@@ -317,13 +317,13 @@ export function UserManagementSection() {
 
       {/* Add / Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
           <div className="bg-card rounded-xl shadow-lg border border-border w-full max-w-md mx-4">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="text-sm font-semibold">
+              <h3 id="user-modal-title" className="text-sm font-semibold">
                 {editingUser ? "編輯使用者" : "新增使用者"}
               </h3>
-              <button onClick={closeModal} className="p-1 rounded hover:bg-accent transition-colors">
+              <button onClick={closeModal} className="p-1 rounded hover:bg-accent transition-colors" aria-label="關閉">
                 <X className="h-4 w-4" />
               </button>
             </div>

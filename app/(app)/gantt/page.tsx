@@ -693,6 +693,7 @@ export default function GanttPage() {
             <button
               onClick={() => setYear((y) => y - 1)}
               className="p-1.5 hover:bg-accent rounded-l-md transition-colors"
+              aria-label="上一年"
             >
               <ChevronLeft className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -700,6 +701,7 @@ export default function GanttPage() {
             <button
               onClick={() => setYear((y) => y + 1)}
               className="p-1.5 hover:bg-accent rounded-r-md transition-colors"
+              aria-label="下一年"
             >
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -722,7 +724,7 @@ export default function GanttPage() {
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto" tabIndex={0} role="region" aria-label="甘特圖項目">
             <div className="min-w-[900px]">
               {/* Month header */}
               <div className="flex">
@@ -793,7 +795,7 @@ export default function GanttPage() {
           />
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" tabIndex={0} role="region" aria-label="甘特圖月度目標">
           <div className="min-w-[900px]">
             {/* Grid layout: left label col + right timeline col */}
             <div className="flex">
