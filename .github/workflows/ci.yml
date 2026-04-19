@@ -263,7 +263,7 @@ jobs:
           PGPASSWORD: titan_test
           FIXTURE_EMAIL: admin@titan.local
         run: |
-          count=$(psql -h localhost -U titan -d titan_test -tAc "SELECT COUNT(*) FROM \"User\" WHERE email = '$FIXTURE_EMAIL'")
+          count=$(psql -h localhost -U titan -d titan_test -tAc "SELECT COUNT(*) FROM users WHERE email = '$FIXTURE_EMAIL'")
           if [ "$count" -lt 1 ]; then
             echo "::error::Seed step produced 0 admin users — seed did not run."
             echo "Check that prisma.config.ts has migrations.seed configured (Prisma 7+)."
