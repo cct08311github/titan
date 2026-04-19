@@ -302,6 +302,7 @@ jobs:
           CRON_SECRET: ci-cron-secret
           NODE_ENV: test
           E2E_TESTING: "true"
+          WEB_MAX_SESSIONS: "10"
 
       - name: Upload test results (screenshots + traces)
         if: always()
