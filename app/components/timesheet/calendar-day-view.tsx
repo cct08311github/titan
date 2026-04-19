@@ -305,6 +305,7 @@ export function CalendarDayView({
             onClick={goToPrevDay}
             className="p-1.5 hover:bg-accent rounded-md transition-colors"
             data-testid="prev-day-btn"
+            aria-label="前一天"
           >
             <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -319,6 +320,7 @@ export function CalendarDayView({
             onClick={goToNextDay}
             className="p-1.5 hover:bg-accent rounded-md transition-colors"
             data-testid="next-day-btn"
+            aria-label="下一天"
           >
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>

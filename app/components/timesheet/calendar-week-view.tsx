@@ -399,6 +399,7 @@ export function CalendarWeekView({
             onClick={onPrevWeek}
             className="p-1.5 hover:bg-accent rounded-md transition-colors"
             data-testid="prev-week-btn"
+            aria-label="上一週"
           >
             <ChevronLeft className="h-4 w-4 text-muted-foreground" />
           </button>
@@ -413,6 +414,7 @@ export function CalendarWeekView({
             onClick={onNextWeek}
             className="p-1.5 hover:bg-accent rounded-md transition-colors"
             data-testid="next-week-btn"
+            aria-label="下一週"
           >
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>

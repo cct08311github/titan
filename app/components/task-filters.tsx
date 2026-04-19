@@ -302,6 +302,7 @@ export function TaskFilters({ filters, onChange, totalCount, filteredCount, sync
                     onKeyDown={(e) => { if (e.key === "Enter") handleSaveFilter(); if (e.key === "Escape") { setShowSaveInput(false); setSavingName(""); } }}
                     placeholder="篩選名稱"
                     maxLength={50}
+                    aria-label="篩選名稱"
                     className="flex-1 h-7 text-xs bg-background border border-border rounded px-2 focus:outline-none focus:border-primary"
                   />
                   <button

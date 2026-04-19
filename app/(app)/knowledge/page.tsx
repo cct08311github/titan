@@ -753,7 +753,7 @@ function RevisionHistoryPanel({
       </button>
 
       {open && (
-        <div className="border-t border-border max-h-64 overflow-y-auto">
+        <div className="border-t border-border max-h-64 overflow-y-auto" tabIndex={0} role="region" aria-label="版本歷史清單">
           {versions.length === 0 && (
             <div className="px-4 py-3 text-xs text-muted-foreground text-center">尚無歷史版本</div>
           )}

@@ -66,9 +66,11 @@ export default function AdminPage() {
       </div>
 
       {/* Tab navigation */}
-      <div className="flex items-center bg-muted rounded-lg p-0.5 w-fit">
+      <div className="flex items-center bg-muted rounded-lg p-0.5 w-fit" role="tablist" aria-label="管理功能分頁">
         <button
           onClick={() => setActiveTab("system")}
+          role="tab"
+          aria-selected={activeTab === "system"}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
             activeTab === "system"
@@ -81,6 +83,8 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setActiveTab("users")}
+          role="tab"
+          aria-selected={activeTab === "users"}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
             activeTab === "users"
@@ -93,6 +97,8 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setActiveTab("categories")}
+          role="tab"
+          aria-selected={activeTab === "categories"}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
             activeTab === "categories"
@@ -106,6 +112,8 @@ export default function AdminPage() {
         {userRole === "ADMIN" && (
           <button
             onClick={() => setActiveTab("flags")}
+            role="tab"
+            aria-selected={activeTab === "flags"}
             className={cn(
               "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
               activeTab === "flags"
@@ -119,6 +127,8 @@ export default function AdminPage() {
         )}
         <button
           onClick={() => setActiveTab("permissions")}
+          role="tab"
+          aria-selected={activeTab === "permissions"}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
             activeTab === "permissions"
@@ -131,6 +141,8 @@ export default function AdminPage() {
         </button>
         <button
           onClick={() => setActiveTab("alerts")}
+          role="tab"
+          aria-selected={activeTab === "alerts"}
           className={cn(
             "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
             activeTab === "alerts"
@@ -144,6 +156,8 @@ export default function AdminPage() {
         {userRole === "ADMIN" && (
           <button
             onClick={() => setActiveTab("stale")}
+            role="tab"
+            aria-selected={activeTab === "stale"}
             className={cn(
               "flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-md transition-colors",
               activeTab === "stale"

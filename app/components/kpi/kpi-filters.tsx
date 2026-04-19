@@ -29,6 +29,7 @@ export function KpiFilters({
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
           className="w-full pl-9 pr-3 py-2 bg-accent border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          aria-label="搜尋 KPI"
         />
       </div>
       <div className="flex items-center gap-2">
@@ -37,6 +38,7 @@ export function KpiFilters({
           value={statusFilter}
           onChange={(e) => onStatusChange(e.target.value)}
           className="bg-accent border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          aria-label="篩選狀態"
         >
           <option value="">全部狀態</option>
           <option value="DRAFT">草稿</option>
@@ -49,6 +51,7 @@ export function KpiFilters({
           value={frequencyFilter}
           onChange={(e) => onFrequencyChange(e.target.value)}
           className="bg-accent border border-border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+          aria-label="篩選頻率"
         >
           <option value="">全部頻率</option>
           <option value="MONTHLY">月報</option>

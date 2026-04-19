@@ -81,6 +81,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border rounded-md bg-background"
               placeholder="your@email.com"
+              autoComplete="email"
             />
           </div>
 
@@ -114,6 +115,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded-md bg-background"
               minLength={8}
+              autoComplete="new-password"
             />
           </div>
 
@@ -129,6 +131,7 @@ export default function ResetPasswordPage() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded-md bg-background"
               minLength={8}
+              autoComplete="new-password"
             />
           </div>
 

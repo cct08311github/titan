@@ -59,7 +59,7 @@ export default function LoginPage() {
           </div>
           {error && (
             <div className="flex items-center gap-2 text-sm text-danger bg-danger/5 border border-danger/10 rounded-lg px-3 py-2.5">
-              <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0" />{error}
+              <div className="w-1.5 h-1.5 rounded-full bg-danger flex-shrink-0" aria-hidden="true" />{error}
             </div>
           )}
           <button type="submit" disabled={loading}

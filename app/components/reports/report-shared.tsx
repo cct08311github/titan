@@ -26,7 +26,7 @@ export function GenericReportTable({ headers, rows }: GenericReportTableProps) {
     );
   }
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="報表資料">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b bg-muted/30">
