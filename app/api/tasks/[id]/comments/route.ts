@@ -151,20 +151,28 @@ export const POST = withAuth(async (
   });
 
   // Fire-and-forget SSE publish (outside tx; Redis failure must not rollback comment).
+  // Wrap in try/catch so a sync-throwing publisher (or future variant) never
+  // surfaces past the comment response.
   if (notifications.length > 0) {
-    void publishNotifications(
-      notifications.map((n) => ({
-        id: n.id,
-        userId: n.userId,
-        type: n.type,
-        title: n.title,
-        body: n.body,
-        isRead: n.isRead,
-        createdAt: n.createdAt,
-        relatedId: n.relatedId,
-        relatedType: n.relatedType,
-      }))
-    );
+    try {
+      const publishPromise = publishNotifications(
+        notifications.map((n) => ({
+          id: n.id,
+          userId: n.userId,
+          type: n.type,
+          title: n.title,
+          body: n.body,
+          isRead: n.isRead,
+          createdAt: n.createdAt,
+          relatedId: n.relatedId,
+          relatedType: n.relatedType,
+        }))
+      );
+      // Swallow async rejection too.
+      void Promise.resolve(publishPromise).catch(() => undefined);
+    } catch {
+      // Sync throw from publisher — ignore, comment already persisted.
+    }
   }
 
   // Fire-and-forget activity log

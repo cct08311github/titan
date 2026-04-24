@@ -115,6 +115,9 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [showMention, setShowMention] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
+  // Track which users were inserted via @mention so the server can notify them (#1506).
+  // A user removed from the content string is pruned at submit time.
+  const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { confirmDialog, ConfirmDialog } = useConfirmDialog();
@@ -167,7 +170,7 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
     setShowMention(false);
   }
 
-  function insertMention(userName: string) {
+  function insertMention(user: User) {
     const textarea = editingId ? editTextareaRef.current : textareaRef.current;
     const currentValue = editingId ? editContent : newContent;
     const setter = editingId ? setEditContent : setNewContent;
@@ -179,9 +182,11 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
     if (lastAtIdx >= 0) {
       const newValue =
         currentValue.substring(0, lastAtIdx) +
-        `@${userName} ` +
+        `@${user.name} ` +
         currentValue.substring(cursorPos);
       setter(newValue);
+      // Track the id so the server knows who to notify. Dedupe on insert.
+      setMentionedUserIds((prev) => (prev.includes(user.id) ? prev : [...prev, user.id]));
     }
     setShowMention(false);
     textarea?.focus();
@@ -197,14 +202,24 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
     if (!newContent.trim() || sending) return;
     setSending(true);
     try {
+      // Prune mentions whose @<name> token was deleted from the content before submit.
+      const finalContent = newContent.trim();
+      const surviving = mentionedUserIds.filter((uid) => {
+        const u = users.find((x) => x.id === uid);
+        return u ? finalContent.includes(`@${u.name}`) : false;
+      });
       const res = await fetch(`/api/tasks/${taskId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newContent.trim() }),
+        body: JSON.stringify({
+          content: finalContent,
+          mentionedUserIds: surviving.length > 0 ? surviving : undefined,
+        }),
       });
       if (res.ok) {
         toast.success("評論已發送");
         setNewContent("");
+        setMentionedUserIds([]);
         await fetchComments();
       } else {
         const errBody = await res.json().catch(() => ({}));
@@ -269,7 +284,7 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
             key={u.id}
             type="button"
             onMouseDown={(e) => e.preventDefault()}
-            onClick={() => insertMention(u.name)}
+            onClick={() => insertMention(u)}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-accent transition-colors text-left"
           >
             <CommentAvatar user={u} />
