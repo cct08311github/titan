@@ -17,14 +17,18 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
 
-  // Issue #1496: isomorphic-dompurify bundles jsdom which reads this CSS file at
-  // runtime via readFileSync. Next.js standalone build does not auto-trace static
-  // assets referenced by readFileSync, so we must include it explicitly.
-  outputFileTracingIncludes: {
-    "**": [
-      "./node_modules/isomorphic-dompurify/node_modules/jsdom/lib/jsdom/browser/default-stylesheet.css",
-    ],
-  },
+  // Issue #1508: externalize isomorphic-dompurify so Webpack does not bundle
+  // (and minify-break) jsdom. The bundled jsdom in Next.js chunks was throwing
+  // both `ENOENT browser/default-stylesheet.css` (fixed upstream by copying
+  // the CSS to CWD) and `TypeError: h is not a function` (webpack minification
+  // stripping a dynamic symbol jsdom uses). Externalizing keeps jsdom as a
+  // real CommonJS module in node_modules at runtime, where its own relative
+  // path resolution and dynamic requires work correctly.
+  //
+  // This supersedes the outputFileTracingIncludes approach from T1496 (#1499)
+  // for the CSS file — once externalized, jsdom reads the CSS from its own
+  // package directory via __dirname, no extra copy needed.
+  serverExternalPackages: ["isomorphic-dompurify", "jsdom"],
 
   // Feature flag: TITAN_V2_ENABLED — toggle new vs old UI (Issue #970)
   env: {
