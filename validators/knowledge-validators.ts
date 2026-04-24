@@ -37,6 +37,8 @@ export const createDocAttachmentSchema = z.object({
 export const createDocCommentSchema = z.object({
   content: z.string().min(1),
   parentId: z.string().nullish(),
+  /** Issue #1506: users to notify via @mention. Max 20 per comment. */
+  mentionedUserIds: z.array(z.string().cuid()).max(20).optional(),
 });
 
 // ── DocumentLink ──
