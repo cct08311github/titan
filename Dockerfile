@@ -18,6 +18,18 @@ COPY --chown=nextjs:nodejs public ./public
 COPY --chown=nextjs:nodejs .next/standalone/ ./
 COPY --chown=nextjs:nodejs .next/static ./.next/static
 
+# Issue #1508: isomorphic-dompurify's webpack-bundled jsdom calls
+# readFileSync("browser/default-stylesheet.css") — resolved relative
+# to process.cwd(). T1496's outputFileTracingIncludes (#1499) got the
+# file into node_modules/.../jsdom/lib/jsdom/browser/ but the bundled
+# code never looks there. Put a copy at ${CWD}/browser/... so it's
+# actually loadable. Silently skipped by background stale-task-scan
+# until now, but blocks any e2e/CI that uses sanitizeMarkdown.
+RUN mkdir -p /app/browser && \
+    cp /app/node_modules/isomorphic-dompurify/node_modules/jsdom/lib/jsdom/browser/default-stylesheet.css \
+       /app/browser/default-stylesheet.css && \
+    chown -R nextjs:nodejs /app/browser
+
 USER nextjs
 
 EXPOSE 3100

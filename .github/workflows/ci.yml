@@ -310,8 +310,16 @@ jobs:
           mkdir -p .next/standalone/.next
           cp -r .next/static .next/standalone/.next/static
           [ -d public ] && cp -r public .next/standalone/public || true
+          # Issue #1508: isomorphic-dompurify's webpack-bundled jsdom calls
+          # readFileSync("browser/default-stylesheet.css") relative to CWD.
+          # T1496 bundled the file into node_modules but the bundled code
+          # never looks there. Put a copy where jsdom actually reads from.
+          mkdir -p .next/standalone/browser
+          cp .next/standalone/node_modules/isomorphic-dompurify/node_modules/jsdom/lib/jsdom/browser/default-stylesheet.css \
+             .next/standalone/browser/default-stylesheet.css
           # Sanity: server entrypoint exists.
           test -f .next/standalone/server.js
+          test -f .next/standalone/browser/default-stylesheet.css
 
       - name: Start server and run E2E tests
         # Issue #1484: dropped `--workers=1` override so playwright.config.ts
