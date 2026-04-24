@@ -21,6 +21,8 @@ import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
 import { sanitizeHtml } from "@/lib/security/sanitize";
 import { useConfirmDialog } from "@/app/components/ui/alert-dialog";
+import { useFeatureFlag } from "@/lib/hooks/use-feature-flag";
+import { ReactionBar } from "@/app/components/reaction-bar";
 
 type User = { id: string; name: string; avatar?: string | null };
 
@@ -118,6 +120,8 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
   // Track which users were inserted via @mention so the server can notify them (#1506).
   // A user removed from the content string is pruned at submit time.
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
+  // Issue #1512: reactions gated behind FEATURE_REACTIONS flag.
+  const { enabled: reactionsEnabled } = useFeatureFlag("FEATURE_REACTIONS");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { confirmDialog, ConfirmDialog } = useConfirmDialog();
@@ -389,14 +393,25 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
                         </div>
                       </div>
                     ) : (
-                      <div
-                        className="mt-0.5 text-sm text-foreground/90 leading-relaxed"
-                        /* Security: content is HTML-escaped first, markdown rules applied,
-                           then sanitized via sanitizeHtml() — defense-in-depth XSS prevention */
-                        dangerouslySetInnerHTML={{
-                          __html: renderCommentMarkdown(comment.content),
-                        }}
-                      />
+                      <>
+                        <div
+                          className="mt-0.5 text-sm text-foreground/90 leading-relaxed"
+                          /* Security: content is HTML-escaped first, markdown rules applied,
+                             then sanitized via sanitizeHtml() — defense-in-depth XSS prevention */
+                          dangerouslySetInnerHTML={{
+                            __html: renderCommentMarkdown(comment.content),
+                          }}
+                        />
+                        {reactionsEnabled && (
+                          <ReactionBar
+                            targetType="TASK_COMMENT"
+                            targetId={comment.id}
+                            userNames={Object.fromEntries(
+                              users.map((u) => [u.id, u.name])
+                            )}
+                          />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
