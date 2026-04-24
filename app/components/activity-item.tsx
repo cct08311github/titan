@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils";
 import { formatRelative, formatDateTime } from "@/lib/format";
 import { formatActivityDescription } from "@/lib/utils/activity-formatter";
+import { useFeatureFlag } from "@/lib/hooks/use-feature-flag";
+import { ReactionBar } from "@/app/components/reaction-bar";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +74,11 @@ export function ActivityItem({ item }: ActivityItemProps) {
   });
 
   const userName = item.userName ?? "系統";
+  // Issue #1512: reactions gated behind FEATURE_REACTIONS + restricted to
+  // task_activity sources (audit_log items live in a different table that
+  // the reactions API does not target — the 404 would just create noise).
+  const { enabled: reactionsEnabled } = useFeatureFlag("FEATURE_REACTIONS");
+  const canReact = reactionsEnabled && item.source === "task_activity";
 
   return (
     <div className="flex items-start gap-3 px-4 py-3 hover:bg-accent/30 transition-colors rounded-lg">
@@ -111,6 +118,10 @@ export function ActivityItem({ item }: ActivityItemProps) {
             </span>
           )}
         </div>
+
+        {canReact && (
+          <ReactionBar targetType="ACTIVITY" targetId={item.id} />
+        )}
       </div>
     </div>
   );
