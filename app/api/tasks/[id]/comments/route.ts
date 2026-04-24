@@ -17,12 +17,20 @@ import { requireAuth } from "@/lib/rbac";
 import { logActivity, ActivityAction, ActivityModule } from "@/services/activity-logger";
 import { sanitizeMarkdown } from "@/lib/security/sanitize";
 import { ForbiddenError } from "@/services/errors";
+import { publishNotifications } from "@/lib/notification-publisher";
+
+/** Max mentions per comment — hard cap to prevent notification flooding (#1506). */
+const MAX_MENTIONS_PER_COMMENT = 20;
 
 const createCommentSchema = z.object({
   content: z
     .string()
     .min(1, "評論內容不可為空")
     .max(10000, "評論不得超過 10,000 字元"),
+  mentionedUserIds: z
+    .array(z.string().cuid())
+    .max(MAX_MENTIONS_PER_COMMENT, `單則評論最多 @${MAX_MENTIONS_PER_COMMENT} 人`)
+    .optional(),
 });
 
 const updateCommentSchema = z.object({
@@ -60,25 +68,104 @@ export const POST = withAuth(async (
   const session = await requireAuth();
   const { id: taskId } = await context.params;
 
-  const { content } = validateBody(createCommentSchema, await req.json());
+  const { content, mentionedUserIds } = validateBody(createCommentSchema, await req.json());
   const sanitized = sanitizeMarkdown(content);
 
   // Verify task exists
-  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { id: true } });
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    select: { id: true, title: true },
+  });
   if (!task) {
     return error("NotFoundError", "任務不存在", 404);
   }
 
-  const comment = await prisma.taskComment.create({
-    data: {
-      taskId,
-      userId: session.user.id,
-      content: sanitized,
-    },
-    include: {
-      user: { select: { id: true, name: true, avatar: true } },
-    },
+  // Deduplicate + drop self-mentions before DB lookup
+  const candidateIds = Array.from(
+    new Set((mentionedUserIds ?? []).filter((id) => id !== session.user.id))
+  );
+
+  // Validate mentioned users exist + are active. Silently drop unknowns
+  // (user may have been deactivated between composer fetch and submit).
+  const activeMentioned =
+    candidateIds.length > 0
+      ? await prisma.user.findMany({
+          where: { id: { in: candidateIds }, isActive: true },
+          select: { id: true },
+        })
+      : [];
+  const mentionedIds = activeMentioned.map((u) => u.id);
+
+  // Atomic: create comment + mention notifications in single transaction.
+  const { comment, notifications } = await prisma.$transaction(async (tx) => {
+    const created = await tx.taskComment.create({
+      data: {
+        taskId,
+        userId: session.user.id,
+        content: sanitized,
+      },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+      },
+    });
+
+    if (mentionedIds.length === 0) {
+      return { comment: created, notifications: [] };
+    }
+
+    // Respect per-user NotificationPreference opt-out for MENTION type.
+    const optedOut = await tx.notificationPreference.findMany({
+      where: {
+        userId: { in: mentionedIds },
+        type: "MENTION",
+        enabled: false,
+      },
+      select: { userId: true },
+    });
+    const optedOutSet = new Set(optedOut.map((p) => p.userId));
+    const targets = mentionedIds.filter((id) => !optedOutSet.has(id));
+
+    if (targets.length === 0) {
+      return { comment: created, notifications: [] };
+    }
+
+    const preview = sanitized.substring(0, 140);
+    const title = `${created.user.name} 在任務「${task.title}」中提到你`;
+
+    const created_notifications = await Promise.all(
+      targets.map((userId) =>
+        tx.notification.create({
+          data: {
+            userId,
+            type: "MENTION",
+            title,
+            body: preview,
+            relatedId: taskId,
+            relatedType: "Task",
+          },
+        })
+      )
+    );
+
+    return { comment: created, notifications: created_notifications };
   });
+
+  // Fire-and-forget SSE publish (outside tx; Redis failure must not rollback comment).
+  if (notifications.length > 0) {
+    void publishNotifications(
+      notifications.map((n) => ({
+        id: n.id,
+        userId: n.userId,
+        type: n.type,
+        title: n.title,
+        body: n.body,
+        isRead: n.isRead,
+        createdAt: n.createdAt,
+        relatedId: n.relatedId,
+        relatedType: n.relatedType,
+      }))
+    );
+  }
 
   // Fire-and-forget activity log
   logActivity({
@@ -90,6 +177,7 @@ export const POST = withAuth(async (
     metadata: {
       taskId,
       contentPreview: sanitized.substring(0, 100),
+      mentionCount: notifications.length,
     },
   });
 
