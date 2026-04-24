@@ -282,12 +282,46 @@ jobs:
           NEXTAUTH_URL: http://localhost:3100
           AUTH_SECRET: test-secret-for-ci
 
+      - name: Prepare standalone server layout
+        # Issue #1508: next.config.ts sets output:"standalone" and T1496
+        # (#1499) uses outputFileTracingIncludes to bundle the jsdom CSS
+        # that isomorphic-dompurify reads at runtime. `next start` ignores
+        # the standalone build and reads the CSS from the non-existent
+        # `./browser/default-stylesheet.css`, causing ENOENT cascades in
+        # every code path that renders sanitized HTML. Flatten the
+        # standalone output and attach static + public, matching the
+        # production Docker layout (see scripts/upgrade.sh).
+        run: |
+          set -euo pipefail
+          if [ ! -d ".next/standalone" ]; then
+            echo "::error::.next/standalone missing — build did not produce standalone output"
+            exit 1
+          fi
+          # Next.js nests server.js under the absolute build path; flatten it.
+          nested_server=$(find .next/standalone -name server.js -not -path "*/node_modules/*" | head -1)
+          if [ -n "$nested_server" ] && [ "$nested_server" != ".next/standalone/server.js" ]; then
+            nested_dir=$(dirname "$nested_server")
+            echo "Flattening $nested_dir → .next/standalone/"
+            cp -rn "$nested_dir/." .next/standalone/
+            top=$(echo "${nested_dir#.next/standalone/}" | cut -d/ -f1)
+            [ -n "$top" ] && rm -rf ".next/standalone/${top}"
+          fi
+          # Standalone build does not copy .next/static or public by design.
+          mkdir -p .next/standalone/.next
+          cp -r .next/static .next/standalone/.next/static
+          [ -d public ] && cp -r public .next/standalone/public || true
+          # Sanity: server entrypoint exists.
+          test -f .next/standalone/server.js
+
       - name: Start server and run E2E tests
         # Issue #1484: dropped `--workers=1` override so playwright.config.ts
         # `workers: 3` takes effect. Saved auth state bypasses the login
         # rate limiter, so concurrent workers are safe.
+        # Issue #1508: run the standalone server directly instead of
+        # `next start`, so isomorphic-dompurify's jsdom can find the
+        # bundled default-stylesheet.css via outputFileTracingIncludes.
         run: |
-          npm run start &
+          node .next/standalone/server.js &
           npx wait-on http://localhost:3100/api/health --timeout 60000
           npx playwright test --project=chromium
         env:
