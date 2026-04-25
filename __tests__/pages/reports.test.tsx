@@ -12,6 +12,13 @@ jest.mock("next-auth/react", () => ({
   })),
 }));
 
+// Issue #1539-3: reports/page.tsx now uses useSearchParams for ?id=<report> deep-link
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  usePathname: () => "/reports",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 

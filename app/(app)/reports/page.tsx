@@ -56,9 +56,10 @@ function ReportsV2Inner() {
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
 
   // Issue #1539-3: deep-link via ?id=<report> so callers (e.g. timesheet page)
-  // can jump straight to a specific report.
+  // can jump straight to a specific report. Null-safe in case caller didn't
+  // wrap in Suspense.
   useEffect(() => {
-    const requested = searchParams.get("id");
+    const requested = searchParams?.get("id");
     if (requested && REPORT_IDS.has(requested)) {
       setActiveReport(requested as ReportId);
     }
