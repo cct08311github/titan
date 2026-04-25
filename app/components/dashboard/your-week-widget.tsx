@@ -73,7 +73,7 @@ function StatBlock({ icon, label, primary, secondary, tone = "neutral" }: StatBl
 }
 
 function celebrationFor(s: Summary): string | null {
-  // Pick the most encouraging metric; skip when nothing happened yet.
+  // Pick the most encouraging metric; warm fallback for the all-zero case.
   if (s.completedTasks.current > 0 && s.completedTasks.delta > 0) {
     return `🎉 本週完成 ${s.completedTasks.current} 個任務，比上週多 ${s.completedTasks.delta} 個`;
   }
@@ -86,6 +86,17 @@ function celebrationFor(s: Summary): string | null {
   }
   if (s.completedTasks.current > 0) {
     return `✅ 本週已完成 ${s.completedTasks.current} 個任務`;
+  }
+  // Issue #1537: warm new-week empty state instead of bare zeros.
+  // Per #1505 design principles — never negative-tone. Gentle/encouraging
+  // when context fits; silent when "0 completed mid-week" might just mean
+  // "you do non-task work" or "you're on leave" — no shame either way.
+  const day = new Date().getDay(); // 0=Sun..6=Sat
+  if (day === 1 || day === 2) {
+    return "🌱 新的一週剛開始";
+  }
+  if (day === 0 || day === 6) {
+    return "☕ 週末愉快";
   }
   return null;
 }
