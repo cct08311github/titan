@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, CalendarDays, TableProperties, Clock } from "lucide-react";
+import { Loader2, CalendarDays, Clock } from "lucide-react";
 import Link from "next/link";
 import {
   useTimesheet,
@@ -20,10 +20,7 @@ import {
 import { TimesheetListView } from "@/app/components/timesheet-list-view";
 import { TimeSummary } from "@/app/components/time-summary";
 import { PageLoading, PageError, PageEmpty } from "@/app/components/page-states";
-import { TimesheetPivotTable, type TimesheetPivotData } from "@/app/components/timesheet-pivot-table";
 import { cn } from "@/lib/utils";
-
-type SummaryTab = "timesheet" | "weekly-pivot" | "monthly-pivot";
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -35,10 +32,6 @@ export default function TimesheetPage() {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [calendarDate, setCalendarDate] = useState<Date>(() => new Date());
-  const [summaryTab, setSummaryTab] = useState<SummaryTab>("timesheet");
-  const [pivotData, setPivotData] = useState<TimesheetPivotData | null>(null);
-  const [pivotLoading, setPivotLoading] = useState(false);
-  const pivotCache = useRef<Map<string, TimesheetPivotData>>(new Map());
 
   const ts = useTimesheet(userFilter || undefined);
 
@@ -52,34 +45,6 @@ export default function TimesheetPage() {
     Promise.all(taskIds.map((id) => ts.fetchSubTasks(id))).catch(() => { toast.error("子任務載入失敗，請重新整理"); });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ts.taskRows]);
-
-  // Fetch pivot data when tab switches (Issue #832)
-  const fetchPivot = useCallback(async (tab: SummaryTab) => {
-    if (tab === "timesheet") return;
-    const cached = pivotCache.current.get(tab);
-    if (cached) { setPivotData(cached); return; }
-    setPivotLoading(true);
-    try {
-      const endpoint = tab === "weekly-pivot"
-        ? "/api/reports/weekly?view=pivot"
-        : `/api/reports/monthly?view=pivot&month=${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
-      const res = await fetch(endpoint);
-      if (res.ok) {
-        const body = await res.json();
-        const data = body?.data ?? null;
-        setPivotData(data);
-        if (data) pivotCache.current.set(tab, data);
-      } else {
-        toast.error("報表載入失敗，請稍後再試");
-      }
-    } finally {
-      setPivotLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPivot(summaryTab);
-  }, [summaryTab, fetchPivot]);
 
   // Load users for manager filter
   useEffect(() => {
@@ -144,30 +109,9 @@ export default function TimesheetPage() {
         getDateStr={ts.getDateStr}
       />
 
-      {/* Manager actions — Issue #832: added pivot tabs */}
+      {/* Manager actions — Issue #1539-3: pivot tabs moved to /reports */}
       {isManager && (
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          <div className="flex items-center bg-muted/50 rounded-lg p-0.5 gap-0.5">
-            {([
-              { key: "timesheet" as SummaryTab, label: "工時填報" },
-              { key: "weekly-pivot" as SummaryTab, label: "週報摘要" },
-              { key: "monthly-pivot" as SummaryTab, label: "月報摘要" },
-            ]).map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setSummaryTab(key)}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm rounded-md transition-colors whitespace-nowrap",
-                  summaryTab === key
-                    ? "bg-background text-foreground font-medium shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {key !== "timesheet" && <TableProperties className="h-3.5 w-3.5" />}
-                {label}
-              </button>
-            ))}
-          </div>
           <button
             onClick={() => router.push("/timesheet/monthly")}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors"
@@ -175,39 +119,34 @@ export default function TimesheetPage() {
             <CalendarDays className="h-4 w-4" />
             月曆
           </button>
+          <Link
+            href="/reports?id=weekly-pivot"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors text-muted-foreground"
+          >
+            週報摘要 →
+          </Link>
+          <Link
+            href="/reports?id=monthly-pivot"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-border hover:bg-muted transition-colors text-muted-foreground"
+          >
+            月報摘要 →
+          </Link>
           <select
-          aria-label="篩選使用者"
-          value={userFilter}
-          onChange={(e) => setUserFilter(e.target.value)}
-          className="self-start bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
-        >
-          <option value="">我的工時</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        </div>
-      )}
-
-      {/* Pivot table view (Issue #832) */}
-      {summaryTab !== "timesheet" && (
-        <div className="border border-border rounded-xl overflow-hidden bg-card">
-          <div className="px-4 py-3 border-b border-border">
-            <h2 className="text-sm font-medium text-foreground">
-              {summaryTab === "weekly-pivot" ? "週報" : "月報"}摘要 — 人員 × 類別 Pivot Table
-            </h2>
-            {pivotData && (
-              <p className="text-xs text-muted-foreground mt-0.5">
-                期間：{pivotData.period.label}
-              </p>
-            )}
-          </div>
-          <TimesheetPivotTable data={pivotData ?? { period: { start: "", end: "", label: "" }, rows: [], categories: [], categoryTotals: {}, grandTotal: 0, grandOvertimeTotal: 0 }} loading={pivotLoading} />
+            aria-label="篩選使用者"
+            value={userFilter}
+            onChange={(e) => setUserFilter(e.target.value)}
+            className="self-start bg-background border border-border rounded-md px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
+          >
+            <option value="">我的工時</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
         </div>
       )}
 
       {/* Content area */}
-      <div className={cn("flex flex-col gap-4", summaryTab !== "timesheet" && "hidden")}>
+      <div className="flex flex-col gap-4">
         {/* Stats summary */}
         <div className="flex-shrink-0">
           {ts.statsLoading ? (

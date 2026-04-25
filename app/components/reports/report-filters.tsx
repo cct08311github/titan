@@ -24,7 +24,7 @@ export type ReportId =
   | "utilization" | "velocity" | "kpi-trend" | "unplanned"
   | "time-summary" | "overtime" | "audit-summary" | "login-activity" | "project-status" | "project-budget"
   | "completion-rate"
-  | "department-timesheet" | "time-distribution" | "timesheet-compliance" | "weekly" | "monthly"
+  | "department-timesheet" | "time-distribution" | "timesheet-compliance" | "weekly" | "monthly" | "weekly-pivot" | "monthly-pivot"
   | "delay-change" | "workload" | "custom" | "trends" | "kpi"
   | "v2-change-summary" | "v2-earned-value" | "v2-incident-sla" | "v2-kpi-composite"
   | "v2-kpi-correlation" | "v2-milestone-achievement" | "v2-overdue-analysis"
@@ -100,6 +100,8 @@ export const REPORT_CATEGORIES: ReportCategory[] = [
       { id: "timesheet-compliance", label: "工時合規", icon: Shield, description: "填報合規率統計" },
       { id: "weekly", label: "週報", icon: Calendar, description: "週度工作摘要" },
       { id: "monthly", label: "月報", icon: Calendar, description: "月度工作摘要" },
+      { id: "weekly-pivot", label: "週報摘要 (Pivot)", icon: BarChart3, description: "人員 × 類別週度 Pivot" },
+      { id: "monthly-pivot", label: "月報摘要 (Pivot)", icon: BarChart3, description: "人員 × 類別月度 Pivot" },
     ],
   },
   {

@@ -18,6 +18,8 @@ import { TimeDistributionReport } from "./reports/report-time-distribution";
 import { TimesheetComplianceReport } from "./reports/report-timesheet-compliance";
 import { TrendsReport } from "./reports/report-trends";
 import { WeeklyReport } from "./reports/report-weekly";
+import { WeeklyPivotReport } from "./reports/report-weekly-pivot";
+import { MonthlyPivotReport } from "./reports/report-monthly-pivot";
 import { WorkloadReport } from "./reports/report-workload";
 import { V2ChangeSummaryReport } from "./reports/report-v2-change-summary";
 import { V2EarnedValueReport } from "./reports/report-v2-earned-value";
@@ -59,6 +61,10 @@ export function ReportsExtended({ activeReport, from, to, year }: ReportsExtende
       return <WeeklyReport from={from} />;
     case "monthly":
       return <MonthlyReport from={from} />;
+    case "weekly-pivot":
+      return <WeeklyPivotReport from={from} />;
+    case "monthly-pivot":
+      return <MonthlyPivotReport from={from} />;
 
     // 分析
     case "delay-change":
