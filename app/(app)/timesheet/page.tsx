@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, CalendarDays, Clock } from "lucide-react";
+import { Loader2, CalendarDays, Clock, Plus } from "lucide-react";
 import Link from "next/link";
 import {
   useTimesheet,
@@ -36,6 +36,8 @@ export default function TimesheetPage() {
   const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [calendarDate, setCalendarDate] = useState<Date>(() => new Date());
+  // Issue #1539-8: lift quick-log open state so empty state CTA can trigger same modal
+  const [quickLogOpen, setQuickLogOpen] = useState(false);
 
   const ts = useTimesheet(userFilter || undefined);
 
@@ -100,6 +102,8 @@ export default function TimesheetPage() {
           onSave={(taskId, date, hours, category, description, overtimeType) =>
             ts.saveEntry(taskId, date, hours, category, description, overtimeType)
           }
+          open={quickLogOpen}
+          onOpenChange={setQuickLogOpen}
         />
       </div>
 
@@ -200,15 +204,25 @@ export default function TimesheetPage() {
           ) : ts.taskRows.filter(r => r.taskId !== null).length === 0 && viewMode === "grid" ? (
             <PageEmpty
               icon={<Clock className="h-10 w-10" />}
-              title="從看板選擇任務或先建立一個"
-              description="工時紀錄會依照你在看板上的任務自動帶入"
+              title="這週還沒有相關任務"
+              description="可以直接快速記時數（不限定任務），或前往看板建立 / 認領任務"
               action={
-                <Link
-                  href="/kanban"
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm hover:shadow transition-all"
-                >
-                  前往看板
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-2 items-center">
+                  <button
+                    onClick={() => setQuickLogOpen(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-sm transition-all"
+                    data-testid="empty-state-quick-log"
+                  >
+                    <Plus className="h-4 w-4" />
+                    快速記時數
+                  </button>
+                  <Link
+                    href="/kanban"
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-card hover:bg-accent text-foreground rounded-lg border border-border shadow-sm hover:shadow transition-all"
+                  >
+                    前往看板
+                  </Link>
+                </div>
               }
             />
           ) : viewMode === "grid" ? (

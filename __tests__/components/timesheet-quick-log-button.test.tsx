@@ -216,4 +216,49 @@ describe("QuickLogButton", () => {
     expect(select.options).toHaveLength(3); // 1 free + 2 tasks
     expect(select.options[0].text).toBe("自由工時（無任務）");
   });
+
+  // Issue #1539-8: controlled mode (external trigger via prop)
+  describe("controlled mode (Issue #1539-8)", () => {
+    it("opens modal when controlled open prop is true", () => {
+      const onSave = jest.fn().mockResolvedValue(undefined);
+      const onOpenChange = jest.fn();
+      const { rerender } = render(
+        <QuickLogButton tasks={TASKS} onSave={onSave} open={false} onOpenChange={onOpenChange} />
+      );
+      expect(screen.queryByTestId("quick-log-modal")).not.toBeInTheDocument();
+
+      rerender(
+        <QuickLogButton tasks={TASKS} onSave={onSave} open={true} onOpenChange={onOpenChange} />
+      );
+      expect(screen.getByTestId("quick-log-modal")).toBeInTheDocument();
+    });
+
+    it("calls onOpenChange when trigger button clicked in controlled mode", () => {
+      const onSave = jest.fn().mockResolvedValue(undefined);
+      const onOpenChange = jest.fn();
+      render(
+        <QuickLogButton tasks={TASKS} onSave={onSave} open={false} onOpenChange={onOpenChange} />
+      );
+      fireEvent.click(screen.getByTestId("quick-log-trigger"));
+      expect(onOpenChange).toHaveBeenCalledWith(true);
+    });
+
+    it("calls onOpenChange when modal closed via cancel in controlled mode", () => {
+      const onSave = jest.fn().mockResolvedValue(undefined);
+      const onOpenChange = jest.fn();
+      render(
+        <QuickLogButton tasks={TASKS} onSave={onSave} open={true} onOpenChange={onOpenChange} />
+      );
+      fireEvent.click(screen.getByTestId("quick-log-cancel"));
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+
+    it("falls back to internal state when uncontrolled", () => {
+      const onSave = jest.fn().mockResolvedValue(undefined);
+      render(<QuickLogButton tasks={TASKS} onSave={onSave} />);
+      expect(screen.queryByTestId("quick-log-modal")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId("quick-log-trigger"));
+      expect(screen.getByTestId("quick-log-modal")).toBeInTheDocument();
+    });
+  });
 });
