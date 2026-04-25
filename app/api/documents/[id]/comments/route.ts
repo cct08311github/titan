@@ -82,40 +82,91 @@ export const POST = withAuth(async (
       },
     });
 
-    if (mentionedIds.length === 0) {
-      return { comment: created, notifications: [] };
-    }
-
-    const optedOut = await tx.notificationPreference.findMany({
-      where: { userId: { in: mentionedIds }, type: "MENTION", enabled: false },
-      select: { userId: true },
-    });
-    const optedOutSet = new Set(optedOut.map((p) => p.userId));
-    const targets = mentionedIds.filter((uid) => !optedOutSet.has(uid));
-
-    if (targets.length === 0) {
-      return { comment: created, notifications: [] };
-    }
-
     const preview = body.content.substring(0, 140);
-    const title = `${created.author.name} 在文件「${doc.title}」中提到你`;
+    const allCreated: Awaited<ReturnType<typeof tx.notification.create>>[] = [];
 
-    const createdNotifications = await Promise.all(
-      targets.map((uid) =>
-        tx.notification.create({
-          data: {
-            userId: uid,
-            type: "MENTION",
-            title,
-            body: preview,
-            relatedId: id,
-            relatedType: "Document",
-          },
-        })
-      )
-    );
+    // ── 1. @mention notifications ────────────────────────────────────────
+    let mentionTargets: string[] = [];
+    if (mentionedIds.length > 0) {
+      const optedOut = await tx.notificationPreference.findMany({
+        where: { userId: { in: mentionedIds }, type: "MENTION", enabled: false },
+        select: { userId: true },
+      });
+      const optedOutSet = new Set(optedOut.map((p) => p.userId));
+      mentionTargets = mentionedIds.filter((uid) => !optedOutSet.has(uid));
 
-    return { comment: created, notifications: createdNotifications };
+      if (mentionTargets.length > 0) {
+        const mentionTitle = `${created.author.name} 在文件「${doc.title}」中提到你`;
+        const mentionRows = await Promise.all(
+          mentionTargets.map((uid) =>
+            tx.notification.create({
+              data: {
+                userId: uid,
+                type: "MENTION",
+                title: mentionTitle,
+                body: preview,
+                relatedId: id,
+                relatedType: "Document",
+              },
+            })
+          )
+        );
+        allCreated.push(...mentionRows);
+      }
+    }
+
+    // ── 2. Thread-subscriber notifications (Issue #1525) ─────────────────
+    // Mirrors the task-comment pattern from #1523. Document-level thread:
+    // anyone who has previously commented on this document gets pinged on
+    // every new comment, regardless of parentId.
+    const SUBSCRIBER_CAP = 20;
+    const priorCommenters = await tx.documentComment.findMany({
+      where: { documentId: id, authorId: { not: session.user.id } },
+      distinct: ["authorId"],
+      select: { authorId: true },
+      take: SUBSCRIBER_CAP + 5,
+    });
+    const candidateSubscribers = priorCommenters
+      .map((r) => r.authorId)
+      // Defense-in-depth (mirrors #1523): SQL excludes the author, also drop in memory
+      .filter((uid) => uid !== session.user.id && !mentionTargets.includes(uid));
+
+    let subscriberTargets: string[] = [];
+    if (candidateSubscribers.length > 0) {
+      const optedOutSub = await tx.notificationPreference.findMany({
+        where: {
+          userId: { in: candidateSubscribers },
+          type: "TASK_COMMENTED",
+          enabled: false,
+        },
+        select: { userId: true },
+      });
+      const optedOutSubSet = new Set(optedOutSub.map((p) => p.userId));
+      subscriberTargets = candidateSubscribers
+        .filter((uid) => !optedOutSubSet.has(uid))
+        .slice(0, SUBSCRIBER_CAP);
+
+      if (subscriberTargets.length > 0) {
+        const subTitle = `${created.author.name} 在「${doc.title}」回覆了`;
+        const subRows = await Promise.all(
+          subscriberTargets.map((uid) =>
+            tx.notification.create({
+              data: {
+                userId: uid,
+                type: "TASK_COMMENTED",
+                title: subTitle,
+                body: preview,
+                relatedId: id,
+                relatedType: "Document",
+              },
+            })
+          )
+        );
+        allCreated.push(...subRows);
+      }
+    }
+
+    return { comment: created, notifications: allCreated };
   });
 
   if (notifications.length > 0) {
