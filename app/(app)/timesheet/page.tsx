@@ -13,6 +13,7 @@ import {
   TimesheetTimer,
   QuickLogButton,
   TopTasksSuggestion,
+  WeekCompletionCelebration,
   CalendarDayView,
   CalendarWeekView,
   CalendarMonthView,
@@ -99,6 +100,12 @@ export default function TimesheetPage() {
         onSave={(taskId, date, hours, category) =>
           ts.saveEntry(taskId, date, hours, category, "", "NONE")
         }
+      />
+
+      {/* Week-completion celebration — Issue #1539-5 (renderless toast trigger) */}
+      <WeekCompletionCelebration
+        weeklyTotal={ts.weeklyTotal}
+        weekStartIso={ts.weekStart.toISOString().split("T")[0]}
       />
 
       {/* Toolbar */}

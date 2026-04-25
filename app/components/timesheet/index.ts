@@ -7,6 +7,7 @@ export { TimesheetToolbar } from "./timesheet-toolbar";
 export { TimesheetTimer } from "./timesheet-timer";
 export { QuickLogButton } from "./quick-log-button";
 export { TopTasksSuggestion } from "./top-tasks-suggestion";
+export { WeekCompletionCelebration } from "./week-completion-celebration";
 export { TemplateSelector } from "./template-selector";
 export { CalendarDayView } from "./calendar-day-view";
 export { CalendarWeekView } from "./calendar-week/index";
