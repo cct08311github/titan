@@ -12,6 +12,7 @@ import {
   TimesheetToolbar,
   TimesheetTimer,
   QuickLogButton,
+  TopTasksSuggestion,
   CalendarDayView,
   CalendarWeekView,
   CalendarMonthView,
@@ -91,6 +92,14 @@ export default function TimesheetPage() {
           }
         />
       </div>
+
+      {/* Top tasks suggestion — Issue #1539-4 */}
+      <TopTasksSuggestion
+        onLogged={ts.refresh}
+        onSave={(taskId, date, hours, category) =>
+          ts.saveEntry(taskId, date, hours, category, "", "NONE")
+        }
+      />
 
       {/* Toolbar */}
       <TimesheetToolbar

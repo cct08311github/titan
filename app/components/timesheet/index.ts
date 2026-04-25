@@ -6,6 +6,7 @@ export { TimesheetCell } from "./timesheet-cell";
 export { TimesheetToolbar } from "./timesheet-toolbar";
 export { TimesheetTimer } from "./timesheet-timer";
 export { QuickLogButton } from "./quick-log-button";
+export { TopTasksSuggestion } from "./top-tasks-suggestion";
 export { TemplateSelector } from "./template-selector";
 export { CalendarDayView } from "./calendar-day-view";
 export { CalendarWeekView } from "./calendar-week/index";
