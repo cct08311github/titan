@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { Clock, AlertTriangle, TrendingUp, CheckCircle2 } from "lucide-react";
+import { safeFixed } from "@/lib/safe-number";
 import type { MonthlySummaryData } from "./use-monthly-timesheet";
 
 type MonthlySummaryProps = {
@@ -40,15 +41,15 @@ export function MonthlySummary({ summary }: MonthlySummaryProps) {
         <div className="space-y-1 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">平日加班</span>
-            <span className="font-mono">{teamOvertime.weekday.toFixed(1)}h</span>
+            <span className="font-mono">{safeFixed(teamOvertime.weekday, 1)}h</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">假日加班</span>
-            <span className="font-mono">{teamOvertime.holiday.toFixed(1)}h</span>
+            <span className="font-mono">{safeFixed(teamOvertime.holiday, 1)}h</span>
           </div>
           <div className="flex justify-between font-semibold border-t border-border pt-1">
             <span>總計</span>
-            <span className="font-mono">{teamOvertime.total.toFixed(1)}h</span>
+            <span className="font-mono">{safeFixed(teamOvertime.total, 1)}h</span>
           </div>
         </div>
       </StatCard>
@@ -64,7 +65,7 @@ export function MonthlySummary({ summary }: MonthlySummaryProps) {
                 <span className="text-muted-foreground">
                   #{r.rank} {r.name}
                 </span>
-                <span className="font-mono">{r.totalOvertime.toFixed(1)}h</span>
+                <span className="font-mono">{safeFixed(r.totalOvertime, 1)}h</span>
               </div>
             ))}
           </div>
@@ -140,7 +141,7 @@ export function MonthlySummary({ summary }: MonthlySummaryProps) {
                       "font-mono whitespace-nowrap",
                       pct >= 100 ? "text-green-600" : pct >= 80 ? "text-yellow-600" : "text-red-600"
                     )}>
-                      {m.totalHours.toFixed(0)}/{m.expectedHours}h
+                      {safeFixed(m.totalHours, 0)}/{m.expectedHours}h
                     </span>
                   </div>
                 );

@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { X } from "lucide-react";
+import { safeFixed } from "@/lib/safe-number";
 import type { MonthlyEntry, ApprovalStatus } from "./use-monthly-timesheet";
 
 type MonthlyDayDetailProps = {
@@ -42,14 +43,16 @@ export function MonthlyDayDetail({
   onToggleEntry,
   onClose,
 }: MonthlyDayDetailProps) {
-  const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
+  // Issue #1538: e.hours can be a Prisma Decimal string over the wire;
+  // raw `+ e.hours` would string-concat instead of summing. Coerce.
+  const totalHours = entries.reduce((sum, e) => sum + Number(e.hours ?? 0), 0);
 
   return (
     <div className="border border-border rounded-lg bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div>
           <h4 className="text-sm font-semibold">{memberName}</h4>
-          <p className="text-xs text-muted-foreground">{date} — {totalHours.toFixed(1)} 小時</p>
+          <p className="text-xs text-muted-foreground">{date} — {safeFixed(totalHours, 1)} 小時</p>
         </div>
         <button
           onClick={onClose}
@@ -81,7 +84,7 @@ export function MonthlyDayDetail({
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-semibold">{entry.hours.toFixed(1)}h</span>
+                  <span className="font-mono font-semibold">{safeFixed(entry.hours, 1)}h</span>
                   <span className={cn("px-1.5 py-0.5 rounded text-[10px]", STATUS_COLORS[entry.approvalStatus])}>
                     {STATUS_LABELS[entry.approvalStatus]}
                   </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { safeFixed } from "@/lib/safe-number";
 import type { MonthlyMember, ApprovalStatus } from "./use-monthly-timesheet";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -109,7 +110,7 @@ function MonthlyCell({
       onClick={onClick}
     >
       <div className="text-xs font-mono leading-tight">
-        {hours > 0 ? hours.toFixed(1) : "—"}
+        {hours > 0 ? safeFixed(hours, 1) : "—"}
       </div>
       {icon && (
         <div className={cn("text-[9px] leading-none", iconColor)}>{icon}</div>
@@ -143,7 +144,8 @@ function MonthlyGridRow({
     const day = i + 1;
     const dateStr = `${yearStr}-${monthStr}-${String(day).padStart(2, "0")}`;
     const dayData = member.days[dateStr];
-    const hours = dayData?.totalHours ?? 0;
+    // Issue #1538: totalHours may be a Prisma Decimal string over the wire.
+    const hours = Number(dayData?.totalHours ?? 0);
     const status: ApprovalStatus = (dayData?.approvalStatus as ApprovalStatus) ?? "PENDING";
     totalHours += hours;
 
@@ -172,7 +174,7 @@ function MonthlyGridRow({
       </td>
       {cells}
       <td className="px-2 py-2 text-center text-xs font-mono font-semibold">
-        {totalHours.toFixed(1)}
+        {safeFixed(totalHours, 1)}
       </td>
     </tr>
   );
@@ -240,7 +242,7 @@ export function MonthlyMobileList({
         let rejectedCount = 0;
 
         for (const day of Object.values(member.days)) {
-          totalHours += day.totalHours;
+          totalHours += Number(day.totalHours ?? 0);
           for (const entry of day.entries) {
             if (entry.approvalStatus === "APPROVED") approvedCount++;
             else if (entry.approvalStatus === "REJECTED") rejectedCount++;
@@ -261,7 +263,7 @@ export function MonthlyMobileList({
                 {member.name}
               </button>
               <span className="text-sm font-mono font-semibold">
-                {totalHours.toFixed(1)}h
+                {safeFixed(totalHours, 1)}h
               </span>
             </div>
             <div className="flex gap-3 text-xs text-muted-foreground">
