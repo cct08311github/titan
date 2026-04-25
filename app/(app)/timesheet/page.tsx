@@ -136,6 +136,7 @@ export default function TimesheetPage() {
         entries={ts.entries}
         daysCount={ts.daysCount}
         getDateStr={ts.getDateStr}
+        weeklyTotal={ts.weeklyTotal}
       />
 
       {/* Manager actions — Issue #1539-3: pivot tabs moved to /reports */}
