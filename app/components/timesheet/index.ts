@@ -1,5 +1,6 @@
 export { useTimesheet } from "./use-timesheet";
 export { useTimer } from "./use-timer";
+export { useDeleteWithUndo } from "./use-delete-with-undo";
 export { useWeekNavigation } from "./use-week-navigation";
 export { TimesheetGrid } from "./timesheet-grid";
 export { TimesheetCell } from "./timesheet-cell";
