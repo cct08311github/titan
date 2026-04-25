@@ -8,6 +8,7 @@ import { Loader2, CalendarDays, Clock, Plus } from "lucide-react";
 import Link from "next/link";
 import {
   useTimesheet,
+  useDeleteWithUndo,
   TimesheetGrid,
   TimesheetToolbar,
   TimesheetTimer,
@@ -63,6 +64,13 @@ export default function TimesheetPage() {
       })
       .catch(() => { toast.warning("使用者清單載入失敗"); });
   }, [isManager]);
+
+  // Issue #1539-12: delete with 5-sec undo toast (extracted hook for testability)
+  const handleDeleteWithUndo = useDeleteWithUndo({
+    entries: ts.entries,
+    deleteEntry: ts.deleteEntry,
+    saveEntry: ts.saveEntry,
+  });
 
   // Auto-switch to list on mobile (initial + resize)
   useEffect(() => {
@@ -242,7 +250,7 @@ export default function TimesheetPage() {
               getEntriesForCell={ts.getEntriesForCell}
               onQuickSave={ts.quickSave}
               onFullSave={ts.saveEntry}
-              onDelete={ts.deleteEntry}
+              onDelete={handleDeleteWithUndo}
               onAddTaskRow={ts.addTaskRow}
             />
           ) : viewMode === "calendar" ? (
@@ -252,7 +260,7 @@ export default function TimesheetPage() {
               tasks={ts.tasks}
               onDateChange={setCalendarDate}
               onSaveEntry={ts.saveEntry}
-              onDeleteEntry={ts.deleteEntry}
+              onDeleteEntry={handleDeleteWithUndo}
               onQuickLog={() => setQuickLogOpen(true)}
             />
           ) : viewMode === "calendar-week" ? (
@@ -264,7 +272,7 @@ export default function TimesheetPage() {
               onNextWeek={ts.nextWeek}
               onThisWeek={ts.goToThisWeek}
               onSaveEntry={ts.saveEntry}
-              onDeleteEntry={ts.deleteEntry}
+              onDeleteEntry={handleDeleteWithUndo}
             />
           ) : viewMode === "calendar-month" ? (
             <CalendarMonthView
@@ -276,7 +284,7 @@ export default function TimesheetPage() {
           ) : (
             <TimesheetListView
               entries={ts.entries}
-              onDelete={ts.deleteEntry}
+              onDelete={handleDeleteWithUndo}
               onQuickLog={() => setQuickLogOpen(true)}
             />
           )}
