@@ -314,7 +314,7 @@ test.describe('Gantt 頁面', () => {
   });
   test('年份選擇器可見', async ({ page }) => {
     await page.goto('/gantt', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
     await expect(page.locator('select, button:has-text("2026"), button:has-text("◀")').first()).toBeVisible({ timeout: 20000 });
   });
   test('Engineer 可存取', async ({ browser }) => {

@@ -16,7 +16,7 @@ async function loginAndSave(
   const page = await browser.newPage();
 
   await page.goto(`${BASE_URL}/login`);
-  // Issue #1480: dropped `waitForLoadState('networkidle')`. networkidle
+  // Issue #1480: dropped `waitForLoadState('domcontentloaded')`. networkidle
   // hangs when long-polls / beacons keep connections open — was the root
   // of the 2h+ E2E hangs. Waiting for the hydrated submit button is a
   // reliable interactive-readiness signal.

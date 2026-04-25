@@ -63,7 +63,7 @@ test.describe('Defensive 測試', () => {
     for (const path of ALL_PAGES) {
       await page.goto(path, { waitUntil: 'domcontentloaded' });
       // Wait for meaningful DOM signal instead of fixed timeout
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
     }
 
     expect(

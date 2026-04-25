@@ -96,7 +96,7 @@ test.describe('Session Timeout — 無 session 時重導', () => {
     await page.context().clearCookies();
 
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // 應被重導到 login 頁面
     await expect(page).toHaveURL(/\/login/);
@@ -112,21 +112,21 @@ test.describe('Session Timeout — 無 session 時重導', () => {
   test('無 session 存取 /kanban → 重導 /login', async ({ page }) => {
     await page.context().clearCookies();
     await page.goto('/kanban');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('無 session 存取 /kpi → 重導 /login', async ({ page }) => {
     await page.context().clearCookies();
     await page.goto('/kpi');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/login/);
   });
 
   test('無 session 存取 /reports → 重導 /login', async ({ page }) => {
     await page.context().clearCookies();
     await page.goto('/reports');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await expect(page).toHaveURL(/\/login/);
   });
 });
@@ -265,7 +265,7 @@ test.describe('跨模組資料一致性', () => {
 
     // 再到 Kanban 計算所有卡片數
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const kanbanCards = await page.locator('[draggable="true"]').count();
     // 卡片數量應 > 0（有 seed 資料時）

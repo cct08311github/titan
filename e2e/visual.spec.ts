@@ -17,7 +17,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     // Ensure main content is rendered before screenshot
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
@@ -30,7 +30,7 @@ test.describe('Visual Regression', () => {
 
   test('Login visual regression', async ({ page }) => {
     await page.goto('/login');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     // Ensure login form is rendered
     await page.waitForSelector('#username', { state: 'visible', timeout: 10000 });
 
@@ -44,7 +44,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/kanban');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('kanban.png', {
@@ -59,7 +59,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/kpi');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('kpi.png', {
@@ -74,7 +74,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/gantt');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('gantt.png', {
@@ -89,7 +89,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/knowledge');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('knowledge.png', {
@@ -104,7 +104,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/plans');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('plans.png', {
@@ -119,7 +119,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/reports');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('reports.png', {
@@ -134,7 +134,7 @@ test.describe('Visual Regression', () => {
     const page = await context.newPage();
 
     await page.goto('/timesheet');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
 
     await expect(page).toHaveScreenshot('timesheet.png', {
@@ -148,7 +148,7 @@ test.describe('Visual Regression', () => {
     const context = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/dashboard');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
     await expect(page).toHaveScreenshot('dashboard-engineer.png', { maxDiffPixelRatio: 0.02 });
     await context.close();
@@ -158,7 +158,7 @@ test.describe('Visual Regression', () => {
     const context = await browser.newContext({ storageState: ENGINEER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/kanban');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
     await expect(page).toHaveScreenshot('kanban-engineer.png', { maxDiffPixelRatio: 0.02 });
     await context.close();

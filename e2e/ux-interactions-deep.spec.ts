@@ -244,7 +244,7 @@ test.describe('D. Toast 通知', () => {
   test('D-1: 建立任務後顯示 success toast', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // 透過 API 建立任務（模擬 UI 操作觸發 toast）
     const res = await page.request.post('/api/tasks', {

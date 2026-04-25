@@ -23,7 +23,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('Ctrl+K 開啟搜尋面板', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Open command palette with Ctrl+K
     await page.keyboard.press('Control+k');
@@ -35,7 +35,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('搜尋面板預設顯示頁面導覽項目', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -46,7 +46,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('輸入查詢過濾路由項目', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -66,7 +66,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('搜尋任務關鍵字觸發 API 搜尋', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -84,7 +84,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('搜尋文件關鍵字', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -100,7 +100,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('搜尋 KPI 關鍵字', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -116,7 +116,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('搜尋使用者關鍵字', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -132,7 +132,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('Escape 關閉搜尋面板', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -149,7 +149,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('選取結果後導覽並關閉面板', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 
@@ -173,7 +173,7 @@ test.describe('全站搜尋 (Command Palette)', () => {
 
   test('方向鍵導覽搜尋結果', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.keyboard.press('Control+k');
 

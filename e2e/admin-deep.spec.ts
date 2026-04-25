@@ -57,7 +57,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('備份狀態區塊標題與重新整理按鈕', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Backup status heading
       await expect(page.locator('h2', { hasText: '備份狀態' })).toBeVisible({ timeout: 20000 });
@@ -69,7 +69,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('備份狀態統計卡片顯示', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Wait for backup section to load
       await expect(page.locator('h2', { hasText: '備份狀態' })).toBeVisible({ timeout: 20000 });
@@ -83,7 +83,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('備份狀態：最近備份表格或空狀態', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h2', { hasText: '備份狀態' })).toBeVisible({ timeout: 20000 });
 
@@ -96,7 +96,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('稽核日誌區塊標題與重新整理按鈕', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Audit log heading
       await expect(page.locator('h2', { hasText: '稽核日誌' })).toBeVisible({ timeout: 20000 });
@@ -108,7 +108,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('稽核日誌：篩選區域存在（操作類型、日期）', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h2', { hasText: '稽核日誌' })).toBeVisible({ timeout: 20000 });
 
@@ -128,7 +128,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('稽核日誌：操作類型篩選可操作', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h2', { hasText: '稽核日誌' })).toBeVisible({ timeout: 20000 });
 
@@ -142,7 +142,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
       // If there are action options beyond "全部", select one
       if (options.length > 1) {
         await actionSelect.selectOption({ index: 1 });
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Clear filter button should appear
         const clearBtn = page.locator('button', { hasText: '清除篩選' });
@@ -150,13 +150,13 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
         // Click clear
         await clearBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
       }
     });
 
     test('稽核日誌表格欄位標題正確', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h2', { hasText: '稽核日誌' })).toBeVisible({ timeout: 20000 });
 
@@ -172,7 +172,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('稽核日誌分頁控制', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h2', { hasText: '稽核日誌' })).toBeVisible({ timeout: 20000 });
 
@@ -191,7 +191,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('備份重新整理按鈕可點擊', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h2', { hasText: '備份狀態' })).toBeVisible({ timeout: 20000 });
 
@@ -200,7 +200,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
       await refreshBtn.click();
 
       // Should show loading or refresh data without crashing
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       await expect(page.locator('h2', { hasText: '備份狀態' })).toBeVisible();
     });
   });
@@ -212,7 +212,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('Engineer 被拒絕存取或重導向', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Engineer should either be redirected to /dashboard or see permission error
       const isRedirected = page.url().includes('/dashboard');
@@ -223,7 +223,7 @@ test.describe('系統管理頁面 — 深度測試 (/admin)', () => {
 
     test('Engineer 不會看到管理內容', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Should NOT see backup or audit log sections
       const hasBackup = await page.locator('h2', { hasText: '備份狀態' }).isVisible().catch(() => false);

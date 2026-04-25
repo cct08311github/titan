@@ -56,7 +56,7 @@ test.describe('經辦完整週期 Journey', () => {
         );
         if (await submitBtn.isVisible().catch(() => false)) {
           await submitBtn.click();
-          await page.waitForLoadState('networkidle');
+          await page.waitForLoadState('domcontentloaded');
         }
       }
       // Close modal if still open

@@ -18,7 +18,7 @@ test.describe('匯入匯出功能', () => {
     await expect(page.locator('h1').first()).toContainText('報表');
 
     // Wait for content to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for export button/link
     const exportBtn = page.locator('button:has-text("匯出")').or(
@@ -43,7 +43,7 @@ test.describe('匯入匯出功能', () => {
 
   test('匯出按鈕觸發下載', async ({ page }) => {
     await page.goto('/reports', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find export button
     const exportBtn = page.locator('button:has-text("匯出")').or(
@@ -83,7 +83,7 @@ test.describe('匯入匯出功能', () => {
     const response = await page.goto('/admin', { waitUntil: 'domcontentloaded' });
     expect(response?.status()).toBe(200);
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Admin page should be accessible for managers
     const heading = page.locator('h1').first();

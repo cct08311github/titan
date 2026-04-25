@@ -20,7 +20,7 @@ test.describe('看板功能測試', () => {
     const page = await context.newPage();
 
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // 等待看板內容或空狀態出現
     await expect(

@@ -50,7 +50,7 @@ test.describe('A. 多解析度渲染', () => {
         const page = await context.newPage();
 
         await page.goto(pg.path, { waitUntil: 'domcontentloaded' });
-        await page.waitForLoadState('networkidle').catch(() => {});
+        await page.waitForLoadState('domcontentloaded').catch(() => {});
 
         // 驗證頁面渲染（h1 可見）
         await expect(page.locator('h1').first()).toBeVisible({ timeout: 15000 });
@@ -239,7 +239,7 @@ test.describe('D. 視覺回歸基準', () => {
       const page = await context.newPage();
 
       await page.goto(pg.path, { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
       await page.waitForSelector('h1', { state: 'visible', timeout: 15000 }).catch(() => {});
 
       await expect(page).toHaveScreenshot(`${pg.name}.png`, {
@@ -275,7 +275,7 @@ test.describe('E. 行動裝置模擬', () => {
       const page = await context.newPage();
 
       await page.goto(pg.path, { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
 
       // 頁面載入不 crash
       await expect(page.locator('h1').first()).toBeVisible({ timeout: 15000 });
@@ -426,7 +426,7 @@ test.describe('G. 元件一致性', () => {
 
   test('按鈕有一致的 hover 效果', async ({ page }) => {
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     const btn = page.locator('button:visible').first();
     if (await btn.isVisible()) {
