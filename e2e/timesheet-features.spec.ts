@@ -73,7 +73,7 @@ test.describe('工時紀錄功能測試', () => {
 
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
 
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // 工時表格（table 元素）或空狀態
     const hasTable = await page.locator('table').first().isVisible().catch(() => false);
@@ -89,7 +89,7 @@ test.describe('工時紀錄功能測試', () => {
 
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
 
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     // 底部幫助文字（實際文字：「點擊格子直接輸入數字，Enter/Tab 自動儲存。...」）
     await expect(
@@ -131,7 +131,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -146,7 +146,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -165,7 +165,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -183,7 +183,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -203,7 +203,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -229,7 +229,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -250,7 +250,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {
@@ -266,7 +266,7 @@ test.describe('工時紀錄 — Calendar Week 視圖', () => {
     const context = await browser.newContext({ storageState: MANAGER_STATE_FILE });
     const page = await context.newPage();
     await page.goto('/timesheet', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const weekBtn = page.locator('[data-testid="view-calendar-week-btn"]');
     if (await weekBtn.isVisible()) {

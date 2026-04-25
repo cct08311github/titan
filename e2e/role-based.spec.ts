@@ -47,7 +47,7 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Manager 可存取 Admin 頁面', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('系統管理', { timeout: 20000 });
       await expect(page.locator('h2', { hasText: '備份狀態' })).toBeVisible({ timeout: 15000 });
@@ -55,14 +55,14 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Manager 看到 KPI 新增按鈕', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('button', { hasText: '新增 KPI' })).toBeVisible({ timeout: 15000 });
     });
 
     test('Manager 看到計畫管理功能', async ({ page }) => {
       await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('button', { hasText: '新增年度計畫' })).toBeVisible({ timeout: 15000 });
       await expect(page.locator('button', { hasText: '新增月度目標' })).toBeVisible();
@@ -70,7 +70,7 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Manager 報表顯示團隊級別資料', async ({ page }) => {
       await page.goto('/reports', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('報表', { timeout: 20000 });
 
@@ -81,7 +81,7 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Manager 設定頁面顯示管理員角色', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('text=管理員')).toBeVisible({ timeout: 15000 });
     });
@@ -103,7 +103,7 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Engineer 無法存取 Admin 頁面', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const isRedirected = page.url().includes('/dashboard');
       const hasPermError = await page.locator('text=權限不足').isVisible().catch(() => false);
@@ -113,7 +113,7 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Engineer 看不到 KPI 新增按鈕', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('KPI', { timeout: 20000 });
       const hasCreateBtn = await page.locator('button', { hasText: '新增 KPI' }).isVisible().catch(() => false);
@@ -140,7 +140,7 @@ test.describe('角色權限測試 (RBAC)', () => {
 
     test('Engineer 設定頁面顯示工程師角色', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('text=工程師')).toBeVisible({ timeout: 15000 });
     });

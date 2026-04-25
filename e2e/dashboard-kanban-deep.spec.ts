@@ -270,7 +270,7 @@ test.describe('B. Kanban Deep Verification', () => {
       test.skip(!createdTaskId, '前置任務建立失敗');
 
       await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle').catch(() => {});
+      await page.waitForLoadState('domcontentloaded').catch(() => {});
 
       await expect(
         page.locator('text=E2E-Deep-看板任務').first()

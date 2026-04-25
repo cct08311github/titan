@@ -32,7 +32,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('三個操作按鈕可見', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await expect(page.locator('button', { hasText: '新增年度計畫' })).toBeVisible({ timeout: 15000 });
     await expect(page.locator('button', { hasText: '新增月度目標' })).toBeVisible();
@@ -41,7 +41,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('點擊「新增年度計畫」顯示表單', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.locator('button', { hasText: '新增年度計畫' }).click();
 
@@ -62,7 +62,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('建立年度計畫並驗證在列表中', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.locator('button', { hasText: '新增年度計畫' }).click();
     await expect(page.locator('h3', { hasText: '新增年度計畫' })).toBeVisible({ timeout: 10000 });
@@ -73,7 +73,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
     // Click create
     await page.locator('button', { hasText: '建立' }).click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify plan appears in tree
     await expect(page.locator('text=E2E 測試計畫').first()).toBeVisible({ timeout: 15000 });
@@ -93,7 +93,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
       createdPlanId = body?.id ?? body?.data?.id;
 
       await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('text=API 建立計畫').first()).toBeVisible({ timeout: 15000 });
     }
@@ -101,7 +101,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('「新增月度目標」表單顯示', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.locator('button', { hasText: '新增月度目標' }).click();
 
@@ -121,7 +121,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('新增月度目標到計畫中', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if any plans exist
     const hasPlans = await page.locator('select[aria-label="年度計畫"] option').count() > 1;
@@ -146,7 +146,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
     // Create
     await page.locator('button', { hasText: '建立' }).last().click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify goal appears in the plan tree
     const hasGoal = await page.locator('text=E2E 月度目標').isVisible({ timeout: 10000 }).catch(() => false);
@@ -156,7 +156,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('「從上年複製」表單顯示', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     await page.locator('button', { hasText: '從上年複製' }).click();
 
@@ -171,7 +171,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('表單關閉按鈕（X）可操作', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Open plan form
     await page.locator('button', { hasText: '新增年度計畫' }).click();
@@ -187,7 +187,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('計畫列表或空白狀態正確顯示', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const hasPlans = await page.locator('text=/\\d{4}/').first().isVisible().catch(() => false);
     const hasEmpty = await page.locator('text=尚無年度計畫').isVisible().catch(() => false);
@@ -204,7 +204,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
     if (res.ok()) {
       await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const stillVisible = await page.locator('text=API 建立計畫').isVisible().catch(() => false);
       expect(stillVisible).toBeFalsy();
@@ -215,7 +215,7 @@ test.describe('年度計畫 CRUD 生命週期', () => {
 
   test('麵包屑導覽顯示', async ({ page }) => {
     await page.goto('/plans', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Breadcrumb should show "年度計畫" as root
     await expect(page.locator('nav').locator('text=年度計畫').first()).toBeVisible({ timeout: 15000 });

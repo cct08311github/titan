@@ -81,7 +81,15 @@ export function Topbar() {
         >
           {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
-        <h1 className="text-sm font-medium text-foreground">{pageTitle ?? ""}</h1>
+        {/*
+          Issue #1533: was <h1> — but every page already renders its own
+          <h1> below, so this duplicate broke `locator('h1')` strict-mode
+          checks (e.g. activity-deep.spec.ts). Topbar title is navigation
+          chrome, not a page heading; <span> is the right element.
+        */}
+        <span className="text-sm font-medium text-foreground" aria-hidden="true">
+          {pageTitle ?? ""}
+        </span>
       </div>
       <div className="flex items-center gap-1">
         <SimpleTooltip content="搜尋 (⌘K)" side="bottom">

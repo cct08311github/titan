@@ -21,7 +21,7 @@ test.describe('分頁功能測試', () => {
 
     test('分頁按鈕存在且初始狀態正確', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -38,7 +38,7 @@ test.describe('分頁功能測試', () => {
 
     test('點擊下一頁載入新資料', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -52,7 +52,7 @@ test.describe('分頁功能測試', () => {
         const infoBefore = await page.locator('text=/第 \\d+/').textContent().catch(() => '');
 
         await nextBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Page info should change
         const infoAfter = await page.locator('text=/第 \\d+/').textContent().catch(() => '');
@@ -64,7 +64,7 @@ test.describe('分頁功能測試', () => {
 
     test('來回分頁不會產生錯誤', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const nextBtn = page.locator('button[aria-label="下一頁"]');
       const prevBtn = page.locator('button[aria-label="上一頁"]');
@@ -74,10 +74,10 @@ test.describe('分頁功能測試', () => {
 
       if (await nextBtn.isEnabled().catch(() => false)) {
         await nextBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await prevBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Should be back on page 1
         await expect(prevBtn).toBeDisabled();
@@ -89,7 +89,7 @@ test.describe('分頁功能測試', () => {
 
     test('稽核日誌分頁資訊顯示', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('系統管理', { timeout: 20000 });
 
@@ -103,7 +103,7 @@ test.describe('分頁功能測試', () => {
 
     test('稽核日誌分頁按鈕可操作', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('系統管理', { timeout: 20000 });
 
@@ -126,7 +126,7 @@ test.describe('分頁功能測試', () => {
 
     test('稽核日誌篩選後分頁重置', async ({ page }) => {
       await page.goto('/admin', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('系統管理', { timeout: 20000 });
 
@@ -139,7 +139,7 @@ test.describe('分頁功能測試', () => {
 
       if (options.length > 1) {
         await actionSelect.selectOption({ index: 1 });
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // Pagination should reset to page 1
         const paginationInfo = page.locator('text=/第 1 \\//');

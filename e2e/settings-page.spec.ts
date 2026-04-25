@@ -42,7 +42,7 @@ test.describe('設定頁面 (/settings)', () => {
 
   test('顯示三個分頁標籤', async ({ page }) => {
     await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Expect 3 tabs: 個人資料 (profile), 通知設定 (notifications), 安全性 (security)
     const profileTab = page.locator('text=個人資料').or(page.locator('button:has-text("個人資料")')).first();
@@ -56,14 +56,14 @@ test.describe('設定頁面 (/settings)', () => {
 
   test('個人資料分頁可編輯名稱', async ({ page }) => {
     await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click profile tab if not already active
     const profileTab = page.locator('text=個人資料').or(page.locator('button:has-text("個人資料")')).first();
     await profileTab.click();
 
     // Wait for profile form to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for name input field
     const nameInput = page.locator('input[type="text"]').first();
@@ -85,12 +85,12 @@ test.describe('設定頁面 (/settings)', () => {
 
   test('通知設定分頁顯示偏好設定', async ({ page }) => {
     await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click notification tab
     const notifTab = page.locator('text=通知設定').or(page.locator('button:has-text("通知設定")')).first();
     await notifTab.click();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should see notification type labels or toggle switches
     const hasNotifTypes = await page.locator('text=任務指派').or(page.locator('text=任務逾期')).first().isVisible({ timeout: 10000 }).catch(() => false);

@@ -57,7 +57,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('顯示活動項目列表或空白狀態', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Either activity items with timeline dots, or empty state
       const hasItems = await page.locator('.space-y-1 > div').first().isVisible().catch(() => false);
@@ -68,7 +68,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('活動項目顯示來源類型標籤（任務/系統）', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) {
@@ -88,7 +88,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('活動項目顯示使用者名稱', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -102,7 +102,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('活動項目顯示操作動作標籤', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -116,7 +116,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('活動項目顯示時間戳', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -130,7 +130,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('分頁資訊文字顯示（共 N 筆）', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -149,7 +149,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('分頁按鈕（上一頁/下一頁）可操作', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (hasEmpty) return;
@@ -167,14 +167,14 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
       // If next is enabled, click it
       if (await nextBtn.isEnabled().catch(() => false)) {
         await nextBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         // After going to page 2, prev should be enabled
         await expect(prevBtn).toBeEnabled();
 
         // Go back
         await prevBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         await expect(prevBtn).toBeDisabled();
       }
     });
@@ -182,7 +182,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
     test('空白狀態顯示正確圖示與描述', async ({ page }) => {
       // This test verifies the empty state renders properly when no data
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);
       if (!hasEmpty) {
@@ -198,7 +198,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
       expect(page.url()).toContain('/activity');
 
       // No unexpected redirects
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
       expect(page.url()).toContain('/activity');
     });
   });
@@ -217,7 +217,7 @@ test.describe('活動紀錄頁面 — 深度測試 (/activity)', () => {
 
     test('Engineer 看到活動項目或空白狀態', async ({ page }) => {
       await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasItems = await page.locator('.space-y-1 > div').first().isVisible().catch(() => false);
       const hasEmpty = await page.locator('text=尚無活動紀錄').isVisible().catch(() => false);

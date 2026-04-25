@@ -54,7 +54,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('顯示三個分頁標籤', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Three tabs: 個人資料, 通知偏好, 安全設定
       await expect(page.locator('button', { hasText: '個人資料' })).toBeVisible({ timeout: 15000 });
@@ -64,7 +64,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('個人資料分頁：名稱欄位有值', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Profile tab should be active by default
       const nameInput = page.locator('input[type="text"]').first();
@@ -76,7 +76,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('個人資料分頁：電子信箱欄位不可編輯', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const emailInput = page.locator('input[type="email"]');
       await expect(emailInput).toBeVisible({ timeout: 15000 });
@@ -88,25 +88,25 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('個人資料分頁：Manager 看到管理員角色標籤', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('text=管理員')).toBeVisible({ timeout: 15000 });
     });
 
     test('個人資料分頁：儲存按鈕可見', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('button', { hasText: '儲存變更' })).toBeVisible({ timeout: 15000 });
     });
 
     test('通知偏好分頁：顯示所有通知類型與切換開關', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Click notifications tab
       await page.locator('button', { hasText: '通知偏好' }).click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify description text
       await expect(page.locator('text=選擇要接收的通知類型')).toBeVisible({ timeout: 15000 });
@@ -135,10 +135,10 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('通知偏好分頁：切換開關可操作', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.locator('button', { hasText: '通知偏好' }).click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Get first switch and toggle it
       const firstSwitch = page.locator('[role="switch"]').first();
@@ -158,7 +158,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('安全設定分頁：變更密碼連結存在', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Click security tab
       await page.locator('button', { hasText: '安全設定' }).click();
@@ -175,7 +175,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('安全設定分頁：帳號安全資訊區塊', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.locator('button', { hasText: '安全設定' }).click();
 
@@ -187,7 +187,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
       const errors = collectConsoleErrors(page);
 
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Cycle through all tabs
       await page.locator('button', { hasText: '通知偏好' }).click();
@@ -210,7 +210,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('Engineer 看到工程師角色標籤', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('個人設定', { timeout: 20000 });
       await expect(page.locator('text=工程師')).toBeVisible({ timeout: 15000 });
@@ -218,7 +218,7 @@ test.describe('設定頁面 — 深度測試 (/settings)', () => {
 
     test('Engineer 同樣可以切換分頁', async ({ page }) => {
       await page.goto('/settings', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.locator('button', { hasText: '通知偏好' }).click();
       await expect(page.locator('text=選擇要接收的通知類型')).toBeVisible({ timeout: 15000 });

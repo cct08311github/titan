@@ -40,14 +40,14 @@ test.describe('KPI CRUD 生命週期', () => {
 
     test('Manager 看到「新增 KPI」按鈕', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('button', { hasText: '新增 KPI' })).toBeVisible({ timeout: 15000 });
     });
 
     test('點擊「新增 KPI」顯示建立表單', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.locator('button', { hasText: '新增 KPI' }).click();
 
@@ -61,7 +61,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
     test('填寫表單並建立 KPI', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.locator('button', { hasText: '新增 KPI' }).click();
       await expect(page.locator('h2', { hasText: '新增 KPI' })).toBeVisible({ timeout: 10000 });
@@ -75,7 +75,7 @@ test.describe('KPI CRUD 生命週期', () => {
       await page.locator('button[type="submit"]', { hasText: '建立 KPI' }).click();
 
       // Wait for form to close and KPI to appear in list
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Verify KPI appears (either in card form or empty state changed)
       const hasKpi = await page.locator('text=E2E 測試 KPI').isVisible({ timeout: 10000 }).catch(() => false);
@@ -102,7 +102,7 @@ test.describe('KPI CRUD 生命週期', () => {
         createdKpiId = body?.id ?? body?.data?.id;
 
         await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(page.locator('text=API 建立的 KPI').first()).toBeVisible({ timeout: 15000 });
       }
@@ -110,7 +110,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
     test('KPI 卡片顯示達成率和進度條', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const hasKpis = await page.locator('text=KPI 總數').isVisible().catch(() => false);
       if (!hasKpis) {
@@ -131,7 +131,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
     test('展開 KPI 卡片顯示連結任務', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Find a KPI card and click to expand
       const kpiCard = page.locator('button', { hasText: /KPI/ }).first();
@@ -158,7 +158,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
       if (res.ok()) {
         await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         await expect(page.locator('text=API 修改後的 KPI').first()).toBeVisible({ timeout: 15000 });
       }
@@ -173,7 +173,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
       if (res.ok()) {
         await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
 
         const stillVisible = await page.locator('text=API 修改後的 KPI').isVisible().catch(() => false);
         expect(stillVisible).toBeFalsy();
@@ -184,7 +184,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
     test('表單取消按鈕關閉表單', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await page.locator('button', { hasText: '新增 KPI' }).click();
       await expect(page.locator('h2', { hasText: '新增 KPI' })).toBeVisible({ timeout: 10000 });
@@ -201,7 +201,7 @@ test.describe('KPI CRUD 生命週期', () => {
 
     test('Engineer 看不到「新增 KPI」按鈕', async ({ page }) => {
       await page.goto('/kpi', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('h1')).toContainText('KPI 管理', { timeout: 20000 });
 

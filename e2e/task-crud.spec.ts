@@ -61,7 +61,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
       // Navigate to kanban and verify the task appears
       await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator(`text=E2E-CRUD-測試任務`).first()).toBeVisible({ timeout: 15000 });
     } else {
@@ -73,7 +73,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
   test('點擊任務卡片開啟詳情 modal', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find any task card and click it
     const taskCard = page.locator('[class*="task-card"], [class*="rounded-xl"]').filter({ hasText: /[\u4e00-\u9fff]/ }).first();
@@ -95,7 +95,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
   test('任務詳情 modal 顯示表單欄位', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // If we have a created task, find it; otherwise find any
     const targetText = createdTaskId ? 'E2E-CRUD-測試任務' : '';
@@ -152,7 +152,7 @@ test.describe('任務 CRUD 生命週期', () => {
     if (patchRes.ok()) {
       // Verify on kanban
       await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       await expect(page.locator('text=E2E-已修改標題').first()).toBeVisible({ timeout: 15000 });
     }
@@ -160,7 +160,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
   test('任務狀態變更後出現在正確欄位', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Verify column headers exist (the drop targets)
     const columns = ['待辦清單', '待處理', '進行中', '審核中', '已完成'];
@@ -189,7 +189,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
   test('子任務區塊在 modal 中可見', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const taskElement = page.locator('[draggable="true"]').first();
     const hasTask = await taskElement.isVisible().catch(() => false);
@@ -233,7 +233,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
     if (deleteRes.ok()) {
       await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // The deleted task should no longer appear
       const taskVisible = await page.locator('text=E2E-已修改標題').isVisible().catch(() => false);
@@ -245,7 +245,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
   test('看板篩選器（負責人/優先度/分類）存在', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // TaskFilters renders comboboxes
     const comboboxes = page.getByRole('combobox');
@@ -255,7 +255,7 @@ test.describe('任務 CRUD 生命週期', () => {
 
   test('任務計數正確顯示', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Subtitle shows "共 N 項任務"
     await expect(

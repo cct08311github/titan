@@ -45,7 +45,7 @@ test.describe('活動紀錄頁面 (/activity)', () => {
     await page.goto('/activity', { waitUntil: 'domcontentloaded' });
 
     // Wait for loading to complete — either activity items or empty state
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const hasItems = await page.locator('[class*="activity"], [class*="item"], li, tr').first().isVisible().catch(() => false);
     const hasEmpty = await page.locator('text=尚無活動').or(page.locator('text=沒有活動')).or(page.locator('[class*="empty"]')).first().isVisible().catch(() => false);
@@ -56,7 +56,7 @@ test.describe('活動紀錄頁面 (/activity)', () => {
 
   test('分頁控制存在且可操作', async ({ page }) => {
     await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for pagination controls (next/prev buttons or page numbers)
     const paginationArea = page.locator('button:has-text("下一頁"), button:has-text("上一頁"), [aria-label*="next"], [aria-label*="prev"], nav[aria-label*="pagination"]').first();
@@ -68,7 +68,7 @@ test.describe('活動紀錄頁面 (/activity)', () => {
       const nextBtn = page.locator('button:has-text("下一頁")').or(page.locator('[aria-label*="next"]')).first();
       if (await nextBtn.isEnabled().catch(() => false)) {
         await nextBtn.click();
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('domcontentloaded');
         // Page should still be visible after pagination
         await expect(page.locator('h1').first()).toBeVisible();
       }
@@ -77,7 +77,7 @@ test.describe('活動紀錄頁面 (/activity)', () => {
 
   test('活動項目顯示來源類型標籤（任務/系統）', async ({ page }) => {
     await page.goto('/activity', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for source type badges (任務 = task_activity, 系統 = audit_log)
     const taskBadge = page.locator('text=任務').first();

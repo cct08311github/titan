@@ -26,7 +26,7 @@ test.describe('看板批量操作', () => {
 
   test('多選模式可啟動（如有批量操作按鈕）', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for bulk/multi-select toggle
     const bulkBtn = page.locator('button:has-text("批量")').or(
@@ -61,7 +61,7 @@ test.describe('看板批量操作', () => {
 
   test('任務卡片可點擊開啟詳情', async ({ page }) => {
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for a task card to click
     const taskCard = page.locator('[class*="card"], [class*="task-card"], [data-task-id]').first();

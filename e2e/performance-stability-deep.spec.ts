@@ -106,7 +106,7 @@ test.describe('C. 大量資料渲染', () => {
 
     await page.goto('/kanban', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('h1', { state: 'visible', timeout: 15000 });
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('domcontentloaded').catch(() => {});
 
     const loadTime = Date.now() - start;
     console.log(`[PERF] Kanban full render: ${loadTime}ms`);
