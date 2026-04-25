@@ -15,6 +15,7 @@ import {
   TopTasksSuggestion,
   WeekCompletionCelebration,
   TimesheetModesBanner,
+  DailyDigestBanner,
   CalendarDayView,
   CalendarWeekView,
   CalendarMonthView,
@@ -79,6 +80,9 @@ export default function TimesheetPage() {
 
       {/* Onboarding banner — dismissible, explains 3 entry modes (Issue #1539-6) */}
       <TimesheetModesBanner />
+
+      {/* Daily digest — Issue #1539-7: surfaces today's task-status-driven suggestions */}
+      <DailyDigestBanner />
 
       {/* Timer + Quick log — sticky actions row */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
