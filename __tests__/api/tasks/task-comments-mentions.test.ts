@@ -38,7 +38,7 @@ jest.mock("next-auth", () => ({
 jest.mock("@/lib/prisma", () => {
   const mock = {
     task: { findUnique: jest.fn() },
-    taskComment: { create: jest.fn() },
+    taskComment: { create: jest.fn(), findMany: jest.fn() },
     user: { findMany: jest.fn() },
     notificationPreference: { findMany: jest.fn() },
     notification: { create: jest.fn() },
@@ -73,7 +73,7 @@ import { publishNotifications } from "@/lib/notification-publisher";
 // Typed handles onto the factory-created mocks.
 const prismaMock = prisma as unknown as {
   task: { findUnique: jest.Mock };
-  taskComment: { create: jest.Mock };
+  taskComment: { create: jest.Mock; findMany: jest.Mock };
   user: { findMany: jest.Mock };
   notificationPreference: { findMany: jest.Mock };
   notification: { create: jest.Mock };
@@ -103,6 +103,9 @@ beforeEach(() => {
   });
   prismaMock.user.findMany.mockResolvedValue([]);
   prismaMock.notificationPreference.findMany.mockResolvedValue([]);
+  // Issue #1523: thread-subscriber lookup defaults to none — tests opt
+  // in by overriding when they need to exercise the subscribe path.
+  prismaMock.taskComment.findMany.mockResolvedValue([]);
   prismaMock.notification.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
     Promise.resolve({
       id: `notif-${data.userId as string}`,
@@ -218,5 +221,89 @@ describe("POST /api/tasks/[id]/comments — @mention wiring", () => {
     expect(prismaMock.taskComment.create).toHaveBeenCalledTimes(1);
     // Publish was attempted (fire-and-forget).
     expect(mockPublishNotifications).toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/tasks/[id]/comments — thread-subscribe (Issue #1523)", () => {
+  it("notifies prior commenters with TASK_COMMENTED type", async () => {
+    const u1 = "cku111111111111111111111";
+    const u2 = "cku222222222222222222222";
+    prismaMock.taskComment.findMany.mockResolvedValue([
+      { userId: u1 },
+      { userId: u2 },
+    ]);
+
+    await callPost({ content: "follow up reply" });
+
+    expect(prismaMock.notification.create).toHaveBeenCalledTimes(2);
+    const calls = prismaMock.notification.create.mock.calls.map(
+      ([arg]: [{ data: { userId: string; type: string } }]) => arg.data
+    );
+    const userIds = calls.map((c: { userId: string }) => c.userId);
+    expect(userIds).toEqual(expect.arrayContaining([u1, u2]));
+    for (const c of calls) {
+      expect(c.type).toBe("TASK_COMMENTED");
+    }
+  });
+
+  it("does not notify the comment author about their own reply", async () => {
+    prismaMock.taskComment.findMany.mockResolvedValue([{ userId: AUTHOR_ID }]);
+    await callPost({ content: "I reply to my own thread" });
+    expect(prismaMock.notification.create).not.toHaveBeenCalled();
+  });
+
+  it("avoids duplicate notification when prior commenter is also @mentioned", async () => {
+    const dual = "cku333333333333333333333";
+    prismaMock.user.findMany.mockResolvedValue([{ id: dual }]);
+    prismaMock.taskComment.findMany.mockResolvedValue([{ userId: dual }]);
+
+    await callPost({
+      content: "@dual recent context",
+      mentionedUserIds: [dual],
+    });
+
+    expect(prismaMock.notification.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: dual, type: "MENTION" }),
+      })
+    );
+  });
+
+  it("respects NotificationPreference opt-out for TASK_COMMENTED", async () => {
+    const u1 = "cku111111111111111111111";
+    const u2 = "cku222222222222222222222";
+    prismaMock.taskComment.findMany.mockResolvedValue([
+      { userId: u1 },
+      { userId: u2 },
+    ]);
+    prismaMock.notificationPreference.findMany.mockImplementation(
+      ({ where }: { where: { type: string } }) => {
+        if (where.type === "TASK_COMMENTED") {
+          return Promise.resolve([{ userId: u2 }]);
+        }
+        return Promise.resolve([]);
+      }
+    );
+
+    await callPost({ content: "ping" });
+
+    expect(prismaMock.notification.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ userId: u1 }) })
+    );
+  });
+
+  it("caps subscriber notifications at 20 even with many prior commenters", async () => {
+    const many = Array.from({ length: 25 }, (_, i) =>
+      `cku${String(i).padStart(21, "0")}` // valid-looking cuid (24 chars total: cku + 21 zeros)
+    );
+    prismaMock.taskComment.findMany.mockResolvedValue(
+      many.map((id) => ({ userId: id }))
+    );
+
+    await callPost({ content: "hot thread" });
+
+    expect(prismaMock.notification.create).toHaveBeenCalledTimes(20);
   });
 });
