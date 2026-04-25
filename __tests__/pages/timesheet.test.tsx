@@ -123,11 +123,13 @@ describe("Timesheet Page", () => {
       render(<TimesheetPage />);
     });
     await waitFor(() => {
-      expect(screen.getByText("從看板選擇任務或先建立一個")).toBeInTheDocument();
+      expect(screen.getByText("這週還沒有相關任務")).toBeInTheDocument();
     });
     const kanbanLink = screen.getByRole("link", { name: "前往看板" });
     expect(kanbanLink).toBeInTheDocument();
     expect(kanbanLink).toHaveAttribute("href", "/kanban");
+    // Issue #1539-8: empty state now also exposes a quick-log CTA
+    expect(screen.getByTestId("empty-state-quick-log")).toBeInTheDocument();
   });
 
   it("renders without crash when hours fields are null in time entries", async () => {

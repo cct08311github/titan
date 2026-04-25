@@ -34,6 +34,13 @@ type QuickLogButtonProps = {
     description: string,
     overtimeType: OvertimeType,
   ) => Promise<void>;
+  /**
+   * Issue #1539-8: optional controlled mode so other entry points
+   * (e.g. empty state CTA) can trigger the same modal.
+   * If omitted, component manages its own open state internally.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
@@ -49,8 +56,10 @@ const LAST_CATEGORY_KEY = "titan:quickLog:lastCategory";
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function QuickLogButton({ tasks, onSave }: QuickLogButtonProps) {
-  const [open, setOpen] = useState(false);
+export function QuickLogButton({ tasks, onSave, open: controlledOpen, onOpenChange }: QuickLogButtonProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
   const [submitting, setSubmitting] = useState(false);
   const [taskId, setTaskId] = useState<string>("");
   const [date, setDate] = useState<string>(() => formatLocalDate(new Date()));
