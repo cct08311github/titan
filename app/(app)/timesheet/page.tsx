@@ -11,6 +11,7 @@ import {
   TimesheetGrid,
   TimesheetToolbar,
   TimesheetTimer,
+  QuickLogButton,
   CalendarDayView,
   CalendarWeekView,
   CalendarMonthView,
@@ -107,14 +108,24 @@ export default function TimesheetPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">工時紀錄</h1>
-      {/* Timer — sticky on top */}
-      <TimesheetTimer
-        timer={ts.timer}
-        elapsed={ts.elapsed}
-        tasks={ts.tasks}
-        onStart={ts.startTimer}
-        onStop={ts.stopTimer}
-      />
+      {/* Timer + Quick log — sticky actions row */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+        <div className="flex-1">
+          <TimesheetTimer
+            timer={ts.timer}
+            elapsed={ts.elapsed}
+            tasks={ts.tasks}
+            onStart={ts.startTimer}
+            onStop={ts.stopTimer}
+          />
+        </div>
+        <QuickLogButton
+          tasks={ts.tasks}
+          onSave={(taskId, date, hours, category, description, overtimeType) =>
+            ts.saveEntry(taskId, date, hours, category, description, overtimeType)
+          }
+        />
+      </div>
 
       {/* Toolbar */}
       <TimesheetToolbar
