@@ -21,6 +21,7 @@ jest.mock("lucide-react", () => ({
   ChevronRight: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-chevron-right" {...props} />,
   Clock: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-clock" {...props} />,
   Lock: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-lock" {...props} />,
+  Plus: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-plus" {...props} />,
 }));
 
 // ─── Test data ───────────────────────────────────────────────────────────────
@@ -400,5 +401,35 @@ describe("Grid dimensions", () => {
     const grid = screen.getByTestId("time-grid");
     const expectedHeight = (MAX_HOUR - MIN_HOUR) * HOUR_HEIGHT;
     expect(grid.style.height).toBe(`${expectedHeight}px`);
+  });
+});
+
+// ─── Mobile empty-state quick-log CTA (Issue #1539-10) ──────────────────────
+
+describe("Mobile empty state CTA (Issue #1539-10)", () => {
+  test("does not render quick-log CTA when onQuickLog not provided", () => {
+    render(<CalendarDayView {...defaultProps} entries={[]} />);
+    expect(screen.queryByTestId("calendar-day-mobile-quick-log")).not.toBeInTheDocument();
+  });
+
+  test("renders quick-log CTA in mobile empty state when onQuickLog provided", () => {
+    const onQuickLog = jest.fn();
+    render(<CalendarDayView {...defaultProps} entries={[]} onQuickLog={onQuickLog} />);
+    expect(screen.getByTestId("calendar-day-mobile-quick-log")).toBeInTheDocument();
+  });
+
+  test("calls onQuickLog when CTA clicked", () => {
+    const onQuickLog = jest.fn();
+    render(<CalendarDayView {...defaultProps} entries={[]} onQuickLog={onQuickLog} />);
+    fireEvent.click(screen.getByTestId("calendar-day-mobile-quick-log"));
+    expect(onQuickLog).toHaveBeenCalledTimes(1);
+  });
+
+  test("hides CTA when day has entries", () => {
+    const onQuickLog = jest.fn();
+    render(
+      <CalendarDayView {...defaultProps} entries={[makeEntry()]} onQuickLog={onQuickLog} />
+    );
+    expect(screen.queryByTestId("calendar-day-mobile-quick-log")).not.toBeInTheDocument();
   });
 });

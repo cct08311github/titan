@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { safeFixed } from "@/lib/safe-number";
 import { type TimeEntry, type OvertimeType, type TaskOption } from "./use-timesheet";
 import { CATEGORIES } from "./timesheet-cell";
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Plus } from "lucide-react";
 import { formatLocalDate } from "@/lib/utils/date";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -74,6 +74,8 @@ type CalendarDayViewProps = {
     endTime?: string | null
   ) => Promise<void>;
   onDeleteEntry: (id: string) => Promise<void>;
+  /** Issue #1539-10: optional callback for mobile empty-state quick-log CTA */
+  onQuickLog?: () => void;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -85,6 +87,7 @@ export function CalendarDayView({
   onDateChange,
   onSaveEntry,
   onDeleteEntry,
+  onQuickLog,
 }: CalendarDayViewProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const [dragState, setDragState] = useState<{
@@ -651,8 +654,18 @@ export function CalendarDayView({
       {/* Mobile: simplified list view */}
       <div className="sm:hidden space-y-2" data-testid="mobile-time-list">
         {dayEntries.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground py-6">
-            今天尚無工時紀錄
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground mb-3">今天尚無工時紀錄</p>
+            {onQuickLog && (
+              <button
+                onClick={onQuickLog}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-sm transition-all"
+                data-testid="calendar-day-mobile-quick-log"
+              >
+                <Plus className="h-4 w-4" />
+                快速記時數
+              </button>
+            )}
           </div>
         ) : (
           dayEntries.map((entry) => (

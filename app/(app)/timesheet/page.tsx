@@ -252,6 +252,7 @@ export default function TimesheetPage() {
               onDateChange={setCalendarDate}
               onSaveEntry={ts.saveEntry}
               onDeleteEntry={ts.deleteEntry}
+              onQuickLog={() => setQuickLogOpen(true)}
             />
           ) : viewMode === "calendar-week" ? (
             <CalendarWeekView
