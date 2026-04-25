@@ -153,3 +153,123 @@ describe("Timesheet Page", () => {
     expect(document.body).toBeDefined();
   });
 });
+
+// ─── #1539 series integration smoke tests (Issue #1539-14) ──────────────────
+// Backstops the full timesheet page wiring so future refactors don't silently
+// drop one of the #1539 series components. Each test asserts a specific
+// component is mounted via its data-testid.
+
+describe("Timesheet Page — #1539 integration backstop (Issue #1539-14)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.localStorage.clear();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response);
+  });
+
+  it("mounts TimesheetModesBanner (#1539-6) when not dismissed", async () => {
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("timesheet-modes-banner")).toBeInTheDocument();
+    });
+  });
+
+  it("hides TimesheetModesBanner when dismissed", async () => {
+    window.localStorage.setItem("titan:timesheet:modes-banner-dismissed", "1");
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    expect(screen.queryByTestId("timesheet-modes-banner")).not.toBeInTheDocument();
+  });
+
+  it("mounts QuickLogButton trigger chip (#1539-2)", async () => {
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("quick-log-trigger")).toBeInTheDocument();
+    });
+  });
+
+  it("does not mount TopTasksSuggestion when API returns empty (#1539-4)", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("time-entries/top-tasks")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ data: { items: [], windowDays: 14 } }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    });
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalled();
+    });
+    expect(screen.queryByTestId("top-tasks-suggestion")).not.toBeInTheDocument();
+  });
+
+  it("mounts TopTasksSuggestion when API returns items (#1539-4)", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("time-entries/top-tasks")) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            data: {
+              items: [
+                {
+                  taskId: "t1",
+                  taskTitle: "Refactor",
+                  category: "PLANNED",
+                  totalHours: 12,
+                  entryCount: 4,
+                  avgHoursPerEntry: 3,
+                  lastEntryDate: "2026-04-22",
+                },
+              ],
+              windowDays: 14,
+            },
+          }),
+        } as Response);
+      }
+      return Promise.resolve({ ok: true, json: async () => [] } as Response);
+    });
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("top-tasks-suggestion")).toBeInTheDocument();
+    });
+  });
+
+  it("renders weekly progress hint in toolbar when ts.weeklyTotal available (#1539-11)", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("time-entries/stats")) {
+        return Promise.resolve({ ok: true, json: async () => ({}) } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => [
+          { id: "e1", userId: "u1", taskId: "task-1", date: "2024-01-15", hours: 8, category: "PLANNED_TASK", description: null, task: { title: "T1" } },
+        ],
+      } as Response);
+    });
+    const { default: TimesheetPage } = await import("@/app/(app)/timesheet/page");
+    await act(async () => {
+      render(<TimesheetPage />);
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("toolbar-weekly-progress")).toBeInTheDocument();
+    });
+  });
+});
