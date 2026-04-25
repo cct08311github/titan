@@ -399,6 +399,14 @@ export function TimesheetCell({
         <button
           onClick={handleClick}
           onDoubleClick={handleDoubleClick}
+          /* Issue #1539-13: hover tooltip teaches affordance — single-click vs double-click */
+          title={
+            allLocked
+              ? "已核准鎖定，無法編輯"
+              : entry && totalHours > 0
+                ? "點擊修改時數，雙擊編詳細（分類、備註、加班）"
+                : "點擊新增時數，雙擊填寫詳細"
+          }
           className={cn(
             "w-full h-9 rounded-md border text-xs transition-all relative",
             "focus:outline-none focus:ring-2 focus:ring-ring/30",

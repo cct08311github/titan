@@ -233,6 +233,46 @@ describe("TimesheetCell — inline edit flow", () => {
     jest.clearAllMocks();
   });
 
+  // Issue #1539-13: hover tooltip teaches affordance
+  describe("hover tooltip (#1539-13)", () => {
+    it("shows 'add' tooltip on empty cell", () => {
+      render(<TimesheetCell {...defaultCellProps} />);
+      const btn = screen.getByTestId("cell-button");
+      expect(btn.getAttribute("title")).toContain("點擊新增時數");
+      expect(btn.getAttribute("title")).toContain("雙擊");
+    });
+
+    it("shows 'edit' tooltip on cell with entry", () => {
+      const entry: TimeEntry = {
+        id: "e1",
+        taskId: "task-1",
+        date: "2024-01-15",
+        hours: 3,
+        category: "PLANNED_TASK",
+        description: "test",
+      };
+      render(<TimesheetCell {...defaultCellProps} entries={[entry]} />);
+      const btn = screen.getByTestId("cell-button");
+      expect(btn.getAttribute("title")).toContain("點擊修改時數");
+      expect(btn.getAttribute("title")).toContain("雙擊編詳細");
+    });
+
+    it("shows 'locked' tooltip on locked entry", () => {
+      const lockedEntry: TimeEntry = {
+        id: "e1",
+        taskId: "task-1",
+        date: "2024-01-15",
+        hours: 3,
+        category: "PLANNED_TASK",
+        description: "test",
+        locked: true,
+      };
+      render(<TimesheetCell {...defaultCellProps} entries={[lockedEntry]} />);
+      const btn = screen.getByTestId("cell-button");
+      expect(btn.getAttribute("title")).toContain("已核准鎖定");
+    });
+  });
+
   // (a) Inline edit flow: click cell -> input appears -> type "3" -> press Enter -> save called with hours=3
   it("click cell -> input appears -> type '3' -> Enter -> save called with hours=3", async () => {
     const user = userEvent.setup();
