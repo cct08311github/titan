@@ -827,6 +827,7 @@ enum NotificationType {
   DAILY_DIGEST          // Issue #1321: 每日個人摘要
   WEEKLY_DIGEST         // Issue #1321: 每週主管摘要
   MENTION               // Issue #1506: 評論 @mention 通知
+  REACTION_DIGEST       // Issue #1520: 反應每日彙總
 }
 
 model Notification {
