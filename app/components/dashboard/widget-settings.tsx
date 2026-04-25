@@ -12,6 +12,7 @@ export interface WidgetConfig {
 }
 
 const DEFAULT_WIDGETS: WidgetConfig[] = [
+  { id: "your-week", label: "本週你", visible: true },
   { id: "flagged-tasks", label: "標記任務", visible: true },
   { id: "due-today", label: "今日到期", visible: true },
   { id: "in-progress", label: "進行中", visible: true },
