@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractItems } from "@/lib/api-client";
+import { safeFixed } from "@/lib/safe-number";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -139,14 +140,15 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
       const map = new Map<string, DayData>();
       for (const entry of entries) {
         const dateStr = entry.date.split("T")[0];
+        const hoursNum = Number(entry.hours ?? 0); // T1538: Decimal as string
         const existing = map.get(dateStr);
         if (existing) {
-          existing.totalHours += entry.hours;
+          existing.totalHours += hoursNum;
           existing.entryCount += 1;
         } else {
           map.set(dateStr, {
             date: dateStr,
-            totalHours: entry.hours,
+            totalHours: hoursNum,
             entryCount: 1,
           });
         }
@@ -261,7 +263,7 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
           <span className="text-xs text-muted-foreground">
             月計：
             <span className={cn("font-medium ml-0.5", hourBadgeColor(monthlyTotal / Math.max(1, daysInMonth) * 5))}>
-              {monthlyTotal.toFixed(1)}h
+              {safeFixed(monthlyTotal, 1)}h
             </span>
           </span>
         </div>
@@ -307,7 +309,7 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
                   weekend && hours <= 0 && "bg-muted/10 border-border/30"
                 )}
                 aria-label={`${cell.dateStr}: ${hours}h`}
-                title={`${cell.dateStr} — ${hours.toFixed(1)}h（${data?.entryCount ?? 0} 筆）`}
+                title={`${cell.dateStr} — ${safeFixed(hours, 1)}h（${data?.entryCount ?? 0} 筆）`}
               >
                 <span
                   className={cn(
@@ -320,7 +322,7 @@ export function CalendarMonthView({ onDayClick }: CalendarMonthViewProps) {
                 </span>
                 {hours > 0 ? (
                   <span className={cn("text-[10px] font-semibold tabular-nums leading-none", hourBadgeColor(hours))}>
-                    {hours.toFixed(1)}
+                    {safeFixed(hours, 1)}
                   </span>
                 ) : !weekend ? (
                   <span className="text-[10px] text-muted-foreground/30 group-hover:text-primary/60 transition-colors">+</span>

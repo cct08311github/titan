@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Check, X, Filter, AlertTriangle } from "lucide-react";
+import { safeFixed } from "@/lib/safe-number";
 import type { MonthlyMember } from "./use-monthly-timesheet";
 
 type StatusFilter = "all" | "PENDING" | "APPROVED" | "REJECTED";
@@ -60,7 +61,7 @@ export function ApprovalPanel({
         for (const entry of day.entries) {
           if (selectedEntryIds.has(entry.id)) {
             entryCount++;
-            totalHours += entry.hours;
+            totalHours += Number(entry.hours ?? 0); // T1538: Decimal as string
             affectedMemberIds.add(member.userId);
             dates.push(date);
           }
@@ -241,7 +242,7 @@ export function ApprovalPanel({
             <ul className="ml-3 space-y-0.5 text-muted-foreground">
               <li>人數：{approveSummary.memberCount} 人</li>
               <li>筆數：{approveSummary.entryCount} 筆</li>
-              <li>總時數：{approveSummary.totalHours.toFixed(1)} 小時</li>
+              <li>總時數：{safeFixed(approveSummary.totalHours, 1)} 小時</li>
               {approveSummary.dateMin && (
                 <li>
                   日期範圍：{approveSummary.dateMin}
