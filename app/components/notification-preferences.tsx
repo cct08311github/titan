@@ -37,9 +37,21 @@ const NOTIFICATION_CATEGORIES: NotificationCategory[] = [
     types: [
       { type: "TASK_ASSIGNED", label: "任務指派", description: "當你被指派為新任務的負責人" },
       { type: "TASK_CHANGED", label: "任務狀態變更", description: "你負責的任務狀態發生變化" },
-      { type: "TASK_COMMENTED", label: "評論 @mention", description: "有人在任務評論中提及你" },
       { type: "TASK_DUE_SOON", label: "任務即將到期", description: "你的任務即將到期（7天內）" },
       { type: "TASK_OVERDUE", label: "任務逾期", description: "你的任務已超過到期日" },
+    ],
+  },
+  {
+    // Issue #1536: split MENTION / TASK_COMMENTED / REACTION_DIGEST as
+    // distinct categories. They got conflated when TASK_COMMENTED's
+    // semantics shifted from "you were @mentioned" to "thread you
+    // commented in got a new reply" (#1523).
+    label: "對話通知",
+    description: "提及、回覆與反應的通知",
+    types: [
+      { type: "MENTION", label: "@mention 提及", description: "有人在留言中明確 @ 你" },
+      { type: "TASK_COMMENTED", label: "對話自動訂閱", description: "你曾經參與留言的任務或文件，有新留言時通知（可在留言區用 🔕 按鈕單獨靜音）" },
+      { type: "REACTION_DIGEST", label: "反應每日彙總", description: "每天早上 8:15 通知昨日有誰對你的留言做了 emoji 反應" },
     ],
   },
   {
