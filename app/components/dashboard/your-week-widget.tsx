@@ -21,6 +21,26 @@ type Summary = {
   kpiAchievement: { averagePct: number; hasActive: boolean };
 };
 
+/**
+ * Defensive validator: the dashboard test fetch mock returns an unrelated
+ * payload for every URL, so we cannot assume `extractData` got the shape
+ * we expect. Drop anything that isn't recognizably a YourWeek summary.
+ */
+function isSummary(value: unknown): value is Summary {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  const ct = v.completedTasks as Record<string, unknown> | undefined;
+  const hl = v.hoursLogged as Record<string, unknown> | undefined;
+  const kpi = v.kpiAchievement as Record<string, unknown> | undefined;
+  return (
+    typeof v.weekStart === "string" &&
+    typeof ct?.current === "number" &&
+    typeof hl?.current === "number" &&
+    typeof v.activeDays === "number" &&
+    typeof kpi?.hasActive === "boolean"
+  );
+}
+
 interface StatBlockProps {
   icon: React.ReactNode;
   label: string;
@@ -87,8 +107,8 @@ export function YourWeekWidget() {
       .then(async (res) => {
         if (!res.ok) throw new Error("failed");
         const body = await res.json();
-        const data = extractData<Summary>(body);
-        if (!cancelled && data) setSummary(data);
+        const data = extractData<unknown>(body);
+        if (!cancelled && isSummary(data)) setSummary(data);
       })
       .catch(() => {
         if (!cancelled) setError(true);
