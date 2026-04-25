@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Grid3X3, List, Calendar, CalendarDays, Copy, FileDown, RefreshCw, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { safeFixed } from "@/lib/safe-number";
 import { TemplateSelector } from "./template-selector";
 import { OvertimeBadge } from "./overtime-badge";
 import { type TimeEntry } from "./use-timesheet";
@@ -26,6 +27,10 @@ type TimesheetToolbarProps = {
   entries?: TimeEntry[];
   daysCount?: number;
   getDateStr?: (offset: number) => string;
+  /** Issue #1539-11: weekly total hours (shown as "X.Xh / 40h" in subtitle) */
+  weeklyTotal?: number;
+  /** Issue #1539-11: target hours (default 40) */
+  weeklyTarget?: number;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -44,6 +49,8 @@ export function TimesheetToolbar({
   entries,
   daysCount,
   getDateStr,
+  weeklyTotal,
+  weeklyTarget = 40,
 }: TimesheetToolbarProps) {
   const [copying, setCopying] = useState(false);
   const [copyResult, setCopyResult] = useState<"success" | "error" | null>(null);
@@ -76,7 +83,22 @@ export function TimesheetToolbar({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <h1 className="text-lg sm:text-xl font-semibold tracking-tight">工時紀錄</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">{weekRange}</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 flex flex-wrap items-center gap-x-2">
+            <span>{weekRange}</span>
+            {typeof weeklyTotal === "number" && (
+              <span
+                className={cn(
+                  "tabular-nums font-medium",
+                  weeklyTotal >= weeklyTarget
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-foreground/70",
+                )}
+                data-testid="toolbar-weekly-progress"
+              >
+                · 本週 {safeFixed(weeklyTotal, 1)}h / {weeklyTarget}h
+              </span>
+            )}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

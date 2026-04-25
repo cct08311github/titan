@@ -546,4 +546,46 @@ describe("TimesheetToolbar — week navigation", () => {
     render(<TimesheetToolbar {...defaultToolbarProps} />);
     expect(screen.getByText("2024/01/15 — 2024/01/21")).toBeInTheDocument();
   });
+
+  // Issue #1539-11: weekly progress hint in subtitle
+  describe("weekly progress hint (#1539-11)", () => {
+    it("hides progress when weeklyTotal not provided", () => {
+      render(<TimesheetToolbar {...defaultToolbarProps} />);
+      expect(screen.queryByTestId("toolbar-weekly-progress")).not.toBeInTheDocument();
+    });
+
+    it("shows weekly progress when weeklyTotal provided", () => {
+      render(<TimesheetToolbar {...defaultToolbarProps} weeklyTotal={28.5} />);
+      const progress = screen.getByTestId("toolbar-weekly-progress");
+      expect(progress).toBeInTheDocument();
+      expect(progress).toHaveTextContent("本週 28.5h / 40h");
+    });
+
+    it("respects custom weeklyTarget", () => {
+      render(
+        <TimesheetToolbar {...defaultToolbarProps} weeklyTotal={20} weeklyTarget={32} />
+      );
+      expect(screen.getByTestId("toolbar-weekly-progress")).toHaveTextContent(
+        "本週 20.0h / 32h"
+      );
+    });
+
+    it("uses emerald color when totalHours >= target", () => {
+      render(<TimesheetToolbar {...defaultToolbarProps} weeklyTotal={42} />);
+      const progress = screen.getByTestId("toolbar-weekly-progress");
+      expect(progress.className).toMatch(/emerald/);
+    });
+
+    it("uses neutral color when totalHours below target", () => {
+      render(<TimesheetToolbar {...defaultToolbarProps} weeklyTotal={20} />);
+      const progress = screen.getByTestId("toolbar-weekly-progress");
+      expect(progress.className).not.toMatch(/emerald/);
+    });
+
+    it("renders 0h when weeklyTotal is 0", () => {
+      render(<TimesheetToolbar {...defaultToolbarProps} weeklyTotal={0} />);
+      const progress = screen.getByTestId("toolbar-weekly-progress");
+      expect(progress).toHaveTextContent("本週 0.0h / 40h");
+    });
+  });
 });
