@@ -275,6 +275,7 @@ export default function TimesheetPage() {
             <TimesheetListView
               entries={ts.entries}
               onDelete={ts.deleteEntry}
+              onQuickLog={() => setQuickLogOpen(true)}
             />
           )}
         </div>
