@@ -15,7 +15,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Send, Edit3, Trash2, Loader2, X, AtSign } from "lucide-react";
+import { Send, Edit3, Trash2, Loader2, X, AtSign, Bell, BellOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractData, extractItems } from "@/lib/api-client";
@@ -122,6 +122,9 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
   const [mentionedUserIds, setMentionedUserIds] = useState<string[]>([]);
   // Issue #1512: reactions gated behind FEATURE_REACTIONS flag.
   const { enabled: reactionsEnabled } = useFeatureFlag("FEATURE_REACTIONS");
+  // Issue #1529: per-thread mute state.
+  const [muted, setMuted] = useState<boolean | null>(null);
+  const [mutePending, setMutePending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const { confirmDialog, ConfirmDialog } = useConfirmDialog();
@@ -147,7 +150,42 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
       .then((r) => r.json())
       .then((body) => setUsers(extractItems<User>(body)))
       .catch(() => { toast.warning("使用者清單載入失敗"); });
-  }, [fetchComments]);
+    // Issue #1529: load thread mute state.
+    fetch(
+      `/api/comment-threads/mute?targetType=TASK&targetId=${encodeURIComponent(taskId)}`
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        const data = extractData<{ muted: boolean }>(body);
+        if (data && typeof data.muted === "boolean") setMuted(data.muted);
+      })
+      .catch(() => { /* non-fatal */ });
+  }, [fetchComments, taskId]);
+
+  async function toggleMute() {
+    if (mutePending) return;
+    setMutePending(true);
+    const previous = muted;
+    // Optimistic flip
+    setMuted((m) => (m === null ? true : !m));
+    try {
+      const res = await fetch("/api/comment-threads/mute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetType: "TASK", targetId: taskId }),
+      });
+      if (!res.ok) throw new Error("failed");
+      const body = await res.json();
+      const data = extractData<{ muted: boolean }>(body);
+      if (data) setMuted(data.muted);
+      toast.success(data?.muted ? "此對話已靜音" : "已恢復通知");
+    } catch {
+      setMuted(previous);
+      toast.error("操作失敗，請重試");
+    } finally {
+      setMutePending(false);
+    }
+  }
 
   // ── @mention handling ─────────────────────────────────────────────────
 
@@ -301,9 +339,39 @@ export function CommentList({ taskId, currentUserId }: CommentListProps) {
 
   return (
     <div className="space-y-4">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        評論 ({comments.length})
-      </h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          評論 ({comments.length})
+        </h3>
+        {muted !== null && (
+          <button
+            type="button"
+            onClick={toggleMute}
+            disabled={mutePending}
+            aria-label={muted ? "取消靜音此對話" : "靜音此對話"}
+            title={muted ? "已靜音 — 點擊恢復通知" : "靜音此對話 — 後續留言不再推送（@mention 仍會通知）"}
+            className={cn(
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] transition-colors",
+              muted
+                ? "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground/60 hover:text-foreground",
+              mutePending && "opacity-50 cursor-wait"
+            )}
+          >
+            {muted ? (
+              <>
+                <BellOff className="h-3 w-3" aria-hidden="true" />
+                <span>已靜音</span>
+              </>
+            ) : (
+              <>
+                <Bell className="h-3 w-3" aria-hidden="true" />
+                <span>靜音對話</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
 
       {loading ? (
         <div className="flex justify-center py-4">
