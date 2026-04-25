@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { safeFixed } from "@/lib/safe-number";
 import { TimesheetCell } from "./timesheet-cell";
@@ -63,11 +63,32 @@ export function TimesheetGrid({
   const [showTaskSelector, setShowTaskSelector] = useState(false);
   const [taskSearch, setTaskSearch] = useState("");
 
-  // Row totals
+  // Issue #1539-1: when the grid mounts (or date range changes to a week
+  // containing today), scroll today's column into view so users land on
+  // the cell they actually want to edit, not on Monday.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayDayIdx = (() => {
+    for (let i = 0; i < daysCount; i++) {
+      if (getDateStr(i) === todayStr) return i;
+    }
+    return -1;
+  })();
+  useEffect(() => {
+    if (todayDayIdx < 0 || !gridRef.current) return;
+    const headerCell = gridRef.current.querySelector<HTMLElement>(
+      `th[data-day="${todayDayIdx}"]`
+    );
+    // JSDOM doesn't implement scrollIntoView — guard so jest tests don't crash.
+    if (typeof headerCell?.scrollIntoView === "function") {
+      headerCell.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+    }
+  }, [todayDayIdx]);
+
+  // Row totals — Issue #1538: hours may be Decimal-as-string.
   const rowTotals = taskRows.map((row) =>
     entries
       .filter((e) => (e.taskId ?? null) === (row.taskId ?? null))
-      .reduce((sum, e) => sum + e.hours, 0)
+      .reduce((sum, e) => sum + Number(e.hours ?? 0), 0)
   );
 
   // Navigation callback for cells
@@ -128,22 +149,29 @@ export function TimesheetGrid({
             </th>
             {dayLabels.map((day, i) => {
               const isWeekend = i >= 5;
+              const isToday = i === todayDayIdx;
               return (
                 <th
                   key={i}
+                  data-day={i}
                   className={cn(
                     "px-1 py-2.5 text-center min-w-[72px]",
-                    isWeekend && "bg-muted/10"
+                    isWeekend && "bg-muted/10",
+                    // Issue #1539-1: visually highlight today's column header
+                    isToday && "bg-primary/8 border-b-2 border-primary"
                   )}
                 >
                   <div className={cn(
                     "text-xs font-semibold",
-                    isWeekend ? "text-muted-foreground/60" : "text-muted-foreground"
+                    isToday ? "text-primary" : isWeekend ? "text-muted-foreground/60" : "text-muted-foreground"
                   )}>
                     週{day}
                   </div>
-                  <div className="text-[10px] text-muted-foreground/50 mt-0.5">
-                    {formatDateLabel(i)}
+                  <div className={cn(
+                    "text-[10px] mt-0.5",
+                    isToday ? "text-primary/80 font-medium" : "text-muted-foreground/50"
+                  )}>
+                    {isToday ? "今天" : formatDateLabel(i)}
                   </div>
                 </th>
               );
