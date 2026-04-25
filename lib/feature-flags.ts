@@ -1,5 +1,5 @@
 /**
- * Feature Flags — Issue #1328 (DB化)
+ * Feature Flags — Issue #1328 (DB化), extended in #1516 (public read)
  *
  * Stores feature flags in PostgreSQL with 60s Redis cache TTL.
  * Falls back to in-memory cache when both DB and Redis are down.
@@ -8,6 +8,15 @@
  * - V2_DASHBOARD: Toggle new dashboard vs old
  * - V2_REPORTS: Toggle v2 reports
  * - ALERT_BANNER: Toggle global alert banner
+ * - FEATURE_REACTIONS: Emoji reactions on comments + activity (#1512)
+ *
+ * Visibility:
+ * - ALL_FLAGS — every known flag, exposed via the admin endpoint
+ * - PUBLIC_FLAGS — subset readable by any authenticated user, exposed
+ *   via /api/feature-flags/public for the useFeatureFlag client hook.
+ *   Add a flag here only when its on/off state is safe to leak to all
+ *   users (e.g. UI feature gates). Admin-only state (alert banners
+ *   etc.) stays out of this list.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -22,16 +31,25 @@ const FLAG_DEFAULTS: Record<string, boolean> = {
   V2_DASHBOARD: false,
   V2_REPORTS: false,
   ALERT_BANNER: true,
+  FEATURE_REACTIONS: false,
 };
 
-export type FeatureFlagName = "V2_DASHBOARD" | "V2_REPORTS" | "ALERT_BANNER";
+export type FeatureFlagName =
+  | "V2_DASHBOARD"
+  | "V2_REPORTS"
+  | "ALERT_BANNER"
+  | "FEATURE_REACTIONS";
 
 /** All known flag names */
 export const ALL_FLAGS: FeatureFlagName[] = [
   "V2_DASHBOARD",
   "V2_REPORTS",
   "ALERT_BANNER",
+  "FEATURE_REACTIONS",
 ];
+
+/** Subset of flags safe to expose to non-admin authenticated users. */
+export const PUBLIC_FLAGS: FeatureFlagName[] = ["FEATURE_REACTIONS"];
 
 /** In-memory fallback when both DB and Redis are down */
 let memoryCache: Record<string, boolean> = {};
@@ -122,6 +140,21 @@ export async function getAllFeatureFlags(): Promise<Record<FeatureFlagName, bool
     result[name] = rows.find((f) => f.key === name)?.enabled ?? (FLAG_DEFAULTS[name] ?? false);
   }
   return result as Record<FeatureFlagName, boolean>;
+}
+
+/**
+ * Returns only flags safe for non-admin clients.
+ * Used by the public flag endpoint that backs the useFeatureFlag hook.
+ */
+export async function getPublicFeatureFlags(): Promise<Record<string, boolean>> {
+  const rows = await prisma.featureFlag.findMany({
+    where: { key: { in: PUBLIC_FLAGS } },
+  });
+  const result: Record<string, boolean> = {};
+  for (const name of PUBLIC_FLAGS) {
+    result[name] = rows.find((f) => f.key === name)?.enabled ?? (FLAG_DEFAULTS[name] ?? false);
+  }
+  return result;
 }
 
 /**

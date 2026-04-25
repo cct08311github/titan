@@ -18,7 +18,11 @@ async function fetchFlags(): Promise<Record<FlagName, boolean>> {
   if (cachedFlags) return cachedFlags;
   if (fetchPromise) return fetchPromise;
 
-  fetchPromise = fetch("/api/admin/feature-flags")
+  // Issue #1516: switched from /api/admin/feature-flags (ADMIN-only) to the
+  // public endpoint that returns the PUBLIC_FLAGS subset. The admin endpoint
+  // returned 401 for non-admin users, making every flag read as false in
+  // client components rendered for engineers/managers.
+  fetchPromise = fetch("/api/feature-flags/public")
     .then(async (res) => {
       if (!res.ok) return {};
       const body = await res.json();
