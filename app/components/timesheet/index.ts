@@ -8,6 +8,7 @@ export { TimesheetTimer } from "./timesheet-timer";
 export { QuickLogButton } from "./quick-log-button";
 export { TopTasksSuggestion } from "./top-tasks-suggestion";
 export { WeekCompletionCelebration } from "./week-completion-celebration";
+export { TimesheetModesBanner } from "./timesheet-modes-banner";
 export { TemplateSelector } from "./template-selector";
 export { CalendarDayView } from "./calendar-day-view";
 export { CalendarWeekView } from "./calendar-week/index";

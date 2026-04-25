@@ -14,6 +14,7 @@ import {
   QuickLogButton,
   TopTasksSuggestion,
   WeekCompletionCelebration,
+  TimesheetModesBanner,
   CalendarDayView,
   CalendarWeekView,
   CalendarMonthView,
@@ -75,6 +76,10 @@ export default function TimesheetPage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="sr-only">工時紀錄</h1>
+
+      {/* Onboarding banner — dismissible, explains 3 entry modes (Issue #1539-6) */}
+      <TimesheetModesBanner />
+
       {/* Timer + Quick log — sticky actions row */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="flex-1">
