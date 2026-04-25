@@ -1,5 +1,6 @@
 "use client";
 
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { safeFixed } from "@/lib/safe-number";
 import { type TimeEntry, CATEGORIES } from "./time-entry-cell";
@@ -9,6 +10,8 @@ import { type TimeEntry, CATEGORIES } from "./time-entry-cell";
 type TimesheetListViewProps = {
   entries: TimeEntry[];
   onDelete?: (id: string) => Promise<void>;
+  /** Issue #1539-9: optional callback to trigger quick-log modal from empty state */
+  onQuickLog?: () => void;
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -34,7 +37,7 @@ function formatTime(timeStr: string | null | undefined): string {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps) {
+export function TimesheetListView({ entries, onDelete, onQuickLog }: TimesheetListViewProps) {
   // Sort by date descending, then by startTime descending
   const sorted = [...entries].sort((a, b) => {
     const dateCompare = b.date.localeCompare(a.date);
@@ -54,8 +57,18 @@ export function TimesheetListView({ entries, onDelete }: TimesheetListViewProps)
 
   if (sorted.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-muted-foreground">
-        本週尚無工時記錄
+      <div className="text-center py-12 px-4">
+        <p className="text-sm text-muted-foreground mb-4">本週尚無工時記錄</p>
+        {onQuickLog && (
+          <button
+            onClick={onQuickLog}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg shadow-sm transition-all"
+            data-testid="list-view-empty-quick-log"
+          >
+            <Plus className="h-4 w-4" />
+            快速記時數
+          </button>
+        )}
       </div>
     );
   }
