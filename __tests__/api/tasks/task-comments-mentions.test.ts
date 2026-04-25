@@ -42,6 +42,7 @@ jest.mock("@/lib/prisma", () => {
     user: { findMany: jest.fn() },
     notificationPreference: { findMany: jest.fn() },
     notification: { create: jest.fn() },
+    commentThreadMute: { findMany: jest.fn() },
     $transaction: jest.fn(async (cb: (tx: unknown) => unknown) => cb(mock)),
   };
   return { prisma: mock };
@@ -77,6 +78,7 @@ const prismaMock = prisma as unknown as {
   user: { findMany: jest.Mock };
   notificationPreference: { findMany: jest.Mock };
   notification: { create: jest.Mock };
+  commentThreadMute: { findMany: jest.Mock };
   $transaction: jest.Mock;
 };
 const mockPublishNotifications = publishNotifications as unknown as jest.Mock;
@@ -106,6 +108,8 @@ beforeEach(() => {
   // Issue #1523: thread-subscriber lookup defaults to none — tests opt
   // in by overriding when they need to exercise the subscribe path.
   prismaMock.taskComment.findMany.mockResolvedValue([]);
+  // Issue #1527: thread-mute lookup defaults to none.
+  prismaMock.commentThreadMute.findMany.mockResolvedValue([]);
   prismaMock.notification.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
     Promise.resolve({
       id: `notif-${data.userId as string}`,
@@ -305,5 +309,23 @@ describe("POST /api/tasks/[id]/comments — thread-subscribe (Issue #1523)", () 
     await callPost({ content: "hot thread" });
 
     expect(prismaMock.notification.create).toHaveBeenCalledTimes(20);
+  });
+
+  it("excludes users who muted this specific task thread (Issue #1527)", async () => {
+    const u1 = "cku111111111111111111111";
+    const u2 = "cku222222222222222222222";
+    prismaMock.taskComment.findMany.mockResolvedValue([
+      { userId: u1 },
+      { userId: u2 },
+    ]);
+    // u2 muted this thread
+    prismaMock.commentThreadMute.findMany.mockResolvedValue([{ userId: u2 }]);
+
+    await callPost({ content: "hello again" });
+
+    expect(prismaMock.notification.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ userId: u1 }) })
+    );
   });
 });
