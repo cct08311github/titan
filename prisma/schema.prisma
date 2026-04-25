@@ -86,6 +86,7 @@ model User {
   assignedRecurringRules   RecurringRule[]      @relation("RecurringRuleAssignee")
   acknowledgedAlerts       MonitoringAlert[]    @relation("MonitoringAlertAcknowledger")
   reactions                Reaction[]
+  commentThreadMutes       CommentThreadMute[]
 
   @@map("users")
 }
@@ -1768,6 +1769,33 @@ model SystemSetting {
   updatedBy String?
 
   @@map("system_settings")
+}
+
+// ═══════════════════════════════════════
+// Comment Thread Mutes（T1527 Phase 4c — 沉默單一對話）
+// ═══════════════════════════════════════
+
+/// Per-thread mute for auto-subscribed comment threads. When a row
+/// exists for (userId, targetType, targetId), the user does not receive
+/// TASK_COMMENTED notifications for that specific task or document.
+/// @mentions on the same target are unaffected — those are explicit
+/// pings.
+enum CommentThreadTarget {
+  TASK
+  DOCUMENT
+}
+
+model CommentThreadMute {
+  id         String              @id @default(cuid())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType CommentThreadTarget
+  targetId   String
+  createdAt  DateTime            @default(now())
+
+  @@unique([userId, targetType, targetId])
+  @@index([userId])
+  @@map("comment_thread_mutes")
 }
 
 // ═══════════════════════════════════════

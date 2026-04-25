@@ -42,6 +42,7 @@ jest.mock("@/lib/prisma", () => {
     user: { findMany: jest.fn() },
     notificationPreference: { findMany: jest.fn() },
     notification: { create: jest.fn() },
+    commentThreadMute: { findMany: jest.fn() },
     $transaction: jest.fn(async (cb: (tx: unknown) => unknown) => cb(mock)),
   };
   return { prisma: mock };
@@ -64,6 +65,7 @@ const prismaMock = prisma as unknown as {
   user: { findMany: jest.Mock };
   notificationPreference: { findMany: jest.Mock };
   notification: { create: jest.Mock };
+  commentThreadMute: { findMany: jest.Mock };
   $transaction: jest.Mock;
 };
 
@@ -90,6 +92,7 @@ beforeEach(() => {
   prismaMock.documentComment.findFirst.mockResolvedValue(null);
   prismaMock.user.findMany.mockResolvedValue([]);
   prismaMock.notificationPreference.findMany.mockResolvedValue([]);
+  prismaMock.commentThreadMute.findMany.mockResolvedValue([]);
   prismaMock.notification.create.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
     Promise.resolve({
       id: `n-${data.userId as string}`,
@@ -181,5 +184,22 @@ describe("POST /api/documents/[id]/comments — thread-subscribe", () => {
     await callPost({ content: "hot doc thread" });
 
     expect(prismaMock.notification.create).toHaveBeenCalledTimes(20);
+  });
+
+  it("excludes users who muted this specific document thread (Issue #1527)", async () => {
+    const u1 = "cku111111111111111111111";
+    const u2 = "cku222222222222222222222";
+    prismaMock.documentComment.findMany.mockResolvedValue([
+      { authorId: u1 },
+      { authorId: u2 },
+    ]);
+    prismaMock.commentThreadMute.findMany.mockResolvedValue([{ userId: u2 }]);
+
+    await callPost({ content: "hello again" });
+
+    expect(prismaMock.notification.create).toHaveBeenCalledTimes(1);
+    expect(prismaMock.notification.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ userId: u1 }) })
+    );
   });
 });

@@ -168,6 +168,17 @@ export const POST = withAuth(async (
 
     let subscriberTargets: string[] = [];
     if (candidateSubscribers.length > 0) {
+      // Issue #1527: drop users who muted this specific task thread.
+      const muted = await tx.commentThreadMute.findMany({
+        where: {
+          userId: { in: candidateSubscribers },
+          targetType: "TASK",
+          targetId: taskId,
+        },
+        select: { userId: true },
+      });
+      const mutedSet = new Set(muted.map((m) => m.userId));
+
       const optedOutSub = await tx.notificationPreference.findMany({
         where: {
           userId: { in: candidateSubscribers },
@@ -178,7 +189,7 @@ export const POST = withAuth(async (
       });
       const optedOutSubSet = new Set(optedOutSub.map((p) => p.userId));
       subscriberTargets = candidateSubscribers
-        .filter((uid) => !optedOutSubSet.has(uid))
+        .filter((uid) => !mutedSet.has(uid) && !optedOutSubSet.has(uid))
         .slice(0, SUBSCRIBER_CAP);
 
       if (subscriberTargets.length > 0) {
