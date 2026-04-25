@@ -96,7 +96,8 @@ export const POST = withAuth(async (
       : [];
   const mentionedIds = activeMentioned.map((u) => u.id);
 
-  // Atomic: create comment + mention notifications in single transaction.
+  // Atomic: create comment + mention notifications + thread-subscriber
+  // notifications in a single transaction.
   const { comment, notifications } = await prisma.$transaction(async (tx) => {
     const created = await tx.taskComment.create({
       data: {
@@ -109,45 +110,98 @@ export const POST = withAuth(async (
       },
     });
 
-    if (mentionedIds.length === 0) {
-      return { comment: created, notifications: [] };
-    }
-
-    // Respect per-user NotificationPreference opt-out for MENTION type.
-    const optedOut = await tx.notificationPreference.findMany({
-      where: {
-        userId: { in: mentionedIds },
-        type: "MENTION",
-        enabled: false,
-      },
-      select: { userId: true },
-    });
-    const optedOutSet = new Set(optedOut.map((p) => p.userId));
-    const targets = mentionedIds.filter((id) => !optedOutSet.has(id));
-
-    if (targets.length === 0) {
-      return { comment: created, notifications: [] };
-    }
-
     const preview = sanitized.substring(0, 140);
-    const title = `${created.user.name} 在任務「${task.title}」中提到你`;
+    const allCreated: Awaited<ReturnType<typeof tx.notification.create>>[] = [];
 
-    const created_notifications = await Promise.all(
-      targets.map((userId) =>
-        tx.notification.create({
-          data: {
-            userId,
-            type: "MENTION",
-            title,
-            body: preview,
-            relatedId: taskId,
-            relatedType: "Task",
-          },
-        })
-      )
-    );
+    // ── 1. Direct @mention notifications ─────────────────────────────────
+    let mentionTargets: string[] = [];
+    if (mentionedIds.length > 0) {
+      const optedOutMention = await tx.notificationPreference.findMany({
+        where: {
+          userId: { in: mentionedIds },
+          type: "MENTION",
+          enabled: false,
+        },
+        select: { userId: true },
+      });
+      const optedOutMentionSet = new Set(optedOutMention.map((p) => p.userId));
+      mentionTargets = mentionedIds.filter((id) => !optedOutMentionSet.has(id));
 
-    return { comment: created, notifications: created_notifications };
+      if (mentionTargets.length > 0) {
+        const mentionTitle = `${created.user.name} 在任務「${task.title}」中提到你`;
+        const mentionRows = await Promise.all(
+          mentionTargets.map((userId) =>
+            tx.notification.create({
+              data: {
+                userId,
+                type: "MENTION",
+                title: mentionTitle,
+                body: preview,
+                relatedId: taskId,
+                relatedType: "Task",
+              },
+            })
+          )
+        );
+        allCreated.push(...mentionRows);
+      }
+    }
+
+    // ── 2. Thread-subscriber notifications (Issue #1523) ─────────────────
+    // Anyone who has previously commented on this task is implicitly
+    // subscribed. Notify them about the new comment, except:
+    //   - the comment author themselves
+    //   - users already getting a MENTION notification this turn (avoid dup)
+    //   - users opted out of TASK_COMMENTED type
+    const SUBSCRIBER_CAP = 20;
+    const priorCommenters = await tx.taskComment.findMany({
+      where: { taskId, deletedAt: null, userId: { not: session.user.id } },
+      distinct: ["userId"],
+      select: { userId: true },
+      take: SUBSCRIBER_CAP + 5, // small buffer; we cap after dedup with mentions
+    });
+    // Defense-in-depth: SQL filter excludes the author, but also drop in
+    // memory in case the row leaked through.
+    const candidateSubscribers = priorCommenters
+      .map((r) => r.userId)
+      .filter((uid) => uid !== session.user.id && !mentionTargets.includes(uid));
+
+    let subscriberTargets: string[] = [];
+    if (candidateSubscribers.length > 0) {
+      const optedOutSub = await tx.notificationPreference.findMany({
+        where: {
+          userId: { in: candidateSubscribers },
+          type: "TASK_COMMENTED",
+          enabled: false,
+        },
+        select: { userId: true },
+      });
+      const optedOutSubSet = new Set(optedOutSub.map((p) => p.userId));
+      subscriberTargets = candidateSubscribers
+        .filter((uid) => !optedOutSubSet.has(uid))
+        .slice(0, SUBSCRIBER_CAP);
+
+      if (subscriberTargets.length > 0) {
+        const subTitle = `${created.user.name} 在「${task.title}」回覆了`;
+        const subRows = await Promise.all(
+          subscriberTargets.map((userId) =>
+            tx.notification.create({
+              data: {
+                userId,
+                type: "TASK_COMMENTED",
+                title: subTitle,
+                body: preview,
+                relatedId: taskId,
+                relatedType: "Task",
+              },
+            })
+          )
+        );
+        allCreated.push(...subRows);
+      }
+    }
+
+    return { comment: created, notifications: allCreated };
   });
 
   // Fire-and-forget SSE publish (outside tx; Redis failure must not rollback comment).
