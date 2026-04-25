@@ -8,9 +8,10 @@
  * report-table.tsx (HR / audit / project table reports).
  */
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Calendar } from "lucide-react";
-import { ReportSidebarNav, type ReportId, ORIGINAL_REPORT_IDS } from "@/app/components/reports/report-filters";
+import { ReportSidebarNav, type ReportId, ORIGINAL_REPORT_IDS, REPORTS } from "@/app/components/reports/report-filters";
 import {
   UtilizationReport,
   VelocityReport,
@@ -46,10 +47,23 @@ function defaultDateRange(): { from: string; to: string } {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default function ReportsV2Page() {
+const REPORT_IDS = new Set<string>(REPORTS.map((r) => r.id));
+
+function ReportsV2Inner() {
+  const searchParams = useSearchParams();
   const [activeReport, setActiveReport] = useState<ReportId>("utilization");
   const [dateRange, setDateRange] = useState(defaultDateRange);
   const [reportYear, setReportYear] = useState(new Date().getFullYear());
+
+  // Issue #1539-3: deep-link via ?id=<report> so callers (e.g. timesheet page)
+  // can jump straight to a specific report. Null-safe in case caller didn't
+  // wrap in Suspense.
+  useEffect(() => {
+    const requested = searchParams?.get("id");
+    if (requested && REPORT_IDS.has(requested)) {
+      setActiveReport(requested as ReportId);
+    }
+  }, [searchParams]);
 
   return (
     <div className="flex flex-col lg:flex-row h-full gap-4">
@@ -133,5 +147,13 @@ export default function ReportsV2Page() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ReportsV2Page() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">載入中...</div>}>
+      <ReportsV2Inner />
+    </Suspense>
   );
 }
