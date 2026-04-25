@@ -24,6 +24,7 @@ import { StaleTaskWidget } from "@/app/components/stale-task-widget";
 import ManagerTodayCard from "@/app/components/dashboard/manager-today-card";
 import WidgetSettings, { DEFAULT_WIDGETS, type WidgetConfig } from "@/app/components/dashboard/widget-settings";
 import { StartTimerButton, ApplySuggestionButton } from "@/app/components/dashboard/quick-log-actions";
+import { YourWeekWidget } from "@/app/components/dashboard/your-week-widget";
 
 // ── Skeleton loader ─────────────────────────────────────────────────────
 
@@ -241,7 +242,9 @@ function EngineerMyDay({ data, isVisible, onRefresh }: { data: EngineerData; isV
   const hoursPct = Math.min((data.todayHours / data.dailyTarget) * 100, 100);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
+    <div className="space-y-6">
+      {isVisible("your-week") && <YourWeekWidget />}
+      <div className="grid grid-cols-1 lg:grid-cols-[65%_35%] gap-6">
       {/* Left column — Task sections */}
       <div className="space-y-4">
         {/* Flagged tasks (red top) — always reserve space to prevent CLS (#1149) */}
@@ -383,6 +386,7 @@ function EngineerMyDay({ data, isVisible, onRefresh }: { data: EngineerData; isV
         {/* Stale task widget — Issue #1312 */}
         {isVisible("stale-tasks") && <StaleTaskWidget role="ENGINEER" />}
       </div>
+      </div>
     </div>
   );
 }
@@ -392,6 +396,9 @@ function EngineerMyDay({ data, isVisible, onRefresh }: { data: EngineerData; isV
 function ManagerMyDay({ data, isVisible }: { data: ManagerData; isVisible: (id: string) => boolean }) {
   return (
     <div className="space-y-6">
+      {/* 本週你 — Issue #1518 (Phase 3 of #1505) */}
+      {isVisible("your-week") && <YourWeekWidget />}
+
       {/* 今日必辦 — Issue #1323: first thing a manager sees */}
       <ManagerTodayCard />
 
