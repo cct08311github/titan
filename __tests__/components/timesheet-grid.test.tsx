@@ -37,6 +37,7 @@ jest.mock("lucide-react", () => ({
   FileDown: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-file-down" {...props} />,
   RefreshCw: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-refresh" {...props} />,
   Lock: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-lock" {...props} />,
+  AlertTriangle: (props: React.SVGProps<SVGSVGElement>) => <svg data-testid="icon-alert-triangle" {...props} />,
 }));
 
 // ─── Test data ───────────────────────────────────────────────────────────────
@@ -506,6 +507,54 @@ describe("TimesheetTimer", () => {
 
     expect(screen.getByTestId("timer-stop-btn")).toBeInTheDocument();
     expect(screen.getByText("正在計時：Feature Development")).toBeInTheDocument();
+  });
+
+  // Issue #1539-15: stale timer warning (>9h)
+  describe("stale timer warning (#1539-15)", () => {
+    function staleProps(elapsedSeconds: number) {
+      return {
+        ...defaultTimerProps,
+        timer: {
+          isRunning: true,
+          taskId: "task-1",
+          taskLabel: "long task",
+          startTime: Date.now() - elapsedSeconds * 1000,
+          entryId: "entry-1",
+        },
+        elapsed: elapsedSeconds,
+      };
+    }
+
+    it("does not mark stale below 9 hours", () => {
+      render(<TimesheetTimer {...staleProps(8 * 3600)} />);
+      const container = screen.getByTestId("timesheet-timer");
+      expect(container.getAttribute("data-stale")).toBeNull();
+      expect(screen.queryByTestId("timer-stale-icon")).not.toBeInTheDocument();
+    });
+
+    it("marks stale at 9 hours threshold", () => {
+      render(<TimesheetTimer {...staleProps(9 * 3600)} />);
+      const container = screen.getByTestId("timesheet-timer");
+      expect(container.getAttribute("data-stale")).toBe("true");
+      expect(screen.getByTestId("timer-stale-icon")).toBeInTheDocument();
+    });
+
+    it("marks stale beyond 9 hours", () => {
+      render(<TimesheetTimer {...staleProps(11 * 3600)} />);
+      const container = screen.getByTestId("timesheet-timer");
+      expect(container.getAttribute("data-stale")).toBe("true");
+    });
+
+    it("does not mark stale when timer not running (even if elapsed > 9h)", () => {
+      const props = {
+        ...defaultTimerProps,
+        timer: null,
+        elapsed: 10 * 3600,
+      };
+      render(<TimesheetTimer {...props} />);
+      const container = screen.getByTestId("timesheet-timer");
+      expect(container.getAttribute("data-stale")).toBeNull();
+    });
   });
 
   it("clicking stop calls onStop", async () => {

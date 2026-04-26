@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Play, Square, Clock } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Play, Square, Clock, AlertTriangle } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { type TimerState, type TaskOption } from "./use-timesheet";
 
@@ -25,14 +26,35 @@ function formatElapsed(seconds: number): string {
   return `${pad(h)}:${pad(m)}:${pad(s)}`;
 }
 
+// Issue #1539-15: stale timer threshold (9 hours = beyond a normal workday)
+const STALE_THRESHOLD_SECONDS = 9 * 3600;
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function TimesheetTimer({ timer, elapsed, tasks, onStart, onStop }: TimesheetTimerProps) {
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const staleToastFiredRef = useRef(false);
 
   const isRunning = timer?.isRunning ?? false;
+  const isStale = isRunning && elapsed >= STALE_THRESHOLD_SECONDS;
+
+  // Issue #1539-15: warn user once when timer crosses 9-hour threshold
+  // (likely forgot to stop). Reset flag when timer stops/restarts.
+  useEffect(() => {
+    if (!isRunning) {
+      staleToastFiredRef.current = false;
+      return;
+    }
+    if (isStale && !staleToastFiredRef.current) {
+      staleToastFiredRef.current = true;
+      const hours = Math.floor(elapsed / 3600);
+      toast.warning(`計時器已跑 ${hours} 小時 — 忘了停嗎？`, {
+        duration: 10000,
+      });
+    }
+  }, [isRunning, isStale, elapsed]);
 
   async function handleStart() {
     setLoading(true);
@@ -55,19 +77,26 @@ export function TimesheetTimer({ timer, elapsed, tasks, onStart, onStop }: Times
     <div
       className={cn(
         "flex flex-col sm:flex-row items-start sm:items-center gap-3 px-4 py-3 rounded-xl border transition-colors",
-        isRunning
-          ? "bg-emerald-500/5 border-emerald-500/20"
-          : "bg-card border-border"
+        isStale
+          ? "bg-amber-500/10 border-amber-500/40"
+          : isRunning
+            ? "bg-emerald-500/5 border-emerald-500/20"
+            : "bg-card border-border"
       )}
       data-testid="timesheet-timer"
+      data-stale={isStale ? "true" : undefined}
     >
       {/* Timer icon + display */}
       <div className="flex items-center gap-3">
-        <Clock className={cn("h-4 w-4", isRunning ? "text-emerald-500" : "text-muted-foreground")} />
+        {isStale ? (
+          <AlertTriangle className="h-4 w-4 text-amber-500" data-testid="timer-stale-icon" />
+        ) : (
+          <Clock className={cn("h-4 w-4", isRunning ? "text-emerald-500" : "text-muted-foreground")} />
+        )}
         <div
           className={cn(
             "text-xl sm:text-2xl font-mono font-bold tabular-nums transition-colors",
-            isRunning ? "text-emerald-500" : "text-muted-foreground/30"
+            isStale ? "text-amber-500" : isRunning ? "text-emerald-500" : "text-muted-foreground/30"
           )}
           data-testid="timer-display"
         >
